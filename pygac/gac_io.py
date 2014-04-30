@@ -1,0 +1,393 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+# Copyright (c) 2012 Abhay Devasthale 
+
+# Author(s):
+
+#   Abhay Devasthale <abhay.devasthale@smhi.se>
+
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+import h5py
+import numpy as np
+
+#OUTPUT_FILE_PREFIX = "ECC_GAC"
+OUTPUT_FILE_PREFIX = "S_NWC" #For SAFNWC/PPS style of the name
+
+def avhrrGAC_io(satellite_name, startdate, enddate, starttime, endtime,
+		arrLat_full, arrLon_full, ref1, ref2, ref3, bt3, bt4, bt5,
+		arrSZA, arrSTZ, arrSAA, arrSTA, arrRAA):
+	import os
+	SUNSATANGLES_DIR = os.environ.get('SM_SUNSATANGLES_DIR', '.')
+	AVHRR_DIR  = os.environ.get('SM_AVHRR_DIR', '.')
+
+	ofn=AVHRR_DIR+'/'+OUTPUT_FILE_PREFIX+'_avhrr_'+\
+	     satellite_name+'_99999_'+startdate+'T'+starttime+'Z_'+\
+	     enddate+'T'+endtime+'Z.h5'
+
+	fout=h5py.File(ofn,"w");
+
+	dset1=fout.create_dataset("/image1/data",dtype='int16',data=ref1);
+	dset2=fout.create_dataset("/image2/data",dtype='int16',data=ref2);
+	dset3=fout.create_dataset("/image3/data",dtype='int16',data=bt3);
+	dset4=fout.create_dataset("/image4/data",dtype='int16',data=bt4);
+	dset5=fout.create_dataset("/image5/data",dtype='int16',data=bt5);
+	dset6=fout.create_dataset("/image6/data",dtype='int16',data=ref3);
+	dset7=fout.create_dataset("/where/lat/data",dtype='int32',
+				  data=arrLat_full);
+	dset8=fout.create_dataset("/where/lon/data",dtype='int32',
+				  data=arrLon_full);
+
+	channellist = []
+	channellist.append("channel1")
+	channellist.append("channel2")
+	channellist.append("channel3b")
+	channellist.append("channel4")
+	channellist.append("channel5")
+	channellist.append("channel3a")
+	dset10=fout.create_dataset("/how/channel_list",
+				   data=channellist);
+
+	#Attributes directly on highest level groups
+	g1=fout.require_group("/image1");
+        g2=fout.require_group("/image2");
+	g3=fout.require_group("/image3");
+	g4=fout.require_group("/image4");
+	g5=fout.require_group("/image5");
+	g6=fout.require_group("/image6");
+	g7=fout.require_group("/where");
+
+	g1.attrs["channel"] = "1"
+	g1.attrs["description"] = "AVHRR ch1"
+	g2.attrs["channel"] = "2"
+	g2.attrs["description"] = "AVHRR ch2"
+	g3.attrs["channel"] = "3b"
+	g3.attrs["description"] = "AVHRR ch3b"
+	g4.attrs["channel"] = "4"
+	g4.attrs["description"] = "AVHRR ch4"
+	g5.attrs["channel"] = "5"
+	g5.attrs["description"] = "AVHRR ch5"
+	g6.attrs["channel"] = "3a"
+	g6.attrs["description"] = "AVHRR ch3a"
+	g7.attrs["num_of_pixels"]=np.int32(arrSZA.shape[1])
+	g7.attrs["num_of_lines"]=np.int32(arrSZA.shape[0])
+	g7.attrs["xscale"]=np.float32(0.0)   #PPS says 1100.0, is that really 
+	g7.attrs["yscale"]=np.float32(0.0)   #true for GAC? /SHq
+
+	#Attributes in the 'what' groups
+        g1=fout.create_group("/image1/what");
+        g2=fout.create_group("/image2/what");
+	g3=fout.create_group("/image3/what");
+	g4=fout.create_group("/image4/what");
+	g5=fout.create_group("/image5/what");
+	g6=fout.create_group("/image6/what");
+	g7=fout.create_group("/where/lat/what");
+	g8=fout.create_group("/where/lon/what");
+	g9=fout.create_group("/what")
+
+	g1.attrs["product"] = "SATCH"
+	g1.attrs["quantity"] = "REFL"
+        g1.attrs["dataset_name"]='Channel 1 reflectance'
+	g1.attrs["units"]='%'
+	g1.attrs["gain"]=np.float32(0.01)
+	g1.attrs["offset"]=np.float32(0.0)
+	g1.attrs["missingdata"]=np.int32(-32001)
+	g1.attrs["nodata"]=np.int32(-32001)
+	g1.attrs["starttime"]=starttime
+	g1.attrs["endtime"]=endtime
+	g1.attrs["startdate"]=startdate
+	g1.attrs["enddate"]=enddate
+
+	g2.attrs["product"] = "SATCH"
+	g2.attrs["quantity"] = "REFL"
+	g2.attrs["dataset_name"]='Channel 2 reflectance'
+	g2.attrs["units"]='%'
+	g2.attrs["gain"]=np.float32(0.01)
+	g2.attrs["offset"]=np.float32(0.0)
+	g2.attrs["missingdata"]=np.int32(-32001)
+	g2.attrs["nodata"]=np.int32(-32001)
+	g2.attrs["starttime"]=starttime
+	g2.attrs["endtime"]=endtime
+	g2.attrs["startdate"]=startdate
+	g2.attrs["enddate"]=enddate
+
+	g6.attrs["product"] = "SATCH"
+	g6.attrs["quantity"] = "REFL"
+	g6.attrs["dataset_name"]='Channel 3a reflectance'
+	g6.attrs["units"]='%'
+	g6.attrs["gain"]=np.float32(0.01)
+	g6.attrs["offset"]=np.float32(0.0)
+	g6.attrs["missingdata"]=np.int32(-32001)
+	g6.attrs["nodata"]=np.int32(-32001)
+	g6.attrs["starttime"]=starttime
+	g6.attrs["endtime"]=endtime
+	g6.attrs["startdate"]=startdate
+	g6.attrs["enddate"]=enddate
+
+	g3.attrs["product"] = "SATCH"
+	g3.attrs["quantity"] = "TB"
+	g3.attrs["dataset_name"]='Channel 3b brightness temperature'
+	g3.attrs["units"]='K'
+	g3.attrs["gain"]=np.float32(0.01)
+	g3.attrs["offset"]=np.float32(273.15)
+	g3.attrs["missingdata"]=np.int32(-32001)
+	g3.attrs["nodata"]=np.int32(-32001)
+	g3.attrs["starttime"]=starttime
+	g3.attrs["endtime"]=endtime
+        g3.attrs["startdate"]=startdate
+	g3.attrs["enddate"]=enddate
+
+	g4.attrs["product"] = "SATCH"
+	g4.attrs["quantity"] = "TB"
+	g4.attrs["dataset_name"]='Channel 4 brightness temperature'
+	g4.attrs["units"]='K'
+	g4.attrs["gain"]=np.float32(0.01)
+	g4.attrs["offset"]=np.float32(273.15)
+	g4.attrs["missingdata"]=np.int32(-32001)
+	g4.attrs["nodata"]=np.int32(-32001)
+	g4.attrs["starttime"]=starttime
+	g4.attrs["endtime"]=endtime
+	g4.attrs["startdate"]=startdate
+	g4.attrs["enddate"]=enddate
+
+	g5.attrs["product"] = "SATCH"
+	g5.attrs["quantity"] = "TB"
+	g5.attrs["dataset_name"]='Channel 5 brightness temperature'
+	g5.attrs["units"]='K'
+	g5.attrs["gain"]=np.float32(0.01)
+	g5.attrs["offset"]=np.float32(273.15)
+	g5.attrs["missingdata"]=np.int32(-32001)
+	g5.attrs["nodata"]=np.int32(-32001)
+	g5.attrs["starttime"]=starttime
+	g5.attrs["endtime"]=endtime
+	g5.attrs["startdate"]=startdate
+	g5.attrs["enddate"]=enddate
+
+	g7.attrs["dataset_name"]='Latitude'
+	g7.attrs["units"]='Deg'
+	g7.attrs["gain"]=np.float32(0.010)
+	g7.attrs["offset"]=np.float32(0.0)
+	g7.attrs["missingdata"]=np.int32(-32001)
+	g7.attrs["nodata"]=np.int32(-32001)
+	g7.attrs["starttime"]=starttime
+	g7.attrs["endtime"]=endtime
+	g7.attrs["startdate"]=startdate
+	g7.attrs["enddate"]=enddate
+
+	g8.attrs["dataset_name"]='Longitude'
+	g8.attrs["units"]='Deg'
+	g8.attrs["gain"]=np.float32(0.010)
+	g8.attrs["offset"]=np.float32(0.0)
+	g8.attrs["missingdata"]=np.int32(-32001)
+	g8.attrs["nodata"]=np.int32(-32001)
+	g8.attrs["starttime"]=starttime
+	g8.attrs["endtime"]=endtime
+	g8.attrs["startdate"]=startdate
+	g8.attrs["enddate"]=enddate
+
+	g9.attrs["object"]="SATP"
+	g9.attrs["sets"]=np.int32(len(channellist))
+	g9.attrs["version"]="H5rad ?.?"
+	g9.attrs["date"]=startdate
+	g9.attrs["time"]=starttime
+
+	#Attributes in the 'how' groups
+        g1=fout.create_group("/image1/how");
+        g2=fout.create_group("/image2/how");
+	g3=fout.create_group("/image3/how");
+	g4=fout.create_group("/image4/how");
+	g5=fout.create_group("/image5/how");
+	g6=fout.create_group("/image6/how");
+	g10=fout.require_group("/how")
+
+	#SHq: Is it correct that sun_earth_distance correction is not applied?
+	g1.attrs["sun_earth_distance_correction_applied"] = "FALSE"
+	g1.attrs["sun_earth_distance_correction_factor"] = np.int32(1.0)
+	g2.attrs["sun_earth_distance_correction_applied"] = "FALSE"
+	g2.attrs["sun_earth_distance_correction_factor"] = np.int32(1.0)
+	#No attributes on 'how' for image3,4,5
+	g6.attrs["sun_earth_distance_correction_applied"] = "FALSE"
+	g6.attrs["sun_earth_distance_correction_factor"] = np.int32(1.0)
+
+	#We do not know much about how; mostly use no-data
+	g10.attrs["yaw_error"] = 0.0
+	g10.attrs["roll_error"] = 0.0
+	g10.attrs["pich_error"] = 0.0
+	g10.attrs["startepochs"] = np.int32(0) #can create from startdate/time
+	g10.attrs["endepochs"] = np.int32(0) #can create from enddate/time
+	g10.attrs["platform"] = satellite_name
+	g10.attrs["instrument"] = "avhrr"
+	g10.attrs["orbit_number"] = np.int32(99999)
+	g10.attrs["software"] = "pyGAC"
+	g10.attrs["version"] = "1.0"
+
+	fout.close()
+
+	
+	
+	ofn=SUNSATANGLES_DIR+'/'+OUTPUT_FILE_PREFIX+'_sunsatangles_'+\
+	     satellite_name+'_99999_'+startdate+'T'+starttime+'Z_'+\
+	     enddate+'T'+endtime+'Z.h5'
+
+	fout=h5py.File(ofn,"w");
+
+	dset1=fout.create_dataset("/image1/data",dtype='int16',data=arrSZA);
+	dset2=fout.create_dataset("/image2/data",dtype='int16',data=arrSTZ);
+	dset3=fout.create_dataset("/image3/data",dtype='int16',data=arrRAA);
+	dset4=fout.create_dataset("/image4/data",dtype='int16',data=arrSAA);
+	dset5=fout.create_dataset("/image5/data",dtype='int16',data=arrSTA);
+	dset6=fout.create_dataset("/where/lat/data",dtype='int32',
+				  data=arrLat_full);
+	dset7=fout.create_dataset("/where/lon/data",dtype='int32',
+				  data=arrLon_full);
+
+	#Attributes directly on highest level groups
+	g1=fout.require_group("/image1");
+        g2=fout.require_group("/image2");
+	g3=fout.require_group("/image3");
+	g4=fout.require_group("/image4");
+	g5=fout.require_group("/image5");	
+	g6=fout.require_group("/where");
+
+	g1.attrs["description"] = 'Solar zenith angle'
+	g2.attrs["description"] = 'Satellite zenith angle'
+	g3.attrs["description"] = 'Relative satellite-sun azimuth angle'
+	g4.attrs["description"] = 'Solar azimuth angle'
+	g5.attrs["description"] = 'Satellite azimuth angle'	
+	g6.attrs["num_of_pixels"]=np.int32(arrSZA.shape[1])
+	g6.attrs["num_of_lines"]=np.int32(arrSZA.shape[0])
+	g6.attrs["xscale"]=np.float32(0.0)   #PPS says 1100.0, is that really
+	g6.attrs["yscale"]=np.float32(0.0)   #true for GAC? /SHq
+
+
+	#Attributes in the 'what' groups + 'how'
+	g1=fout.create_group("/image1/what");
+        g2=fout.create_group("/image2/what");
+	g3=fout.create_group("/image3/what");
+	g4=fout.create_group("/image4/what");
+	g5=fout.create_group("/image5/what");	
+	g6=fout.create_group("/where/lat/what");
+	g7=fout.create_group("/where/lon/what");
+	g8=fout.create_group("/what")
+	g9=fout.create_group("/how")
+
+	g1.attrs["product"] = "SUNZ"
+	g1.attrs["quantity"] = "DEG"
+	g1.attrs["dataset_name"]='Solar zenith angle'
+	g1.attrs["units"]='Deg'
+	g1.attrs["gain"]=np.float32(0.01)
+	g1.attrs["offset"]=np.float32(0.0)
+	g1.attrs["missingdata"]=np.int32(-32001)
+	g1.attrs["nodata"]=np.int32(-32001)
+	g1.attrs["starttime"]=starttime
+	g1.attrs["endtime"]=endtime
+	g1.attrs["startdate"]=startdate
+	g1.attrs["enddate"]=enddate
+
+	g2.attrs["product"] = "SATZ"
+	g2.attrs["quantity"] = "DEG"
+	g2.attrs["dataset_name"]='Satellite zenith angle'
+	g2.attrs["units"]='Deg'
+	g2.attrs["gain"]=np.float32(0.01)
+	g2.attrs["offset"]=np.float32(0.0)
+	g2.attrs["missingdata"]=np.int32(-32001)
+	g2.attrs["nodata"]=np.int32(-32001)
+	g2.attrs["starttime"]=starttime
+	g2.attrs["endtime"]=endtime
+	g2.attrs["startdate"]=startdate
+	g2.attrs["enddate"]=enddate
+
+	g3.attrs["product"] = "SSAZD"
+	g3.attrs["quantity"] = "DEG"
+	g3.attrs["dataset_name"]='Relative satellite-sun azimuth angle'
+	g3.attrs["units"]='Deg'
+	g3.attrs["gain"]=np.float32(0.01)
+	g3.attrs["offset"]=np.float32(0.0)
+	g3.attrs["missingdata"]=np.int32(-32001)
+	g3.attrs["nodata"]=np.int32(-32001)
+	g3.attrs["starttime"]=starttime
+	g3.attrs["endtime"]=endtime
+	g3.attrs["startdate"]=startdate
+	g3.attrs["enddate"]=enddate
+
+	g4.attrs["product"] = "SUNA"
+	g4.attrs["quantity"] = "DEG"
+	g4.attrs["dataset_name"]='Solar azimuth angle'
+	g4.attrs["units"]='Deg'
+	g4.attrs["gain"]=np.float32(0.01)
+	g4.attrs["offset"]=np.float32(180.0)
+	g4.attrs["missingdata"]=np.int32(-32001)
+	g4.attrs["nodata"]=np.int32(-32001)
+	g4.attrs["starttime"]=starttime
+	g4.attrs["endtime"]=endtime
+	g4.attrs["startdate"]=startdate
+	g4.attrs["enddate"]=enddate
+
+	g5.attrs["product"] = "SATA"
+	g5.attrs["quantity"] = "DEG"
+	g5.attrs["dataset_name"]='Satellite azimuth angle'
+	g5.attrs["units"]='Deg'
+	g5.attrs["gain"]=np.float32(0.01)
+	g5.attrs["offset"]=np.float32(180.0)
+	g5.attrs["missingdata"]=np.int32(-32001)
+	g5.attrs["nodata"]=np.int32(-32001)
+	g5.attrs["starttime"]=starttime
+	g5.attrs["endtime"]=endtime
+	g5.attrs["startdate"]=startdate
+	g5.attrs["enddate"]=enddate
+
+	g6.attrs["dataset_name"]='Latitude'
+	g6.attrs["units"]='Deg'
+	g6.attrs["gain"]=np.float32(0.010)
+	g6.attrs["offset"]=np.float32(0.0)
+	g6.attrs["missingdata"]=np.int32(-32001)
+	g6.attrs["nodata"]=np.int32(-32001)
+	g6.attrs["starttime"]=starttime
+	g6.attrs["endtime"]=endtime
+	g6.attrs["startdate"]=startdate
+	g6.attrs["enddate"]=enddate
+
+	g7.attrs["dataset_name"]='Longitude'
+	g7.attrs["units"]='Deg'
+	g7.attrs["gain"]=np.float32(0.010)
+	g7.attrs["offset"]=np.float32(0.0)
+	g7.attrs["missingdata"]=np.int32(-32001)
+	g7.attrs["nodata"]=np.int32(-32001)
+	g7.attrs["starttime"]=starttime
+	g7.attrs["endtime"]=endtime
+	g7.attrs["startdate"]=startdate
+	g7.attrs["enddate"]=enddate
+
+	g8.attrs["object"]="SATP"
+	g8.attrs["sets"]=np.int32(5)
+	g8.attrs["version"]="H5rad ?.?"
+	g8.attrs["date"]=startdate
+	g8.attrs["time"]=starttime
+
+	#We do not know much about how; mostly use no-data
+	g9.attrs["yaw_error"] = 0.0
+	g9.attrs["roll_error"] = 0.0
+	g9.attrs["pich_error"] = 0.0
+	g9.attrs["startepochs"] = np.int32(0) #can create from startdate/time
+	g9.attrs["endepochs"] = np.int32(0) #can create from enddate/time
+	g9.attrs["platform"] = satellite_name
+	g9.attrs["instrument"] = "avhrr"
+	g9.attrs["orbit_number"] = np.int32(99999)
+	g9.attrs["software"] = "pyGAC"
+	g9.attrs["version"] = "1.0"
+
+	fout.close()
+
+
