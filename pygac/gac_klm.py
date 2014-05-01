@@ -37,6 +37,22 @@ import calibrate_klm as cal_klm
 import gac_io
 from pyorbital.orbital import Orbital
 
+import logging
+LOG = logging.getLogger(__name__)
+
+import ConfigParser
+import os
+
+try:
+    CONFIG_FILE = os.environ['PYGAC_CONFIG_FILE']
+except KeyError:
+    LOG.exception('Environment variable PYGAC_CONFIG_FILE not set!')
+    raise
+
+if not os.path.exists(CONFIG_FILE) or not os.path.isfile(CONFIG_FILE):
+    raise IOError(str(CONFIG_FILE) + " pointed to by the environment " + 
+                  "variable PYGAC_CONFIG_FILE is not a file or does not exist!")
+
 
 # setting up constants used in the processing
 
@@ -452,8 +468,25 @@ def main(filename):
     try:
         satellite_name = spacecrafts[spacecraft_id]
     except KeyError:
-        print "wrong satellite id - exit";
-        sys.exit(1);
+        raise KeyError("Wrong satellite id: " + str(spacecraft_id))
+
+
+    conf = ConfigParser.ConfigParser()
+    try:
+        conf.read(CONFIG_FILE)
+    except ConfigParser.NoSectionError:
+        LOG.exception('Failed reading configuration file: ' + str(CONFIG_FILE))
+        raise
+
+    values = {"satname": satellite_name, }
+
+    options = {}
+    for option, value in conf.items('tle', raw = True):
+        options[option] = value
+
+    tle_filename = os.path.join(options['tledir'], 
+                                options["tlename"] % values)
+    LOG.info('TLE filename = ' + str(tle_filename))
 
 
     # unpacking raw data to get counts
@@ -525,7 +558,7 @@ def main(filename):
 
     # calculating satellite azimuth angle
 
-    tle_name = './noaa_tle/TLE_%s.txt' % satellite_name
+    tle_name = tle_filename # './noaa_tle/TLE_%s.txt' % satellite_name
     if arrYear[1]<=1999:
 	yearJday = '%02d%03d.' % (arrYear[1]%1900,arrJDay[1])
     else:

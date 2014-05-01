@@ -25,6 +25,32 @@
 
 """
 
+
+import logging
+
+from datetime import datetime
+
+logger = logging.getLogger("")
+logger.setLevel(logging.DEBUG)
+ch = logging.StreamHandler()
+ch.setLevel(logging.DEBUG)
+
+class MyFormatter(logging.Formatter):
+    converter = datetime.fromtimestamp
+    def formatTime(self, record, datefmt=None):
+        ct = self.converter(record.created)
+        if datefmt:
+            s = ct.strftime(datefmt)
+        else:
+            t = ct.strftime("%Y-%m-%d %H:%M:%S")
+            s = "%s.%03d" % (t, record.msecs)
+        return s
+
+
+formatter = MyFormatter('[ %(levelname)s %(name)s %(asctime)s] %(message)s')
+ch.setFormatter(formatter)
+logger.addHandler(ch)
+
 def check_file_version(filename):
     with open(filename) as fdes:
         data = fdes.read(3)

@@ -55,11 +55,11 @@ setup(name='pygac',
       # Project should use reStructuredText, so ensure that the docutils get
       # installed or upgraded on the target machine
       install_requires=['docutils>=0.3', 
-                        'numpy', 'pyorbital'],
+                        'numpy', 'pyorbital>=v0.3.2'],
       extras_require = {'geolocation interpolation': ['python-geotiepoints'],
                         },
       scripts = [],      
-      #data_files=[('etc', ['etc/pps_reader.cfg'])],
+      data_files=[('etc', ['etc/pygac.cfg'])],
       test_suite="nose.collector",
       tests_require=[],
 

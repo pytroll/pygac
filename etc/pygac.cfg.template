@@ -1,0 +1,7 @@
+[tle]
+tledir = /path/to/gapfilled/tles
+tlename = TLE_%(satname)s.txt
+
+[output]
+output_dir = /tmp
+output_file_prefix = ECC_GAC

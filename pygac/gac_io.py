@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2012 Abhay Devasthale 
+# Copyright (c) 2012, 2014 Abhay Devasthale 
 
 # Author(s):
 
@@ -20,22 +20,56 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+
 import h5py
 import numpy as np
 
-#OUTPUT_FILE_PREFIX = "ECC_GAC"
-OUTPUT_FILE_PREFIX = "S_NWC" #For SAFNWC/PPS style of the name
+import logging
+LOG = logging.getLogger(__name__)
+
+import ConfigParser
+import os
+
+try:
+    CONFIG_FILE = os.environ['PYGAC_CONFIG_FILE']
+except KeyError:
+    LOG.exception('Environment variable PYGAC_CONFIG_FILE not set!')
+    raise
+
+if not os.path.exists(CONFIG_FILE) or not os.path.isfile(CONFIG_FILE):
+    raise IOError(str(CONFIG_FILE) + " pointed to by the environment " + 
+                  "variable PYGAC_CONFIG_FILE is not a file or does not exist!")
+
+conf = ConfigParser.ConfigParser()
+try:
+        conf.read(CONFIG_FILE)
+except ConfigParser.NoSectionError:
+        LOG.exception('Failed reading configuration file: ' + str(CONFIG_FILE))
+        raise
+
+options = {}
+for option, value in conf.items('output', raw = True):
+        options[option] = value
+
+OUTDIR = options['output_dir']
+OUTPUT_FILE_PREFIX = options['output_file_prefix']
+
+SUNSATANGLES_DIR = os.environ.get('SM_SUNSATANGLES_DIR', OUTDIR)
+AVHRR_DIR  = os.environ.get('SM_AVHRR_DIR', OUTDIR)
+
 
 def avhrrGAC_io(satellite_name, startdate, enddate, starttime, endtime,
-		arrLat_full, arrLon_full, ref1, ref2, ref3, bt3, bt4, bt5,
-		arrSZA, arrSTZ, arrSAA, arrSTA, arrRAA):
-	import os
-	SUNSATANGLES_DIR = os.environ.get('SM_SUNSATANGLES_DIR', '.')
-	AVHRR_DIR  = os.environ.get('SM_AVHRR_DIR', '.')
+                arrLat_full, arrLon_full, ref1, ref2, ref3, bt3, bt4, bt5,
+                arrSZA, arrSTZ, arrSAA, arrSTA, arrRAA):
+        import os
 
-	ofn=AVHRR_DIR+'/'+OUTPUT_FILE_PREFIX+'_avhrr_'+\
-	     satellite_name+'_99999_'+startdate+'T'+starttime+'Z_'+\
-	     enddate+'T'+endtime+'Z.h5'
+        LOG.info('Output file prefix = ' + str(OUTPUT_FILE_PREFIX))
+        LOG.info('AVHRR data will be written to ' + str(AVHRR_DIR))        
+	ofn = os.path.join(AVHRR_DIR, (OUTPUT_FILE_PREFIX + '_avhrr_' +
+                                       satellite_name + '_99999_' +
+                                       startdate + 'T' + starttime + 'Z_'+
+                                       enddate + 'T' + endtime + 'Z.h5'))
+        LOG.info('Filename: ' + str(os.path.basename(ofn)))
 
 	fout=h5py.File(ofn,"w");
 
@@ -236,12 +270,15 @@ def avhrrGAC_io(satellite_name, startdate, enddate, starttime, endtime,
 	fout.close()
 
 	
-	
-	ofn=SUNSATANGLES_DIR+'/'+OUTPUT_FILE_PREFIX+'_sunsatangles_'+\
-	     satellite_name+'_99999_'+startdate+'T'+starttime+'Z_'+\
-	     enddate+'T'+endtime+'Z.h5'
-
-	fout=h5py.File(ofn,"w");
+        LOG.info('Sun and Satellite viewing angles will be ' + 
+                 'written to ' + str(SUNSATANGLES_DIR))
+	ofn = os.path.join(SUNSATANGLES_DIR,
+                           (OUTPUT_FILE_PREFIX + '_sunsatangles_' + 
+                            satellite_name + '_99999_' + startdate + 
+                            'T' + starttime + 'Z_' + 
+                            enddate+'T'+endtime+'Z.h5'))
+        LOG.info('Filename: ' + str(os.path.basename(ofn)))
+	fout = h5py.File(ofn, "w");
 
 	dset1=fout.create_dataset("/image1/data",dtype='int16',data=arrSZA);
 	dset2=fout.create_dataset("/image2/data",dtype='int16',data=arrSTZ);
