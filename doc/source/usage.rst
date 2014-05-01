@@ -10,25 +10,12 @@ pointing to the file. E.g.::
 Also adapt the configuration file to your needs. The *tledir* parameter should
 be set to where your Two Line Element (TLE) files are located.
 
+The main script is *gac_run.py*. It automatically checks for the type of file
+file format and invokes either gac_pod.py (pre-KLM type satellites) or
+gac_klm.py (KLMNN' satellites). You can test it directly on the testdata
+included in the package. The result will be two hdf5 files, one with the
+calibrated AVHRR data, and one with sun-satellite viewing geometry data::
 
-A simple use case::
+ $> python pygac/gac_run.py testdata/NSS.GHRR.NL.D02187.S1904.E2058.B0921517.GC
 
-  >>> from pyspectral.rsr_read import RelativeSpectralResponse
-  >>> from pyspectral.solar import (SolarIrradianceSpectrum, TOTAL_IRRADIANCE_SPECTRUM_2000ASTM)
-  >>> modis = RelativeSpectralResponse('eos', '2', 'modis')
-  >>> modis.load(channel='20', scale=0.001)
-  >>> solar_irr = SolarIrradianceSpectrum(TOTAL_IRRADIANCE_SPECTRUM_2000ASTM, dlambda=0.005)
-  >>> sflux = solar_irr.inband_solarflux(modis.rsr)
-  >>> print("Solar flux over Band: ", sflux)
-  ('Solar flux over Band: ', 2.002927764514423)
 
-And, here is how to derive the solar reflectance (removing the thermal part) of
-the Aqua MODIS 3.7 micron band::
-
-  >>> from pyspectral.nir_reflectance import Calculator
-  >>> sunz = 80.
-  >>> tb3 = 290.0
-  >>> tb4 = 282.0
-  >>> refl37 = Calculator(modis.rsr, solar_flux=sflux)
-  >>> print refl37.reflectance_from_tbs(sunz, tb3, tb4)
-  0.251177702956
