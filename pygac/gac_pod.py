@@ -7,6 +7,7 @@
 # Author(s):
 
 #   Abhay Devasthale <abhay.devasthale@smhi.se>
+#   Adam Dybbroe <adam.dybbroe@smhi.se>
 
 # This work was done in the framework of ESA-CCI-Clouds phase I 
 
