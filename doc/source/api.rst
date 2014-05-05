@@ -1,7 +1,7 @@
 The :mod:`pygac` API
 ====================
 
-Overview of the code
+pyGAC interface consists of a number of python modules. The following lines summarize the purpose of each python module.
 
 
 gac_run.py      : main interface to all modules. Decides which version of AVHRR, and accordingly calls other modules.
@@ -44,3 +44,23 @@ GAC I/O module
 .. automodule:: pygac.gac_pod
    :members:
    :undoc-members:
+
+The I/O module generates two HDF5 files, one contaning reflectances, brightness temperatures, and lat/lon information.
+The other output file contains solar and satellite zenith and azimuth angles.
+
+The output file name format is:
+
+ECC_avhrrGAC_noaaxx_yyyymmddZhhmmss_yyyymmddZhhmmss.h5
+and
+ECC_sunsatGAC_noaaxx_yyyymmddZhhmmss_yyyymmddZhhmmss.h5
+
+where,
+
+ECC: ESA CCI Clouds (This prefix can be specified by the user)
+
+avhrrGAC: denoting that it contains reflectances and BTs
+
+sunsatGAC: denoting that it contains angles
+
+yyyymmddZhhmmss: year, month, day, hour, min, sec (for the start and the end of the orbit).
+
