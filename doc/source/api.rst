@@ -50,17 +50,22 @@ The other output file contains solar and satellite zenith and azimuth angles.
 
 The output file name format is:
 
-ECC_avhrrGAC_noaaxx_yyyymmddZhhmmss_yyyymmddZhhmmss.h5
+ECC_avhrr_satellitename_99999_yyyymmddThhmmssZ_yyyymmddThhmmssZ.h5
+
 and
-ECC_sunsatGAC_noaaxx_yyyymmddZhhmmss_yyyymmddZhhmmss.h5
+
+ECC_sunsatangles_satellitename_99999_yyyymmddThhmmssZ_yyyymmddThhmmssZ.h5
 
 where,
 
 ECC: ESA CCI Clouds (This prefix can be specified by the user)
 
-avhrrGAC: denoting that it contains reflectances and BTs
+avhrr: denoting that it contains reflectances and BTs
 
-sunsatGAC: denoting that it contains angles
+sunsatangles: denoting that it contains angles
 
-yyyymmddZhhmmss: year, month, day, hour, min, sec (for the start and the end of the orbit).
+yyyymmddThhmmssZ: yy:year, mm:month, dd:day, hh:hour, mm:min, ss:sec (for the start and the end of the orbit).
 
+Letters T and Z are separators for time info.
+
+The value of 99999 is currently used instead of providing actual orbit number.
