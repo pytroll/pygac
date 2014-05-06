@@ -30,11 +30,10 @@ http://www.ncdc.noaa.gov/oa/pod-guide/ncdc/docs/klm/html/c8/sec83142-1.htm
 """
 
 import numpy as np
-from astronomy import *
 import geotiepoints as gtp
 import datetime
-import astronomy
-import calibrate_klm as cal_klm
+from pyorbital import astronomy
+import pygac.calibrate_klm as cal_klm
 import gac_io
 from pyorbital.orbital import Orbital
 

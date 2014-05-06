@@ -36,7 +36,6 @@ http://www.ncdc.noaa.gov/oa/pod-guide/ncdc/docs/podug/html/c3/sec3-1.htm
 
 import sys
 import numpy as np
-from astronomy import *
 import geotiepoints as gtp
 import datetime
 from pyorbital import astronomy
