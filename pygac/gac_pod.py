@@ -247,9 +247,9 @@ def main(filename):
 
     tle_name = tle_filename # './noaa_tle/TLE_%s.txt' % satellite_name
     if arrYear[1]<=1999:
-	yearJday = '%02d%03d.' % (arrYear[1]%1900,arrJDay[1])
+	yearJday = '%02d%03d.%06d' % (arrYear[1]%1900,arrJDay[1], arrUTC[1])
     else:
-	yearJday = '%02d%03d.' % (arrYear[1]%2000,arrJDay[1])
+	yearJday = '%02d%03d.%06d' % (arrYear[1]%2000,arrJDay[1], arrUTC[1])
 
 
     tlep=open(tle_name,'rt')
@@ -257,15 +257,42 @@ def main(filename):
     tlep.close()
 
     def find_tle_index(tle_data, yearJday):
-    	for iindex, stringYearJday in enumerate(tle_data):
-        	if yearJday in stringYearJday:
-              		return iindex
-    	return -1
+        # for iindex, stringYearJday in enumerate(tle_data):
+        # 	if yearJday in stringYearJday:
+        #       		return iindex
+    	# raise IndexError("Can't find tle data for %s on the %s"%(satellite_name, yearJday))
+
+        dates = np.array([float(line[18:32]) for line in tle_data[::2]])
+        dates = np.where(dates > 50000, dates + 1900000, dates + 2000000)
+
+        sdate = float(yearJday)
+        if sdate > 50000:
+            sdate += 1900000
+        else:
+            sdate += 2000000
+
+        iindex = np.searchsorted(dates, sdate)
+
+        if iindex == 0 and abs(sdate - dates[0]) > 7:
+            raise IndexError("Can't find tle data for %s on the %s"%(satellite_name, yearJday))
+        if iindex == len(dates) - 1 and abs(sdate - dates[-1]) > 7:
+            raise IndexError("Can't find tle data for %s on the %s"%(satellite_name, yearJday))
+
+        if abs(sdate - dates[iindex - 1]) < abs(sdate - dates[iindex]):
+            iindex -= 1
+
+        if abs(sdate - dates[iindex]) > 3:
+            LOG.warning("Found TLE data for %f that is %f days appart", sdate, abs(sdate - dates[iindex]))
+        else:            
+            LOG.debug("Found TLE data for %f that is %f days appart", sdate, abs(sdate - dates[iindex]))
+
+        return iindex * 2
+
 
     try:
-    	iindex=find_tle_index(tle_data,yearJday)
-    	tle1=tle_data[iindex]
-    	tle2=tle_data[iindex+1]
+    	iindex = find_tle_index(tle_data,yearJday)
+    	tle1 = tle_data[iindex]
+    	tle2 = tle_data[iindex+1]
     except KeyError:
     	print "Could't find TLE - exit";
         sys.exit(1);
