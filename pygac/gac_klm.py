@@ -23,7 +23,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 """Read a gac file.
-
+Reads L1b GAC data from KLM series of satellites (NOAA-15 and later) and does most of the computations.
 Format specification can be found here:
 http://www.ncdc.noaa.gov/oa/pod-guide/ncdc/docs/klm/html/c8/sec83142-1.htm
 
