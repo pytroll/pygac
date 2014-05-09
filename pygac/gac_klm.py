@@ -709,8 +709,9 @@ def main(filename):
     bt3[ii]=MISSING_DATA
     ref3[ii]=MISSING_DATA
 
-    ii=np.where(arrSZA>9000);   
+    ii=np.where(ref1<0);   
     ref1[ii]=MISSING_DATA;
+    ii=np.where(ref2<0); 
     ref2[ii]=MISSING_DATA;
 
     # writing out calibrated AVHRR channel data and various sun-sat angles        
