@@ -7,6 +7,7 @@
 
 #   Abhay Devasthale <abhay.devasthale@smhi.se>
 #   Adam Dybbroe <adam.dybbroe@smhi.se>
+#   Sara Hornquist <sara.hornquist@smhi.se>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by

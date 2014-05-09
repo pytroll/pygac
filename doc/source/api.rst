@@ -50,11 +50,11 @@ The other output file contains solar and satellite zenith and azimuth angles.
 
 The output file name format is:
 
-ECC_avhrr_satellitename_99999_yyyymmddThhmmssZ_yyyymmddThhmmssZ.h5
+ECC_GAC_avhrr_satellitename_99999_yyyymmddThhmmsstZ_yyyymmddThhmmsstZ.h5
 
 and
 
-ECC_sunsatangles_satellitename_99999_yyyymmddThhmmssZ_yyyymmddThhmmssZ.h5
+ECC_GAC_sunsatangles_satellitename_99999_yyyymmddThhmmsstZ_yyyymmddThhmmsstZ.h5
 
 where,
 
@@ -64,7 +64,7 @@ avhrr: denoting that it contains reflectances and BTs
 
 sunsatangles: denoting that it contains angles
 
-yyyymmddThhmmssZ: yy:year, mm:month, dd:day, hh:hour, mm:min, ss:sec (for the start and the end of the orbit).
+yyyymmddThhmmsstZ: yy:year, mm:month, dd:day, hh:hour, mm:min, ss:sec, t:tenth of second (for the start and the end of the orbit).
 
 Letters T and Z are separators for time info.
 
