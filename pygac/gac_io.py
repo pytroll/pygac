@@ -237,7 +237,7 @@ def avhrrGAC_io(satellite_name, startdate, enddate, starttime, endtime,
 	g9.attrs["sets"]=np.int32(len(channellist))
 	g9.attrs["version"]="H5rad ?.?"
 	g9.attrs["date"]=startdate
-	g9.attrs["time"]=starttime
+        g9.attrs["time"]=starttime[0:6]
 
 	#Attributes in the 'how' groups
         g1=fout.create_group("/image1/how");
@@ -413,7 +413,7 @@ def avhrrGAC_io(satellite_name, startdate, enddate, starttime, endtime,
 	g8.attrs["sets"]=np.int32(5)
 	g8.attrs["version"]="H5rad ?.?"
 	g8.attrs["date"]=startdate
-	g8.attrs["time"]=starttime
+        g8.attrs["time"]=starttime[0:6]
 
 	#We do not know much about how; mostly use no-data
 	g9.attrs["yaw_error"] = 0.0
