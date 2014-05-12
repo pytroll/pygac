@@ -177,8 +177,8 @@ def main(filename):
     # unpacking raw data to get counts
 
     packed_data = scans["sensor_data"]
-    LOG.debug("Header: %s", pprint.pformat(dict(zip(head[0].dtype.names,
-                                                    head[0]))))
+    #LOG.debug("Header: %s", pprint.pformat(dict(zip(head[0].dtype.names,
+    #                                                head[0]))))
     gac_counts = np.zeros((int(number_of_scans), 409 * 5))
     gac_counts[:, 0::3] = (packed_data & (1023 << 20)) >> 20
     gac_counts[:, 1::3] = (packed_data & (1023 << 10)) >> 10

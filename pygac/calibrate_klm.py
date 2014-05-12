@@ -108,7 +108,7 @@ def calibrate_solar(counts, year, jday, spacecraft_id, channel3_switch, corr, nu
 
 
 	
-	print 'year, jday, spacecraft-id, Ldate - ', year, jday, spacecraft_id, Ldate
+	print 'year, jday, spacecraft-id, launch date - ', year, jday, spacecraft_id, Ldate
 	
 	t =(year+jday/365.0)-Ldate;	
 	
