@@ -25,6 +25,7 @@
 
 import h5py
 import numpy as np
+import time, calendar
 
 import logging
 LOG = logging.getLogger(__name__)
@@ -64,6 +65,13 @@ def avhrrGAC_io(satellite_name, startdate, enddate, starttime, endtime,
                 arrLat_full, arrLon_full, ref1, ref2, ref3, bt3, bt4, bt5,
                 arrSZA, arrSTZ, arrSAA, arrSTA, arrRAA):
         import os
+
+        
+        #Calculate start and end time in sec1970
+        t_obj = time.strptime(startdate+starttime[0:6],"%Y%m%d%H%M%S")
+        starttime_sec1970 = calendar.timegm(t_obj)
+        t_obj = time.strptime(enddate+endtime[0:6],"%Y%m%d%H%M%S")
+        endtime_sec1970 = calendar.timegm(t_obj)
 
         LOG.info('Output file prefix = ' + str(OUTPUT_FILE_PREFIX))
         LOG.info('AVHRR data will be written to ' + str(AVHRR_DIR))        
@@ -141,8 +149,8 @@ def avhrrGAC_io(satellite_name, startdate, enddate, starttime, endtime,
 	g1.attrs["offset"]=np.float32(0.0)
 	g1.attrs["missingdata"]=np.int32(-32001)
 	g1.attrs["nodata"]=np.int32(-32001)
-	g1.attrs["starttime"]=starttime
-	g1.attrs["endtime"]=endtime
+	g1.attrs["starttime"]=starttime[0:6]
+	g1.attrs["endtime"]=endtime[0:6]
 	g1.attrs["startdate"]=startdate
 	g1.attrs["enddate"]=enddate
 
@@ -154,8 +162,8 @@ def avhrrGAC_io(satellite_name, startdate, enddate, starttime, endtime,
 	g2.attrs["offset"]=np.float32(0.0)
 	g2.attrs["missingdata"]=np.int32(-32001)
 	g2.attrs["nodata"]=np.int32(-32001)
-	g2.attrs["starttime"]=starttime
-	g2.attrs["endtime"]=endtime
+	g2.attrs["starttime"]=starttime[0:6]
+	g2.attrs["endtime"]=endtime[0:6]
 	g2.attrs["startdate"]=startdate
 	g2.attrs["enddate"]=enddate
 
@@ -167,8 +175,8 @@ def avhrrGAC_io(satellite_name, startdate, enddate, starttime, endtime,
 	g6.attrs["offset"]=np.float32(0.0)
 	g6.attrs["missingdata"]=np.int32(-32001)
 	g6.attrs["nodata"]=np.int32(-32001)
-	g6.attrs["starttime"]=starttime
-	g6.attrs["endtime"]=endtime
+	g6.attrs["starttime"]=starttime[0:6]
+	g6.attrs["endtime"]=endtime[0:6]
 	g6.attrs["startdate"]=startdate
 	g6.attrs["enddate"]=enddate
 
@@ -180,8 +188,8 @@ def avhrrGAC_io(satellite_name, startdate, enddate, starttime, endtime,
 	g3.attrs["offset"]=np.float32(273.15)
 	g3.attrs["missingdata"]=np.int32(-32001)
 	g3.attrs["nodata"]=np.int32(-32001)
-	g3.attrs["starttime"]=starttime
-	g3.attrs["endtime"]=endtime
+	g3.attrs["starttime"]=starttime[0:6]
+	g3.attrs["endtime"]=endtime[0:6]
         g3.attrs["startdate"]=startdate
 	g3.attrs["enddate"]=enddate
 
@@ -193,8 +201,8 @@ def avhrrGAC_io(satellite_name, startdate, enddate, starttime, endtime,
 	g4.attrs["offset"]=np.float32(273.15)
 	g4.attrs["missingdata"]=np.int32(-32001)
 	g4.attrs["nodata"]=np.int32(-32001)
-	g4.attrs["starttime"]=starttime
-	g4.attrs["endtime"]=endtime
+	g4.attrs["starttime"]=starttime[0:6]
+	g4.attrs["endtime"]=endtime[0:6]
 	g4.attrs["startdate"]=startdate
 	g4.attrs["enddate"]=enddate
 
@@ -206,8 +214,8 @@ def avhrrGAC_io(satellite_name, startdate, enddate, starttime, endtime,
 	g5.attrs["offset"]=np.float32(273.15)
 	g5.attrs["missingdata"]=np.int32(-32001)
 	g5.attrs["nodata"]=np.int32(-32001)
-	g5.attrs["starttime"]=starttime
-	g5.attrs["endtime"]=endtime
+	g5.attrs["starttime"]=starttime[0:6]
+	g5.attrs["endtime"]=endtime[0:6]
 	g5.attrs["startdate"]=startdate
 	g5.attrs["enddate"]=enddate
 
@@ -217,8 +225,8 @@ def avhrrGAC_io(satellite_name, startdate, enddate, starttime, endtime,
 	g7.attrs["offset"]=np.float32(0.0)
 	g7.attrs["missingdata"]=np.int32(-32001)
 	g7.attrs["nodata"]=np.int32(-32001)
-	g7.attrs["starttime"]=starttime
-	g7.attrs["endtime"]=endtime
+	g7.attrs["starttime"]=starttime[0:6]
+	g7.attrs["endtime"]=endtime[0:6]
 	g7.attrs["startdate"]=startdate
 	g7.attrs["enddate"]=enddate
 
@@ -228,8 +236,8 @@ def avhrrGAC_io(satellite_name, startdate, enddate, starttime, endtime,
 	g8.attrs["offset"]=np.float32(0.0)
 	g8.attrs["missingdata"]=np.int32(-32001)
 	g8.attrs["nodata"]=np.int32(-32001)
-	g8.attrs["starttime"]=starttime
-	g8.attrs["endtime"]=endtime
+	g8.attrs["starttime"]=starttime[0:6]
+	g8.attrs["endtime"]=endtime[0:6]
 	g8.attrs["startdate"]=startdate
 	g8.attrs["enddate"]=enddate
 
@@ -261,8 +269,8 @@ def avhrrGAC_io(satellite_name, startdate, enddate, starttime, endtime,
 	g10.attrs["yaw_error"] = 0.0
 	g10.attrs["roll_error"] = 0.0
 	g10.attrs["pich_error"] = 0.0
-	g10.attrs["startepochs"] = np.int32(0) #can create from startdate/time
-	g10.attrs["endepochs"] = np.int32(0) #can create from enddate/time
+	g10.attrs["startepochs"] = starttime_sec1970
+	g10.attrs["endepochs"] = endtime_sec1970
 	g10.attrs["platform"] = satellite_name
 	g10.attrs["instrument"] = "avhrr"
 	g10.attrs["orbit_number"] = np.int32(99999)
@@ -330,8 +338,8 @@ def avhrrGAC_io(satellite_name, startdate, enddate, starttime, endtime,
 	g1.attrs["offset"]=np.float32(0.0)
 	g1.attrs["missingdata"]=np.int32(-32001)
 	g1.attrs["nodata"]=np.int32(-32001)
-	g1.attrs["starttime"]=starttime
-	g1.attrs["endtime"]=endtime
+	g1.attrs["starttime"]=starttime[0:6]
+	g1.attrs["endtime"]=endtime[0:6]
 	g1.attrs["startdate"]=startdate
 	g1.attrs["enddate"]=enddate
 
@@ -343,8 +351,8 @@ def avhrrGAC_io(satellite_name, startdate, enddate, starttime, endtime,
 	g2.attrs["offset"]=np.float32(0.0)
 	g2.attrs["missingdata"]=np.int32(-32001)
 	g2.attrs["nodata"]=np.int32(-32001)
-	g2.attrs["starttime"]=starttime
-	g2.attrs["endtime"]=endtime
+	g2.attrs["starttime"]=starttime[0:6]
+	g2.attrs["endtime"]=endtime[0:6]
 	g2.attrs["startdate"]=startdate
 	g2.attrs["enddate"]=enddate
 
@@ -356,8 +364,8 @@ def avhrrGAC_io(satellite_name, startdate, enddate, starttime, endtime,
 	g3.attrs["offset"]=np.float32(0.0)
 	g3.attrs["missingdata"]=np.int32(-32001)
 	g3.attrs["nodata"]=np.int32(-32001)
-	g3.attrs["starttime"]=starttime
-	g3.attrs["endtime"]=endtime
+	g3.attrs["starttime"]=starttime[0:6]
+	g3.attrs["endtime"]=endtime[0:6]
 	g3.attrs["startdate"]=startdate
 	g3.attrs["enddate"]=enddate
 
@@ -369,8 +377,8 @@ def avhrrGAC_io(satellite_name, startdate, enddate, starttime, endtime,
 	g4.attrs["offset"]=np.float32(180.0)
 	g4.attrs["missingdata"]=np.int32(-32001)
 	g4.attrs["nodata"]=np.int32(-32001)
-	g4.attrs["starttime"]=starttime
-	g4.attrs["endtime"]=endtime
+	g4.attrs["starttime"]=starttime[0:6]
+	g4.attrs["endtime"]=endtime[0:6]
 	g4.attrs["startdate"]=startdate
 	g4.attrs["enddate"]=enddate
 
@@ -382,8 +390,8 @@ def avhrrGAC_io(satellite_name, startdate, enddate, starttime, endtime,
 	g5.attrs["offset"]=np.float32(180.0)
 	g5.attrs["missingdata"]=np.int32(-32001)
 	g5.attrs["nodata"]=np.int32(-32001)
-	g5.attrs["starttime"]=starttime
-	g5.attrs["endtime"]=endtime
+	g5.attrs["starttime"]=starttime[0:6]
+	g5.attrs["endtime"]=endtime[0:6]
 	g5.attrs["startdate"]=startdate
 	g5.attrs["enddate"]=enddate
 
@@ -393,8 +401,8 @@ def avhrrGAC_io(satellite_name, startdate, enddate, starttime, endtime,
 	g6.attrs["offset"]=np.float32(0.0)
 	g6.attrs["missingdata"]=np.int32(-32001)
 	g6.attrs["nodata"]=np.int32(-32001)
-	g6.attrs["starttime"]=starttime
-	g6.attrs["endtime"]=endtime
+	g6.attrs["starttime"]=starttime[0:6]
+	g6.attrs["endtime"]=endtime[0:6]
 	g6.attrs["startdate"]=startdate
 	g6.attrs["enddate"]=enddate
 
@@ -404,8 +412,8 @@ def avhrrGAC_io(satellite_name, startdate, enddate, starttime, endtime,
 	g7.attrs["offset"]=np.float32(0.0)
 	g7.attrs["missingdata"]=np.int32(-32001)
 	g7.attrs["nodata"]=np.int32(-32001)
-	g7.attrs["starttime"]=starttime
-	g7.attrs["endtime"]=endtime
+	g7.attrs["starttime"]=starttime[0:6]
+	g7.attrs["endtime"]=endtime[0:6]
 	g7.attrs["startdate"]=startdate
 	g7.attrs["enddate"]=enddate
 
@@ -419,8 +427,8 @@ def avhrrGAC_io(satellite_name, startdate, enddate, starttime, endtime,
 	g9.attrs["yaw_error"] = 0.0
 	g9.attrs["roll_error"] = 0.0
 	g9.attrs["pich_error"] = 0.0
-	g9.attrs["startepochs"] = np.int32(0) #can create from startdate/time
-	g9.attrs["endepochs"] = np.int32(0) #can create from enddate/time
+	g9.attrs["startepochs"] = starttime_sec1970
+	g9.attrs["endepochs"] = endtime_sec1970
 	g9.attrs["platform"] = satellite_name
 	g9.attrs["instrument"] = "avhrr"
 	g9.attrs["orbit_number"] = np.int32(99999)
