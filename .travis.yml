@@ -12,7 +12,7 @@ script: coverage run --source=pygac setup.py test
 virtualenv:
   system_site_packages: true
 before_install:
-  - sudo apt-get install -qq python-numpy python-h5py
+  - sudo apt-get install -qq python-numpy python-h5py python-scipy
 after_success: coveralls
 deploy:
   provider: pypi
