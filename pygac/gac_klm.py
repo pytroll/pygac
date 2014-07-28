@@ -454,7 +454,7 @@ def main(filename):
     with open(filename) as fd_:
         head = np.fromfile(fd_, dtype=header, count=1)
         fd_.seek(4608, 0)
-        scans = np.fromfile(fd_, dtype=scanline)
+        scans = np.fromfile(fd_, dtype=scanline, count=head["count_of_data_records"])
 
     spacecraft_id=int(head["noaa_spacecraft_identification_code"])
     spacecrafts = {4: 'noaa15',
@@ -673,9 +673,9 @@ def main(filename):
 
     # calibrating channels 3b, 4 and 5
 
-    bt3=cal_klm.calibrate_thermal(gac_counts[:,2::5], prt_counts, ict_counts[:,0], space_counts[:,0], int(head["count_of_data_records"]), int(head["noaa_spacecraft_identification_code"]), channel=3)
-    bt4=cal_klm.calibrate_thermal(gac_counts[:,3::5], prt_counts, ict_counts[:,1], space_counts[:,1], int(head["count_of_data_records"]), int(head["noaa_spacecraft_identification_code"]), channel=4)
-    bt5=cal_klm.calibrate_thermal(gac_counts[:,4::5], prt_counts, ict_counts[:,2], space_counts[:,2], int(head["count_of_data_records"]), int(head["noaa_spacecraft_identification_code"]), channel=5)
+    bt3=cal_klm.calibrate_thermal(gac_counts[:,2::5], prt_counts, ict_counts[:,0], space_counts[:,0], int(head["count_of_data_records"]), int(head["noaa_spacecraft_identification_code"]), channel=3, line_numbers=scans["scan_line_number"])
+    bt4=cal_klm.calibrate_thermal(gac_counts[:,3::5], prt_counts, ict_counts[:,1], space_counts[:,1], int(head["count_of_data_records"]), int(head["noaa_spacecraft_identification_code"]), channel=4, line_numbers=scans["scan_line_number"])
+    bt5=cal_klm.calibrate_thermal(gac_counts[:,4::5], prt_counts, ict_counts[:,2], space_counts[:,2], int(head["count_of_data_records"]), int(head["noaa_spacecraft_identification_code"]), channel=5, line_numbers=scans["scan_line_number"])
 
     bt3=(bt3-273.15)*100.0
     bt4=(bt4-273.15)*100.0

@@ -468,7 +468,11 @@ def calibrate_thermal_pod(raw_counts, prt, ict, space, number_of_data_records, s
 
     # convolving and smoothing PRT, ICT and SPACE values
 
-    window=51;	# note that the window size has to be an odd number and greater than 2
+    if number_of_data_records>51:
+	window=51;	# note that the window size has to be an odd number and greater than 2
+    else:
+	window=3;
+
     weighting_function=np.ones((window))/window;
     tprt_convolved=np.convolve(tprt,weighting_function,'same');
     ict_convolved=np.convolve(ict,weighting_function,'same');

@@ -165,7 +165,7 @@ def calibrate_solar(counts, year, jday, spacecraft_id, channel3_switch, corr, nu
 # calibrates thermal channels of AVHRR
 
 
-def calibrate_thermal(raw_counts, prt, ict, space, number_of_data_records, spacecraft_id, channel):
+def calibrate_thermal(raw_counts, prt, ict, space, number_of_data_records, spacecraft_id, channel, line_numbers):
 
 
 	if spacecraft_id == 4:
@@ -278,47 +278,51 @@ def calibrate_thermal(raw_counts, prt, ict, space, number_of_data_records, space
 
 	# adjustment and preparation for calculating four PRT temperatures
 	
-	izeros=np.where(prt<=50);
-	izeros=izeros[0];
-	inonzeros=np.where(prt>50);
-	inonzeros=inonzeros[0];
+	izeros = np.where(prt <= 50)
+    	izeros = izeros[0]
 
-	
-	iprt=np.zeros((int(number_of_data_records)));	
-	iprt[izeros]=5;
-	iprt[izeros[0:np.size(izeros)-1]+1]=1;
-	iprt[izeros[0:np.size(izeros)-1]+2]=2;
-	iprt[izeros[0:np.size(izeros)-1]+3]=3;
-	iprt[izeros[0:np.size(izeros)-1]+4]=4;
-	if izeros[0]>0:
-		for u in range (izeros[0]):
-			iprt[u]=u+1;
-	if (number_of_data_records-1)>izeros[-1]:
-		for u in range ((number_of_data_records-1)-izeros[-1]):
-			iprt[izeros[-1]+u+1]=u+1;
+    	inonzeros = np.where(prt > 50)
+    	inonzeros = inonzeros[0]
 
-	scheck=np.where(np.logical_and(iprt<=4, prt<50));
-	if scheck[0].size>0:
-		prt[scheck[0]]=(prt[scheck[0]-1]+prt[scheck[0]+1])/2;
+    	offset = 0
 
-	tprt=np.zeros((int(number_of_data_records)));	
-	iones=np.where(iprt==1);
-	itwos=np.where(iprt==2);
-	ithrees=np.where(iprt==3);
-	ifours=np.where(iprt==4);
+    	for i, prt_val in enumerate(prt):
+        	if prt_val < 0:
+            		offset = i
+            	break
+
+    	iprt = (line_numbers - 1 - offset) % 5
+
+    	tprt = np.zeros((float(number_of_data_records)))
+    	iones = np.where(iprt == 1)
+    	itwos = np.where(iprt == 2)
+    	ithrees = np.where(iprt == 3)
+    	ifours = np.where(iprt == 4)
+    	prt = prt.astype(float)
 	
 	tprt[iones]=d10+ d11*prt[iones] + d12*prt[iones]*prt[iones] + d13*prt[iones]*prt[iones]*prt[iones] + d14*prt[iones]*prt[iones]*prt[iones]*prt[iones];
 	tprt[itwos]=d20+ d21*prt[itwos] + d22*prt[itwos]*prt[itwos] + d23*prt[itwos]*prt[itwos]*prt[itwos] + d24*prt[itwos]*prt[itwos]*prt[itwos]*prt[itwos];
 	tprt[ithrees]=d30+ d31*prt[ithrees] + d32*prt[ithrees]*prt[ithrees] + d33*prt[ithrees]*prt[ithrees]*prt[ithrees] + d34*prt[ithrees]*prt[ithrees]*prt[ithrees]*prt[ithrees];
 	tprt[ifours]=d40+ d41*prt[ifours] + d42*prt[ifours]*prt[ifours] + d43*prt[ifours]*prt[ifours]*prt[ifours] + d44*prt[ifours]*prt[ifours]*prt[ifours]*prt[ifours];
 
-	temp_prt=np.interp(izeros,inonzeros,tprt[inonzeros]);
-	tprt[izeros]=temp_prt;
+	utprt = tprt
+    	izeros = np.where(iprt == 0)
+    	izeros = izeros[0]
+
+    	inonzeros = np.where(iprt > 0)
+    	inonzeros = inonzeros[0]
+    	temp_prt = np.interp(izeros, inonzeros, tprt[inonzeros])
+    	tprt[izeros] = temp_prt
+
 		
 	
 	# convolving and smoothing PRT, ICT and SPACE values
+	
+	if number_of_data_records>51:
+		window=51;	# note that the window size has to be an odd number and greater than 2
+	else:
+		window=3;
 
-	window=51;	# note that the window size has to be an odd number and greater than 2
 	weighting_function=np.ones((window))/window;	
 	tprt_convolved=np.convolve(tprt,weighting_function,'same');
 	ict_convolved=np.convolve(ict,weighting_function,'same');
@@ -341,7 +345,8 @@ def calibrate_thermal(raw_counts, prt, ict, space, number_of_data_records, space
 	tsBB=A+B*tBB;
 	nBB=(1.1910427*0.000010)*cWavenumber*cWavenumber*cWavenumber;
 	nBB=nBB/(np.exp((1.4387752*cWavenumber)/tsBB)-1.0);
-	
+		
+
 	Nlin=Ns+(((nBB-Ns)*(new_space-raw_counts))/(new_space-new_ict));
 	Ncor=b0+b1*Nlin+b2*Nlin*Nlin;
 	Ne=Nlin+Ncor;
