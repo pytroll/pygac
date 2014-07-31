@@ -40,7 +40,7 @@ import geotiepoints as gtp
 import datetime
 from pyorbital import astronomy
 import pygac.calibrate_pod as cal_pod
-from pygac import gac_io
+#from pygac import gac_io
 import pprint
 
 from pyorbital.orbital import Orbital
@@ -51,28 +51,35 @@ LOG = logging.getLogger(__name__)
 import ConfigParser
 import os
 
-try:
-    CONFIG_FILE = os.environ['PYGAC_CONFIG_FILE']
-except KeyError:
-    LOG.exception('Environment variable PYGAC_CONFIG_FILE not set!')
-    raise
+# try:
+#     CONFIG_FILE = os.environ['PYGAC_CONFIG_FILE']
+# except KeyError:
+#     LOG.exception('Environment variable PYGAC_CONFIG_FILE not set!')
+# raise
 
-if not os.path.exists(CONFIG_FILE) or not os.path.isfile(CONFIG_FILE):
-    raise IOError(str(CONFIG_FILE) + " pointed to by the environment " +
-                  "variable PYGAC_CONFIG_FILE is not a file or does not exist!")
+# if not os.path.exists(CONFIG_FILE) or not os.path.isfile(CONFIG_FILE):
+#     raise IOError(str(CONFIG_FILE) + " pointed to by the environment " +
+#                   "variable PYGAC_CONFIG_FILE is not a file or does not exist!")
 
 
 # setting up constants used in the processing
 
-AVHRR_SWATH_WIDTH_DEG=55.385
-sat_altitude=850000.0
-M_PI=3.14159265359
-AHA_DEG_TO_RAD=M_PI/180.
-AHA_RAD_TO_DEG=180./M_PI
-earth_radius=6370997.0
-wholeday_ms=24.0*3600.0*1000.0
-GAC_NEAR_NADIR_POSITION=207
+AVHRR_SWATH_WIDTH_DEG = 55.385
+sat_altitude = 850000.0
+M_PI = 3.14159265359
+AHA_DEG_TO_RAD = M_PI / 180.
+AHA_RAD_TO_DEG = 180. / M_PI
+earth_radius = 6370997.0
+wholeday_ms = 24.0 * 3600.0 * 1000.0
+GAC_NEAR_NADIR_POSITION = 207
 MISSING_DATA = -32001
+
+
+# clock errors
+# noaa 14
+{"noaa 14":
+ ""
+ }
 
 
 header = np.dtype([("noaa_spacecraft_identification_code", ">u1"),
@@ -86,7 +93,8 @@ header = np.dtype([("noaa_spacecraft_identification_code", ">u1"),
                    ("dacs_quality", ">u1", (6, )),
                    ("calibration_parameter_id", ">i2"),
                    ("dacs_status", ">u1"),
-                   ("reserved_for_mounting_and_fixed_attitude_correction_indicator", ">i1"),
+                   ("reserved_for_mounting_and_fixed_attitude_correction_indicator",
+                    ">i1"),
                    ("nadir_earth_location_tolerance", ">i1"),
                    ("spare1", ">i1"),
                    ("start_of_data_set_year", ">u2"),
@@ -119,7 +127,8 @@ scanline = np.dtype([("scan_line_number", ">u2"),
                      ("time_code", ">u1", (6, )),
                      ("quality_indicators", ">u4"),
                      ("calibration_coefficients", ">i4", (10, )),
-                     ("number_of_meaningful_zenith_angles_and_earth_location_appended", ">u1"),
+                     ("number_of_meaningful_zenith_angles_and_earth_location_appended",
+                      ">u1"),
                      ("solar_zenith_angles", "i1", (51, )),
                      ("earth_location", ">i2", (102, )),
                      ("telemetry", ">u4", (35, )),
@@ -127,6 +136,152 @@ scanline = np.dtype([("scan_line_number", ">u2"),
                      ("add_on_zenith", ">u2", (10, )),
                      ("clock_drift_delta", ">u2"),
                      ("spare3", "u2", (11, ))])
+
+
+def show(data):
+    """Show the stretched data.
+    """
+    from PIL import Image as pil
+    img = pil.fromarray(np.array((data - data.min()) * 255.0 /
+                                 (data.max() - data.min()), np.uint8))
+    img.show()
+
+
+class PODReader(object):
+
+    spacecrafts_orbital = {4: 'noaa 7',
+                           7: 'noaa 9',
+                           8: 'noaa 10',
+                           1: 'noaa 11',
+                           5: 'noaa 12',
+                           3: 'noaa 14',
+                           }
+
+    def __init__(self):
+        pass
+
+    def read(self, filename):
+        with open(filename) as fd_:
+            head = np.fromfile(fd_, dtype=header, count=1)[0]
+            scans = np.fromfile(fd_,
+                                dtype=scanline,
+                                count=head["number_of_scans"])
+
+        # cleaning up the data
+        if scans["scan_line_number"][0] == scans["scan_line_number"][-1] + 1:
+            while scans["scan_line_number"][0] != 1:
+                scans = np.roll(scans, -1)
+        else:
+            while scans["scan_line_number"][0] != 1:
+                scans = scans[1:]
+
+        scans = scans[scans["scan_line_number"] != 0]
+        self.head, self.scans = head, scans
+
+        self.spacecraft_id = int(head["noaa_spacecraft_identification_code"])
+        self.spacecraft_name = self.spacecrafts_orbital[self.spacecraft_id]
+        LOG.info(
+            "Reading %s data", self.spacecrafts_orbital[self.spacecraft_id])
+        return head, scans
+
+    def get_counts(self):
+        packed_data = self.scans["sensor_data"]
+        gac_counts = np.zeros((len(self.scans), 409 * 5))
+        gac_counts[:, 0::3] = (packed_data >> 20) & 1023
+        gac_counts[:, 1::3] = (packed_data >> 10) & 1023
+        gac_counts[:, 2::3] = (packed_data & 1023)[:, :-1]
+        channels = gac_counts.reshape((-1, 409, 5))
+        #show(channels[:, :, 0])
+        return channels
+
+    def get_lonlat(self):
+        # interpolating lat-on points using PYTROLL geotiepoints
+        arr_lat = self.scans["earth_location"][:, 0::2] / 128.0
+        arr_lon = self.scans["earth_location"][:, 1::2] / 128.0
+
+        arr_lon_full, arr_lat_full = gtp.Gac_Lat_Lon_Interpolator(
+            arr_lon, arr_lat)
+        return arr_lon_full, arr_lat_full
+
+    def compute_lonlat(self):
+        tle1 = "1 23455U 94089A   97196.09649491  .00000078  00000-0  67606-4 0  1179"
+        tle2 = "2 23455  98.9940 147.4471 0008555 211.4734 148.5922 14.11679201130886"
+        scanline_nb = len(self.scans)
+        scan_points = np.arange(3.5, 2048, 5)
+
+        arrYear = ((np.uint16(self.scans["time_code"][:, 0]) << 8) | (
+            np.uint16(self.scans["time_code"][:, 1]) & 65535)) >> 9
+        arrYear = np.where(arrYear > 75, arrYear + 1900, arrYear + 2000)
+        arrJDay = ((np.uint16(self.scans["time_code"][:, 0]) << 8) | (
+            np.uint16(self.scans["time_code"][:, 1]) & 65535)) & 0x01ff
+
+        arrUTC = ((np.uint32(self.scans["time_code"][:, 2] & 7) << 24) | (np.uint32(self.scans["time_code"][:, 3]) << 16) | (
+            np.uint32(self.scans["time_code"][:, 4]) << 8) | (np.uint32(self.scans["time_code"][:, 5])))
+        utcs = []
+
+        tic = datetime.datetime.utcnow()
+        for i in range(len(self.scans)):
+            temp_utc = datetime.datetime(int(arrYear[i]), 1, 1) + datetime.timedelta(
+                int(arrJDay[i]) - 1) + datetime.timedelta(milliseconds=int(arrUTC[i]))
+            utcs.append(temp_utc)
+        toc = datetime.datetime.utcnow()
+        print "iterative", toc - tic
+        tic = datetime.datetime.utcnow()
+        nutcs2 = ((arrYear - 1970).astype('datetime64[Y]')
+                  + arrJDay.astype('timedelta64[D]')
+                  + arrUTC.astype('timedelta64[ms]'))
+        toc = datetime.datetime.utcnow()
+        print "array", toc - tic
+        # + np.timedelta64(arrJDay, 'D'))
+        #+ np.timedelta64(arrUTC, 'ms'))
+        # adjusting clock for drift
+
+        from matplotlib.dates import date2num
+        from pygac.clock_offsets_converter import get_offsets
+        try:
+            offset_times, clock_error = get_offsets(self.spacecraft_name)
+        except KeyError:
+            LOG.info("No clock drift info available for %s",
+                     self.spacecraft_name)
+        else:
+            offsets = np.interp(
+                date2num(utcs), date2num(offset_times), clock_error)
+            nutcs = np.array(utcs, dtype='datetime64[us]')
+            print nutcs, nutcs2
+            nots = np.array(offset_times, dtype='datetime64[us]')
+            print np.interp(nutcs, nots, clock_error)
+
+            for i in range(len(self.scans)):
+                utcs[i] += datetime.timedelta(seconds=-offsets[i])
+
+        t = utcs[0]
+
+        rpy = [self.head["roll_fixed_error_correction"],
+               self.head["pitch_fixed_error_correction"],
+               self.head["yaw_fixed_error_correction"]]
+
+        from pyorbital.geoloc_instrument_definitions import avhrr_gac
+        from pyorbital.geoloc import compute_pixels, get_lonlatalt
+        sgeom = avhrr_gac(utcs, scan_points, 55.385)
+        s_times = sgeom.times(t)
+
+        pixels_pos = compute_pixels((tle1, tle2), sgeom, s_times, rpy)
+        pos_time = get_lonlatalt(pixels_pos, s_times)
+
+        lons, lats = pos_time[:2]
+        return lons, lats
+
+    def fill_scene(self, scene):
+        from pyresample.geometry import SwathDefinition
+        #area = SwathDefinition(*self.get_lonlat())
+        area = SwathDefinition(*self.compute_lonlat())
+        channels = self.get_counts()
+        scene[0.6] = channels[:, :, 0]
+        scene[0.8] = channels[:, :, 1]
+        scene[3.7] = channels[:, :, 2]
+        scene[10.8] = channels[:, :, 3]
+        scene[12.0] = channels[:, :, 4]
+        scene.area = area
 
 
 def main(filename):
@@ -142,13 +297,13 @@ def main(filename):
 
     number_of_scans = len(scans)
 
-    spacecraft_id=int(head["noaa_spacecraft_identification_code"])
+    spacecraft_id = int(head["noaa_spacecraft_identification_code"])
     spacecrafts = {4: 'noaa07',
                    7: 'noaa09',
-		   8: 'noaa10',
-		   1: 'noaa11',
-		   5: 'noaa12',
-		   3: 'noaa14',
+                   8: 'noaa10',
+                   1: 'noaa11',
+                   5: 'noaa12',
+                   3: 'noaa14',
                    }
 
     try:
@@ -166,25 +321,22 @@ def main(filename):
     values = {"satname": satellite_name, }
 
     options = {}
-    for option, value in conf.items('tle', raw = True):
+    for option, value in conf.items('tle', raw=True):
         options[option] = value
 
     tle_filename = os.path.join(options['tledir'],
                                 options["tlename"] % values)
     LOG.info('TLE filename = ' + str(tle_filename))
 
-
     # unpacking raw data to get counts
 
     packed_data = scans["sensor_data"]
-    #LOG.debug("Header: %s", pprint.pformat(dict(zip(head[0].dtype.names,
+    # LOG.debug("Header: %s", pprint.pformat(dict(zip(head[0].dtype.names,
     #                                                head[0]))))
     gac_counts = np.zeros((int(number_of_scans), 409 * 5))
     gac_counts[:, 0::3] = (packed_data & (1023 << 20)) >> 20
     gac_counts[:, 1::3] = (packed_data & (1023 << 10)) >> 10
     gac_counts[:, 2::3] = (packed_data & 1023)[:, :-1]
-
-
 
     # interpolating lat-on points using PYTROLL geotiepoints
 
@@ -193,74 +345,76 @@ def main(filename):
     arrLat = scans["earth_location"][:, 0::2] / 128.0
     arrLon = scans["earth_location"][:, 1::2] / 128.0
 
+    arrLon_full, arrLat_full = gtp.Gac_Lat_Lon_Interpolator(arrLon, arrLat)
 
-    arrLon_full, arrLat_full = gtp.Gac_Lat_Lon_Interpolator(arrLon,arrLat)
+    # getting time information and calculating solar zenith angle for the
+    # entire orbit
 
+    arrYear = ((np.uint16(scans["time_code"][:, 0]) << 8) | (
+        np.uint16(scans["time_code"][:, 1]) & 65535)) >> 9
+    arrYear = np.where(arrYear > 75, arrYear + 1900, arrYear + 2000)
+    arrJDay = ((np.uint16(scans["time_code"][:, 0]) << 8) | (
+        np.uint16(scans["time_code"][:, 1]) & 65535)) & 0x01ff
 
-    # getting time information and calculating solar zenith angle for the entire orbit
-
-    arrYear = ((np.uint16(scans["time_code"][:,0]) << 8) | (np.uint16(scans["time_code"][:,1]) & 65535)) >> 9
-    arrYear = np.where(arrYear>75, arrYear+1900, arrYear+2000)
-    arrJDay = ((np.uint16(scans["time_code"][:,0]) << 8) | (np.uint16(scans["time_code"][:,1]) & 65535)) & 0x01ff
-
-    arrUTC = ((np.uint32(scans["time_code"][:,2] & 7) << 24) | (np.uint32(scans["time_code"][:,3]) << 16) | (np.uint32(scans["time_code"][:,4]) << 8) | (np.uint32(scans["time_code"][:,5])));
+    arrUTC = ((np.uint32(scans["time_code"][:, 2] & 7) << 24) | (np.uint32(scans["time_code"][:, 3]) << 16) | (
+        np.uint32(scans["time_code"][:, 4]) << 8) | (np.uint32(scans["time_code"][:, 5])))
     #arrUTC = ((np.uint32(scans["time_code"][:,2]) << 24) | (np.uint32(scans["time_code"][:,3]) << 16) | (np.uint32(scans["time_code"][:,4]) << 8) | (np.uint32(scans["time_code"][:,5]) & 4294967295)) & 0x07ffffff;
-    #print arrYear, arrJDay, arrUTC
+    # print arrYear, arrJDay, arrUTC
 
     # Calculating solar zenith angle
 
     arrSZA = np.zeros((int(number_of_scans), 409))
     for i in range(number_of_scans):
-            temp_utc = datetime.datetime(int(arrYear[i]), 1, 1) + datetime.timedelta(int(arrJDay[i]) - 1) + datetime.timedelta(milliseconds=int(arrUTC[i]))
-            arrSZA[i,:]= astronomy.sun_zenith_angle(temp_utc, arrLon_full[i,:], arrLat_full[i,:])
-
-
+        temp_utc = datetime.datetime(int(arrYear[i]), 1, 1) + datetime.timedelta(
+            int(arrJDay[i]) - 1) + datetime.timedelta(milliseconds=int(arrUTC[i]))
+        arrSZA[i, :] = astronomy.sun_zenith_angle(
+            temp_utc, arrLon_full[i, :], arrLat_full[i, :])
 
     # calculating satellite zenith angle
 
     pixel_pos = np.zeros((int(number_of_scans), 409))
     for i in range(number_of_scans):
-            pixel_pos[i,:] = np.arange(0,409,1)
+        pixel_pos[i, :] = np.arange(0, 409, 1)
 
-    scan_angle = AVHRR_SWATH_WIDTH_DEG*np.divide(np.absolute(pixel_pos-205),205.0)
+    scan_angle = AVHRR_SWATH_WIDTH_DEG * \
+        np.divide(np.absolute(pixel_pos - 205), 205.0)
     arrSTZ = np.zeros((int(number_of_scans), 409))
-    arrSTZ = np.arcsin((1.0+sat_altitude/earth_radius)*np.sin(scan_angle*AHA_DEG_TO_RAD))*AHA_RAD_TO_DEG;
-
-
+    arrSTZ = np.arcsin((1.0 + sat_altitude / earth_radius)
+                       * np.sin(scan_angle * AHA_DEG_TO_RAD)) * AHA_RAD_TO_DEG
 
     # calculating solar azimuth angle
 
     arrSAA = np.zeros((int(number_of_scans), 409))
     for i in range(number_of_scans):
-            temp_utc = datetime.datetime(int(arrYear[i]), 1, 1) + datetime.timedelta(int(arrJDay[i]) - 1) + datetime.timedelta(milliseconds=int(arrUTC[i]));
-            temp_alt, temp_suna = astronomy.get_alt_az(temp_utc, arrLon_full[i,:], arrLat_full[i,:]);
-            temp_suna=temp_suna*180.0/M_PI;
-            suna=temp_suna*0.0;
-            ii=np.where(temp_suna<0.0);
-            suna[ii]=temp_suna[ii]+180.0;
-            jj=np.where(temp_suna>=0.0);
-            suna[jj]=temp_suna[jj]-180.0;
-            arrSAA[i,:]=suna;
-
+        temp_utc = datetime.datetime(int(arrYear[i]), 1, 1) + datetime.timedelta(
+            int(arrJDay[i]) - 1) + datetime.timedelta(milliseconds=int(arrUTC[i]))
+        temp_alt, temp_suna = astronomy.get_alt_az(
+            temp_utc, arrLon_full[i, :], arrLat_full[i, :])
+        temp_suna = temp_suna * 180.0 / M_PI
+        suna = temp_suna * 0.0
+        ii = np.where(temp_suna < 0.0)
+        suna[ii] = temp_suna[ii] + 180.0
+        jj = np.where(temp_suna >= 0.0)
+        suna[jj] = temp_suna[jj] - 180.0
+        arrSAA[i, :] = suna
 
     # calculating satellite azimuth angle
 
-    tle_name = tle_filename # './noaa_tle/TLE_%s.txt' % satellite_name
-    if arrYear[1]<=1999:
-	yearJday = '%02d%03d.%06d' % (arrYear[1]%1900,arrJDay[1], arrUTC[1])
+    tle_name = tle_filename  # './noaa_tle/TLE_%s.txt' % satellite_name
+    if arrYear[1] <= 1999:
+        yearJday = '%02d%03d.%06d' % (arrYear[1] % 1900, arrJDay[1], arrUTC[1])
     else:
-	yearJday = '%02d%03d.%06d' % (arrYear[1]%2000,arrJDay[1], arrUTC[1])
+        yearJday = '%02d%03d.%06d' % (arrYear[1] % 2000, arrJDay[1], arrUTC[1])
 
-
-    tlep=open(tle_name,'rt')
-    tle_data=tlep.readlines()
+    tlep = open(tle_name, 'rt')
+    tle_data = tlep.readlines()
     tlep.close()
 
     def find_tle_index(tle_data, yearJday):
         # for iindex, stringYearJday in enumerate(tle_data):
         # 	if yearJday in stringYearJday:
         #       		return iindex
-    	# raise IndexError("Can't find tle data for %s on the %s"%(satellite_name, yearJday))
+        # raise IndexError("Can't find tle data for %s on the %s"%(satellite_name, yearJday))
 
         dates = np.array([float(line[18:32]) for line in tle_data[::2]])
         dates = np.where(dates > 50000, dates + 1900000, dates + 2000000)
@@ -274,206 +428,213 @@ def main(filename):
         iindex = np.searchsorted(dates, sdate)
 
         if iindex == 0 and abs(sdate - dates[0]) > 7:
-            raise IndexError("Can't find tle data for %s on the %s"%(satellite_name, yearJday))
+            raise IndexError(
+                "Can't find tle data for %s on the %s" % (satellite_name, yearJday))
         if iindex == len(dates) - 1 and abs(sdate - dates[-1]) > 7:
-            raise IndexError("Can't find tle data for %s on the %s"%(satellite_name, yearJday))
+            raise IndexError(
+                "Can't find tle data for %s on the %s" % (satellite_name, yearJday))
 
         if abs(sdate - dates[iindex - 1]) < abs(sdate - dates[iindex]):
             iindex -= 1
 
         if abs(sdate - dates[iindex]) > 3:
-            LOG.warning("Found TLE data for %f that is %f days appart", sdate, abs(sdate - dates[iindex]))
-        else:            
-            LOG.debug("Found TLE data for %f that is %f days appart", sdate, abs(sdate - dates[iindex]))
+            LOG.warning("Found TLE data for %f that is %f days appart", sdate, abs(
+                sdate - dates[iindex]))
+        else:
+            LOG.debug("Found TLE data for %f that is %f days appart",
+                      sdate, abs(sdate - dates[iindex]))
 
         return iindex * 2
 
-
     try:
-    	iindex = find_tle_index(tle_data,yearJday)
-    	tle1 = tle_data[iindex]
-    	tle2 = tle_data[iindex+1]
+        iindex = find_tle_index(tle_data, yearJday)
+        tle1 = tle_data[iindex]
+        tle2 = tle_data[iindex + 1]
     except KeyError:
-    	print "Could't find TLE - exit";
-        sys.exit(1);
+        print "Could't find TLE - exit"
+        sys.exit(1)
 
-
-    spacecraft_id=int(head["noaa_spacecraft_identification_code"])
+    spacecraft_id = int(head["noaa_spacecraft_identification_code"])
     spacecrafts_orbital = {4: 'noaa 7',
-                   7: 'noaa 9',
-		   8: 'noaa 10',
-		   1: 'noaa 11',
-		   5: 'noaa 12',
-		   3: 'noaa 14',
-                   }
+                           7: 'noaa 9',
+                           8: 'noaa 10',
+                           1: 'noaa 11',
+                           5: 'noaa 12',
+                           3: 'noaa 14',
+                           }
 
     try:
         satellite_name_orbital = spacecrafts_orbital[spacecraft_id]
     except KeyError:
-        print "wrong satellite id - exit";
-        sys.exit(1);
-
+        print "wrong satellite id - exit"
+        sys.exit(1)
 
     orb = Orbital(satellite_name_orbital, line1=tle1, line2=tle2)
 
     arrSTA = np.zeros((int(number_of_scans), 409), dtype='float')
     for i in range(number_of_scans):
-            temp_utc = datetime.datetime(int(arrYear[i]), 1, 1) + datetime.timedelta(int(arrJDay[i]) - 1) + datetime.timedelta(milliseconds=int(arrUTC[i]));
-    	    arr_psta, arr_ele = orb.get_observer_look(temp_utc, arrLon_full[i,:], arrLat_full[i,:], 0)
-    	    arrSTA[i,:]=arr_psta;
+        temp_utc = datetime.datetime(int(arrYear[i]), 1, 1) + datetime.timedelta(
+            int(arrJDay[i]) - 1) + datetime.timedelta(milliseconds=int(arrUTC[i]))
+        arr_psta, arr_ele = orb.get_observer_look(
+            temp_utc, arrLon_full[i, :], arrLat_full[i, :], 0)
+        arrSTA[i, :] = arr_psta
 
-    arrSTA[:,205]=arrSTA[:,204]
-
-
+    arrSTA[:, 205] = arrSTA[:, 204]
 
     # calculating relative azimuth angle
 
-    arrRAA = np.zeros((int(number_of_scans), 409));
-    arrRAA = np.absolute(arrSTA-arrSAA);
-    arrRAA = np.where(arrRAA>180.0, 360.0-arrRAA, arrRAA);
-
+    arrRAA = np.zeros((int(number_of_scans), 409))
+    arrRAA = np.absolute(arrSTA - arrSAA)
+    arrRAA = np.where(arrRAA > 180.0, 360.0 - arrRAA, arrRAA)
 
     # scaling angles and lat-lon values
 
+    arrSTA = arrSTA - 180.0
+    arrRAA = np.where(arrRAA < 0.0, -1.0 * arrRAA, arrRAA)
+    arrRAA = 180.0 - arrRAA
 
-    arrSTA=arrSTA-180.0;
-    arrRAA=np.where(arrRAA<0.0,-1.0*arrRAA,arrRAA);
-    arrRAA=180.0-arrRAA;
+    arrSZA = arrSZA * 100.0
+    arrSTZ = arrSTZ * 100.0
+    arrSAA = arrSAA * 100.0
+    arrSTA = arrSTA * 100.0
+    arrRAA = arrRAA * 100.0
 
-    arrSZA=arrSZA*100.0;
-    arrSTZ=arrSTZ*100.0;
-    arrSAA=arrSAA*100.0;
-    arrSTA=arrSTA*100.0;
-    arrRAA=arrRAA*100.0;
-
-    arrLat_full=arrLat_full*100.0;
-    arrLon_full=arrLon_full*100.0;
-
+    arrLat_full = arrLat_full * 100.0
+    arrLon_full = arrLon_full * 100.0
 
     # Earth-Sun distance correction factor
 
-    corr = 1.0 - 0.0334*np.cos(2.0*M_PI*(arrJDay[0]-2)/365.25)
-
-
+    corr = 1.0 - 0.0334 * np.cos(2.0 * M_PI * (arrJDay[0] - 2) / 365.25)
 
     # Calibrating solar channels
 
-    channel3_switch=np.zeros(int(number_of_scans));
-    channel3_switch=0;
-    ref1,ref2,ref3=cal_pod.calibrate_solar_pod(gac_counts, int(arrYear[0]), int(arrJDay[0]), int(head["noaa_spacecraft_identification_code"]), channel3_switch, corr, int(number_of_scans));
-
+    channel3_switch = np.zeros(int(number_of_scans))
+    channel3_switch = 0
+    ref1, ref2, ref3 = cal_pod.calibrate_solar_pod(gac_counts, int(arrYear[0]), int(arrJDay[0]), int(
+        head["noaa_spacecraft_identification_code"]), channel3_switch, corr, int(number_of_scans))
 
     # Calibrating thermal channels
 
-    decode_tele=np.zeros((int(number_of_scans),140));
-    j=0;
-    for i in range (35):
-            decode_tele[:,j] = (scans["telemetry"][:,i] << 2) >> 22;
-            j=j+1;
-            decode_tele[:,j] = (scans["telemetry"][:,i] << 12) >> 22;
-            j=j+1;
-            decode_tele[:,j] = (scans["telemetry"][:,i] << 22) >> 22;
-            j=j+1;
+    decode_tele = np.zeros((int(number_of_scans), 140))
+    j = 0
+    for i in range(35):
+        # FIXME: this is dangerous ! No garanty the type is actually 32 bits
+        # long
+        decode_tele[:, j] = (scans["telemetry"][:, i] << 2) >> 22
+        j = j + 1
+        decode_tele[:, j] = (scans["telemetry"][:, i] << 12) >> 22
+        j = j + 1
+        decode_tele[:, j] = (scans["telemetry"][:, i] << 22) >> 22
+        j = j + 1
 
-
-    prt_counts=np.mean(decode_tele[:,17:20], axis=1);
-
+    prt_counts = np.mean(decode_tele[:, 17:20], axis=1)
 
     # getting ICT counts
 
-    ict_counts=np.zeros((int(number_of_scans),3));
-    ict_counts[:,0]=np.mean(decode_tele[:,22:50:3],axis=1);
-    ict_counts[:,1]=np.mean(decode_tele[:,23:51:3],axis=1);
-    ict_counts[:,2]=np.mean(decode_tele[:,24:52:3],axis=1);
-
+    ict_counts = np.zeros((int(number_of_scans), 3))
+    ict_counts[:, 0] = np.mean(decode_tele[:, 22:50:3], axis=1)
+    ict_counts[:, 1] = np.mean(decode_tele[:, 23:51:3], axis=1)
+    ict_counts[:, 2] = np.mean(decode_tele[:, 24:52:3], axis=1)
 
     # getting space counts
 
-    space_counts=np.zeros((int(number_of_scans),3));
-    space_counts[:,0]=np.mean(decode_tele[:,54:100:5],axis=1);
-    space_counts[:,1]=np.mean(decode_tele[:,55:101:5],axis=1);
-    space_counts[:,2]=np.mean(decode_tele[:,56:102:5],axis=1);
-
-
+    space_counts = np.zeros((int(number_of_scans), 3))
+    space_counts[:, 0] = np.mean(decode_tele[:, 54:100:5], axis=1)
+    space_counts[:, 1] = np.mean(decode_tele[:, 55:101:5], axis=1)
+    space_counts[:, 2] = np.mean(decode_tele[:, 56:102:5], axis=1)
 
     # calibrating channels 3b, 4 and 5
 
-    bt3=cal_pod.calibrate_thermal_pod(gac_counts[:,2::5],
-                                      prt_counts,
-                                      ict_counts[:,0],
-                                      space_counts[:,0],
-                                      int(number_of_scans),
-                                      int(head["noaa_spacecraft_identification_code"]),
-                                      channel=3,
-                                      line_numbers=scans["scan_line_number"])
-    bt4=cal_pod.calibrate_thermal_pod(gac_counts[:,3::5],
-                                      prt_counts,
-                                      ict_counts[:,1],
-                                      space_counts[:,1],
-                                      int(number_of_scans),
-                                      int(head["noaa_spacecraft_identification_code"]),
-                                      channel=4,
-                                      line_numbers=scans["scan_line_number"])
-    bt5=cal_pod.calibrate_thermal_pod(gac_counts[:,4::5],
-                                      prt_counts,
-                                      ict_counts[:,2],
-                                      space_counts[:,2],
-                                      int(number_of_scans),
-                                      int(head["noaa_spacecraft_identification_code"]),
-                                      channel=5,
-                                      line_numbers=scans["scan_line_number"])
+    bt3 = cal_pod.calibrate_thermal_pod(gac_counts[:, 2::5],
+                                        prt_counts,
+                                        ict_counts[:, 0],
+                                        space_counts[:, 0],
+                                        int(number_of_scans),
+                                        int(head[
+                                            "noaa_spacecraft_identification_code"]),
+                                        channel=3,
+                                        line_numbers=scans["scan_line_number"])
+    bt4 = cal_pod.calibrate_thermal_pod(gac_counts[:, 3::5],
+                                        prt_counts,
+                                        ict_counts[:, 1],
+                                        space_counts[:, 1],
+                                        int(number_of_scans),
+                                        int(head[
+                                            "noaa_spacecraft_identification_code"]),
+                                        channel=4,
+                                        line_numbers=scans["scan_line_number"])
+    bt5 = cal_pod.calibrate_thermal_pod(gac_counts[:, 4::5],
+                                        prt_counts,
+                                        ict_counts[:, 2],
+                                        space_counts[:, 2],
+                                        int(number_of_scans),
+                                        int(head[
+                                            "noaa_spacecraft_identification_code"]),
+                                        channel=5,
+                                        line_numbers=scans["scan_line_number"])
 
-
-    bt3=(bt3-273.15)*100.0;
-    bt4=(bt4-273.15)*100.0;
-    bt5=(bt5-273.15)*100.0;
-
+    bt3 = (bt3 - 273.15) * 100.0
+    bt4 = (bt4 - 273.15) * 100.0
+    bt5 = (bt5 - 273.15) * 100.0
 
     # masking out corrupt scanlines
 
-    scanline_quality=np.zeros((int(number_of_scans),3));
-    scanline_quality[:,0]=scans["quality_indicators"]>>31;
-    scanline_quality[:,1]=(scans["quality_indicators"]<<4)>>31;
-    scanline_quality[:,2]=(scans["quality_indicators"]<<5)>>31;
+    scanline_quality = np.zeros((int(number_of_scans), 3))
+    scanline_quality[:, 0] = scans["quality_indicators"] >> 31
+    scanline_quality[:, 1] = (scans["quality_indicators"] << 4) >> 31
+    scanline_quality[:, 2] = (scans["quality_indicators"] << 5) >> 31
 
-    ii=np.where((scanline_quality[:,0]==1) | (scanline_quality[:,1]==1) | (scanline_quality[:,2]==1));
-    arrLat_full[ii]=MISSING_DATA;
-    arrLon_full[ii]=MISSING_DATA;
-    ref1[ii]=MISSING_DATA;
-    ref2[ii]=MISSING_DATA;
-    ref3[ii]=MISSING_DATA;
-    bt3[ii]=MISSING_DATA;
-    bt4[ii]=MISSING_DATA;
-    bt5[ii]=MISSING_DATA;
-    arrSZA[ii]=MISSING_DATA;
-    arrSTZ[ii]=MISSING_DATA;
-    arrSAA[ii]=MISSING_DATA;
-    arrSTA[ii]=MISSING_DATA;
-    arrRAA[ii]=MISSING_DATA;
+    ii = np.where((scanline_quality[:, 0] == 1) | (
+        scanline_quality[:, 1] == 1) | (scanline_quality[:, 2] == 1))
+    arrLat_full[ii] = MISSING_DATA
+    arrLon_full[ii] = MISSING_DATA
+    ref1[ii] = MISSING_DATA
+    ref2[ii] = MISSING_DATA
+    ref3[ii] = MISSING_DATA
+    bt3[ii] = MISSING_DATA
+    bt4[ii] = MISSING_DATA
+    bt5[ii] = MISSING_DATA
+    arrSZA[ii] = MISSING_DATA
+    arrSTZ[ii] = MISSING_DATA
+    arrSAA[ii] = MISSING_DATA
+    arrSTA[ii] = MISSING_DATA
+    arrRAA[ii] = MISSING_DATA
 
-    ii=np.where(ref1<0);   
-    ref1[ii]=MISSING_DATA;
-    ii=np.where(ref2<0); 
-    ref2[ii]=MISSING_DATA;
+    ii = np.where(ref1 < 0)
+    ref1[ii] = MISSING_DATA
+    ii = np.where(ref2 < 0)
+    ref2[ii] = MISSING_DATA
 
     # writing out calibrated AVHRR channel data and various sun-sat angles
 
+    t = datetime.datetime(int(arrYear[1]), 1, 1) + datetime.timedelta(
+        int(arrJDay[1]) - 1) + datetime.timedelta(milliseconds=int(arrUTC[1]))
+    tenth_s = int(t.microsecond / 100000)
+    startdate = '%d%02d%02d' % (t.year, t.month, t.day)
+    starttime = '%02d%02d%02d%01d' % (t.hour, t.minute, t.second, tenth_s)
 
-    t = datetime.datetime(int(arrYear[1]), 1, 1) + datetime.timedelta(int(arrJDay[1]) - 1) + datetime.timedelta(milliseconds=int(arrUTC[1]))
-    tenth_s = int(t.microsecond/100000)
-    startdate = '%d%02d%02d' % (t.year,t.month,t.day)
-    starttime = '%02d%02d%02d%01d' % (t.hour,t.minute,t.second,tenth_s)
+    t = datetime.datetime(int(arrYear[-1]), 1, 1) + datetime.timedelta(
+        int(arrJDay[-1]) - 1) + datetime.timedelta(milliseconds=int(arrUTC[-1]))
+    tenth_s = int(t.microsecond / 100000)
+    enddate = '%d%02d%02d' % (t.year, t.month, t.day)
+    endtime = '%02d%02d%02d%01d' % (t.hour, t.minute, t.second, tenth_s)
 
-    t = datetime.datetime(int(arrYear[-1]), 1, 1) + datetime.timedelta(int(arrJDay[-1]) - 1) + datetime.timedelta(milliseconds=int(arrUTC[-1]))
-    tenth_s = int(t.microsecond/100000)
-    enddate = '%d%02d%02d' % (t.year,t.month,t.day)
-    endtime = '%02d%02d%02d%01d' % (t.hour,t.minute,t.second,tenth_s)
-
-    gac_io.avhrrGAC_io(satellite_name, startdate, enddate, starttime, endtime, arrLat_full, arrLon_full, ref1, ref2, ref3, bt3, bt4, bt5, arrSZA, arrSTZ, arrSAA, arrSTA, arrRAA)
-
+    gac_io.avhrrGAC_io(satellite_name, startdate, enddate, starttime, endtime, arrLat_full,
+                       arrLon_full, ref1, ref2, ref3, bt3, bt4, bt5, arrSZA, arrSTZ, arrSAA, arrSTA, arrRAA)
 
 
 if __name__ == "__main__":
-    main(filename)
-
-
+    # main(filename)
+    import sys
+    pr = PODReader()
+    pr.read(sys.argv[1])
+    # pr.get_counts()
+    from mpop.satellites import PolarFactory
+    t = datetime.datetime(2014, 3, 3, 14, 34, 18)
+    g = PolarFactory.create_scene("noaa", "15", "avhrr", t, orbit="15838")
+    pr.fill_scene(g)
+    l = g.project("euron1", radius=15000)
+    img = l[10.8].as_image()
+    img.convert("RGB")
+    img.add_overlay((255, 255, 0))
+    img.show()
