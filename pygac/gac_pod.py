@@ -40,6 +40,7 @@ import geotiepoints as gtp
 import datetime
 from pyorbital import astronomy
 import pygac.calibrate_pod as cal_pod
+from pygac.gac_calibration import calibrate_solar, calibrate_thermal
 #from pygac import gac_io
 import pprint
 
@@ -51,15 +52,15 @@ LOG = logging.getLogger(__name__)
 import ConfigParser
 import os
 
-# try:
-#     CONFIG_FILE = os.environ['PYGAC_CONFIG_FILE']
-# except KeyError:
-#     LOG.exception('Environment variable PYGAC_CONFIG_FILE not set!')
-# raise
+try:
+    CONFIG_FILE = os.environ['PYGAC_CONFIG_FILE']
+except KeyError:
+    LOG.exception('Environment variable PYGAC_CONFIG_FILE not set!')
+    raise
 
-# if not os.path.exists(CONFIG_FILE) or not os.path.isfile(CONFIG_FILE):
-#     raise IOError(str(CONFIG_FILE) + " pointed to by the environment " +
-#                   "variable PYGAC_CONFIG_FILE is not a file or does not exist!")
+if not os.path.exists(CONFIG_FILE) or not os.path.isfile(CONFIG_FILE):
+    raise IOError(str(CONFIG_FILE) + " pointed to by the environment " +
+                  "variable PYGAC_CONFIG_FILE is not a file or does not exist!")
 
 
 # setting up constants used in the processing
@@ -73,13 +74,6 @@ earth_radius = 6370997.0
 wholeday_ms = 24.0 * 3600.0 * 1000.0
 GAC_NEAR_NADIR_POSITION = 207
 MISSING_DATA = -32001
-
-
-# clock errors
-# noaa 14
-{"noaa 14":
- ""
- }
 
 
 header = np.dtype([("noaa_spacecraft_identification_code", ">u1"),
@@ -124,6 +118,7 @@ header = np.dtype([("noaa_spacecraft_identification_code", ">u1"),
 
 
 scanline = np.dtype([("scan_line_number", ">u2"),
+                     #("time_code", ">u2", (3, )),
                      ("time_code", ">u1", (6, )),
                      ("quality_indicators", ">u4"),
                      ("calibration_coefficients", ">i4", (10, )),
@@ -190,6 +185,7 @@ class PODReader(object):
         gac_counts[:, 0::3] = (packed_data >> 20) & 1023
         gac_counts[:, 1::3] = (packed_data >> 10) & 1023
         gac_counts[:, 2::3] = (packed_data & 1023)[:, :-1]
+        print gac_counts, gac_counts.max(), gac_counts.min()
         channels = gac_counts.reshape((-1, 409, 5))
         #show(channels[:, :, 0])
         return channels
@@ -209,34 +205,18 @@ class PODReader(object):
         scanline_nb = len(self.scans)
         scan_points = np.arange(3.5, 2048, 5)
 
-        arrYear = ((np.uint16(self.scans["time_code"][:, 0]) << 8) | (
-            np.uint16(self.scans["time_code"][:, 1]) & 65535)) >> 9
-        arrYear = np.where(arrYear > 75, arrYear + 1900, arrYear + 2000)
-        arrJDay = ((np.uint16(self.scans["time_code"][:, 0]) << 8) | (
-            np.uint16(self.scans["time_code"][:, 1]) & 65535)) & 0x01ff
+        year = self.scans["time_code"][:, 0] >> 9
+        year = np.where(year > 75, year + 1900, year + 2000)
+        jday = (self.scans["time_code"][:, 0] & 0x1FF)
+        msec = ((np.uint32(self.scans["time_code"][:, 1] & 2047) << 16) |
+                (np.uint32(self.scans["time_code"][:, 2])))
 
-        arrUTC = ((np.uint32(self.scans["time_code"][:, 2] & 7) << 24) | (np.uint32(self.scans["time_code"][:, 3]) << 16) | (
-            np.uint32(self.scans["time_code"][:, 4]) << 8) | (np.uint32(self.scans["time_code"][:, 5])))
-        utcs = []
+        utcs = (((year - 1970).astype('datetime64[Y]')
+                 + (jday - 1).astype('timedelta64[D]')).astype('datetime64[ms]')
+                + msec.astype('timedelta64[ms]'))
 
-        tic = datetime.datetime.utcnow()
-        for i in range(len(self.scans)):
-            temp_utc = datetime.datetime(int(arrYear[i]), 1, 1) + datetime.timedelta(
-                int(arrJDay[i]) - 1) + datetime.timedelta(milliseconds=int(arrUTC[i]))
-            utcs.append(temp_utc)
-        toc = datetime.datetime.utcnow()
-        print "iterative", toc - tic
-        tic = datetime.datetime.utcnow()
-        nutcs2 = ((arrYear - 1970).astype('datetime64[Y]')
-                  + arrJDay.astype('timedelta64[D]')
-                  + arrUTC.astype('timedelta64[ms]'))
-        toc = datetime.datetime.utcnow()
-        print "array", toc - tic
-        # + np.timedelta64(arrJDay, 'D'))
-        #+ np.timedelta64(arrUTC, 'ms'))
         # adjusting clock for drift
 
-        from matplotlib.dates import date2num
         from pygac.clock_offsets_converter import get_offsets
         try:
             offset_times, clock_error = get_offsets(self.spacecraft_name)
@@ -244,17 +224,13 @@ class PODReader(object):
             LOG.info("No clock drift info available for %s",
                      self.spacecraft_name)
         else:
-            offsets = np.interp(
-                date2num(utcs), date2num(offset_times), clock_error)
-            nutcs = np.array(utcs, dtype='datetime64[us]')
-            print nutcs, nutcs2
-            nots = np.array(offset_times, dtype='datetime64[us]')
-            print np.interp(nutcs, nots, clock_error)
+            offset_times = np.array(offset_times, dtype='datetime64[ms]')
+            offsets = np.interp(utcs.astype(np.uint64),
+                                offset_times.astype(np.uint64),
+                                clock_error)
+            utcs -= (offsets * 1000).astype('timedelta64[ms]')
 
-            for i in range(len(self.scans)):
-                utcs[i] += datetime.timedelta(seconds=-offsets[i])
-
-        t = utcs[0]
+        t = utcs[0].astype(datetime.datetime)
 
         rpy = [self.head["roll_fixed_error_correction"],
                self.head["pitch_fixed_error_correction"],
@@ -262,7 +238,7 @@ class PODReader(object):
 
         from pyorbital.geoloc_instrument_definitions import avhrr_gac
         from pyorbital.geoloc import compute_pixels, get_lonlatalt
-        sgeom = avhrr_gac(utcs, scan_points, 55.385)
+        sgeom = avhrr_gac(utcs.astype(datetime.datetime), scan_points, 55.385)
         s_times = sgeom.times(t)
 
         pixels_pos = compute_pixels((tle1, tle2), sgeom, s_times, rpy)
@@ -274,8 +250,8 @@ class PODReader(object):
     def fill_scene(self, scene):
         from pyresample.geometry import SwathDefinition
         #area = SwathDefinition(*self.get_lonlat())
-        area = SwathDefinition(*self.compute_lonlat())
         channels = self.get_counts()
+        area = SwathDefinition(*self.compute_lonlat())
         scene[0.6] = channels[:, :, 0]
         scene[0.8] = channels[:, :, 1]
         scene[3.7] = channels[:, :, 2]
@@ -511,7 +487,8 @@ def main(filename):
     channel3_switch = np.zeros(int(number_of_scans))
     channel3_switch = 0
     ref1, ref2, ref3 = cal_pod.calibrate_solar_pod(gac_counts, int(arrYear[0]), int(arrJDay[0]), int(
-        head["noaa_spacecraft_identification_code"]), channel3_switch, corr, int(number_of_scans))
+        head["noaa_spacecraft_identification_code"]), channel3_switch, corr,
+        int(number_of_scans))
 
     # Calibrating thermal channels
 
@@ -544,6 +521,10 @@ def main(filename):
     space_counts[:, 2] = np.mean(decode_tele[:, 56:102:5], axis=1)
 
     # calibrating channels 3b, 4 and 5
+
+    print prt_counts
+    print ict_counts
+    print space_counts
 
     bt3 = cal_pod.calibrate_thermal_pod(gac_counts[:, 2::5],
                                         prt_counts,
@@ -620,7 +601,7 @@ def main(filename):
     endtime = '%02d%02d%02d%01d' % (t.hour, t.minute, t.second, tenth_s)
 
     gac_io.avhrrGAC_io(satellite_name, startdate, enddate, starttime, endtime, arrLat_full,
-                       arrLon_full, ref1, ref2, ref3, bt3, bt4, bt5, arrSZA, arrSTZ, arrSAA, arrSTA, arrRAA)
+                       arrLon_full, ref1 * 100, ref2 * 100, ref3 * 100, bt3, bt4, bt5, arrSZA, arrSTZ, arrSAA, arrSTA, arrRAA)
 
 
 if __name__ == "__main__":
@@ -633,8 +614,14 @@ if __name__ == "__main__":
     t = datetime.datetime(2014, 3, 3, 14, 34, 18)
     g = PolarFactory.create_scene("noaa", "15", "avhrr", t, orbit="15838")
     pr.fill_scene(g)
-    l = g.project("euron1", radius=15000)
+    l = g.project("eport2", radius=15000)
+    img = l[0.8].as_image()
+    img.convert("RGB")
+    img.add_overlay((255, 255, 0))
+    # img.show()
+    img.save(sys.argv[1] + "vis.png")
     img = l[10.8].as_image()
     img.convert("RGB")
     img.add_overlay((255, 255, 0))
-    img.show()
+    # img.show()
+    img.save(sys.argv[1] + "ir.png")
