@@ -23,7 +23,7 @@
 
 
 import numpy as np
-
+import sys
 MISSING_DATA = -32001
 
 
@@ -209,34 +209,32 @@ def calibrate_solar(counts, year, jday, spacecraft_id, channel3_switch, corr, nu
     sth = 0.0
     cindex = 0
     raw_counts = 0
-    r1 = np.zeros((number_of_data_records, 409))
     raw_counts = counts[:, 0::5]
     stl = (al1 * (100.0 + bl1 * t + cl1 * t * t)) / 100.0
     sth = (ah1 * (100.0 + bh1 * t + ch1 * t * t)) / 100.0
     r1 = (raw_counts - Cdark1) * stl
     cindex = np.where(raw_counts > Cs1)
     r1[cindex] = (Cs1 - Cdark1) * stl + (raw_counts[cindex] - Cs1) * sth
-    r1 = r1 * corr * 100.0
+    r1 = r1 * corr
 
     # channel 2
     stl = 0.0
     sth = 0.0
     cindex = 0
     raw_counts = 0
-    r2 = np.zeros((number_of_data_records, 409))
     raw_counts = counts[:, 1::5]
     stl = (al2 * (100.0 + bl2 * t + cl2 * t * t)) / 100.0
     sth = (ah2 * (100.0 + bh2 * t + ch2 * t * t)) / 100.0
     r2 = (raw_counts - Cdark2) * stl
     cindex = np.where(raw_counts > Cs2)
     r2[cindex] = (Cs2 - Cdark2) * stl + (raw_counts[cindex] - Cs2) * sth
-    r2 = r2 * corr * 100.0
+    r2 = r2 * corr
 
     # channel 3a (named as channel 6 in the output HDF5 file)
     iswitch = 0
     iswitch = np.where(channel3_switch == 1)
-    r3 = np.zeros((number_of_data_records, 409))
-    r3[:, :] = MISSING_DATA
+    r3 = np.ones((number_of_data_records, raw_counts.shape[1])) * MISSING_DATA
+
     if np.size(iswitch) > 0:
         stl = 0.0
         sth = 0.0
@@ -248,7 +246,7 @@ def calibrate_solar(counts, year, jday, spacecraft_id, channel3_switch, corr, nu
         r3 = (raw_counts - Cdark3) * stl
         cindex = np.where(raw_counts > Cs3)
         r3[cindex] = (Cs3 - Cdark3) * stl + (raw_counts[cindex] - Cs3) * sth
-        r3 = r3 * corr * 100.0
+        r3 = r3 * corr
         iswitch = 0
         iswitch = np.where(channel3_switch == 0)
         r3[iswitch, :] = MISSING_DATA
@@ -617,9 +615,10 @@ def calibrate_thermal(raw_counts, prt, ict, space, number_of_data_records, space
     ict_convolved[-(window - 1) / 2:] = ict_convolved[-((window + 1) / 2)]
     space_convolved[-(window - 1) / 2:] = space_convolved[-((window + 1) / 2)]
 
-    new_tprt = np.transpose(np.tile(tprt_convolved, (409, 1)))
-    new_ict = np.transpose(np.tile(ict_convolved, (409, 1)))
-    new_space = np.transpose(np.tile(space_convolved, (409, 1)))
+    new_tprt = np.transpose(np.tile(tprt_convolved, (raw_counts.shape[1], 1)))
+    new_ict = np.transpose(np.tile(ict_convolved, (raw_counts.shape[1], 1)))
+    new_space = np.transpose(
+        np.tile(space_convolved, (raw_counts.shape[1], 1)))
 
     # calibrating thermal channel
 

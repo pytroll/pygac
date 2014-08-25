@@ -216,7 +216,7 @@ class PODReader(object):
                 + msec.astype('timedelta64[ms]'))
 
         # adjusting clock for drift
-
+        tic = datetime.datetime.now()
         from pygac.clock_offsets_converter import get_offsets
         try:
             offset_times, clock_error = get_offsets(self.spacecraft_name)
@@ -243,6 +243,10 @@ class PODReader(object):
 
         pixels_pos = compute_pixels((tle1, tle2), sgeom, s_times, rpy)
         pos_time = get_lonlatalt(pixels_pos, s_times)
+
+        toc = datetime.datetime.now()
+
+        LOG.warning("Computation of geolocation: %s", str(toc - tic))
 
         lons, lats = pos_time[:2]
         return lons, lats
