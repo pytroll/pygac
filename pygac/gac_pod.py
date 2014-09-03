@@ -212,7 +212,6 @@ class PODReader(object):
             offsets = np.interp(utcs.astype(np.uint64),
                                 offset_times.astype(np.uint64),
                                 clock_error) * 2.0
-            print "offsets", min(offsets), max(offsets)
             main_offset = int(np.floor(np.mean(offsets)))
             int_offsets = (np.floor(offsets)).astype(np.int)
             line_indices = (np.arange(channels.shape[0])
@@ -222,22 +221,33 @@ class PODReader(object):
                     first_index = i
                     break
             for i, line in enumerate(reversed(line_indices)):
-                if line < len(line_indices):
-                    last_index = i
+                if line < len(line_indices) - 1:
+                    last_index = -i
                     break
-            print first_index, last_index
-            print line_indices
             offsets -= main_offset
 
             from pygac.slerp import slerp
-            res = slerp(lons[:-1, :], lats[:-1, :],
-                        lons[1:, :], lats[1:, :],
-                        offsets[:-1, np.newaxis, np.newaxis])
+            # res = slerp(lons[:-1, :], lats[:-1, :],
+            #             lons[1:, :], lats[1:, :],
+            #             offsets[:-1, np.newaxis, np.newaxis])
 
-            lons = res[:-3, :, 0]
-            lats = res[:-3, :, 1]
+            # lons = res[:-3, :, 0]
+            # lats = res[:-3, :, 1]
 
-            channels = channels[4:, :, :]
+            # channels = channels[4:, :, :]
+
+            last_index = len(line_indices) + last_index
+            res = slerp(lons[first_index:last_index, :],
+                        lats[first_index:last_index, :],
+                        lons[first_index + 1:last_index + 1, :],
+                        lats[first_index + 1:last_index + 1, :],
+                        offsets[first_index:last_index, np.newaxis, np.newaxis])
+
+            lons = res[:, :, 0]
+            lats = res[:, :, 1]
+
+            indices = line_indices[first_index:last_index] + 1
+            channels = channels[indices, :, :]
 
         toc = datetime.datetime.now()
         LOG.debug("clock drift adjustment took %s", str(toc - tic))
@@ -334,7 +344,6 @@ class PODReader(object):
         scene[10.8] = channels[:, :, 3]
         scene[12.0] = channels[:, :, 4]
         scene.area = area
-        print "done!"
 
 
 def main(filename):
@@ -682,6 +691,18 @@ def main(filename):
 
 
 if __name__ == "__main__":
+    logging.getLogger('').setLevel(logging.DEBUG)
+    # create logger
+    LOG = logging.getLogger('gac_pod')
+    LOG.setLevel(logging.DEBUG)
+
+    # create console handler and set level to debug
+    ch = logging.StreamHandler()
+    ch.setLevel(logging.DEBUG)
+
+    # add ch to logger
+    LOG.addHandler(ch)
+
     # main(filename)
     import sys
     pr = PODReader()
@@ -691,7 +712,7 @@ if __name__ == "__main__":
     t = datetime.datetime(2014, 3, 3, 14, 34, 18)
     g = PolarFactory.create_scene("noaa", "15", "avhrr", t, orbit="15838")
     pr.fill_scene(g)
-    l = g.project("euron1", channels=[10.8], radius=15000)
+    l = g.project("eport", channels=[10.8], radius=15000)
     #img = l[0.8].as_image()
     # img.convert("RGB")
     #img.add_overlay((255, 255, 0))
