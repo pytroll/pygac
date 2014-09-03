@@ -118,8 +118,8 @@ header = np.dtype([("noaa_spacecraft_identification_code", ">u1"),
 
 
 scanline = np.dtype([("scan_line_number", ">u2"),
-                     #("time_code", ">u2", (3, )),
-                     ("time_code", ">u1", (6, )),
+                     ("time_code", ">u2", (3, )),
+                     #("time_code", ">u1", (6, )),
                      ("quality_indicators", ">u4"),
                      ("calibration_coefficients", ">i4", (10, )),
                      ("number_of_meaningful_zenith_angles_and_earth_location_appended",
@@ -185,21 +185,72 @@ class PODReader(object):
         gac_counts[:, 0::3] = (packed_data >> 20) & 1023
         gac_counts[:, 1::3] = (packed_data >> 10) & 1023
         gac_counts[:, 2::3] = (packed_data & 1023)[:, :-1]
-        print gac_counts, gac_counts.max(), gac_counts.min()
         channels = gac_counts.reshape((-1, 409, 5))
         #show(channels[:, :, 0])
         return channels
+
+    def adjust_clock_drift(self, channels, lons, lats):
+        tic = datetime.datetime.now()
+        year = self.scans["time_code"][:, 0] >> 9
+        year = np.where(year > 75, year + 1900, year + 2000)
+        jday = (self.scans["time_code"][:, 0] & 0x1FF)
+        msec = ((np.uint32(self.scans["time_code"][:, 1] & 2047) << 16) |
+                (np.uint32(self.scans["time_code"][:, 2])))
+
+        utcs = (((year - 1970).astype('datetime64[Y]')
+                 + (jday - 1).astype('timedelta64[D]')).astype('datetime64[ms]')
+                + msec.astype('timedelta64[ms]'))
+
+        from pygac.clock_offsets_converter import get_offsets
+        try:
+            offset_times, clock_error = get_offsets(self.spacecraft_name)
+        except KeyError:
+            LOG.info("No clock drift info available for %s",
+                     self.spacecraft_name)
+        else:
+            offset_times = np.array(offset_times, dtype='datetime64[ms]')
+            offsets = np.interp(utcs.astype(np.uint64),
+                                offset_times.astype(np.uint64),
+                                clock_error) * 2.0
+            print "offsets", min(offsets), max(offsets)
+            main_offset = int(np.floor(np.mean(offsets)))
+            int_offsets = (np.floor(offsets)).astype(np.int)
+            line_indices = (np.arange(channels.shape[0])
+                            + int_offsets)
+            for i, line in enumerate(line_indices):
+                if line >= 0:
+                    first_index = i
+                    break
+            for i, line in enumerate(reversed(line_indices)):
+                if line < len(line_indices):
+                    last_index = i
+                    break
+            print first_index, last_index
+            print line_indices
+            offsets -= main_offset
+
+            from pygac.slerp import slerp
+            res = slerp(lons[:-1, :], lats[:-1, :],
+                        lons[1:, :], lats[1:, :],
+                        offsets[:-1, np.newaxis, np.newaxis])
+
+            lons = res[:-3, :, 0]
+            lats = res[:-3, :, 1]
+
+            channels = channels[4:, :, :]
+
+        toc = datetime.datetime.now()
+        LOG.debug("clock drift adjustment took %s", str(toc - tic))
+        return channels, lons, lats
 
     def get_lonlat(self):
         # interpolating lat-on points using PYTROLL geotiepoints
         arr_lat = self.scans["earth_location"][:, 0::2] / 128.0
         arr_lon = self.scans["earth_location"][:, 1::2] / 128.0
 
-        arr_lon_full, arr_lat_full = gtp.Gac_Lat_Lon_Interpolator(
-            arr_lon, arr_lat)
-        return arr_lon_full, arr_lat_full
+        return gtp.Gac_Lat_Lon_Interpolator(arr_lon, arr_lat)
 
-    def compute_lonlat(self):
+    def compute_lonlat(self, clock_drift_adjust=True):
         tle1 = "1 23455U 94089A   97196.09649491  .00000078  00000-0  67606-4 0  1179"
         tle2 = "2 23455  98.9940 147.4471 0008555 211.4734 148.5922 14.11679201130886"
         scanline_nb = len(self.scans)
@@ -217,24 +268,27 @@ class PODReader(object):
 
         # adjusting clock for drift
         tic = datetime.datetime.now()
-        from pygac.clock_offsets_converter import get_offsets
-        try:
-            offset_times, clock_error = get_offsets(self.spacecraft_name)
-        except KeyError:
-            LOG.info("No clock drift info available for %s",
-                     self.spacecraft_name)
-        else:
-            offset_times = np.array(offset_times, dtype='datetime64[ms]')
-            offsets = np.interp(utcs.astype(np.uint64),
-                                offset_times.astype(np.uint64),
-                                clock_error)
-            utcs -= (offsets * 1000).astype('timedelta64[ms]')
+        if clock_drift_adjust:
+            from pygac.clock_offsets_converter import get_offsets
+            try:
+                offset_times, clock_error = get_offsets(self.spacecraft_name)
+            except KeyError:
+                LOG.info("No clock drift info available for %s",
+                         self.spacecraft_name)
+            else:
+                offset_times = np.array(offset_times, dtype='datetime64[ms]')
+                offsets = np.interp(utcs.astype(np.uint64),
+                                    offset_times.astype(np.uint64),
+                                    clock_error)
+                utcs -= (offsets * 1000).astype('timedelta64[ms]')
 
         t = utcs[0].astype(datetime.datetime)
 
         rpy = [self.head["roll_fixed_error_correction"],
                self.head["pitch_fixed_error_correction"],
                self.head["yaw_fixed_error_correction"]]
+
+        LOG.info("Using rpy: %s", str(rpy))
 
         from pyorbital.geoloc_instrument_definitions import avhrr_gac
         from pyorbital.geoloc import compute_pixels, get_lonlatalt
@@ -249,19 +303,38 @@ class PODReader(object):
         LOG.warning("Computation of geolocation: %s", str(toc - tic))
 
         lons, lats = pos_time[:2]
+        # compute the distances between pixels.
+        # from mpop.satin.hdfeos_l1b import vinc_dist
+        # f__ = 1 / 298.257223563
+        # a__ = 6378137.0
+        # lons = lons.reshape(-1, 409)
+        # lats = lats.reshape(-1, 409)
+        # print lats.shape
+        # res = [vinc_dist(f__, a__,
+        #                  np.deg2rad(lats[5, i]),
+        #                  np.deg2rad(lons[5, i]),
+        #                  np.deg2rad(lats[5, i + 1]),
+        #                  np.deg2rad(lons[5, i + 1]))[0]
+        #        for i in range(len(lats[5, :]) - 1)]
+        # print "vinc_dist", res
+
         return lons, lats
 
     def fill_scene(self, scene):
         from pyresample.geometry import SwathDefinition
-        #area = SwathDefinition(*self.get_lonlat())
         channels = self.get_counts()
-        area = SwathDefinition(*self.compute_lonlat())
+        lons, lats = self.get_lonlat()
+        channels, lons, lats = self.adjust_clock_drift(channels, lons, lats)
+        #lons, lats = self.compute_lonlat()
+        area = SwathDefinition(lons, lats)
+
         scene[0.6] = channels[:, :, 0]
         scene[0.8] = channels[:, :, 1]
         scene[3.7] = channels[:, :, 2]
         scene[10.8] = channels[:, :, 3]
         scene[12.0] = channels[:, :, 4]
         scene.area = area
+        print "done!"
 
 
 def main(filename):
@@ -618,14 +691,15 @@ if __name__ == "__main__":
     t = datetime.datetime(2014, 3, 3, 14, 34, 18)
     g = PolarFactory.create_scene("noaa", "15", "avhrr", t, orbit="15838")
     pr.fill_scene(g)
-    l = g.project("eport2", radius=15000)
-    img = l[0.8].as_image()
-    img.convert("RGB")
-    img.add_overlay((255, 255, 0))
+    l = g.project("euron1", channels=[10.8], radius=15000)
+    #img = l[0.8].as_image()
+    # img.convert("RGB")
+    #img.add_overlay((255, 255, 0))
     # img.show()
-    img.save(sys.argv[1] + "vis.png")
+    #img.save(sys.argv[1] + "vis.png")
     img = l[10.8].as_image()
     img.convert("RGB")
     img.add_overlay((255, 255, 0))
-    # img.show()
-    img.save(sys.argv[1] + "ir.png")
+    img.show()
+    #img.save(sys.argv[1] + "ir.png")
+    # img.save("irwith2.png")
