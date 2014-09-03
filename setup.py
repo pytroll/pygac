@@ -53,8 +53,8 @@ setup(name='pygac',
 
       # Project should use reStructuredText, so ensure that the docutils get
       # installed or upgraded on the target machine
-      install_requires=['docutils>=0.3', 
-                        'numpy', 'pyorbital>=v0.3.2',
+      install_requires=['docutils>=0.3',
+                        'numpy>=1.8.0', 'pyorbital>=v0.3.2',
                         'h5py'],
       extras_require={'geolocation interpolation': ['python-geotiepoints'],
                       },
