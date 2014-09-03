@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2013 Martin Raspaud
+# Copyright (c) 2013, 2014 Martin Raspaud
 
 # Author(s):
 
@@ -20,5 +20,19 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+"""The tests package.
 """
-"""
+
+from pygac.tests import test_calibrate_pod, test_slerp, test_calibrate_klm
+import unittest
+
+
+def suite():
+    """The global test suite.
+    """
+    mysuite = unittest.TestSuite()
+    mysuite.addTests(test_slerp.suite())
+    mysuite.addTests(test_calibrate_pod.suite())
+    mysuite.addTests(test_calibrate_klm.suite())
+
+    return mysuite
