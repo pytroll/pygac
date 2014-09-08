@@ -27,6 +27,8 @@ import version
 __version__ = version.__version__
 
 import os
+import logging
+LOG = logging.getLogger(__name__)
 try:
     CONFIG_FILE = os.environ['PYGAC_CONFIG_FILE']
 except KeyError:
