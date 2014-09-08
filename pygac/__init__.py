@@ -25,3 +25,14 @@
 
 import version
 __version__ = version.__version__
+
+import os
+try:
+    CONFIG_FILE = os.environ['PYGAC_CONFIG_FILE']
+except KeyError:
+    LOG.exception('Environment variable PYGAC_CONFIG_FILE not set!')
+    raise
+
+if not os.path.exists(CONFIG_FILE) or not os.path.isfile(CONFIG_FILE):
+    raise IOError(str(CONFIG_FILE) + " pointed to by the environment " +
+                  "variable PYGAC_CONFIG_FILE is not a file or does not exist!")
