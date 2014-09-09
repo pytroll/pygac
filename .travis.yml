@@ -11,7 +11,7 @@ install:
 env: PYGAC_CONFIG_FILE=bla
 script: coverage run --source=pygac setup.py test
 before_install:
-  - sudo apt-get install -qq python-numpy python-h5py python-scipy
+  - sudo apt-get install -qq python-numpy python-h5py python-scipy libhdf5-dev
 after_success: coveralls
 deploy:
   provider: pypi
