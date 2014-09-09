@@ -544,7 +544,7 @@ class KLMReader(GACReader):
                 ((self.scans["quality_indicator_bit_field"] << 3) >> 31) |
                 ((self.scans["quality_indicator_bit_field"] << 4) >> 31))
 
-        return np.logical_not(mask.astype(bool))
+        return mask.astype(bool)
 
 
 def main(filename):

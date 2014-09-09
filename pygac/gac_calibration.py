@@ -320,8 +320,8 @@ class Calibrator(object):
         self.bl = None
         self.ch = None
         self.cl = None
-        self.c_dark = None
         self.c_s = None
+        self.c_dark = None
         self.l_date = None
         self.d = None
         self.n_s = None
@@ -344,12 +344,12 @@ def calibrate_solar(counts, chan, year, jday, spacecraft, corr=1):
                            cal.cl[chan] * t * t)) / 100.0
     sth = (cal.ah[chan] * (100.0 + cal.bh[chan] * t +
                            cal.ch[chan] * t * t)) / 100.0
-    try:
+    if cal.c_s is not None:
         return np.where(counts <= cal.c_s[chan],
                         (counts - cal.c_dark[chan]) * stl,
                         (cal.c_s[chan] - cal.c_dark[chan]) * stl
                         + (counts - cal.c_s[chan]) * sth)
-    except AttributeError:
+    else:
         return (counts - cal.c_dark[chan]) * stl * corr
 
 

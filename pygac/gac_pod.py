@@ -256,7 +256,7 @@ class PODReader(GACReader):
                 ((self.scans["quality_indicators"] << 4) >> 31) |
                 ((self.scans["quality_indicators"] << 5) >> 31))
 
-        return np.logical_not(mask.astype(bool))
+        return mask.astype(bool)
 
 
 def main(filename):
