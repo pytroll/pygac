@@ -71,7 +71,7 @@ def save_gac(satellite_name,
              ref1, ref2, ref3,
              bt3, bt4, bt5,
              sun_zen, sat_zen, sun_azi, sat_azi, rel_azi,
-             mask, qual_flags, start_line, end_line, switch=None):
+             mask, qual_flags, switch=None):
 
     bt3 -= 273.15
     bt4 -= 273.15
@@ -98,43 +98,15 @@ def save_gac(satellite_name,
     starttime = start.strftime("%H%M%S%f")[:-5]
     enddate = end.strftime("%Y%m%d")
     endtime = end.strftime("%H%M%S%f")[:-5]
-    jday = int(start.strftime("%j"))
-   
-    # Earth-Sun distance correction factor
-    corr = 1.0 - 0.0334 * np.cos(2.0 * np.pi * (jday - 2) / 365.25)
-
-    total_number_of_scan_lines = lats.shape[0]
-    last_scan_line_number = qual_flags[-1,0]
-       
-    start_line = int(start_line)
-    end_line = int(end_line) 
-    if end_line>0:
-       ref1 = ref1[start_line:end_line+1,:].copy()
-       ref2 = ref3[start_line:end_line+1,:].copy()
-       ref3 = ref3[start_line:end_line+1,:].copy()
-       bt3 = bt3[start_line:end_line+1,:].copy()
-       bt4 = bt4[start_line:end_line+1,:].copy()
-       bt5 = bt5[start_line:end_line+1,:].copy()
-       sun_zen = sun_zen[start_line:end_line+1,:].copy()
-       sun_azi = sun_azi[start_line:end_line+1,:].copy()
-       sat_zen = sat_zen[start_line:end_line+1,:].copy()
-       sat_azi = sat_azi[start_line:end_line+1,:].copy()
-       rel_azi = rel_azi[start_line:end_line+1,:].copy()
-       lats = lats[start_line:end_line+1,:].copy()
-       lons = lons[start_line:end_line+1,:].copy()
-       qual_flags = qual_flags[start_line:end_line+1,:].copy()
-        
 
     avhrrGAC_io(satellite_name, startdate, enddate, starttime, endtime,
                 lats, lons, ref1, ref2, ref3, bt3, bt4, bt5,
-                sun_zen, sat_zen, sun_azi, sat_azi, rel_azi, qual_flags, 
-		start_line, end_line, total_number_of_scan_lines, last_scan_line_number, corr)
+                sun_zen, sat_zen, sun_azi, sat_azi, rel_azi, qual_flags)
 
 
 def avhrrGAC_io(satellite_name, startdate, enddate, starttime, endtime,
                 arrLat_full, arrLon_full, ref1, ref2, ref3, bt3, bt4, bt5,
-                arrSZA, arrSTZ, arrSAA, arrSTA, arrRAA, qual_flags, 
-		start_line, end_line, total_number_of_scan_lines, last_scan_line_number, corr):
+                arrSZA, arrSTZ, arrSAA, arrSTA, arrRAA, qual_flags):
     import os
 
     # Calculate start and end time in sec1970
@@ -148,7 +120,7 @@ def avhrrGAC_io(satellite_name, startdate, enddate, starttime, endtime,
     ofn = os.path.join(AVHRR_DIR, (OUTPUT_FILE_PREFIX + '_avhrr_' +
                                    satellite_name + '_99999_' +
                                    startdate + 'T' + starttime + 'Z_' +
-                                   enddate + 'T' + endtime + 'Z_' + (str(start_line)).zfill(5) + '_' + (str(end_line)).zfill(5) + '.h5'))
+                                   enddate + 'T' + endtime + 'Z.h5'))
     LOG.info('Filename: ' + str(os.path.basename(ofn)))
 
     fout = h5py.File(ofn, "w")
@@ -328,12 +300,12 @@ def avhrrGAC_io(satellite_name, startdate, enddate, starttime, endtime,
 
     # SHq: Is the sun_earth_distance correction applied?
     g1.attrs["sun_earth_distance_correction_applied"] = "TRUE"
-    g1.attrs["sun_earth_distance_correction_factor"] = corr 
+    g1.attrs["sun_earth_distance_correction_factor"] = np.int32(1.0)
     g2.attrs["sun_earth_distance_correction_applied"] = "TRUE"
-    g2.attrs["sun_earth_distance_correction_factor"] = corr
+    g2.attrs["sun_earth_distance_correction_factor"] = np.int32(1.0)
     # No attributes on 'how' for image3,4,5
     g6.attrs["sun_earth_distance_correction_applied"] = "TRUE"
-    g6.attrs["sun_earth_distance_correction_factor"] = corr
+    g6.attrs["sun_earth_distance_correction_factor"] = np.int32(1.0)
 
     # We do not know much about how; mostly use no-data
     g10.attrs["yaw_error"] = 0.0
@@ -355,7 +327,7 @@ def avhrrGAC_io(satellite_name, startdate, enddate, starttime, endtime,
                        (OUTPUT_FILE_PREFIX + '_sunsatangles_' +
                         satellite_name + '_99999_' + startdate +
                         'T' + starttime + 'Z_' +
-                        enddate + 'T' + endtime + 'Z_' + (str(start_line)).zfill(5) + '_' + (str(end_line)).zfill(5) + '.h5')) 
+                        enddate + 'T' + endtime + 'Z.h5'))
     LOG.info('Filename: ' + str(os.path.basename(ofn)))
     fout = h5py.File(ofn, "w")
 
@@ -512,11 +484,11 @@ def avhrrGAC_io(satellite_name, startdate, enddate, starttime, endtime,
                        (OUTPUT_FILE_PREFIX + '_qualflags_' +
                         satellite_name + '_99999_' + startdate +
                         'T' + starttime + 'Z_' +
-                        enddate + 'T' + endtime + 'Z_' + (str(start_line)).zfill(5) + '_' + (str(end_line)).zfill(5) + '.h5')) 
+                        enddate + 'T' + endtime + 'Z.h5'))
     LOG.info('Filename: ' + str(os.path.basename(ofn)))
     fout = h5py.File(ofn, "w")
 
-    dset1 = fout.create_dataset("/qual_flags/data", dtype='int16', data=qual_flags)
+    dset1 = fout.create_dataset("/qual_flags/data", dtype='int8', data=qual_flags)
 
     g1 = fout.require_group("/qual_flags")
 
@@ -532,8 +504,6 @@ def avhrrGAC_io(satellite_name, startdate, enddate, starttime, endtime,
     g1.attrs["endtime"] = endtime[0:6]
     g1.attrs["startdate"] = startdate
     g1.attrs["enddate"] = enddate
-    g1.attrs["total_number_of_data_records"] = total_number_of_scan_lines
-    g1.attrs["last_scan_line_number"] = last_scan_line_number 
 
     fout.close()
 

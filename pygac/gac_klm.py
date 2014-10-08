@@ -542,12 +542,22 @@ class KLMReader(GACReader):
 
         mask = ((self.scans["quality_indicator_bit_field"] >> 31) |
                 ((self.scans["quality_indicator_bit_field"] << 3) >> 31) |
-                ((self.scans["quality_indicator_bit_field"] << 4) >> 31))
+                ((self.scans["quality_indicator_bit_field"] << 4) >> 31)) 
+        
+	number_of_scans = self.scans["telemetry"].shape[0]
+        qual_flags = np.zeros((int(number_of_scans),7))
+        qual_flags[:,0]=self.scans["scan_line_number"] 
+        qual_flags[:,1]=(self.scans["quality_indicator_bit_field"] >> 31)
+        qual_flags[:,2]=((self.scans["quality_indicator_bit_field"] << 3) >> 31)
+        qual_flags[:,3]=((self.scans["quality_indicator_bit_field"] << 4) >> 31)
+        qual_flags[:,4]=((self.scans["quality_indicator_bit_field"] << 24) >> 30)
+        qual_flags[:,5]=((self.scans["quality_indicator_bit_field"] << 26) >> 30)
+        qual_flags[:,6]=((self.scans["quality_indicator_bit_field"] << 28) >> 30)
 
-        return mask.astype(bool)
+	return mask.astype(bool), qual_flags
 
 
-def main(filename):
+def main(filename, start_line, end_line):
     tic = datetime.datetime.now()
     reader = KLMReader()
     reader.read(filename)
@@ -555,9 +565,26 @@ def main(filename):
     channels = reader.get_calibrated_channels()
     sat_azi, sat_zen, sun_azi, sun_zen, rel_azi = reader.get_angles()
 
-    mask = reader.get_corrupt_mask()
+    
+    year = reader.head["start_of_data_set_year"]
+    jday = reader.head["start_of_data_set_day_of_year"]
+    msec = reader.head["start_of_data_set_utc_time_of_day"]
+    xutcs = (((year - 1970).astype('datetime64[Y]')
+                  + (jday - 1).astype('timedelta64[D]')).astype('datetime64[ms]')
+                  + msec.astype('timedelta64[ms]'))
+    xtimes1 = xutcs.astype(datetime.datetime)
+
+    year = reader.head["end_of_data_set_year"]
+    jday = reader.head["end_of_data_set_day_of_year"]
+    msec = reader.head["end_of_data_set_utc_time_of_day"]
+    xutcs = (((year - 1970).astype('datetime64[Y]')
+                  + (jday - 1).astype('timedelta64[D]')).astype('datetime64[ms]')
+                  + msec.astype('timedelta64[ms]'))
+    xtimes2 = xutcs.astype(datetime.datetime)
+
+    mask, qual_flags = reader.get_corrupt_mask()
     gac_io.save_gac(reader.spacecraft_name,
-                    reader.times[0], reader.times[1],
+                    xtimes1, xtimes2,
                     reader.lats, reader.lons,
                     channels[:, :, 0], channels[:, :, 1],
                     channels[:, :, 2],
@@ -565,9 +592,9 @@ def main(filename):
                     channels[:, :, 4],
                     channels[:, :, 5],
                     sun_zen, sat_zen, sun_azi, sat_azi, rel_azi,
-                    mask, reader.get_ch3_switch())
+                    mask, qual_flags, start_line, end_line, reader.get_ch3_switch())
     LOG.info("pygac took: %s", str(datetime.datetime.now() - tic))
 
 if __name__ == "__main__":
     import sys
-    main(sys.argv[1])
+    main(sys.argv[1], sys.argv[2], sys.argv[3])

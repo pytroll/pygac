@@ -46,9 +46,9 @@ LOG = logging.getLogger(__name__)
 
 header = np.dtype([("noaa_spacecraft_identification_code", ">u1"),
                    ("data_type_code", ">u1"),
-                   ("start_time", ">u1", (6, )),
+                   ("start_time", ">u2", (3, )),
                    ("number_of_scans", ">u2"),
-                   ("end_time", ">u1", (6, )),
+                   ("end_time", ">u2", (3, )),
                    ("processing_block_id", "S7"),
                    ("ramp_auto_calibration", ">u1"),
                    ("number_of_data_gaps", ">u2"),
@@ -126,6 +126,7 @@ class PODReader(GACReader):
                                 count=self.head["number_of_scans"])
 
         # cleaning up the data
+
         if scans["scan_line_number"][0] == scans["scan_line_number"][-1] + 1:
             while scans["scan_line_number"][0] != 1:
                 scans = np.roll(scans, -1)
@@ -139,7 +140,7 @@ class PODReader(GACReader):
         self.spacecraft_name = self.spacecraft_names[self.spacecraft_id]
         LOG.info(
             "Reading %s data", self.spacecrafts_orbital[self.spacecraft_id])
-
+	
         return self.head, self.scans
 
     def get_times(self):
@@ -207,7 +208,7 @@ class PODReader(GACReader):
 
             self.lons = res[:, :, 0]
             self.lats = res[:, :, 1]
-            print "offsets", first_index, last_index
+            # print "offsets", first_index, last_index
             self.scans = self.scans[first_index:last_index]
             self.times = self.times[first_index:last_index]
             self.utcs = self.utcs[first_index:last_index]
@@ -254,12 +255,23 @@ class PODReader(GACReader):
 
         mask = ((self.scans["quality_indicators"] >> 31) |
                 ((self.scans["quality_indicators"] << 4) >> 31) |
-                ((self.scans["quality_indicators"] << 5) >> 31))
+                ((self.scans["quality_indicators"] << 5) >> 31)) 
 
-        return mask.astype(bool)
+        number_of_scans = self.scans["telemetry"].shape[0]
+	qual_flags = np.zeros((int(number_of_scans),7))
+	qual_flags[:,0]=self.scans["scan_line_number"] 
+	qual_flags[:,1]=(self.scans["quality_indicators"] >> 31)
+	qual_flags[:,2]=((self.scans["quality_indicators"] << 4) >> 31)	
+	qual_flags[:,3]=((self.scans["quality_indicators"] << 5) >> 31)	
+	qual_flags[:,4]=((self.scans["quality_indicators"] << 13) >> 31)	
+	qual_flags[:,5]=((self.scans["quality_indicators"] << 14) >> 31)	
+	qual_flags[:,6]=((self.scans["quality_indicators"] << 15) >> 31)	
 
 
-def main(filename):
+        return mask.astype(bool), qual_flags
+
+
+def main(filename,start_line,end_line):
     tic = datetime.datetime.now()
     reader = PODReader()
     reader.read(filename)
@@ -268,9 +280,31 @@ def main(filename):
     channels = reader.get_calibrated_channels()
     sat_azi, sat_zen, sun_azi, sun_zen, rel_azi = reader.get_angles()
 
-    mask = reader.get_corrupt_mask()
+    mask, qual_flags = reader.get_corrupt_mask()
+  
+
+    year = reader.head["start_time"][0] >> 9
+    year = np.where(year > 75, year + 1900, year + 2000)
+    jday = (reader.head["start_time"][0] & 0x1FF)
+    msec = ((np.uint32(reader.head["start_time"][1] & 2047) << 16) |
+                    (np.uint32(reader.head["start_time"][2])))
+    xutcs = (((year - 1970).astype('datetime64[Y]')
+                          + (jday - 1).astype('timedelta64[D]')).astype('datetime64[ms]')
+                         + msec.astype('timedelta64[ms]'))
+
+    xtimes1 = xutcs.astype(datetime.datetime)
+    year = reader.head["end_time"][0] >> 9
+    year = np.where(year > 75, year + 1900, year + 2000)
+    jday = (reader.head["end_time"][0] & 0x1FF)
+    msec = ((np.uint32(reader.head["end_time"][1] & 2047) << 16) |
+                    (np.uint32(reader.head["end_time"][2])))
+    xutcs = (((year - 1970).astype('datetime64[Y]')
+                          + (jday - 1).astype('timedelta64[D]')).astype('datetime64[ms]')
+                         + msec.astype('timedelta64[ms]'))
+    xtimes2 = xutcs.astype(datetime.datetime)
+ 
     gac_io.save_gac(reader.spacecraft_name,
-                    reader.times[0], reader.times[1],
+                    xtimes1, xtimes2,
                     reader.lats, reader.lons,
                     channels[:, :, 0], channels[:, :, 1],
                     np.ones_like(channels[:, :, 0]) * -1,
@@ -278,9 +312,32 @@ def main(filename):
                     channels[:, :, 3],
                     channels[:, :, 4],
                     sun_zen, sat_zen, sun_azi, sat_azi, rel_azi,
-                    mask)
+                    mask, qual_flags, start_line, end_line)
     LOG.info("pygac took: %s", str(datetime.datetime.now() - tic))
+
+    """
+    from mpop.satellites import PolarFactory
+    orbit = "12345"
+    time_slot = datetime.datetime(2011, 8, 29, 11, 40)
+    global_data = PolarFactory.create_scene(
+        "noaa", "19", "avhrr", time_slot, orbit)
+    scene = global_data
+    from pyresample.geometry import SwathDefinition
+    area = SwathDefinition(reader.lons, reader.lats)
+
+    scene[0.6] = channels[:, :, 0]
+    scene[0.8] = channels[:, :, 1]
+    scene[3.7] = channels[:, :, 2]
+    scene[10.8] = channels[:, :, 3]
+    scene[12.0] = channels[:, :, 4]
+    scene.area = area
+
+    l = scene.project("eport2", radius=15000)
+    img = l.image.cloudtop()
+    img.add_overlay((255, 255, 0))
+    img.show()
+    """ 
 
 if __name__ == "__main__":
     import sys
-    main(sys.argv[1])
+    main(sys.argv[1],sys.argv[2],sys.argv[3])
