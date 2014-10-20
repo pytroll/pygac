@@ -178,40 +178,47 @@ class PODReader(GACReader):
             self.times = (self.utcs +
                           offsets.astype('timedelta64[s]')).astype(datetime.datetime)
             offsets *= -2
-            main_offset = int(np.floor(np.mean(offsets)))
-            int_offsets = (np.floor(offsets)).astype(np.int)
-            # FIXME: this is wrong when scanlines are not contiguous.
-            line_indices = (np.arange(len(self.utcs)) + int_offsets)
-            # line_indices = (self.scans["scan_line_number"]
-            #                + int_offsets)
-            # print "we miss", sorted(set(self.scans["scan_line_number"]) -
-            # set(line_indices))
-            for i, line in enumerate(line_indices):
-                if line >= 0:
-                    first_index = i
-                    break
-            for i, line in enumerate(reversed(line_indices)):
-                if line < len(line_indices) - 1:
-                    last_index = -i
-                    break
-            offsets -= main_offset
+
+            int_offsets = np.floor(offsets).astype(np.int)
+
+            # filling out missing geolocations with computation from pyorbital.
+            line_indices = (self.scans["scan_line_number"]
+                            + int_offsets)
+
+            missed = sorted((set(line_indices) |
+                             set(line_indices + 1))
+                            - set(self.scans["scan_line_number"]))
+
+            min_idx = min(line_indices)
+            max_idx = max(max(line_indices),
+                          max(self.scans["scan_line_number"] - min_idx)) + 1
+            idx_len = max_idx - min_idx + 2
+
+            complete_lons = np.zeros((idx_len, 409), dtype=np.float) * np.nan
+            complete_lats = np.zeros((idx_len, 409), dtype=np.float) * np.nan
+
+            complete_lons[self.scans["scan_line_number"] - min_idx] = self.lons
+            complete_lats[self.scans["scan_line_number"] - min_idx] = self.lats
+
+            missed_utcs = ((np.array(missed) - 1) * np.timedelta64(500, "ms")
+                           + self.utcs[0])
+
+            mlons, mlats = self.compute_lonlat(missed_utcs, True)
+
+            complete_lons[missed - min_idx] = mlons
+            complete_lats[missed - min_idx] = mlats
 
             from pygac.slerp import slerp
-
-            last_index = len(line_indices) + last_index
-            indices = line_indices[first_index:last_index]
-            res = slerp(self.lons[indices, :],
-                        self.lats[indices, :],
-                        self.lons[indices + 1, :],
-                        self.lats[indices + 1, :],
-                        offsets[first_index:last_index, np.newaxis, np.newaxis])
+            off = offsets - np.floor(offsets)
+            res = slerp(complete_lons[line_indices - min_idx, :],
+                        complete_lats[line_indices - min_idx, :],
+                        complete_lons[line_indices - min_idx + 1, :],
+                        complete_lats[line_indices - min_idx + 1, :],
+                        off[:, np.newaxis, np.newaxis])
 
             self.lons = res[:, :, 0]
             self.lats = res[:, :, 1]
-            # print "offsets", first_index, last_index
-            self.scans = self.scans[first_index:last_index]
-            self.times = self.times[first_index:last_index]
-            self.utcs = self.utcs[first_index:last_index]
+            self.utcs += offsets.astype('timedelta64[s]')
 
         toc = datetime.datetime.now()
         LOG.debug("clock drift adjustment took %s", str(toc - tic))

@@ -47,6 +47,7 @@ class GACReader(object):
         self.lats = None
         self.lons = None
         self.times = None
+        self.tle_lines = None
 
     def get_counts(self):
         packed_data = self.scans["sensor_data"]
@@ -71,12 +72,13 @@ class GACReader(object):
     def get_times(self):
         raise NotImplementedError
 
-    def compute_lonlat(self, clock_drift_adjust=True):
-        tle1, tle2 = get_tle_lines()
+    def compute_lonlat(self, utcs=None, clock_drift_adjust=True):
+        tle1, tle2 = self.get_tle_lines()
 
         scan_points = np.arange(3.5, 2048, 5)
 
-        utcs = self.get_times()
+        if utcs is None:
+            utcs = self.get_times()
 
         # adjusting clock for drift
         tic = datetime.datetime.now()
@@ -116,7 +118,7 @@ class GACReader(object):
 
         lons, lats = pos_time[:2]
 
-        return lons, lats
+        return lons.reshape(-1, 409), lats.reshape(-1, 409)
 
     def get_calibrated_channels(self):
         channels = self.get_counts()
@@ -168,6 +170,8 @@ class GACReader(object):
             return fp_.readlines()
 
     def get_tle_lines(self):
+        if self.tle_lines is not None:
+            return self.tle_lines
         tle_data = self.get_tle_file()
         tm = self.times[0]
         sdate = (int(tm.strftime("%Y%j")) +
@@ -199,7 +203,7 @@ class GACReader(object):
 
         tle1 = tle_data[iindex * 2]
         tle2 = tle_data[iindex * 2 + 1]
-
+        self.tle_lines = tle1, tle2
         return tle1, tle2
 
     def get_angles(self):
@@ -225,19 +229,3 @@ class GACReader(object):
         rel_azi = np.where(rel_azi > 180.0, 360.0 - rel_azi, rel_azi)
 
         return sat_azi, sat_zenith, sun_azi, sun_zenith, rel_azi
-
-    def fill_scene(self, scene):
-        from pyresample.geometry import SwathDefinition
-        #channels = self.get_counts()
-        # self.get_lonlat()
-        # self.adjust_clock_drift()
-        channels = self.get_calibrated_channels()
-        #lons, lats = self.compute_lonlat()
-        area = SwathDefinition(self.lons, self.lats)
-
-        scene[0.6] = channels[:, :, 0]
-        scene[0.8] = channels[:, :, 1]
-        scene[3.7] = channels[:, :, 2]
-        scene[10.8] = channels[:, :, 3]
-        scene[12.0] = channels[:, :, 4]
-        scene.area = area
