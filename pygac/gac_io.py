@@ -145,10 +145,18 @@ def avhrrGAC_io(satellite_name, startdate, enddate, starttime, endtime,
 
     LOG.info('Output file prefix = ' + str(OUTPUT_FILE_PREFIX))
     LOG.info('AVHRR data will be written to ' + str(AVHRR_DIR))
-    ofn = os.path.join(AVHRR_DIR, (OUTPUT_FILE_PREFIX + '_avhrr_' +
+    if end_line==0:
+    	ofn = os.path.join(AVHRR_DIR, (OUTPUT_FILE_PREFIX + '_avhrr_' +
                                    satellite_name + '_99999_' +
                                    startdate + 'T' + starttime + 'Z_' +
-                                   enddate + 'T' + endtime + 'Z_' + (str(start_line)).zfill(5) + '_' + (str(end_line)).zfill(5) + '.h5'))
+                                   enddate + 'T' + endtime + 'Z.h5'))
+    else:
+    	ofn = os.path.join(AVHRR_DIR, (OUTPUT_FILE_PREFIX + '_avhrr_' +
+                                   satellite_name + '_99999_' +
+                                   startdate + 'T' + starttime + 'Z_' +
+                                   enddate + 'T' + endtime + 'Z_' + (str(start_line)).zfill(5) 
+				   + '_' + (str(end_line)).zfill(5) + '.h5'))
+    
     LOG.info('Filename: ' + str(os.path.basename(ofn)))
 
     fout = h5py.File(ofn, "w")
@@ -351,11 +359,20 @@ def avhrrGAC_io(satellite_name, startdate, enddate, starttime, endtime,
 
     LOG.info('Sun and Satellite viewing angles will be ' +
              'written to ' + str(SUNSATANGLES_DIR))
-    ofn = os.path.join(SUNSATANGLES_DIR,
+    if end_line==0:
+    	ofn = os.path.join(SUNSATANGLES_DIR,
                        (OUTPUT_FILE_PREFIX + '_sunsatangles_' +
                         satellite_name + '_99999_' + startdate +
                         'T' + starttime + 'Z_' +
-                        enddate + 'T' + endtime + 'Z_' + (str(start_line)).zfill(5) + '_' + (str(end_line)).zfill(5) + '.h5')) 
+                        enddate + 'T' + endtime + 'Z.h5')) 
+    else:
+    	ofn = os.path.join(SUNSATANGLES_DIR,
+                       (OUTPUT_FILE_PREFIX + '_sunsatangles_' +
+                        satellite_name + '_99999_' + startdate +
+                        'T' + starttime + 'Z_' +
+                        enddate + 'T' + endtime + 'Z_' + (str(start_line)).zfill(5) 
+			+ '_' + (str(end_line)).zfill(5) + '.h5')) 
+
     LOG.info('Filename: ' + str(os.path.basename(ofn)))
     fout = h5py.File(ofn, "w")
 
@@ -508,11 +525,20 @@ def avhrrGAC_io(satellite_name, startdate, enddate, starttime, endtime,
 
     LOG.info('Quality flags will be ' +
              'written to ' + str(QUAL_DIR))
-    ofn = os.path.join(QUAL_DIR,
+    if end_line==0:
+    	ofn = os.path.join(QUAL_DIR,
                        (OUTPUT_FILE_PREFIX + '_qualflags_' +
                         satellite_name + '_99999_' + startdate +
                         'T' + starttime + 'Z_' +
-                        enddate + 'T' + endtime + 'Z_' + (str(start_line)).zfill(5) + '_' + (str(end_line)).zfill(5) + '.h5')) 
+                        enddate + 'T' + endtime + 'Z.h5')) 
+    else:
+    	ofn = os.path.join(QUAL_DIR,
+                       (OUTPUT_FILE_PREFIX + '_qualflags_' +
+                        satellite_name + '_99999_' + startdate +
+                        'T' + starttime + 'Z_' +
+                        enddate + 'T' + endtime + 'Z_' + 
+			(str(start_line)).zfill(5) + '_' + (str(end_line)).zfill(5) + '.h5')) 
+
     LOG.info('Filename: ' + str(os.path.basename(ofn)))
     fout = h5py.File(ofn, "w")
 
