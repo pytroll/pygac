@@ -110,8 +110,8 @@ class PODReader(GACReader):
                            5: 'noaa 12',
                            3: 'noaa 14',
                            }
-    spacecraft_names = {4: 'noaa07',
-                        7: 'noaa09',
+    spacecraft_names = {4: 'noaa7',
+                        7: 'noaa9',
                         8: 'noaa10',
                         1: 'noaa11',
                         5: 'noaa12',

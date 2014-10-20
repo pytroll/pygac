@@ -74,7 +74,7 @@ coeffs = {
                 'b1': np.array([1 - 0.0, 1 - 0.10152, 1 - 0.06249]),
                 'b2': np.array([0.0, 0.00046964, 0.00025239]),
                 },
-    'noaa07': {'ah': np.array([0.114, 0.126, 0.0]),
+    'noaa7': {'ah': np.array([0.114, 0.126, 0.0]),
                'al': np.array([0.114, 0.126, 0.0]),
                'bh': np.array([5.492, 6.801, 0.0]),
                'bl': np.array([5.492, 6.801, 0.0]),               
@@ -97,7 +97,7 @@ coeffs = {
                'b2': np.array([0.0, 0.0004819, 0.0002425]),
                'b0': np.array([0.0, 5.25, 3.93]),
                },
-    'noaa09': {'ah': np.array([0.108, 0.120, 0.0]),
+    'noaa9': {'ah': np.array([0.108, 0.120, 0.0]),
                'al': np.array([0.108, 0.120, 0.0]),
                'bh': np.array([6.657, 5.340, 0.0]),
                'bl': np.array([6.657, 5.340, 0.0]),               
@@ -395,6 +395,27 @@ def calibrate_thermal(counts, prt, ict, space, line_numbers, channel, spacecraft
 
     iprt = (line_numbers - line_numbers[0] + 5 - offset) % 5
 
+
+    ifix=np.where(np.logical_and(iprt==1, prt<50));
+    if ifix:
+	inofix=np.where(np.logical_and(iprt==1, prt>50));
+	prt[ifix]=np.interp(ifix[0],inofix[0],prt[inofix]);
+
+    ifix=np.where(np.logical_and(iprt==2, prt<50));
+    if ifix:
+	inofix=np.where(np.logical_and(iprt==2, prt>50));
+	prt[ifix]=np.interp(ifix[0],inofix[0],prt[inofix]);
+
+    ifix=np.where(np.logical_and(iprt==3, prt<50));
+    if ifix:
+	inofix=np.where(np.logical_and(iprt==3, prt>50));
+	prt[ifix]=np.interp(ifix[0],inofix[0],prt[inofix]);
+
+    ifix=np.where(np.logical_and(iprt==4, prt<50));
+    if ifix:
+	inofix=np.where(np.logical_and(iprt==4, prt>50));
+	prt[ifix]=np.interp(ifix[0],inofix[0],prt[inofix]);
+
     tprt = (cal.d[iprt, 0] + prt *
             (cal.d[iprt, 1] + prt *
              (cal.d[iprt, 2] + prt *
@@ -413,6 +434,7 @@ def calibrate_thermal(counts, prt, ict, space, line_numbers, channel, spacecraft
         wlength = 51
     else:
         wlength = 3
+
 
     weighting_function = np.ones(wlength, dtype=float) / wlength
     tprt_convolved = np.convolve(tprt, weighting_function, 'same')
