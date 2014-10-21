@@ -395,7 +395,6 @@ def calibrate_thermal(counts, prt, ict, space, line_numbers, channel, spacecraft
 
     iprt = (line_numbers - line_numbers[0] + 5 - offset) % 5
 
-
     ifix=np.where(np.logical_and(iprt==1, prt<50));
     if ifix:
 	inofix=np.where(np.logical_and(iprt==1, prt>50));
@@ -463,12 +462,15 @@ def calibrate_thermal(counts, prt, ict, space, line_numbers, channel, spacecraft
 
     Nlin = (cal.n_s[chan] +
             (((nBB - cal.n_s[chan])
-              * (new_space - counts))
+              * (new_space - counts.astype(float)))
              / (new_space - new_ict)))
     Ncor = cal.b0[chan] + Nlin * (cal.b1[chan] + cal.b2[chan] * Nlin)
     Ne = Ncor
     tsE = ((1.4387752 * cal.c_wn[chan])
            / np.log(1.0 + nBB_num / Ne))
     bt = (tsE - cal.a[chan]) / cal.b[chan]
+
+    if chan==0:
+	bt = np.where((counts-new_space)>=0, 0.0, bt)
 
     return bt

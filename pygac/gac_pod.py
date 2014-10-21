@@ -298,8 +298,8 @@ def main(filename,start_line,end_line):
     xutcs = (((year - 1970).astype('datetime64[Y]')
                           + (jday - 1).astype('timedelta64[D]')).astype('datetime64[ms]')
                          + msec.astype('timedelta64[ms]'))
-
     xtimes1 = xutcs.astype(datetime.datetime)
+
     year = reader.head["end_time"][0] >> 9
     year = np.where(year > 75, year + 1900, year + 2000)
     jday = (reader.head["end_time"][0] & 0x1FF)
@@ -322,28 +322,7 @@ def main(filename,start_line,end_line):
                     mask, qual_flags, start_line, end_line)
     LOG.info("pygac took: %s", str(datetime.datetime.now() - tic))
 
-    """
-    from mpop.satellites import PolarFactory
-    orbit = "12345"
-    time_slot = datetime.datetime(2011, 8, 29, 11, 40)
-    global_data = PolarFactory.create_scene(
-        "noaa", "19", "avhrr", time_slot, orbit)
-    scene = global_data
-    from pyresample.geometry import SwathDefinition
-    area = SwathDefinition(reader.lons, reader.lats)
 
-    scene[0.6] = channels[:, :, 0]
-    scene[0.8] = channels[:, :, 1]
-    scene[3.7] = channels[:, :, 2]
-    scene[10.8] = channels[:, :, 3]
-    scene[12.0] = channels[:, :, 4]
-    scene.area = area
-
-    l = scene.project("eport2", radius=15000)
-    img = l.image.cloudtop()
-    img.add_overlay((255, 255, 0))
-    img.show()
-    """ 
 
 if __name__ == "__main__":
     import sys

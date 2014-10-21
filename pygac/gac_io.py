@@ -73,10 +73,11 @@ def save_gac(satellite_name,
              sun_zen, sat_zen, sun_azi, sat_azi, rel_azi,
              mask, qual_flags, start_line, end_line, switch=None):
 
-    bt3 -= 273.15
-    bt4 -= 273.15
-    bt5 -= 273.15
 
+    bt3 = np.where(np.logical_or(bt3<170.0, bt3>350.0), MISSING_DATA, bt3-273.15) 
+    bt4 = np.where(np.logical_or(bt4<170.0, bt4>350.0), MISSING_DATA, bt4-273.15) 
+    bt5 = np.where(np.logical_or(bt5<170.0, bt5>350.0), MISSING_DATA, bt5-273.15) 
+    
     sat_azi -= 180.0
     rel_azi = abs(rel_azi)
     rel_azi = 180.0 - rel_azi
