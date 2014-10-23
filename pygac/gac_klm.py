@@ -473,7 +473,7 @@ class KLMReader(GACReader):
                         6: 'noaa17',
                         7: 'noaa18',
                         8: 'noaa19',
-                        12: 'metop02',
+                        12: 'metopa',
                         }
     spacecrafts_orbital = {4: 'noaa 15',
                            2: 'noaa 16',
