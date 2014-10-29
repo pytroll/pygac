@@ -77,7 +77,10 @@ def save_gac(satellite_name,
     bt3 = np.where(np.logical_or(bt3<170.0, bt3>350.0), MISSING_DATA, bt3-273.15) 
     bt4 = np.where(np.logical_or(bt4<170.0, bt4>350.0), MISSING_DATA, bt4-273.15) 
     bt5 = np.where(np.logical_or(bt5<170.0, bt5>350.0), MISSING_DATA, bt5-273.15) 
-    
+   
+    lats = lats * 1000.0
+    lons = lons * 1000.0
+ 
     sat_azi -= 180.0
     rel_azi = abs(rel_azi)
     rel_azi = 180.0 - rel_azi
@@ -300,7 +303,7 @@ def avhrrGAC_io(satellite_name, startdate, enddate, starttime, endtime,
 
     g7.attrs["dataset_name"] = 'Latitude'
     g7.attrs["units"] = 'Deg'
-    g7.attrs["gain"] = np.float32(0.010)
+    g7.attrs["gain"] = np.float32(0.0010)
     g7.attrs["offset"] = np.float32(0.0)
     g7.attrs["missingdata"] = np.int32(-32001)
     g7.attrs["nodata"] = np.int32(-32001)
@@ -311,7 +314,7 @@ def avhrrGAC_io(satellite_name, startdate, enddate, starttime, endtime,
 
     g8.attrs["dataset_name"] = 'Longitude'
     g8.attrs["units"] = 'Deg'
-    g8.attrs["gain"] = np.float32(0.010)
+    g8.attrs["gain"] = np.float32(0.0010)
     g8.attrs["offset"] = np.float32(0.0)
     g8.attrs["missingdata"] = np.int32(-32001)
     g8.attrs["nodata"] = np.int32(-32001)
@@ -483,7 +486,7 @@ def avhrrGAC_io(satellite_name, startdate, enddate, starttime, endtime,
 
     g6.attrs["dataset_name"] = 'Latitude'
     g6.attrs["units"] = 'Deg'
-    g6.attrs["gain"] = np.float32(0.010)
+    g6.attrs["gain"] = np.float32(0.0010)
     g6.attrs["offset"] = np.float32(0.0)
     g6.attrs["missingdata"] = np.int32(-32001)
     g6.attrs["nodata"] = np.int32(-32001)
@@ -494,7 +497,7 @@ def avhrrGAC_io(satellite_name, startdate, enddate, starttime, endtime,
 
     g7.attrs["dataset_name"] = 'Longitude'
     g7.attrs["units"] = 'Deg'
-    g7.attrs["gain"] = np.float32(0.010)
+    g7.attrs["gain"] = np.float32(0.0010)
     g7.attrs["offset"] = np.float32(0.0)
     g7.attrs["missingdata"] = np.int32(-32001)
     g7.attrs["nodata"] = np.int32(-32001)
