@@ -63,6 +63,7 @@ SUNSATANGLES_DIR = os.environ.get('SM_SUNSATANGLES_DIR', OUTDIR)
 AVHRR_DIR = os.environ.get('SM_AVHRR_DIR', OUTDIR)
 QUAL_DIR = os.environ.get('SM_AVHRR_DIR', OUTDIR)
 MISSING_DATA = -32001
+MISSING_DATA_LATLON =  -999999
 
 
 def save_gac(satellite_name,
@@ -78,9 +79,6 @@ def save_gac(satellite_name,
     bt4 = np.where(np.logical_or(bt4<170.0, bt4>350.0), MISSING_DATA, bt4-273.15) 
     bt5 = np.where(np.logical_or(bt5<170.0, bt5>350.0), MISSING_DATA, bt5-273.15) 
    
-    lats = lats * 1000.0
-    lons = lons * 1000.0
- 
     sat_azi -= 180.0
     rel_azi = abs(rel_azi)
     rel_azi = 180.0 - rel_azi
@@ -88,9 +86,10 @@ def save_gac(satellite_name,
     for array in [ref1, ref2, ref3, bt3, bt4, bt5,
                   sun_zen, sat_zen, sun_azi, sat_azi, rel_azi]:
         array *= 100
-    for array in [lats, lons, ref1, ref2, ref3, bt3, bt4, bt5,
-                  sun_zen, sat_zen, sun_azi, sat_azi, rel_azi]:
         array[mask] = MISSING_DATA
+    for array in [lats, lons]:
+        array *= 1000.0
+        array[mask] = MISSING_DATA_LATLON
     for ref in [ref1, ref2, ref3]:
         ref[ref < 0] = MISSING_DATA
 
@@ -195,22 +194,22 @@ def avhrrGAC_io(satellite_name, startdate, enddate, starttime, endtime,
     g6 = fout.require_group("/image6")
     g7 = fout.require_group("/where")
 
-    g1.attrs["channel"] = "1"
-    g1.attrs["description"] = "AVHRR ch1"
-    g2.attrs["channel"] = "2"
-    g2.attrs["description"] = "AVHRR ch2"
-    g3.attrs["channel"] = "3b"
-    g3.attrs["description"] = "AVHRR ch3b"
-    g4.attrs["channel"] = "4"
-    g4.attrs["description"] = "AVHRR ch4"
-    g5.attrs["channel"] = "5"
-    g5.attrs["description"] = "AVHRR ch5"
-    g6.attrs["channel"] = "3a"
-    g6.attrs["description"] = "AVHRR ch3a"
+    g1.attrs["channel"] = np.string_("1")
+    g1.attrs["description"] = np.string_("AVHRR ch1")
+    g2.attrs["channel"] = np.string_("2")
+    g2.attrs["description"] = np.string_("AVHRR ch2")
+    g3.attrs["channel"] = np.string_("3b")
+    g3.attrs["description"] = np.string_("AVHRR ch3b")
+    g4.attrs["channel"] = np.string_("4")
+    g4.attrs["description"] = np.string_("AVHRR ch4")
+    g5.attrs["channel"] = np.string_("5")
+    g5.attrs["description"] = np.string_("AVHRR ch5")
+    g6.attrs["channel"] = np.string_("3a")
+    g6.attrs["description"] = np.string_("AVHRR ch3a")
     g7.attrs["num_of_pixels"] = np.int32(arrSZA.shape[1])
     g7.attrs["num_of_lines"] = np.int32(arrSZA.shape[0])
-    g7.attrs["xscale"] = np.float32(0.0)  # PPS says 1100.0, is that really
-    g7.attrs["yscale"] = np.float32(0.0)  # true for GAC? /SHq
+    g7.attrs["xscale"] = np.float32(0.0)
+    g7.attrs["yscale"] = np.float32(0.0)
 
     # Attributes in the 'what' groups
     g1 = fout.create_group("/image1/what")
@@ -223,111 +222,111 @@ def avhrrGAC_io(satellite_name, startdate, enddate, starttime, endtime,
     g8 = fout.create_group("/where/lon/what")
     g9 = fout.create_group("/what")
 
-    g1.attrs["product"] = "SATCH"
-    g1.attrs["quantity"] = "REFL"
-    g1.attrs["dataset_name"] = 'Channel 1 reflectance'
-    g1.attrs["units"] = '%'
+    g1.attrs["product"] = np.string_("SATCH")
+    g1.attrs["quantity"] = np.string_("REFL")
+    g1.attrs["dataset_name"] = np.string_('Channel 1 reflectance')
+    g1.attrs["units"] = np.string_('%')
     g1.attrs["gain"] = np.float32(0.01)
     g1.attrs["offset"] = np.float32(0.0)
-    g1.attrs["missingdata"] = np.int32(-32001)
-    g1.attrs["nodata"] = np.int32(-32001)
-    g1.attrs["starttime"] = starttime[0:6]
-    g1.attrs["endtime"] = endtime[0:6]
-    g1.attrs["startdate"] = startdate
-    g1.attrs["enddate"] = enddate
+    g1.attrs["missingdata"] = np.int32(MISSING_DATA)
+    g1.attrs["nodata"] = np.int32(MISSING_DATA)
+    g1.attrs["starttime"] = np.string_(starttime[0:6])
+    g1.attrs["endtime"] = np.string_(endtime[0:6])
+    g1.attrs["startdate"] = np.string_(startdate)
+    g1.attrs["enddate"] = np.string_(enddate)
 
-    g2.attrs["product"] = "SATCH"
-    g2.attrs["quantity"] = "REFL"
-    g2.attrs["dataset_name"] = 'Channel 2 reflectance'
-    g2.attrs["units"] = '%'
+    g2.attrs["product"] = np.string_("SATCH")
+    g2.attrs["quantity"] = np.string_("REFL")
+    g2.attrs["dataset_name"] = np.string_('Channel 2 reflectance')
+    g2.attrs["units"] = np.string_('%')
     g2.attrs["gain"] = np.float32(0.01)
     g2.attrs["offset"] = np.float32(0.0)
-    g2.attrs["missingdata"] = np.int32(-32001)
-    g2.attrs["nodata"] = np.int32(-32001)
-    g2.attrs["starttime"] = starttime[0:6]
-    g2.attrs["endtime"] = endtime[0:6]
-    g2.attrs["startdate"] = startdate
-    g2.attrs["enddate"] = enddate
+    g2.attrs["missingdata"] = np.int32(MISSING_DATA)
+    g2.attrs["nodata"] = np.int32(MISSING_DATA)
+    g2.attrs["starttime"] = np.string_(starttime[0:6])
+    g2.attrs["endtime"] = np.string_(endtime[0:6])
+    g2.attrs["startdate"] = np.string_(startdate)
+    g2.attrs["enddate"] = np.string_(enddate)
 
-    g6.attrs["product"] = "SATCH"
-    g6.attrs["quantity"] = "REFL"
-    g6.attrs["dataset_name"] = 'Channel 3a reflectance'
-    g6.attrs["units"] = '%'
+    g6.attrs["product"] = np.string_("SATCH")
+    g6.attrs["quantity"] = np.string_("REFL")
+    g6.attrs["dataset_name"] = np.string_('Channel 3a reflectance')
+    g6.attrs["units"] = np.string_('%')
     g6.attrs["gain"] = np.float32(0.01)
     g6.attrs["offset"] = np.float32(0.0)
-    g6.attrs["missingdata"] = np.int32(-32001)
-    g6.attrs["nodata"] = np.int32(-32001)
-    g6.attrs["starttime"] = starttime[0:6]
-    g6.attrs["endtime"] = endtime[0:6]
-    g6.attrs["startdate"] = startdate
-    g6.attrs["enddate"] = enddate
+    g6.attrs["missingdata"] = np.int32(MISSING_DATA)
+    g6.attrs["nodata"] = np.int32(MISSING_DATA)
+    g6.attrs["starttime"] = np.string_(starttime[0:6])
+    g6.attrs["endtime"] = np.string_(endtime[0:6])
+    g6.attrs["startdate"] = np.string_(startdate)
+    g6.attrs["enddate"] = np.string_(enddate)
 
-    g3.attrs["product"] = "SATCH"
-    g3.attrs["quantity"] = "TB"
-    g3.attrs["dataset_name"] = 'Channel 3b brightness temperature'
-    g3.attrs["units"] = 'K'
+    g3.attrs["product"] = np.string_("SATCH")
+    g3.attrs["quantity"] = np.string_("TB")
+    g3.attrs["dataset_name"] = np.string_('Channel 3b brightness temperature')
+    g3.attrs["units"] = np.string_('K')
     g3.attrs["gain"] = np.float32(0.01)
     g3.attrs["offset"] = np.float32(273.15)
-    g3.attrs["missingdata"] = np.int32(-32001)
-    g3.attrs["nodata"] = np.int32(-32001)
-    g3.attrs["starttime"] = starttime[0:6]
-    g3.attrs["endtime"] = endtime[0:6]
-    g3.attrs["startdate"] = startdate
-    g3.attrs["enddate"] = enddate
+    g3.attrs["missingdata"] = np.int32(MISSING_DATA)
+    g3.attrs["nodata"] = np.int32(MISSING_DATA)
+    g3.attrs["starttime"] = np.string_(starttime[0:6])
+    g3.attrs["endtime"] = np.string_(endtime[0:6])
+    g3.attrs["startdate"] = np.string_(startdate)
+    g3.attrs["enddate"] = np.string_(enddate)
 
-    g4.attrs["product"] = "SATCH"
-    g4.attrs["quantity"] = "TB"
-    g4.attrs["dataset_name"] = 'Channel 4 brightness temperature'
-    g4.attrs["units"] = 'K'
+    g4.attrs["product"] = np.string_("SATCH")
+    g4.attrs["quantity"] = np.string_("TB")
+    g4.attrs["dataset_name"] = np.string_('Channel 4 brightness temperature')
+    g4.attrs["units"] = np.string_('K')
     g4.attrs["gain"] = np.float32(0.01)
     g4.attrs["offset"] = np.float32(273.15)
-    g4.attrs["missingdata"] = np.int32(-32001)
-    g4.attrs["nodata"] = np.int32(-32001)
-    g4.attrs["starttime"] = starttime[0:6]
-    g4.attrs["endtime"] = endtime[0:6]
-    g4.attrs["startdate"] = startdate
-    g4.attrs["enddate"] = enddate
+    g4.attrs["missingdata"] = np.int32(MISSING_DATA)
+    g4.attrs["nodata"] = np.int32(MISSING_DATA)
+    g4.attrs["starttime"] = np.string_(starttime[0:6])
+    g4.attrs["endtime"] = np.string_(endtime[0:6])
+    g4.attrs["startdate"] = np.string_(startdate)
+    g4.attrs["enddate"] = np.string_(enddate)
 
-    g5.attrs["product"] = "SATCH"
-    g5.attrs["quantity"] = "TB"
-    g5.attrs["dataset_name"] = 'Channel 5 brightness temperature'
-    g5.attrs["units"] = 'K'
+    g5.attrs["product"] = np.string_("SATCH")
+    g5.attrs["quantity"] = np.string_("TB")
+    g5.attrs["dataset_name"] = np.string_('Channel 5 brightness temperature')
+    g5.attrs["units"] = np.string_('K')
     g5.attrs["gain"] = np.float32(0.01)
     g5.attrs["offset"] = np.float32(273.15)
-    g5.attrs["missingdata"] = np.int32(-32001)
-    g5.attrs["nodata"] = np.int32(-32001)
-    g5.attrs["starttime"] = starttime[0:6]
-    g5.attrs["endtime"] = endtime[0:6]
-    g5.attrs["startdate"] = startdate
-    g5.attrs["enddate"] = enddate
+    g5.attrs["missingdata"] = np.int32(MISSING_DATA)
+    g5.attrs["nodata"] = np.int32(MISSING_DATA)
+    g5.attrs["starttime"] = np.string_(starttime[0:6])
+    g5.attrs["endtime"] = np.string_(endtime[0:6])
+    g5.attrs["startdate"] = np.string_(startdate)
+    g5.attrs["enddate"] = np.string_(enddate)
 
-    g7.attrs["dataset_name"] = 'Latitude'
-    g7.attrs["units"] = 'Deg'
+    g7.attrs["dataset_name"] = np.string_('Latitude')
+    g7.attrs["units"] = np.string_('Deg')
     g7.attrs["gain"] = np.float32(0.0010)
     g7.attrs["offset"] = np.float32(0.0)
-    g7.attrs["missingdata"] = np.int32(-32001)
-    g7.attrs["nodata"] = np.int32(-32001)
-    g7.attrs["starttime"] = starttime[0:6]
-    g7.attrs["endtime"] = endtime[0:6]
-    g7.attrs["startdate"] = startdate
-    g7.attrs["enddate"] = enddate
+    g7.attrs["missingdata"] = np.int32(MISSING_DATA_LATLON)
+    g7.attrs["nodata"] = np.int32(MISSING_DATA_LATLON)
+    g7.attrs["starttime"] = np.string_(starttime[0:6])
+    g7.attrs["endtime"] = np.string_(endtime[0:6])
+    g7.attrs["startdate"] = np.string_(startdate)
+    g7.attrs["enddate"] = np.string_(enddate)
 
-    g8.attrs["dataset_name"] = 'Longitude'
-    g8.attrs["units"] = 'Deg'
+    g8.attrs["dataset_name"] = np.string_('Longitude')
+    g8.attrs["units"] = np.string_('Deg')
     g8.attrs["gain"] = np.float32(0.0010)
     g8.attrs["offset"] = np.float32(0.0)
-    g8.attrs["missingdata"] = np.int32(-32001)
-    g8.attrs["nodata"] = np.int32(-32001)
-    g8.attrs["starttime"] = starttime[0:6]
-    g8.attrs["endtime"] = endtime[0:6]
-    g8.attrs["startdate"] = startdate
-    g8.attrs["enddate"] = enddate
+    g8.attrs["missingdata"] = np.int32(MISSING_DATA_LATLON)
+    g8.attrs["nodata"] = np.int32(MISSING_DATA_LATLON)
+    g8.attrs["starttime"] = np.string_(starttime[0:6])
+    g8.attrs["endtime"] = np.string_(endtime[0:6])
+    g8.attrs["startdate"] = np.string_(startdate)
+    g8.attrs["enddate"] = np.string_(enddate)
 
-    g9.attrs["object"] = "SATP"
+    g9.attrs["object"] = np.string_("SATP")
     g9.attrs["sets"] = np.int32(len(channellist))
-    g9.attrs["version"] = "H5rad ?.?"
-    g9.attrs["date"] = startdate
-    g9.attrs["time"] = starttime[0:6]
+    g9.attrs["version"] = np.string_("H5rad ?.?")
+    g9.attrs["date"] = np.string_(startdate)
+    g9.attrs["time"] = np.string_(starttime[0:6])
 
     # Attributes in the 'how' groups
     g1 = fout.create_group("/image1/how")
@@ -339,12 +338,12 @@ def avhrrGAC_io(satellite_name, startdate, enddate, starttime, endtime,
     g10 = fout.require_group("/how")
 
     # SHq: Is the sun_earth_distance correction applied?
-    g1.attrs["sun_earth_distance_correction_applied"] = "TRUE"
+    g1.attrs["sun_earth_distance_correction_applied"] = np.string_("TRUE")
     g1.attrs["sun_earth_distance_correction_factor"] = corr 
-    g2.attrs["sun_earth_distance_correction_applied"] = "TRUE"
+    g2.attrs["sun_earth_distance_correction_applied"] = np.string_("TRUE")
     g2.attrs["sun_earth_distance_correction_factor"] = corr
     # No attributes on 'how' for image3,4,5
-    g6.attrs["sun_earth_distance_correction_applied"] = "TRUE"
+    g6.attrs["sun_earth_distance_correction_applied"] = np.string_("TRUE")
     g6.attrs["sun_earth_distance_correction_factor"] = corr
 
     # We do not know much about how; mostly use no-data
@@ -353,11 +352,11 @@ def avhrrGAC_io(satellite_name, startdate, enddate, starttime, endtime,
     g10.attrs["pich_error"] = 0.0
     g10.attrs["startepochs"] = starttime_sec1970
     g10.attrs["endepochs"] = endtime_sec1970
-    g10.attrs["platform"] = satellite_name
-    g10.attrs["instrument"] = "avhrr"
+    g10.attrs["platform"] = np.string_(satellite_name)
+    g10.attrs["instrument"] = np.string_("avhrr")
     g10.attrs["orbit_number"] = np.int32(99999)
-    g10.attrs["software"] = "pyGAC"
-    g10.attrs["version"] = "1.0"
+    g10.attrs["software"] = np.string_("pyGAC")
+    g10.attrs["version"] = np.string_("1.0")
 
     fout.close()
 
@@ -398,15 +397,16 @@ def avhrrGAC_io(satellite_name, startdate, enddate, starttime, endtime,
     g5 = fout.require_group("/image5")
     g6 = fout.require_group("/where")
 
-    g1.attrs["description"] = 'Solar zenith angle'
-    g2.attrs["description"] = 'Satellite zenith angle'
-    g3.attrs["description"] = 'Relative satellite-sun azimuth angle'
-    g4.attrs["description"] = 'Solar azimuth angle'
-    g5.attrs["description"] = 'Satellite azimuth angle'
+    g1.attrs["description"] = np.string_('Solar zenith angle')
+    g2.attrs["description"] = np.string_('Satellite zenith angle')
+    g3.attrs["description"] = np.string_(
+        'Relative satellite-sun azimuth angle')
+    g4.attrs["description"] = np.string_('Solar azimuth angle')
+    g5.attrs["description"] = np.string_('Satellite azimuth angle')
     g6.attrs["num_of_pixels"] = np.int32(arrSZA.shape[1])
     g6.attrs["num_of_lines"] = np.int32(arrSZA.shape[0])
-    g6.attrs["xscale"] = np.float32(0.0)  # PPS says 1100.0, is that really
-    g6.attrs["yscale"] = np.float32(0.0)  # true for GAC? /SHq
+    g6.attrs["xscale"] = np.float32(0.0)
+    g6.attrs["yscale"] = np.float32(0.0)
 
     # Attributes in the 'what' groups + 'how'
     g1 = fout.create_group("/image1/what")
@@ -419,98 +419,99 @@ def avhrrGAC_io(satellite_name, startdate, enddate, starttime, endtime,
     g8 = fout.create_group("/what")
     g9 = fout.create_group("/how")
 
-    g1.attrs["product"] = "SUNZ"
-    g1.attrs["quantity"] = "DEG"
-    g1.attrs["dataset_name"] = 'Solar zenith angle'
-    g1.attrs["units"] = 'Deg'
+    g1.attrs["product"] = np.string_("SUNZ")
+    g1.attrs["quantity"] = np.string_("DEG")
+    g1.attrs["dataset_name"] = np.string_('Solar zenith angle')
+    g1.attrs["units"] = np.string_('Deg')
     g1.attrs["gain"] = np.float32(0.01)
     g1.attrs["offset"] = np.float32(0.0)
-    g1.attrs["missingdata"] = np.int32(-32001)
-    g1.attrs["nodata"] = np.int32(-32001)
-    g1.attrs["starttime"] = starttime[0:6]
-    g1.attrs["endtime"] = endtime[0:6]
-    g1.attrs["startdate"] = startdate
-    g1.attrs["enddate"] = enddate
+    g1.attrs["missingdata"] = np.int32(MISSING_DATA)
+    g1.attrs["nodata"] = np.int32(MISSING_DATA)
+    g1.attrs["starttime"] = np.string_(starttime[0:6])
+    g1.attrs["endtime"] = np.string_(endtime[0:6])
+    g1.attrs["startdate"] = np.string_(startdate)
+    g1.attrs["enddate"] = np.string_(enddate)
 
-    g2.attrs["product"] = "SATZ"
-    g2.attrs["quantity"] = "DEG"
-    g2.attrs["dataset_name"] = 'Satellite zenith angle'
-    g2.attrs["units"] = 'Deg'
+    g2.attrs["product"] = np.string_("SATZ")
+    g2.attrs["quantity"] = np.string_("DEG")
+    g2.attrs["dataset_name"] = np.string_('Satellite zenith angle')
+    g2.attrs["units"] = np.string_('Deg')
     g2.attrs["gain"] = np.float32(0.01)
     g2.attrs["offset"] = np.float32(0.0)
-    g2.attrs["missingdata"] = np.int32(-32001)
-    g2.attrs["nodata"] = np.int32(-32001)
-    g2.attrs["starttime"] = starttime[0:6]
-    g2.attrs["endtime"] = endtime[0:6]
-    g2.attrs["startdate"] = startdate
-    g2.attrs["enddate"] = enddate
+    g2.attrs["missingdata"] = np.int32(MISSING_DATA)
+    g2.attrs["nodata"] = np.int32(MISSING_DATA)
+    g2.attrs["starttime"] = np.string_(starttime[0:6])
+    g2.attrs["endtime"] = np.string_(endtime[0:6])
+    g2.attrs["startdate"] = np.string_(startdate)
+    g2.attrs["enddate"] = np.string_(enddate)
 
-    g3.attrs["product"] = "SSAZD"
-    g3.attrs["quantity"] = "DEG"
-    g3.attrs["dataset_name"] = 'Relative satellite-sun azimuth angle'
-    g3.attrs["units"] = 'Deg'
+    g3.attrs["product"] = np.string_("SSAZD")
+    g3.attrs["quantity"] = np.string_("DEG")
+    g3.attrs["dataset_name"] = np.string_( \
+        'Relative satellite-sun azimuth angle')
+    g3.attrs["units"] = np.string_('Deg')
     g3.attrs["gain"] = np.float32(0.01)
     g3.attrs["offset"] = np.float32(0.0)
-    g3.attrs["missingdata"] = np.int32(-32001)
-    g3.attrs["nodata"] = np.int32(-32001)
-    g3.attrs["starttime"] = starttime[0:6]
-    g3.attrs["endtime"] = endtime[0:6]
-    g3.attrs["startdate"] = startdate
-    g3.attrs["enddate"] = enddate
+    g3.attrs["missingdata"] = np.int32(MISSING_DATA)
+    g3.attrs["nodata"] = np.int32(MISSING_DATA)
+    g3.attrs["starttime"] = np.string_(starttime[0:6])
+    g3.attrs["endtime"] = np.string_(endtime[0:6])
+    g3.attrs["startdate"] = np.string_(startdate)
+    g3.attrs["enddate"] = np.string_(enddate)
 
-    g4.attrs["product"] = "SUNA"
-    g4.attrs["quantity"] = "DEG"
-    g4.attrs["dataset_name"] = 'Solar azimuth angle'
-    g4.attrs["units"] = 'Deg'
+    g4.attrs["product"] = np.string_("SUNA")
+    g4.attrs["quantity"] = np.string_("DEG")
+    g4.attrs["dataset_name"] = np.string_('Solar azimuth angle')
+    g4.attrs["units"] = np.string_('Deg')
     g4.attrs["gain"] = np.float32(0.01)
     g4.attrs["offset"] = np.float32(180.0)
-    g4.attrs["missingdata"] = np.int32(-32001)
-    g4.attrs["nodata"] = np.int32(-32001)
-    g4.attrs["starttime"] = starttime[0:6]
-    g4.attrs["endtime"] = endtime[0:6]
-    g4.attrs["startdate"] = startdate
-    g4.attrs["enddate"] = enddate
+    g4.attrs["missingdata"] = np.int32(MISSING_DATA)
+    g4.attrs["nodata"] = np.int32(MISSING_DATA)
+    g4.attrs["starttime"] = np.string_(starttime[0:6])
+    g4.attrs["endtime"] = np.string_(endtime[0:6])
+    g4.attrs["startdate"] = np.string_(startdate)
+    g4.attrs["enddate"] = np.string_(enddate)
 
-    g5.attrs["product"] = "SATA"
-    g5.attrs["quantity"] = "DEG"
-    g5.attrs["dataset_name"] = 'Satellite azimuth angle'
-    g5.attrs["units"] = 'Deg'
+    g5.attrs["product"] = np.string_("SATA")
+    g5.attrs["quantity"] = np.string_("DEG")
+    g5.attrs["dataset_name"] = np.string_('Satellite azimuth angle')
+    g5.attrs["units"] = np.string_('Deg')
     g5.attrs["gain"] = np.float32(0.01)
     g5.attrs["offset"] = np.float32(180.0)
-    g5.attrs["missingdata"] = np.int32(-32001)
-    g5.attrs["nodata"] = np.int32(-32001)
-    g5.attrs["starttime"] = starttime[0:6]
-    g5.attrs["endtime"] = endtime[0:6]
-    g5.attrs["startdate"] = startdate
-    g5.attrs["enddate"] = enddate
+    g5.attrs["missingdata"] = np.int32(MISSING_DATA)
+    g5.attrs["nodata"] = np.int32(MISSING_DATA)
+    g5.attrs["starttime"] = np.string_(starttime[0:6])
+    g5.attrs["endtime"] = np.string_(endtime[0:6])
+    g5.attrs["startdate"] = np.string_(startdate)
+    g5.attrs["enddate"] = np.string_(enddate)
 
-    g6.attrs["dataset_name"] = 'Latitude'
-    g6.attrs["units"] = 'Deg'
+    g6.attrs["dataset_name"] = np.string_('Latitude')
+    g6.attrs["units"] = np.string_('Deg')
     g6.attrs["gain"] = np.float32(0.0010)
     g6.attrs["offset"] = np.float32(0.0)
-    g6.attrs["missingdata"] = np.int32(-32001)
-    g6.attrs["nodata"] = np.int32(-32001)
-    g6.attrs["starttime"] = starttime[0:6]
-    g6.attrs["endtime"] = endtime[0:6]
-    g6.attrs["startdate"] = startdate
-    g6.attrs["enddate"] = enddate
+    g6.attrs["missingdata"] = np.int32(MISSING_DATA_LATLON)
+    g6.attrs["nodata"] = np.int32(MISSING_DATA_LATLON)
+    g6.attrs["starttime"] = np.string_(starttime[0:6])
+    g6.attrs["endtime"] = np.string_(endtime[0:6])
+    g6.attrs["startdate"] = np.string_(startdate)
+    g6.attrs["enddate"] = np.string_(enddate)
 
-    g7.attrs["dataset_name"] = 'Longitude'
-    g7.attrs["units"] = 'Deg'
+    g7.attrs["dataset_name"] = np.string_('Longitude')
+    g7.attrs["units"] = np.string_('Deg')
     g7.attrs["gain"] = np.float32(0.0010)
     g7.attrs["offset"] = np.float32(0.0)
-    g7.attrs["missingdata"] = np.int32(-32001)
-    g7.attrs["nodata"] = np.int32(-32001)
-    g7.attrs["starttime"] = starttime[0:6]
-    g7.attrs["endtime"] = endtime[0:6]
-    g7.attrs["startdate"] = startdate
-    g7.attrs["enddate"] = enddate
+    g7.attrs["missingdata"] = np.int32(MISSING_DATA_LATLON)
+    g7.attrs["nodata"] = np.int32(MISSING_DATA_LATLON)
+    g7.attrs["starttime"] = np.string_(starttime[0:6])
+    g7.attrs["endtime"] = np.string_(endtime[0:6])
+    g7.attrs["startdate"] = np.string_(startdate)
+    g7.attrs["enddate"] = np.string_(enddate)
 
-    g8.attrs["object"] = "SATP"
+    g8.attrs["object"] = np.string_("SATP")
     g8.attrs["sets"] = np.int32(5)
-    g8.attrs["version"] = "H5rad ?.?"
-    g8.attrs["date"] = startdate
-    g8.attrs["time"] = starttime[0:6]
+    g8.attrs["version"] = np.string_("H5rad ?.?")
+    g8.attrs["date"] = np.string_(startdate)
+    g8.attrs["time"] = np.string_(starttime[0:6])
 
     # We do not know much about how; mostly use no-data
     g9.attrs["yaw_error"] = 0.0
@@ -518,11 +519,11 @@ def avhrrGAC_io(satellite_name, startdate, enddate, starttime, endtime,
     g9.attrs["pich_error"] = 0.0
     g9.attrs["startepochs"] = starttime_sec1970
     g9.attrs["endepochs"] = endtime_sec1970
-    g9.attrs["platform"] = satellite_name
-    g9.attrs["instrument"] = "avhrr"
+    g9.attrs["platform"] = np.string_(satellite_name)
+    g9.attrs["instrument"] = np.string_("avhrr")
     g9.attrs["orbit_number"] = np.int32(99999)
-    g9.attrs["software"] = "pyGAC"
-    g9.attrs["version"] = "1.0"
+    g9.attrs["software"] = np.string_("pyGAC")
+    g9.attrs["version"] = np.string_("1.0")
 
     fout.close()
 
@@ -550,18 +551,18 @@ def avhrrGAC_io(satellite_name, startdate, enddate, starttime, endtime,
 
     g1 = fout.require_group("/qual_flags")
 
-    g1.attrs["product"] = "QFLAG"
-    g1.attrs["quantity"] = "INT"
-    g1.attrs["dataset_name"] = 'Scanline quality flags'
-    g1.attrs["units"] = 'None'
+    g1.attrs["product"] = np.string_("QFLAG")
+    g1.attrs["quantity"] = np.string_("INT")
+    g1.attrs["dataset_name"] = np.string_('Scanline quality flags')
+    g1.attrs["units"] = np.string_('None')
     g1.attrs["gain"] = np.int32(1)
     g1.attrs["offset"] = np.int32(0)
-    g1.attrs["missingdata"] = np.int32(-32001)
-    g1.attrs["nodata"] = np.int32(-32001)
-    g1.attrs["starttime"] = starttime[0:6]
-    g1.attrs["endtime"] = endtime[0:6]
-    g1.attrs["startdate"] = startdate
-    g1.attrs["enddate"] = enddate
+    g1.attrs["missingdata"] = np.int32(MISSING_DATA)
+    g1.attrs["nodata"] = np.int32(MISSING_DATA)
+    g1.attrs["starttime"] = np.string_(starttime[0:6])
+    g1.attrs["endtime"] = np.string_(endtime[0:6])
+    g1.attrs["startdate"] = np.string_(startdate)
+    g1.attrs["enddate"] = np.string_(enddate)
     g1.attrs["total_number_of_data_records"] = total_number_of_scan_lines
     g1.attrs["last_scan_line_number"] = last_scan_line_number 
 
