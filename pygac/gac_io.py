@@ -349,7 +349,7 @@ def avhrrGAC_io(satellite_name, startdate, enddate, starttime, endtime,
     # We do not know much about how; mostly use no-data
     g10.attrs["yaw_error"] = 0.0
     g10.attrs["roll_error"] = 0.0
-    g10.attrs["pich_error"] = 0.0
+    g10.attrs["pitch_error"] = 0.0
     g10.attrs["startepochs"] = starttime_sec1970
     g10.attrs["endepochs"] = endtime_sec1970
     g10.attrs["platform"] = np.string_(satellite_name)
@@ -516,7 +516,7 @@ def avhrrGAC_io(satellite_name, startdate, enddate, starttime, endtime,
     # We do not know much about how; mostly use no-data
     g9.attrs["yaw_error"] = 0.0
     g9.attrs["roll_error"] = 0.0
-    g9.attrs["pich_error"] = 0.0
+    g9.attrs["pitch_error"] = 0.0
     g9.attrs["startepochs"] = starttime_sec1970
     g9.attrs["endepochs"] = endtime_sec1970
     g9.attrs["platform"] = np.string_(satellite_name)
