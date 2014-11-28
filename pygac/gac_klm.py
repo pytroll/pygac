@@ -564,8 +564,8 @@ def main(filename, start_line, end_line):
     reader.get_lonlat()
     channels = reader.get_calibrated_channels()
     sat_azi, sat_zen, sun_azi, sun_zen, rel_azi = reader.get_angles()
-
-    
+  
+    """ 
     year = reader.head["start_of_data_set_year"]
     jday = reader.head["start_of_data_set_day_of_year"]
     msec = reader.head["start_of_data_set_utc_time_of_day"]
@@ -581,6 +581,14 @@ def main(filename, start_line, end_line):
                   + (jday - 1).astype('timedelta64[D]')).astype('datetime64[ms]')
                   + msec.astype('timedelta64[ms]'))
     xtimes2 = xutcs.astype(datetime.datetime)
+    """
+
+    xtimes1 = reader.utcs[int(start_line)].astype(datetime.datetime)
+    if int(end_line)==0:
+    	xtimes2 = reader.utcs[-1].astype(datetime.datetime)
+    else:
+	xtimes2 = reader.utcs[int(end_line)].astype(datetime.datetime)
+
 
     mask, qual_flags = reader.get_corrupt_mask()
     gac_io.save_gac(reader.spacecraft_name,

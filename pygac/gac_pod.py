@@ -289,7 +289,8 @@ def main(filename,start_line,end_line):
 
     mask, qual_flags = reader.get_corrupt_mask()
   
-
+    """
+    # Reading time from gac file header
     year = reader.head["start_time"][0] >> 9
     year = np.where(year > 75, year + 1900, year + 2000)
     jday = (reader.head["start_time"][0] & 0x1FF)
@@ -309,6 +310,15 @@ def main(filename,start_line,end_line):
                           + (jday - 1).astype('timedelta64[D]')).astype('datetime64[ms]')
                          + msec.astype('timedelta64[ms]'))
     xtimes2 = xutcs.astype(datetime.datetime)
+    """
+
+    # Reading time from the body of the gac file 
+    xtimes1 = reader.utcs[int(start_line)].astype(datetime.datetime)
+    if int(end_line)==0:
+        xtimes2 = reader.utcs[-1].astype(datetime.datetime)
+    else:
+        xtimes2 = reader.utcs[int(end_line)].astype(datetime.datetime)
+
  
     gac_io.save_gac(reader.spacecraft_name,
                     xtimes1, xtimes2,
