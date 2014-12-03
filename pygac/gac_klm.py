@@ -591,6 +591,10 @@ def main(filename, start_line, end_line):
 
 
     mask, qual_flags = reader.get_corrupt_mask()
+    if (np.all(mask)):
+        print "ERROR: All data is masked out. Stop processing"
+        raise ValueError("All data is masked out.")
+    
     gac_io.save_gac(reader.spacecraft_name,
                     xtimes1, xtimes2,
                     reader.lats, reader.lons,

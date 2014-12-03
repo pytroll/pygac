@@ -1,3 +1,4 @@
+
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
@@ -73,5 +74,8 @@ if __name__ == "__main__":
 	sys.exit(1)
 
     reader = check_file_version(filename)
-    reader(filename, start_line, end_line)
+    try:
+        reader(filename, start_line, end_line)
+    except ValueError:
+        print "Value error"
 
