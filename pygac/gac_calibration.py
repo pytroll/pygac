@@ -370,9 +370,9 @@ def calibrate_solar(counts, chan, year, jday, spacecraft, corr=1):
                            cal.ch[chan] * t * t)) / 100.0
     if cal.c_s is not None:
         return np.where(counts <= cal.c_s[chan],
-                        (counts - cal.c_dark[chan]) * stl,
-                        (cal.c_s[chan] - cal.c_dark[chan]) * stl
-                        + (counts - cal.c_s[chan]) * sth)
+                        (counts - cal.c_dark[chan]) * stl * corr,
+                        ((cal.c_s[chan] - cal.c_dark[chan]) * stl
+                        + (counts - cal.c_s[chan]) * sth) * corr)
     else:
         return (counts - cal.c_dark[chan]) * stl * corr
 
