@@ -474,6 +474,7 @@ class KLMReader(GACReader):
                         7: 'noaa18',
                         8: 'noaa19',
                         12: 'metopa',
+                        11: 'metopb',
                         }
     spacecrafts_orbital = {4: 'noaa 15',
                            2: 'noaa 16',
@@ -481,6 +482,7 @@ class KLMReader(GACReader):
                            7: 'noaa 18',
                            8: 'noaa 19',
                            12: 'metop 02',
+                           11: 'metop 01',
                            }
 
     def read(self, filename):
