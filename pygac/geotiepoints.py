@@ -141,6 +141,28 @@ def Gac_Lat_Lon_Interpolator(lons_subset,lats_subset):
 
     return satint.interpolate()
     
+def Lac_Lat_Lon_Interpolator(lons_subset,lats_subset):
+    """ interpolates lat-lon values in the AVHRR LAC data from every 40th pixel to all pixels
+        Each LAC row has total 2048 pixels. But lat-lon values are provided for every 40th pixel starting from pixel 25 and ending at pixel 2025 """
+
+    #cols_subset = np.arange(0, 404, 8)
+    #cols_full = np.arange(405)
+    cols_subset = np.arange(24, 2025, 40)
+    cols_full = np.arange(2048)
+    lines = lats_subset.shape[0]
+    rows_subset = np.arange(lines)
+    rows_full = np.arange(lines)
+
+    along_track_order = 1
+    cross_track_order = 3
+
+    satint = SatelliteInterpolator((lons_subset, lats_subset),
+                                   (rows_subset, cols_subset),
+                                   (rows_full, cols_full),
+                                   along_track_order,
+                                   cross_track_order)
+
+    return satint.interpolate()
 
 # NOTE: extrapolate on a sphere ?
 def _linear_extrapolate(pos, data, xev):
