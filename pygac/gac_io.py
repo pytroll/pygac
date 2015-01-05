@@ -96,6 +96,8 @@ def save_gac(satellite_name,
     if switch is not None:
         ref3[switch == 0] = MISSING_DATA
         bt3[switch == 1] = MISSING_DATA
+        ref3[switch == 2] = MISSING_DATA
+        bt3[switch == 2] = MISSING_DATA
 
     startdate = start.strftime("%Y%m%d")
     starttime = start.strftime("%H%M%S%f")[:-5]
