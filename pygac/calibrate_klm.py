@@ -196,6 +196,8 @@ def calibrate_solar(counts, year, jday, spacecraft_id, channel3_switch, corr, nu
         bh3 = 4.11
         ch3 = 0.00
         Ldate = 2006.77
+        # metop-01 is missing here. But as this code is never called, I do
+        # not add it for now. /Sara Hornquist 2015-01-07
     else:
         print "wrong satellite id - exit"
         sys.exit(0)
