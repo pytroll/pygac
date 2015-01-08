@@ -428,6 +428,20 @@ def calibrate_thermal(counts, prt, ict, space, line_numbers, channel, spacecraft
                             (nonzeros).nonzero()[0],
                             tprt[nonzeros])
 
+    if channel==3:
+        zeros = ict < 100
+        nonzeros = np.logical_not(zeros)
+
+        ict[zeros] = np.interp((zeros).nonzero()[0],
+                               (nonzeros).nonzero()[0],
+                               ict[nonzeros])
+        zeros = space < 100
+        nonzeros = np.logical_not(zeros)
+        
+        space[zeros] = np.interp((zeros).nonzero()[0],
+                                 (nonzeros).nonzero()[0],
+                                 space[nonzeros])
+
     # convolving and smoothing PRT, ICT and SPACE values
     if lines > 51:
         wlength = 51
