@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2014 Martin Raspaud, Abhay Devasthale
+# Copyright (c) 2014, 2015 Martin Raspaud, Abhay Devasthale
 
 # Author(s):
 
@@ -26,108 +26,108 @@
 import numpy as np
 
 coeffs = {
-	'metopb': {'ah': np.array([0.179, 0.174, 0.247]),
-                'al': np.array([0.060, 0.058, 0.035]),
-                'bh': np.array([-7.442, 10.222, -27.970]),
-                'bl': np.array([-7.442, 10.222, -27.970]),                
-                'ch': np.array([2.828, -3.271, 10.925]),
-                'cl': np.array([2.828, -3.271, 10.925]),
-		'c_dark': np.array([40.43, 39.75, 41.8]),
-                'c_s': np.array([501.0, 500.0, 502.0]),
-                'l_date': 2012.71,
-                'd': np.array([[0, 0, 0, 0, 0],  # reset prt
-                               [276.6194, 0.050919, 1.471E-06, 0.0, 0.0],
-                               [276.6511, 0.050892, 1.489E-06, 0.0, 0.0],
-                               [276.6597, 0.050845, 1.521E-06, 0.0, 0.0],
-                               [276.3685, 0.050992, 1.482E-06, 0.0, 0.0]]),
-                'n_s': np.array([0.0, -4.98, -3.40]),
-                'c_wn': np.array([2687.0392, 927.27630, 837.80762]),
-                'a': np.array([2.0653147, 0.56503332, 0.38472766]),
-                'b': np.array([1.0 / 1.0034418,
-                               1.0 / 1.0015090,
-                               1.0 / 1.0011264]),
-                'b0': np.array([0.0, 5.44, 3.84]),
-                'b1': np.array([1 - 0.0, 1 - 0.10152, 1 - 0.06249]),
-                'b2': np.array([0.0, 0.00046964, 0.00025239]),
-                },
+    'metopb': {'ah': np.array([0.179, 0.174, 0.247]),
+               'al': np.array([0.060, 0.058, 0.035]),
+               'bh': np.array([-7.442, 10.222, -27.970]),
+               'bl': np.array([-7.442, 10.222, -27.970]),
+               'ch': np.array([2.828, -3.271, 10.925]),
+               'cl': np.array([2.828, -3.271, 10.925]),
+               'c_dark': np.array([40.43, 39.75, 41.8]),
+               'c_s': np.array([501.0, 500.0, 502.0]),
+               'l_date': 2012.71,
+               'd': np.array([[0, 0, 0, 0, 0],  # reset prt
+                              [276.6194, 0.050919, 1.471E-06, 0.0, 0.0],
+                              [276.6511, 0.050892, 1.489E-06, 0.0, 0.0],
+                              [276.6597, 0.050845, 1.521E-06, 0.0, 0.0],
+                              [276.3685, 0.050992, 1.482E-06, 0.0, 0.0]]),
+               'n_s': np.array([0.0, -4.98, -3.40]),
+               'c_wn': np.array([2687.0392, 927.27630, 837.80762]),
+               'a': np.array([2.0653147, 0.56503332, 0.38472766]),
+               'b': np.array([1.0 / 1.0034418,
+                              1.0 / 1.0015090,
+                              1.0 / 1.0011264]),
+               'b0': np.array([0.0, 5.44, 3.84]),
+               'b1': np.array([1 - 0.0, 1 - 0.10152, 1 - 0.06249]),
+               'b2': np.array([0.0, 0.00046964, 0.00025239]),
+               },
     'metopa': {'ah': np.array([0.167, 0.199, 0.220]),
-                'al': np.array([0.056, 0.066, 0.031]),
-                'bh': np.array([0.906, 0.814, 2.020]),
-                'bl': np.array([0.906, 0.814, 2.020]),                
-                'ch': np.array([-0.024, 0.025, -0.115]),
-                'cl': np.array([-0.024, 0.025, -0.115]),
-		'c_dark': np.array([40.43, 39.75, 41.8]),
-                'c_s': np.array([501.0, 500.0, 502.0]),
-                'l_date': 2006.80,
-                'd': np.array([[0, 0, 0, 0, 0],  # reset prt
-                               [276.6194, 0.050919, 1.471E-06, 0.0, 0.0],
-                               [276.6511, 0.050892, 1.489E-06, 0.0, 0.0],
-                               [276.6597, 0.050845, 1.521E-06, 0.0, 0.0],
-                               [276.3685, 0.050992, 1.482E-06, 0.0, 0.0]]),
-                'n_s': np.array([0.0, -4.98, -3.40]),
-                'c_wn': np.array([2687.0392, 927.27630, 837.80762]),
-                'a': np.array([2.0653147, 0.56503332, 0.38472766]),
-                'b': np.array([1.0 / 1.0034418,
-                               1.0 / 1.0015090,
-                               1.0 / 1.0011264]),
-                'b0': np.array([0.0, 5.44, 3.84]),
-                'b1': np.array([1 - 0.0, 1 - 0.10152, 1 - 0.06249]),
-                'b2': np.array([0.0, 0.00046964, 0.00025239]),
-                },
+               'al': np.array([0.056, 0.066, 0.031]),
+               'bh': np.array([0.906, 0.814, 2.020]),
+               'bl': np.array([0.906, 0.814, 2.020]),
+               'ch': np.array([-0.024, 0.025, -0.115]),
+               'cl': np.array([-0.024, 0.025, -0.115]),
+               'c_dark': np.array([40.43, 39.75, 41.8]),
+               'c_s': np.array([501.0, 500.0, 502.0]),
+               'l_date': 2006.80,
+               'd': np.array([[0, 0, 0, 0, 0],  # reset prt
+                              [276.6194, 0.050919, 1.471E-06, 0.0, 0.0],
+                              [276.6511, 0.050892, 1.489E-06, 0.0, 0.0],
+                              [276.6597, 0.050845, 1.521E-06, 0.0, 0.0],
+                              [276.3685, 0.050992, 1.482E-06, 0.0, 0.0]]),
+               'n_s': np.array([0.0, -4.98, -3.40]),
+               'c_wn': np.array([2687.0392, 927.27630, 837.80762]),
+               'a': np.array([2.0653147, 0.56503332, 0.38472766]),
+               'b': np.array([1.0 / 1.0034418,
+                              1.0 / 1.0015090,
+                              1.0 / 1.0011264]),
+               'b0': np.array([0.0, 5.44, 3.84]),
+               'b1': np.array([1 - 0.0, 1 - 0.10152, 1 - 0.06249]),
+               'b2': np.array([0.0, 0.00046964, 0.00025239]),
+               },
     'noaa7': {'ah': np.array([0.114, 0.126, 0.0]),
-               'al': np.array([0.114, 0.126, 0.0]),
-               'bh': np.array([5.492, 6.801, 0.0]),
-               'bl': np.array([5.492, 6.801, 0.0]),               
-               'ch': np.array([-0.585, -0.761, 0.0]),
-               'cl': np.array([-0.585, -0.761, 0.0]),
-	       'c_dark': np.array([36.0, 37.0, 39.0]),
-               'l_date': 1981.4764,
-               'd': np.array([[0, 0, 0, 0, 0],  # reset prt
-                              [277.099, 5.048E-2, 2.823E-6, 0, 0],
-                              [276.734, 5.069E-2, 2.493E-6, 0, 0],
-                              [276.876, 5.148E-2, 1.040E-6, 0, 0],
-                              [276.160, 5.128E-2, 1.414E-6, 0, 0]]),
-               'n_s': np.array([0.0, -5.16, -4.28]),
-               'c_wn': np.array([2684.5233, 928.23757, 841.52137]),
-               'a': np.array([1.94882690, 0.52807997, 0.40557027]),
-               'b': np.array([1.0 / 1.0029260,
-                              1.0 / 1.0014039,
-                              1.0 / 1.0011789]),
-               'b1': np.array([1.0, 0.89783, 0.93683]),
-               'b2': np.array([0.0, 0.0004819, 0.0002425]),
-               'b0': np.array([0.0, 5.25, 3.93]),
-               },
+              'al': np.array([0.114, 0.126, 0.0]),
+              'bh': np.array([5.492, 6.801, 0.0]),
+              'bl': np.array([5.492, 6.801, 0.0]),
+              'ch': np.array([-0.585, -0.761, 0.0]),
+              'cl': np.array([-0.585, -0.761, 0.0]),
+              'c_dark': np.array([36.0, 37.0, 39.0]),
+              'l_date': 1981.4764,
+              'd': np.array([[0, 0, 0, 0, 0],  # reset prt
+                             [277.099, 5.048E-2, 2.823E-6, 0, 0],
+                             [276.734, 5.069E-2, 2.493E-6, 0, 0],
+                             [276.876, 5.148E-2, 1.040E-6, 0, 0],
+                             [276.160, 5.128E-2, 1.414E-6, 0, 0]]),
+              'n_s': np.array([0.0, -5.16, -4.28]),
+              'c_wn': np.array([2684.5233, 928.23757, 841.52137]),
+              'a': np.array([1.94882690, 0.52807997, 0.40557027]),
+              'b': np.array([1.0 / 1.0029260,
+                             1.0 / 1.0014039,
+                             1.0 / 1.0011789]),
+              'b1': np.array([1.0, 0.89783, 0.93683]),
+              'b2': np.array([0.0, 0.0004819, 0.0002425]),
+              'b0': np.array([0.0, 5.25, 3.93]),
+              },
     'noaa9': {'ah': np.array([0.108, 0.120, 0.0]),
-               'al': np.array([0.108, 0.120, 0.0]),
-               'bh': np.array([6.657, 5.340, 0.0]),
-               'bl': np.array([6.657, 5.340, 0.0]),               
-               'ch': np.array([-0.082, -0.473, 0.0]),
-               'cl': np.array([-0.082, -0.473, 0.0]),
-	       'c_dark': np.array([38.0, 40.0, 38.0]),
-               'l_date': 1984.948,
-               'd': np.array([[0, 0, 0, 0, 0],  # reset prt
-                              [277.018000, 0.051280, 0.0, 0, 0],
-                              [276.750000, 0.051280, 0.0, 0, 0],
-                              [276.862000, 0.051280, 0.0, 0, 0],
-                              [276.546000, 0.051280, 0.0, 0, 0]]),
+              'al': np.array([0.108, 0.120, 0.0]),
+              'bh': np.array([6.657, 5.340, 0.0]),
+              'bl': np.array([6.657, 5.340, 0.0]),
+              'ch': np.array([-0.082, -0.473, 0.0]),
+              'cl': np.array([-0.082, -0.473, 0.0]),
+              'c_dark': np.array([38.0, 40.0, 38.0]),
+              'l_date': 1984.948,
+              'd': np.array([[0, 0, 0, 0, 0],  # reset prt
+                             [277.018000, 0.051280, 0.0, 0, 0],
+                             [276.750000, 0.051280, 0.0, 0, 0],
+                             [276.862000, 0.051280, 0.0, 0, 0],
+                             [276.546000, 0.051280, 0.0, 0, 0]]),
 
-               'n_s': np.array([0.0, -5.530, -3.06]),
-               'c_wn': np.array([2690.0451, 930.50230, 845.75000]),
-               'a': np.array([1.8832662, 0.5115335, 0.3882150]),
-               'b': np.array([1.0 / 1.0028978,
-                              1.0 / 1.0013570,
-                              1.0 / 1.0011210]),
-               'b1': np.array([1.0, 0.88643, 0.95311]),
-               'b2': np.array([0.0, 0.0006033, 0.0002198]),
-               'b0': np.array([0.0, 5.24, 2.42]),
-               },
+              'n_s': np.array([0.0, -5.530, -3.06]),
+              'c_wn': np.array([2690.0451, 930.50230, 845.75000]),
+              'a': np.array([1.8832662, 0.5115335, 0.3882150]),
+              'b': np.array([1.0 / 1.0028978,
+                             1.0 / 1.0013570,
+                             1.0 / 1.0011210]),
+              'b1': np.array([1.0, 0.88643, 0.95311]),
+              'b2': np.array([0.0, 0.0006033, 0.0002198]),
+              'b0': np.array([0.0, 5.24, 2.42]),
+              },
     'noaa10': {'ah': np.array([0.103, 0.134, 0.0]),
                'al': np.array([0.103, 0.134, 0.0]),
                'bh': np.array([12.183, 3.679, 0.0]),
-               'bl': np.array([12.183, 3.679, 0.0]),               
+               'bl': np.array([12.183, 3.679, 0.0]),
                'ch': np.array([-2.010, -0.270, 0.0]),
                'cl': np.array([-2.010, -0.270, 0.0]),
-     	       'c_dark': np.array([39.44, 39.40, 37.51]),
+               'c_dark': np.array([39.44, 39.40, 37.51]),
                'l_date': 1986.712,
                'd': np.array([[0, 0, 0, 0, 0],  # reset prt
                               [276.659, 0.051275, 1.363e-06, 0, 0],
@@ -147,10 +147,10 @@ coeffs = {
     'noaa11': {'ah': np.array([0.112, 0.118, 0.0]),
                'al': np.array([0.112, 0.118, 0.0]),
                'bh': np.array([-0.876, -0.238, 0.0]),
-               'bl': np.array([-0.876, -0.238, 0.0]),              
+               'bl': np.array([-0.876, -0.238, 0.0]),
                'ch': np.array([0.270, 0.225, 0.0]),
                'cl': np.array([0.270, 0.225, 0.0]),
-	       'c_dark': np.array([40.0, 40.0, 40.0]),
+               'c_dark': np.array([40.0, 40.0, 40.0]),
                'l_date': 1988.732,
                'd': np.array([[0, 0, 0, 0, 0],  # reset prt
                               [276.597, 0.051275, 1.363e-06, 0, 0],
@@ -170,10 +170,10 @@ coeffs = {
     'noaa12': {'ah': np.array([0.129, 0.151, 0.0]),
                'al': np.array([0.129, 0.151, 0.0]),
                'bh': np.array([1.593, 2.958, 0.0]),
-               'bl': np.array([1.593, 2.958, 0.0]),               
+               'bl': np.array([1.593, 2.958, 0.0]),
                'ch': np.array([-0.130, -0.255, 0.0]),
                'cl': np.array([-0.130, -0.255, 0.0]),
-	       'c_dark': np.array([41.0, 40.0, 40.0]),
+               'c_dark': np.array([41.0, 40.0, 40.0]),
                'l_date': 1991.3669,
                'd': np.array([[0, 0, 0, 0, 0],  # reset prt
                               [276.597, 0.051275, 1.363e-06, 0, 0],
@@ -193,10 +193,10 @@ coeffs = {
     'noaa14': {'ah': np.array([0.118, 0.150, 0.0]),
                'al': np.array([0.118, 0.150, 0.0]),
                'bh': np.array([5.493, 2.349, 0.0]),
-               'bl': np.array([5.493, 2.349, 0.0]),               
+               'bl': np.array([5.493, 2.349, 0.0]),
                'ch': np.array([-0.549, -0.044, 0.0]),
                'cl': np.array([-0.549, -0.044, 0.0]),
-       	       'c_dark': np.array([41.0, 41.0, 39.0]),
+               'c_dark': np.array([41.0, 41.0, 39.0]),
                'l_date': 1994.997,
                'd': np.array([[0, 0, 0, 0, 0],  # reset prt
                               [276.597, 0.051275, 1.363e-06, 0, 0],
@@ -213,10 +213,10 @@ coeffs = {
     'noaa15': {'ah': np.array([0.184, 0.209, 0.0]),
                'al': np.array([0.061, 0.070, 0.0]),
                'bh': np.array([-0.633, 0.248, 0.0]),
-               'bl': np.array([-0.633, 0.248, 0.0]),               
+               'bl': np.array([-0.633, 0.248, 0.0]),
                'ch': np.array([0.031, -0.010, 0.0]),
                'cl': np.array([0.031, -0.010, 0.0]),
-	       'c_dark': np.array([39.0, 40.0, 39.0]),
+               'c_dark': np.array([39.0, 40.0, 39.0]),
                'c_s': np.array([500.0, 500.0, 500.0]),
                'l_date': 1998.3641,
                'd': np.array([[0, 0, 0, 0, 0],  # reset prt
@@ -237,10 +237,10 @@ coeffs = {
     'noaa16': {'ah': np.array([0.169, 0.175, 0.211]),
                'al': np.array([0.056, 0.058, 0.030]),
                'bh': np.array([0.427, 2.392, -12.115]),
-               'bl': np.array([0.427, 2.392, -12.115]),               
+               'bl': np.array([0.427, 2.392, -12.115]),
                'ch': np.array([-0.003, -0.269, 4.462]),
                'cl': np.array([-0.003, -0.269, 4.462]),
-	       'c_dark': np.array([39.3, 38.9, 38.4]),
+               'c_dark': np.array([39.3, 38.9, 38.4]),
                'c_s': np.array([498.96, 500.17, 499.43]),
                'l_date': 2000.7228,
                'd': np.array([[0, 0, 0, 0, 0],  # reset prt
@@ -265,10 +265,10 @@ coeffs = {
     'noaa17': {'ah': np.array([0.176, 0.199, 0.217]),
                'al': np.array([0.059, 0.066, 0.031]),
                'bh': np.array([0.199, 3.635, 2.040]),
-               'bl': np.array([0.199, 3.635, 2.040]),               
+               'bl': np.array([0.199, 3.635, 2.040]),
                'ch': np.array([0.093, -0.322, -0.123]),
                'cl': np.array([0.093, -0.322, -0.123]),
-       	       'c_dark': np.array([39.99, 39.09, 42.09]),
+               'c_dark': np.array([39.99, 39.09, 42.09]),
                'c_s': np.array([501.12, 500.73, 501.37]),
                'l_date': 2002.47912,
                'd': np.array([[0, 0, 0, 0, 0],  # reset prt
@@ -289,10 +289,10 @@ coeffs = {
     'noaa18': {'ah': np.array([0.167, 0.186, 0.0]),
                'al': np.array([0.056, 0.062, 0.0]),
                'bh': np.array([2.058, 2.655, 0.0]),
-               'bl': np.array([2.058, 2.655, 0.0]),               
+               'bl': np.array([2.058, 2.655, 0.0]),
                'ch': np.array([-0.121, -0.155, 0.0]),
                'cl': np.array([-0.121, -0.155, 0.0]),
-	       'c_dark': np.array([39.44, 39.40, 37.51]),
+               'c_dark': np.array([39.44, 39.40, 37.51]),
                'c_s': np.array([500.54, 500.40, 500.56]),
                'l_date': 2005.38356,
                'd': np.array([[0, 0, 0, 0, 0],  # reset prt
@@ -313,10 +313,10 @@ coeffs = {
     'noaa19': {'ah': np.array([0.162, 0.182, 0.0]),
                'al': np.array([0.054, 0.061, 0.0]),
                'bh': np.array([2.247, 1.693, 0.0]),
-               'bl': np.array([2.247, 1.693, 0.0]),               
+               'bl': np.array([2.247, 1.693, 0.0]),
                'ch': np.array([-0.317, -0.132, 0.0]),
                'cl': np.array([-0.317, -0.132, 0.0]),
-	       'c_dark': np.array([38.8, 39.00, 39.4]),
+               'c_dark': np.array([38.8, 39.00, 39.4]),
                'c_s': np.array([496.43, 500.37, 496.11]),
                'l_date': 2009.101,
                'd': np.array([[0, 0, 0, 0, 0],  # reset prt
@@ -372,7 +372,7 @@ def calibrate_solar(counts, chan, year, jday, spacecraft, corr=1):
         return np.where(counts <= cal.c_s[chan],
                         (counts - cal.c_dark[chan]) * stl * corr,
                         ((cal.c_s[chan] - cal.c_dark[chan]) * stl
-                        + (counts - cal.c_s[chan]) * sth) * corr)
+                         + (counts - cal.c_s[chan]) * sth) * corr)
     else:
         return (counts - cal.c_dark[chan]) * stl * corr
 
@@ -395,25 +395,25 @@ def calibrate_thermal(counts, prt, ict, space, line_numbers, channel, spacecraft
 
     iprt = (line_numbers - line_numbers[0] + 5 - offset) % 5
 
-    ifix=np.where(np.logical_and(iprt==1, prt<50));
+    ifix = np.where(np.logical_and(iprt == 1, prt < 50))
     if ifix:
-	inofix=np.where(np.logical_and(iprt==1, prt>50));
-	prt[ifix]=np.interp(ifix[0],inofix[0],prt[inofix]);
+        inofix = np.where(np.logical_and(iprt == 1, prt > 50))
+        prt[ifix] = np.interp(ifix[0], inofix[0], prt[inofix])
 
-    ifix=np.where(np.logical_and(iprt==2, prt<50));
+    ifix = np.where(np.logical_and(iprt == 2, prt < 50))
     if ifix:
-	inofix=np.where(np.logical_and(iprt==2, prt>50));
-	prt[ifix]=np.interp(ifix[0],inofix[0],prt[inofix]);
+        inofix = np.where(np.logical_and(iprt == 2, prt > 50))
+        prt[ifix] = np.interp(ifix[0], inofix[0], prt[inofix])
 
-    ifix=np.where(np.logical_and(iprt==3, prt<50));
+    ifix = np.where(np.logical_and(iprt == 3, prt < 50))
     if ifix:
-	inofix=np.where(np.logical_and(iprt==3, prt>50));
-	prt[ifix]=np.interp(ifix[0],inofix[0],prt[inofix]);
+        inofix = np.where(np.logical_and(iprt == 3, prt > 50))
+        prt[ifix] = np.interp(ifix[0], inofix[0], prt[inofix])
 
-    ifix=np.where(np.logical_and(iprt==4, prt<50));
+    ifix = np.where(np.logical_and(iprt == 4, prt < 50))
     if ifix:
-	inofix=np.where(np.logical_and(iprt==4, prt>50));
-	prt[ifix]=np.interp(ifix[0],inofix[0],prt[inofix]);
+        inofix = np.where(np.logical_and(iprt == 4, prt > 50))
+        prt[ifix] = np.interp(ifix[0], inofix[0], prt[inofix])
 
     tprt = (cal.d[iprt, 0] + prt *
             (cal.d[iprt, 1] + prt *
@@ -428,7 +428,7 @@ def calibrate_thermal(counts, prt, ict, space, line_numbers, channel, spacecraft
                             (nonzeros).nonzero()[0],
                             tprt[nonzeros])
 
-    if channel==3:
+    if channel == 3:
         zeros = ict < 100
         nonzeros = np.logical_not(zeros)
 
@@ -437,7 +437,7 @@ def calibrate_thermal(counts, prt, ict, space, line_numbers, channel, spacecraft
                                ict[nonzeros])
         zeros = space < 100
         nonzeros = np.logical_not(zeros)
-        
+
         space[zeros] = np.interp((zeros).nonzero()[0],
                                  (nonzeros).nonzero()[0],
                                  space[nonzeros])
@@ -447,7 +447,6 @@ def calibrate_thermal(counts, prt, ict, space, line_numbers, channel, spacecraft
         wlength = 51
     else:
         wlength = 3
-
 
     weighting_function = np.ones(wlength, dtype=float) / wlength
     tprt_convolved = np.convolve(tprt, weighting_function, 'same')
@@ -484,7 +483,7 @@ def calibrate_thermal(counts, prt, ict, space, line_numbers, channel, spacecraft
            / np.log(1.0 + nBB_num / Ne))
     bt = (tsE - cal.a[chan]) / cal.b[chan]
 
-    if chan==0:
-	bt = np.where((counts-new_space)>=0, 0.0, bt)
+    if chan == 0:
+        bt = np.where((counts - new_space) >= 0, 0.0, bt)
 
     return bt
