@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2014 Martin Raspaud
+# Copyright (c) 2014, 2015 Martin Raspaud
 
 # Author(s):
 
@@ -98,9 +98,12 @@ class GACReader(object):
 
         t = utcs[0].astype(datetime.datetime)
 
-        rpy = [self.head["roll_fixed_error_correction"],
-               self.head["pitch_fixed_error_correction"],
-               self.head["yaw_fixed_error_correction"]]
+        if "roll_fixed_error_correction" in self.head.dtype.fields:
+            rpy = [self.head["roll_fixed_error_correction"],
+                   self.head["pitch_fixed_error_correction"],
+                   self.head["yaw_fixed_error_correction"]]
+        else:
+            rpy = [0, 0, 0]
 
         LOG.info("Using rpy: %s", str(rpy))
 

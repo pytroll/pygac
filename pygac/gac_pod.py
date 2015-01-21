@@ -2,7 +2,7 @@
 
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2014 Abhay Devasthale
+# Copyright (c) 2014, 2015 Abhay Devasthale
 
 # Author(s):
 
@@ -44,45 +44,102 @@ from pygac import gac_io
 import logging
 LOG = logging.getLogger(__name__)
 
-header = np.dtype([("noaa_spacecraft_identification_code", ">u1"),
-                   ("data_type_code", ">u1"),
-                   ("start_time", ">u2", (3, )),
-                   ("number_of_scans", ">u2"),
-                   ("end_time", ">u2", (3, )),
-                   ("processing_block_id", "S7"),
-                   ("ramp_auto_calibration", ">u1"),
-                   ("number_of_data_gaps", ">u2"),
-                   ("dacs_quality", ">u1", (6, )),
-                   ("calibration_parameter_id", ">i2"),
-                   ("dacs_status", ">u1"),
-                   ("reserved_for_mounting_and_fixed_attitude_correction_indicator",
-                    ">i1"),
-                   ("nadir_earth_location_tolerance", ">i1"),
-                   ("spare1", ">i1"),
-                   ("start_of_data_set_year", ">u2"),
-                   ("data_set_name", "S44"),
-                   ("year_of_epoch", ">u2"),
-                   ("julian_day_of_epoch", ">u2"),
-                   ("millisecond_utc_epoch_time_of_day", ">u4"),
-                   # Keplerian orbital elements
-                   ("semi_major_axis", ">u4"),
-                   ("eccentricity", ">u4"),
-                   ("inclination", ">u4"),
-                   ("argument_of_perigee", ">u4"),
-                   ("right_ascension", ">u4"),
-                   ("mean_anomaly", ">u4"),
-                   # cartesian inertial true date of elements
-                   ("x_component_of_position_vector", ">u4"),
-                   ("y_component_of_position_vector", ">u4"),
-                   ("z_component_of_position_vector", ">u4"),
-                   ("x_dot_component_of_position_vector", ">u4"),
-                   ("y_dot_component_of_position_vector", ">u4"),
-                   ("z_dot_component_of_position_vector", ">u4"),
-                   # future use
-                   ("yaw_fixed_error_correction", ">u2"),
-                   ("roll_fixed_error_correction", ">u2"),
-                   ("pitch_fixed_error_correction", ">u2"),
-                   ("spare2", ">u2", (1537, ))])
+# common header
+header0 = np.dtype([("noaa_spacecraft_identification_code", ">u1"),
+                    ("data_type_code", ">u1"),
+                    ("start_time", ">u2", (3, )),
+                    ("number_of_scans", ">u2"),
+                    ("end_time", ">u2", (3, ))])
+
+
+# until 8 september 1992
+header1 = np.dtype([("noaa_spacecraft_identification_code", ">u1"),
+                    ("data_type_code", ">u1"),
+                    ("start_time", ">u2", (3, )),
+                    ("number_of_scans", ">u2"),
+                    ("end_time", ">u2", (3, )),
+                    ("processing_block_id", "S7"),
+                    ("ramp_auto_calibration", ">u1"),
+                    ("number_of_data_gaps", ">u2"),
+                    ("dacs_quality", ">u1", (6, )),
+                    ("calibration_parameter_id", ">i2"),
+                    ("dacs_status", ">u1"),
+                    ("spare1", ">i1", (5, )),
+                    ("data_set_name", "S44"),
+                    ("spare2", ">u2", (1568, ))])
+
+header2 = np.dtype([("noaa_spacecraft_identification_code", ">u1"),
+                    ("data_type_code", ">u1"),
+                    ("start_time", ">u2", (3, )),
+                    ("number_of_scans", ">u2"),
+                    ("end_time", ">u2", (3, )),
+                    ("processing_block_id", "S7"),
+                    ("ramp_auto_calibration", ">u1"),
+                    ("number_of_data_gaps", ">u2"),
+                    ("dacs_quality", ">u1", (6, )),
+                    ("calibration_parameter_id", ">i2"),
+                    ("dacs_status", ">u1"),
+                    ("spare1", ">i1", (5, )),
+                    ("data_set_name", "S42"),
+                    ("blankfill", "S2"),
+                    ("year_of_epoch", ">u2"),
+                    ("julian_day_of_epoch", ">u2"),
+                    ("millisecond_utc_epoch_time_of_day", ">u4"),
+                    # Keplerian orbital elements
+                    ("semi_major_axis", ">f8"),
+                    ("eccentricity", ">f8"),
+                    ("inclination", ">f8"),
+                    ("argument_of_perigee", ">f8"),
+                    ("right_ascension", ">f8"),
+                    ("mean_anomaly", ">f8"),
+                    # cartesian inertial true date of elements
+                    ("x_component_of_position_vector", ">f8"),
+                    ("y_component_of_position_vector", ">f8"),
+                    ("z_component_of_position_vector", ">f8"),
+                    ("x_dot_component_of_position_vector", ">f8"),
+                    ("y_dot_component_of_position_vector", ">f8"),
+                    ("z_dot_component_of_position_vector", ">f8"),
+                    ("spare2", ">u2", (1516, ))])
+
+header3 = np.dtype([("noaa_spacecraft_identification_code", ">u1"),
+                    ("data_type_code", ">u1"),
+                    ("start_time", ">u2", (3, )),
+                    ("number_of_scans", ">u2"),
+                    ("end_time", ">u2", (3, )),
+                    ("processing_block_id", "S7"),
+                    ("ramp_auto_calibration", ">u1"),
+                    ("number_of_data_gaps", ">u2"),
+                    ("dacs_quality", ">u1", (6, )),
+                    ("calibration_parameter_id", ">i2"),
+                    ("dacs_status", ">u1"),
+                    ("reserved_for_mounting_and_fixed_attitude_correction_indicator",
+                     ">i1"),
+                    ("nadir_earth_location_tolerance", ">i1"),
+                    ("spare1", ">i1"),
+                    ("start_of_data_set_year", ">u2"),
+                    ("data_set_name", "S44"),
+                    ("year_of_epoch", ">u2"),
+                    ("julian_day_of_epoch", ">u2"),
+                    ("millisecond_utc_epoch_time_of_day", ">u4"),
+                    # Keplerian orbital elements
+                    ("semi_major_axis", ">i4"),
+                    ("eccentricity", ">i4"),
+                    ("inclination", ">i4"),
+                    ("argument_of_perigee", ">i4"),
+                    ("right_ascension", ">i4"),
+                    ("mean_anomaly", ">i4"),
+                    # cartesian inertial true date of elements
+                    ("x_component_of_position_vector", ">i4"),
+                    ("y_component_of_position_vector", ">i4"),
+                    ("z_component_of_position_vector", ">i4"),
+                    ("x_dot_component_of_position_vector", ">i4"),
+                    ("y_dot_component_of_position_vector", ">i4"),
+                    ("z_dot_component_of_position_vector", ">i4"),
+                    # future use
+                    ("yaw_fixed_error_correction", ">i2"),
+                    ("roll_fixed_error_correction", ">i2"),
+                    ("pitch_fixed_error_correction", ">i2"),
+                    ("spare2", ">u2", (1537, ))])
 
 
 scanline = np.dtype([("scan_line_number", ">u2"),
@@ -119,6 +176,23 @@ class PODReader(GACReader):
                         }
 
     def read(self, filename):
+        # choose the right header depending on the date
+        with open(filename) as fd_:
+            head = np.fromfile(fd_, dtype=header0, count=1)[0]
+            year = head["start_time"][:, 0] >> 9
+            year = np.where(year > 75, year + 1900, year + 2000)
+            jday = (head["start_time"][:, 0] & 0x1FF)
+
+            start_date = (datetime.date(year) +
+                          datetime.timedelta(days=jday - 1))
+
+            if start_date < datetime.date(1992, 9, 8):
+                header = header1
+            elif start_date <= datetime.date(1994, 11, 15):
+                header = header2
+            else:
+                header = header3
+
         with open(filename) as fd_:
             self.head = np.fromfile(fd_, dtype=header, count=1)[0]
             scans = np.fromfile(fd_,
@@ -140,7 +214,7 @@ class PODReader(GACReader):
         self.spacecraft_name = self.spacecraft_names[self.spacecraft_id]
         LOG.info(
             "Reading %s data", self.spacecrafts_orbital[self.spacecraft_id])
-	
+
         return self.head, self.scans
 
     def get_times(self):
@@ -175,6 +249,9 @@ class PODReader(GACReader):
             offsets = np.interp(self.utcs.astype(np.uint64),
                                 offset_times.astype(np.uint64),
                                 clock_error)
+            LOG.info("Adjusting for clock drift of %s to %s",
+                     str(min(offsets)),
+                     str(max(offsets)))
             self.times = (self.utcs +
                           offsets.astype('timedelta64[s]')).astype(datetime.datetime)
             offsets *= -2
@@ -262,23 +339,22 @@ class PODReader(GACReader):
 
         mask = ((self.scans["quality_indicators"] >> 31) |
                 ((self.scans["quality_indicators"] << 4) >> 31) |
-                ((self.scans["quality_indicators"] << 5) >> 31)) 
+                ((self.scans["quality_indicators"] << 5) >> 31))
 
         number_of_scans = self.scans["telemetry"].shape[0]
-	qual_flags = np.zeros((int(number_of_scans),7))
-	qual_flags[:,0]=self.scans["scan_line_number"] 
-	qual_flags[:,1]=(self.scans["quality_indicators"] >> 31)
-	qual_flags[:,2]=((self.scans["quality_indicators"] << 4) >> 31)	
-	qual_flags[:,3]=((self.scans["quality_indicators"] << 5) >> 31)	
-	qual_flags[:,4]=((self.scans["quality_indicators"] << 13) >> 31)	
-	qual_flags[:,5]=((self.scans["quality_indicators"] << 14) >> 31)	
-	qual_flags[:,6]=((self.scans["quality_indicators"] << 15) >> 31)	
-
+        qual_flags = np.zeros((int(number_of_scans), 7))
+        qual_flags[:, 0] = self.scans["scan_line_number"]
+        qual_flags[:, 1] = (self.scans["quality_indicators"] >> 31)
+        qual_flags[:, 2] = ((self.scans["quality_indicators"] << 4) >> 31)
+        qual_flags[:, 3] = ((self.scans["quality_indicators"] << 5) >> 31)
+        qual_flags[:, 4] = ((self.scans["quality_indicators"] << 13) >> 31)
+        qual_flags[:, 5] = ((self.scans["quality_indicators"] << 14) >> 31)
+        qual_flags[:, 6] = ((self.scans["quality_indicators"] << 15) >> 31)
 
         return mask.astype(bool), qual_flags
 
 
-def main(filename,start_line,end_line):
+def main(filename, start_line, end_line):
     tic = datetime.datetime.now()
     reader = PODReader()
     reader.read(filename)
@@ -291,7 +367,7 @@ def main(filename,start_line,end_line):
     if (np.all(mask)):
         print "ERROR: All data is masked out. Stop processing"
         raise ValueError("All data is masked out.")
-  
+
     """
     # Reading time from gac file header
     year = reader.head["start_time"][0] >> 9
@@ -315,18 +391,17 @@ def main(filename,start_line,end_line):
     xtimes2 = xutcs.astype(datetime.datetime)
     """
 
-    # Reading time from the body of the gac file 
+    # Reading time from the body of the gac file
     xtimes1 = reader.utcs[int(start_line)].astype(datetime.datetime)
-    if int(end_line)==0:
+    if int(end_line) == 0:
         xtimes2 = reader.utcs[-1].astype(datetime.datetime)
     else:
         xtimes2 = reader.utcs[int(end_line)].astype(datetime.datetime)
 
- 
     gac_io.save_gac(reader.spacecraft_name,
                     xtimes1, xtimes2,
                     reader.lats, reader.lons,
-                    channels[:, :, 0], channels[:, :, 1],
+                    channels[:, :, 0], channels[:,:, 1],
                     np.ones_like(channels[:, :, 0]) * -1,
                     channels[:, :, 2],
                     channels[:, :, 3],
@@ -336,7 +411,6 @@ def main(filename,start_line,end_line):
     LOG.info("pygac took: %s", str(datetime.datetime.now() - tic))
 
 
-
 if __name__ == "__main__":
     import sys
-    main(sys.argv[1],sys.argv[2],sys.argv[3])
+    main(sys.argv[1], sys.argv[2], sys.argv[3])
