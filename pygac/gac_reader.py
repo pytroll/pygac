@@ -98,10 +98,10 @@ class GACReader(object):
 
         t = utcs[0].astype(datetime.datetime)
 
-        if "roll_fixed_error_correction" in self.head.dtype.fields:
-            rpy = [self.head["roll_fixed_error_correction"],
-                   self.head["pitch_fixed_error_correction"],
-                   self.head["yaw_fixed_error_correction"]]
+        if "constant_yaw_attitude_error" in self.head.dtype.fields:
+            rpy = np.deg2rad([self.head["constant_roll_attitude_error"] / 1e3,
+                              self.head["constant_pitch_attitude_error"] / 1e3,
+                              self.head["constant_yaw_attitude_error"] / 1e3])
         else:
             rpy = [0, 0, 0]
 
