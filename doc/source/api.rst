@@ -1,24 +1,14 @@
 The :mod:`pygac` API
 ====================
 
-pyGAC interface consists of a number of python modules. The following lines summarize the purpose of each python module.
+PyGAC interface consists of a number of python modules. The following schematic shows a general structure and the processing flow of PyGAC.   
+
+First it is determined whether the GAC data comes from the second (i.e. NOAA-14 and before) or the third generation (NOAA-15 and onwards) AVHRR instrument by :mod:`gac_run.py`.
 
 
-gac_run.py      : main interface to all modules. Decides which version of AVHRR, and accordingly calls other modules.
 
-gac_klm.py      : Reads L1b GAC data from KLM series of satellites (NOAA-15 and later) and does most of the computations.
 
-gac_pod.py      : Reads L1b GAC data from POD series of satellites (NOAA-14 and before) and does most of the computations.
 
-calibrate_klm.py: calibrates GAC data from KLM series, sets all necessary coefficients.
-
-calibrate_pod.py: calibrates GAC data from POD series, sets all necessary coefficients.
-
-gac_io.py       : I/O part of the software, writes two output files in HDF5 format.
-
-geotiepoints.py : PyTROLL module used for interpolation.
-
-astronomy.py    : PyTROLL module used for solar zenith.
 
 
 GAC KLM reader
