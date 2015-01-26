@@ -19,7 +19,7 @@ calibrated AVHRR data, the other with sun-satellite viewing geometry data and th
 
  $> python pygac/gac_run.py testdata/NSS.GHRR.NL.D02187.S1904.E2058.B0921517.GC 0 0
  
- The last two digits are the start and end scanline numbers, thus specifying the portion of the GAC orbit that user wants to process. 
- If zeroes are specified at both locations, then the entire orbit will be processed. 
+The last two digits are the start and end scanline numbers, thus specifying the portion of the GAC orbit that user wants to process. 
+If zeroes are specified at both locations, then the entire orbit will be processed. 
 
 
