@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2014 Martin Raspaud
+# Copyright (c) 2014, 2015 Martin Raspaud
 
 # Author(s):
 
@@ -64,12 +64,12 @@ class TestGenericCalibration(unittest.TestCase):
         ref3 = calibrate_solar(data, channel, year, jday,
                                spacecraft_id, corr)
 
-        expected = (np.array([[-1.89969885, 24.69314738, 99.75083649],
-                              [0.10771488, 5.44449774, 52.30732654]]),
-                    np.array([[-2.34234624e+00, 2.98054551e+01, 1.21877680e+02],
-                              [1.20120320e-01, 6.66667777e+00, 6.36793853e+01]]),
-                    np.array([[-32001., -32001., -32001.],
-                              [-32001., -32001., -32001.]]))
+        expected = (np.array([[-2.13225247,   27.71598482,  111.96193939],
+                              [0.12090091,    6.11099162,   58.71058259]]),
+                    np.array([[-2.41276542e+00,   3.06897170e+01,   1.25011705e+02],
+                              [1.23731560e-01,   6.86710159e+00,   6.53913486e+01]]),
+                    np.ones((2, 3)) * -32001)
+
         self.assertTrue(np.allclose(ref1, expected[0]))
         self.assertTrue(np.allclose(ref2, expected[1]))
         self.assertTrue(np.allclose(ref3.filled(-32001), expected[2]))
@@ -165,6 +165,7 @@ class TestKLMCalibration(unittest.TestCase):
                               [1.20120320e-01, 6.66667777e+00, 6.36793853e+01]]),
                     np.array([[-32001., -32001., -32001.],
                               [-32001., -32001., -32001.]]))
+
         self.assertTrue(np.allclose(ref1, expected[0]))
         self.assertTrue(np.allclose(ref2, expected[1]))
         self.assertTrue(np.allclose(ref3, expected[2]))
