@@ -200,12 +200,11 @@ class PODReader(GACReader):
                                 count=self.head["number_of_scans"])
 
         # cleaning up the data
-
         if scans["scan_line_number"][0] == scans["scan_line_number"][-1] + 1:
-            while scans["scan_line_number"][0] != 1:
+            while scans["scan_line_number"][0] != np.amin(scans["scan_line_number"][:] ):
                 scans = np.roll(scans, -1)
         else:
-            while scans["scan_line_number"][0] != 1:
+            while scans["scan_line_number"][0] != np.amin(scans["scan_line_number"][:] ):
                 scans = scans[1:]
 
         self.scans = scans[scans["scan_line_number"] != 0]
