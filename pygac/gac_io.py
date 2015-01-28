@@ -83,9 +83,12 @@ def save_gac(satellite_name,
     rel_azi = abs(rel_azi)
     rel_azi = 180.0 - rel_azi
 
-    for array in [ref1, ref2, ref3, bt3, bt4, bt5,
+    for array in [bt3, bt4, bt5]:
+        array[array!=MISSING_DATA]=100*array[array!=MISSING_DATA]
+        array[mask] = MISSING_DATA
+    for array in [ref1, ref2, ref3,
                   sun_zen, sat_zen, sun_azi, sat_azi, rel_azi]:
-        array *= 100
+        array *= 100        
         array[mask] = MISSING_DATA
     for array in [lats, lons]:
         array *= 1000.0
