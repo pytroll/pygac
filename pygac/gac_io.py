@@ -78,17 +78,24 @@ def save_gac(satellite_name,
     bt3 = np.where(np.logical_or(bt3<170.0, bt3>350.0), MISSING_DATA, bt3-273.15) 
     bt4 = np.where(np.logical_or(bt4<170.0, bt4>350.0), MISSING_DATA, bt4-273.15) 
     bt5 = np.where(np.logical_or(bt5<170.0, bt5>350.0), MISSING_DATA, bt5-273.15) 
+
+
+    lats = np.where(np.logical_or(lats<-90.00, lats>90.00), MISSING_DATA_LATLON, lats)
+    lons = np.where(np.logical_or(lons<-180.00, lons>180.00), MISSING_DATA_LATLON, lons)
    
     sat_azi -= 180.0
     rel_azi = abs(rel_azi)
     rel_azi = 180.0 - rel_azi
 
-    for array in [ref1, ref2, ref3, bt3, bt4, bt5,
+    for array in [bt3, bt4, bt5]:
+        array[array!=MISSING_DATA]=100*array[array!=MISSING_DATA]
+        array[mask] = MISSING_DATA
+    for array in [ref1, ref2, ref3,
                   sun_zen, sat_zen, sun_azi, sat_azi, rel_azi]:
-        array *= 100
+        array *= 100        
         array[mask] = MISSING_DATA
     for array in [lats, lons]:
-        array *= 1000.0
+        array[array!=MISSING_DATA_LATLON]= 1000.0*array[array!=MISSING_DATA_LATLON]
         array[mask] = MISSING_DATA_LATLON
     for ref in [ref1, ref2, ref3]:
         ref[ref < 0] = MISSING_DATA
