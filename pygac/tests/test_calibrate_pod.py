@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2014 Martin Raspaud
+# Copyright (c) 2014, 2015 Martin Raspaud
 
 # Author(s):
 
@@ -64,12 +64,13 @@ class TestGenericCalibration(unittest.TestCase):
         ref3 = calibrate_solar(data, channel, year, jday,
                                spacecraft_id, corr)
 
-        expected = (np.array([[-5.37512167, 61.74834897, 128.74071908],
-                              [0., 14.28995762, 86.39524835]]),
-                    np.array([[-6.15103763, 70.66192007, 147.32485247],
-                              [0., 16.35275857, 98.86667798]]),
+        expected = (np.array([[-5.34164812, 61.36381128, 127.93898657],
+                              [0., 14.20096694, 85.85722215]]),
+                    np.array([[-6.49947747, 74.66472898, 155.67041159],
+                              [0., 17.27909864, 104.46721104]]),
                     np.array([[-32001., -32001., -32001.],
                               [-32001., -32001., -32001.]]))
+
         self.assertTrue(np.allclose(ref1, expected[0]))
         self.assertTrue(np.allclose(ref2, expected[1]))
         self.assertTrue(np.allclose(ref3.filled(-32001), expected[2]))

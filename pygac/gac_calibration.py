@@ -396,22 +396,22 @@ def calibrate_thermal(counts, prt, ict, space, line_numbers, channel, spacecraft
     iprt = (line_numbers - line_numbers[0] + 5 - offset) % 5
 
     ifix = np.where(np.logical_and(iprt == 1, prt < 50))
-    if ifix:
+    if len(ifix[0]):
         inofix = np.where(np.logical_and(iprt == 1, prt > 50))
         prt[ifix] = np.interp(ifix[0], inofix[0], prt[inofix])
 
     ifix = np.where(np.logical_and(iprt == 2, prt < 50))
-    if ifix:
+    if len(ifix[0]):
         inofix = np.where(np.logical_and(iprt == 2, prt > 50))
         prt[ifix] = np.interp(ifix[0], inofix[0], prt[inofix])
 
     ifix = np.where(np.logical_and(iprt == 3, prt < 50))
-    if ifix:
+    if len(ifix[0]):
         inofix = np.where(np.logical_and(iprt == 3, prt > 50))
         prt[ifix] = np.interp(ifix[0], inofix[0], prt[inofix])
 
     ifix = np.where(np.logical_and(iprt == 4, prt < 50))
-    if ifix:
+    if len(ifix[0]):
         inofix = np.where(np.logical_and(iprt == 4, prt > 50))
         prt[ifix] = np.interp(ifix[0], inofix[0], prt[inofix])
 
