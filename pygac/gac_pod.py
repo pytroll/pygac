@@ -179,12 +179,11 @@ class PODReader(GACReader):
         # choose the right header depending on the date
         with open(filename) as fd_:
             head = np.fromfile(fd_, dtype=header0, count=1)[0]
-            year = head["start_time"][:, 0] >> 9
+            year = head["start_time"][0] >> 9
             year = np.where(year > 75, year + 1900, year + 2000)
-            jday = (head["start_time"][:, 0] & 0x1FF)
+            jday = (head["start_time"][0] & 0x1FF)
 
-            start_date = (datetime.date(year) +
-                          datetime.timedelta(days=jday - 1))
+            start_date = (datetime.date(year,1,1) + datetime.timedelta(days=jday - 1))
 
             if start_date < datetime.date(1992, 9, 8):
                 header = header1
@@ -200,11 +199,12 @@ class PODReader(GACReader):
                                 count=self.head["number_of_scans"])
 
         # cleaning up the data
-        if scans["scan_line_number"][0] == scans["scan_line_number"][-1] + 1:
-            while scans["scan_line_number"][0] != np.amin(scans["scan_line_number"][:] ):
+        min_scanline_number = np.amin(scans["scan_line_number"][:])
+	if scans["scan_line_number"][0] == scans["scan_line_number"][-1] + 1:
+            while scans["scan_line_number"][0] != min_scanline_number:
                 scans = np.roll(scans, -1)
         else:
-            while scans["scan_line_number"][0] != np.amin(scans["scan_line_number"][:] ):
+            while scans["scan_line_number"][0] != min_scanline_number:
                 scans = scans[1:]
 
         self.scans = scans[scans["scan_line_number"] != 0]
@@ -228,6 +228,29 @@ class PODReader(GACReader):
                           + (jday - 1).astype('timedelta64[D]')).astype('datetime64[ms]')
                          + msec.astype('timedelta64[ms]'))
             self.times = self.utcs.astype(datetime.datetime)
+	    # checking if year value is out of valid range
+	    if_wrong_year = np.where(np.logical_or(year<1978, year>2015))
+	    if_wrong_year = if_wrong_year[0]
+	    if len(if_wrong_year) > 0:
+		# if the first scanline has valid time stamp
+		if if_wrong_year[0] != 0:
+			year = year[0]
+			jday = jday[0]
+			msec = msec[0] + 0.5 * 1000.0 * (self.scans["scan_line_number"] - 1)
+			self.utcs = (((year - 1970).astype('datetime64[Y]')
+                          	      + (jday - 1).astype('timedelta64[D]')).astype('datetime64[ms]')
+                         	     + msec.astype('timedelta64[ms]'))
+            		self.times = self.utcs.astype(datetime.datetime)
+		# Otherwise use median time stamp
+		else:
+			year = np.median(year)
+			jday = np.median(jday)
+			msec = np.median(msec - 0.5 * 1000.0 * (self.scans["scan_line_number"] - 1))
+			self.utcs = (((year - 1970).astype('datetime64[Y]')
+                                      + (jday - 1).astype('timedelta64[D]')).astype('datetime64[ms]')
+                                     + msec.astype('timedelta64[ms]'))
+                        self.times = self.utcs.astype(datetime.datetime)
+		
         return self.utcs
 
     def adjust_clock_drift(self):
