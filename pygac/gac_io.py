@@ -122,7 +122,7 @@ def save_gac(satellite_name,
     end_line = int(end_line) 
     if end_line>0:
        ref1 = ref1[start_line:end_line+1,:].copy()
-       ref2 = ref3[start_line:end_line+1,:].copy()
+       ref2 = ref2[start_line:end_line+1,:].copy()
        ref3 = ref3[start_line:end_line+1,:].copy()
        bt3 = bt3[start_line:end_line+1,:].copy()
        bt4 = bt4[start_line:end_line+1,:].copy()
