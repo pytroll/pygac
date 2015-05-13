@@ -142,7 +142,7 @@ header3 = np.dtype([("noaa_spacecraft_identification_code", ">u1"),
                     ("spare2", ">u2", (1537, ))])
 
 
-scanline = np.dtype([("scan_line_number", ">u2"),
+scanline = np.dtype([("scan_line_number", ">i2"),
                      ("time_code", ">u2", (3, )),
                      #("time_code", ">u1", (6, )),
                      ("quality_indicators", ">u4"),
