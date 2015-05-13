@@ -34,9 +34,10 @@ from pygac.gac_reader import GACReader
 import pygac.geotiepoints as gtp
 import datetime
 from pygac import gac_io
-
 import logging
 LOG = logging.getLogger(__name__)
+
+#np.set_printoptions(threshold=np.nan)
 
 # GAC header object
 
@@ -527,10 +528,46 @@ class KLMReader(GACReader):
             jday = self.scans["scan_line_day_of_year"]
             msec = self.scans["scan_line_utc_time_of_day"]
 
+	    jday = np.where(np.logical_or(jday<1, jday>366),np.median(jday),jday)
+	    if_wrong_msec = np.where(msec<1)
+	    if_wrong_msec = if_wrong_msec[0]
+	    if len(if_wrong_msec) > 0:
+		if if_wrong_msec[0] !=0:
+		   msec = msec[0] + 0.5 * 1000.0 * (self.scans["scan_line_number"] - 1)
+		else:
+		   msec = np.median(msec - 0.5 * 1000.0 * (self.scans["scan_line_number"] - 1))	    
+
+
             self.utcs = (((year - 1970).astype('datetime64[Y]')
                           + (jday - 1).astype('timedelta64[D]')).astype('datetime64[ms]')
                          + msec.astype('timedelta64[ms]'))
             self.times = self.utcs.astype(datetime.datetime)
+
+
+	    # checking if year value is out of valid range
+            if_wrong_year = np.where(np.logical_or(year<1978, year>2015))
+            if_wrong_year = if_wrong_year[0]
+            if len(if_wrong_year) > 0:
+                # if the first scanline has valid time stamp
+                if if_wrong_year[0] != 0:
+                        year = year[0]
+                        jday = jday[0]
+                        msec = msec[0] + 0.5 * 1000.0 * (self.scans["scan_line_number"] - 1)
+                        self.utcs = (((year - 1970).astype('datetime64[Y]')
+                                      + (jday - 1).astype('timedelta64[D]')).astype('datetime64[ms]')
+                                     + msec.astype('timedelta64[ms]'))
+                        self.times = self.utcs.astype(datetime.datetime)
+                # Otherwise use median time stamp
+                else:
+                        year = np.median(year)
+                        jday = np.median(jday)
+                        msec = np.median(msec - 0.5 * 1000.0 * (self.scans["scan_line_number"] - 1))
+                        self.utcs = (((year - 1970).astype('datetime64[Y]')
+                                      + (jday - 1).astype('timedelta64[D]')).astype('datetime64[ms]')
+                                     + msec.astype('timedelta64[ms]'))
+                        self.times = self.utcs.astype(datetime.datetime)
+
+            print year, jday, msec
         return self.utcs
 
     def get_ch3_switch(self):
