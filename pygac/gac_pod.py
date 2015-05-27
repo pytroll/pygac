@@ -199,7 +199,7 @@ class PODReader(GACReader):
                                 count=self.head["number_of_scans"])
 
         # cleaning up the data
-        min_scanline_number = np.amin(scans["scan_line_number"][:])
+        min_scanline_number = np.amin(np.absolute(scans["scan_line_number"][:]))
 	if scans["scan_line_number"][0] == scans["scan_line_number"][-1] + 1:
             while scans["scan_line_number"][0] != min_scanline_number:
                 scans = np.roll(scans, -1)
@@ -223,6 +223,7 @@ class PODReader(GACReader):
             jday = (self.scans["time_code"][:, 0] & 0x1FF)
             msec = ((np.uint32(self.scans["time_code"][:, 1] & 2047) << 16) |
                     (np.uint32(self.scans["time_code"][:, 2])))
+
 
             jday = np.where(np.logical_or(jday<1, jday>366),np.median(jday),jday)
             if_wrong_jday = np.ediff1d(jday, to_begin=0)
