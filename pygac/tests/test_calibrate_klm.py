@@ -25,7 +25,7 @@
 
 
 from pygac import calibrate_klm
-from pygac.gac_calibration import calibrate_solar, calibrate_thermal
+from pygac.calibration import calibrate_solar, calibrate_thermal
 import unittest
 import numpy as np
 

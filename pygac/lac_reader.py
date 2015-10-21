@@ -6,7 +6,7 @@
 # Author(s):
 
 #   Martin Raspaud <martin.raspaud@smhi.se>
-#   Sajid Pareeth <sajid.pareeth@fmch.it>
+#   Sajid Pareeth <sajid.pareeth@fmach.it>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by

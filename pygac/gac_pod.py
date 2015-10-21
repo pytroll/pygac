@@ -35,51 +35,53 @@ http://www.ncdc.noaa.gov/oa/pod-guide/ncdc/docs/podug/html/c3/sec3-1.htm
 
 """
 
-import numpy as np
-from pygac.gac_reader import GACReader
-import pygac.geotiepoints as gtp
 import datetime
+import logging
+
+import numpy as np
+
+from pygac.reader import GACReader
+import pygac.gac_lac_geotiepoints as gtp
 from pygac import gac_io
 
-import logging
 LOG = logging.getLogger(__name__)
 
 # common header
 header0 = np.dtype([("noaa_spacecraft_identification_code", ">u1"),
                     ("data_type_code", ">u1"),
-                    ("start_time", ">u2", (3, )),
+                    ("start_time", ">u2", (3,)),
                     ("number_of_scans", ">u2"),
-                    ("end_time", ">u2", (3, ))])
+                    ("end_time", ">u2", (3,))])
 
 
 # until 8 september 1992
 header1 = np.dtype([("noaa_spacecraft_identification_code", ">u1"),
                     ("data_type_code", ">u1"),
-                    ("start_time", ">u2", (3, )),
+                    ("start_time", ">u2", (3,)),
                     ("number_of_scans", ">u2"),
-                    ("end_time", ">u2", (3, )),
+                    ("end_time", ">u2", (3,)),
                     ("processing_block_id", "S7"),
                     ("ramp_auto_calibration", ">u1"),
                     ("number_of_data_gaps", ">u2"),
-                    ("dacs_quality", ">u1", (6, )),
+                    ("dacs_quality", ">u1", (6,)),
                     ("calibration_parameter_id", ">i2"),
                     ("dacs_status", ">u1"),
-                    ("spare1", ">i1", (5, )),
+                    ("spare1", ">i1", (5,)),
                     ("data_set_name", "S44"),
-                    ("spare2", ">u2", (1568, ))])
+                    ("spare2", ">u2", (1568,))])
 
 header2 = np.dtype([("noaa_spacecraft_identification_code", ">u1"),
                     ("data_type_code", ">u1"),
-                    ("start_time", ">u2", (3, )),
+                    ("start_time", ">u2", (3,)),
                     ("number_of_scans", ">u2"),
-                    ("end_time", ">u2", (3, )),
+                    ("end_time", ">u2", (3,)),
                     ("processing_block_id", "S7"),
                     ("ramp_auto_calibration", ">u1"),
                     ("number_of_data_gaps", ">u2"),
-                    ("dacs_quality", ">u1", (6, )),
+                    ("dacs_quality", ">u1", (6,)),
                     ("calibration_parameter_id", ">i2"),
                     ("dacs_status", ">u1"),
-                    ("spare1", ">i1", (5, )),
+                    ("spare1", ">i1", (5,)),
                     ("data_set_name", "S42"),
                     ("blankfill", "S2"),
                     ("year_of_epoch", ">u2"),
@@ -99,17 +101,17 @@ header2 = np.dtype([("noaa_spacecraft_identification_code", ">u1"),
                     ("x_dot_component_of_position_vector", ">f8"),
                     ("y_dot_component_of_position_vector", ">f8"),
                     ("z_dot_component_of_position_vector", ">f8"),
-                    ("spare2", ">u2", (1516, ))])
+                    ("spare2", ">u2", (1516,))])
 
 header3 = np.dtype([("noaa_spacecraft_identification_code", ">u1"),
                     ("data_type_code", ">u1"),
-                    ("start_time", ">u2", (3, )),
+                    ("start_time", ">u2", (3,)),
                     ("number_of_scans", ">u2"),
-                    ("end_time", ">u2", (3, )),
+                    ("end_time", ">u2", (3,)),
                     ("processing_block_id", "S7"),
                     ("ramp_auto_calibration", ">u1"),
                     ("number_of_data_gaps", ">u2"),
-                    ("dacs_quality", ">u1", (6, )),
+                    ("dacs_quality", ">u1", (6,)),
                     ("calibration_parameter_id", ">i2"),
                     ("dacs_status", ">u1"),
                     ("reserved_for_mounting_and_fixed_attitude_correction_indicator",
@@ -139,27 +141,25 @@ header3 = np.dtype([("noaa_spacecraft_identification_code", ">u1"),
                     ("yaw_fixed_error_correction", ">i2"),
                     ("roll_fixed_error_correction", ">i2"),
                     ("pitch_fixed_error_correction", ">i2"),
-                    ("spare2", ">u2", (1537, ))])
-
+                    ("spare2", ">u2", (1537,))])
 
 scanline = np.dtype([("scan_line_number", ">u2"),
-                     ("time_code", ">u2", (3, )),
-                     #("time_code", ">u1", (6, )),
+                     ("time_code", ">u2", (3,)),
+                     # ("time_code", ">u1", (6, )),
                      ("quality_indicators", ">u4"),
-                     ("calibration_coefficients", ">i4", (10, )),
+                     ("calibration_coefficients", ">i4", (10,)),
                      ("number_of_meaningful_zenith_angles_and_earth_location_appended",
                       ">u1"),
-                     ("solar_zenith_angles", "i1", (51, )),
-                     ("earth_location", ">i2", (102, )),
-                     ("telemetry", ">u4", (35, )),
-                     ("sensor_data", ">u4", (682, )),
-                     ("add_on_zenith", ">u2", (10, )),
+                     ("solar_zenith_angles", "i1", (51,)),
+                     ("earth_location", ">i2", (102,)),
+                     ("telemetry", ">u4", (35,)),
+                     ("sensor_data", ">u4", (682,)),
+                     ("add_on_zenith", ">u2", (10,)),
                      ("clock_drift_delta", ">u2"),
-                     ("spare3", "u2", (11, ))])
+                     ("spare3", "u2", (11,))])
 
 
 class PODReader(GACReader):
-
     spacecrafts_orbital = {4: 'noaa 7',
                            7: 'noaa 9',
                            8: 'noaa 10',
@@ -183,7 +183,7 @@ class PODReader(GACReader):
             year = np.where(year > 75, year + 1900, year + 2000)
             jday = (head["start_time"][0] & 0x1FF)
 
-            start_date = (datetime.date(year,1,1) + datetime.timedelta(days=jday - 1))
+            start_date = (datetime.date(year, 1, 1) + datetime.timedelta(days=jday - 1))
 
             if start_date < datetime.date(1992, 9, 8):
                 header = header1
@@ -200,7 +200,7 @@ class PODReader(GACReader):
 
         # cleaning up the data
         min_scanline_number = np.amin(scans["scan_line_number"][:])
-	if scans["scan_line_number"][0] == scans["scan_line_number"][-1] + 1:
+        if scans["scan_line_number"][0] == scans["scan_line_number"][-1] + 1:
             while scans["scan_line_number"][0] != min_scanline_number:
                 scans = np.roll(scans, -1)
         else:
@@ -228,29 +228,29 @@ class PODReader(GACReader):
                           + (jday - 1).astype('timedelta64[D]')).astype('datetime64[ms]')
                          + msec.astype('timedelta64[ms]'))
             self.times = self.utcs.astype(datetime.datetime)
-	    # checking if year value is out of valid range
-	    if_wrong_year = np.where(np.logical_or(year<1978, year>2015))
-	    if_wrong_year = if_wrong_year[0]
-	    if len(if_wrong_year) > 0:
-		# if the first scanline has valid time stamp
-		if if_wrong_year[0] != 0:
-			year = year[0]
-			jday = jday[0]
-			msec = msec[0] + 0.5 * 1000.0 * (self.scans["scan_line_number"] - 1)
-			self.utcs = (((year - 1970).astype('datetime64[Y]')
-                          	      + (jday - 1).astype('timedelta64[D]')).astype('datetime64[ms]')
-                         	     + msec.astype('timedelta64[ms]'))
-            		self.times = self.utcs.astype(datetime.datetime)
-		# Otherwise use median time stamp
-		else:
-			year = np.median(year)
-			jday = np.median(jday)
-			msec = np.median(msec - 0.5 * 1000.0 * (self.scans["scan_line_number"] - 1))
-			self.utcs = (((year - 1970).astype('datetime64[Y]')
-                                      + (jday - 1).astype('timedelta64[D]')).astype('datetime64[ms]')
-                                     + msec.astype('timedelta64[ms]'))
-                        self.times = self.utcs.astype(datetime.datetime)
-		
+            # checking if year value is out of valid range
+            if_wrong_year = np.where(np.logical_or(year < 1978, year > 2015))
+            if_wrong_year = if_wrong_year[0]
+            if len(if_wrong_year) > 0:
+                # if the first scanline has valid time stamp
+                if if_wrong_year[0] != 0:
+                    year = year[0]
+                    jday = jday[0]
+                    msec = msec[0] + 0.5 * 1000.0 * (self.scans["scan_line_number"] - 1)
+                    self.utcs = (((year - 1970).astype('datetime64[Y]')
+                                  + (jday - 1).astype('timedelta64[D]')).astype('datetime64[ms]')
+                                 + msec.astype('timedelta64[ms]'))
+                    self.times = self.utcs.astype(datetime.datetime)
+                # Otherwise use median time stamp
+                else:
+                    year = np.median(year)
+                    jday = np.median(jday)
+                    msec = np.median(msec - 0.5 * 1000.0 * (self.scans["scan_line_number"] - 1))
+                    self.utcs = (((year - 1970).astype('datetime64[Y]')
+                                  + (jday - 1).astype('timedelta64[D]')).astype('datetime64[ms]')
+                                 + msec.astype('timedelta64[ms]'))
+                    self.times = self.utcs.astype(datetime.datetime)
+
         return self.utcs
 
     def adjust_clock_drift(self):
@@ -327,7 +327,7 @@ class PODReader(GACReader):
         arr_lat = self.scans["earth_location"][:, 0::2] / 128.0
         arr_lon = self.scans["earth_location"][:, 1::2] / 128.0
 
-        self.lons, self.lats = gtp.Gac_Lat_Lon_Interpolator(arr_lon, arr_lat)
+        self.lons, self.lats = gtp.gac_geo_interpolator(arr_lon, arr_lat)
         return self.lons, self.lats
 
     def get_telemetry(self):
@@ -423,7 +423,7 @@ def main(filename, start_line, end_line):
     gac_io.save_gac(reader.spacecraft_name,
                     xtimes1, xtimes2,
                     reader.lats, reader.lons,
-                    channels[:, :, 0], channels[:,:, 1],
+                    channels[:, :, 0], channels[:, :, 1],
                     np.ones_like(channels[:, :, 0]) * -1,
                     channels[:, :, 2],
                     channels[:, :, 3],
@@ -435,4 +435,5 @@ def main(filename, start_line, end_line):
 
 if __name__ == "__main__":
     import sys
+
     main(sys.argv[1], sys.argv[2], sys.argv[3])

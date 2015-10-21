@@ -1,5 +1,4 @@
-
-#!/usr/bin/env python
+# !/usr/bin/env python
 # -*- coding: utf-8 -*-
 
 # Copyright (c) 2012, 2014 Abhay Devasthale and Martin Raspaud
@@ -26,7 +25,6 @@
 
 """
 
-
 import logging
 
 from datetime import datetime
@@ -36,8 +34,10 @@ logger.setLevel(logging.DEBUG)
 ch = logging.StreamHandler()
 ch.setLevel(logging.DEBUG)
 
+
 class MyFormatter(logging.Formatter):
     converter = datetime.fromtimestamp
+
     def formatTime(self, record, datefmt=None):
         ct = self.converter(record.created)
         if datefmt:
@@ -52,6 +52,7 @@ formatter = MyFormatter('[ %(levelname)s %(name)s %(asctime)s] %(message)s')
 ch.setFormatter(formatter)
 logger.addHandler(ch)
 
+
 def check_file_version(filename):
     with open(filename) as fdes:
         data = fdes.read(3)
@@ -65,17 +66,17 @@ def check_file_version(filename):
 
 if __name__ == "__main__":
     import sys
+
     try:
         filename = sys.argv[1]
-	start_line = sys.argv[2]
-	end_line = sys.argv[3] 
+        start_line = sys.argv[2]
+        end_line = sys.argv[3]
     except IndexError:
-	print "Usage: gac_run <filename> <start scan line number> <end scan line number>"
-	sys.exit(1)
+        print "Usage: gac_run <filename> <start scan line number> <end scan line number>"
+        sys.exit(1)
 
     reader = check_file_version(filename)
     try:
         reader(filename, start_line, end_line)
     except ValueError:
         print "Value error"
-

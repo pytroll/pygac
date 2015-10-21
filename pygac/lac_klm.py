@@ -1,50 +1,43 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-
-# Copyright (c) 2014 Abhay Devasthale and Martin Raspaud
+#!/usr/bin/python
+# Copyright (c) 2014, 2015.
+#
 
 # Author(s):
-
-#   Abhay Devasthale <abhay.devasthale@smhi.se>
+#   Sajid Pareeth <sajid.pareeth@fmach.it>
 #   Martin Raspaud <martin.raspaud@smhi.se>
-#   Adam Dybbroe <adam.dybbroe@smhi.se>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+#
 # You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-"""Read a gac file.
-Reads L1b GAC data from KLM series of satellites (NOAA-15 and later) and does most of the computations.
-Format specification can be found here:
-http://www.ncdc.noaa.gov/oa/pod-guide/ncdc/docs/klm/html/c8/sec83142-1.htm
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+#
 
 """
+"""
 
-import datetime
 import logging
+import datetime
 
 import numpy as np
 
-from pygac.reader import GACReader
+from pygac.reader import LACReader
 import pygac.gac_lac_geotiepoints as gtp
-from pygac import gac_io
+import gac_io
 
 LOG = logging.getLogger(__name__)
 
-# GAC header object
-
+# LAC header object
 header = np.dtype([("data_set_creation_site_id", "S3"),
                    ("ascii_blank_=_x20", "S1"),
-                   ("noaa_level_1b_format_version_number:", ">u2"),
+                   ("noaa_level_1b_format_version_number", ">u2"),
                    ("noaa_level_1b_format_version_year", ">u2"),
                    ("noaa_level_1b_format_version_day_of_year", ">u2"),
                    ("reserved_for_logical_record_length", ">u2"),
@@ -79,9 +72,9 @@ header = np.dtype([("data_set_creation_site_id", "S3"),
                    ("count_of_calibrated,_earth_located_scan_lines", ">u2"),
                    ("count_of_missing_scan_lines", ">u2"),
                    ("count_of_data_gaps", ">u2"),
-                   ("filler0", ">u2"),
+                   ("count_of_data_frames_without_frame_sync_word", ">u2"),
                    ("count_of_pacs_detected_tip_parity_errors", ">u2"),
-                   ("filler1", ">u2"),
+                   ("sum_of_all_auxiliary_sync_errors_detected", ">u2"),
                    ("time_sequence_error", ">u2"),
                    ("time_sequence_error_code", ">u2"),
                    ("socc_clock_update_indicator", ">u2"),
@@ -134,7 +127,7 @@ header = np.dtype([("data_set_creation_site_id", "S3"),
                    ("ch_2_equivalent_filter_width_in_wavelength", ">i4"),
                    ("ch_3a_solar_filtered_irradiance_in_wavelength", ">i4"),
                    ("ch_3a_equivalent_filter_width_in_wavelength", ">i4"),
-                   ("ch_3b_central_wavenumber_(see", ">i4"),
+                   ("ch_3b_central_wavenumber", ">i4"),
                    ("ch_3b_constant_1", ">i4"),
                    ("ch_3b_constant_2", ">i4"),
                    ("ch_4_central_wavenumber", ">i4"),
@@ -170,191 +163,174 @@ header = np.dtype([("data_set_creation_site_id", "S3"),
                    ("earth_sun_distance_ratio", ">u4"),
                    ("zero_fill8", ">i4", (4,)),
                    # ANALOG TELEMETRY CONVERSION
-                   ("patch_temperature_conversion_coefficient_1", ">i2"),
-                   ("patch_temperature_conversion_coefficient_2", ">i2"),
-                   ("patch_temperature_conversion_coefficient_3", ">i2"),
-                   ("patch_temperature_conversion_coefficient_4", ">i2"),
-                   ("patch_temperature_conversion_coefficient_5", ">i2"),
-                   ("reserved0", ">i2"),
+                   ("patch_temperature_conversion_coefficient_1", ">i4"),
+                   ("patch_temperature_conversion_coefficient_2", ">i4"),
+                   ("patch_temperature_conversion_coefficient_3", ">i4"),
+                   ("patch_temperature_conversion_coefficient_4", ">i4"),
+                   ("patch_temperature_conversion_coefficient_5", ">i4"),
+                   ("patch_temperature_conversion_coefficient_6", ">i4"),
                    ("patch_temperature_extended_conversion_coefficient_1",
-                    ">i2"),
+                    ">i4"),
                    ("patch_temperature_extended_conversion_coefficient_2",
-                    ">i2"),
+                    ">i4"),
                    ("patch_temperature_extended_conversion_coefficient_3",
-                    ">i2"),
+                    ">i4"),
                    ("patch_temperature_extended_conversion_coefficient_4",
-                    ">i2"),
+                    ">i4"),
                    ("patch_temperature_extended_conversion_coefficient_5",
-                    ">i2"),
-                   ("reserved1", ">i2"),
-                   ("patch_power_conversion_coefficient_1", ">i2"),
-                   ("patch_power_conversion_coefficient_2", ">i2"),
-                   ("patch_power_conversion_coefficient_3", ">i2"),
-                   ("patch_power_conversion_coefficient_4", ">i2"),
-                   ("patch_power_conversion_coefficient_5", ">i2"),
-                   ("reserved2", ">i2"),
-                   ("radiator_temperature_conversion_coefficient_1", ">i2"),
-                   ("radiator_temperature_conversion_coefficient_2", ">i2"),
-                   ("radiator_temperature_conversion_coefficient_3", ">i2"),
-                   ("radiator_temperature_conversion_coefficient_4", ">i2"),
-                   ("radiator_temperature_conversion_coefficient_5", ">i2"),
-                   ("reserved3", ">i2"),
-                   ("blackbody_temperature_1_conversion_coefficient_1", ">i2"),
-                   ("blackbody_temperature_1_conversion_coefficient_2", ">i2"),
-                   ("blackbody_temperature_1_conversion_coefficient_3", ">i2"),
-                   ("blackbody_temperature_1_conversion_coefficient_4", ">i2"),
-                   ("blackbody_temperature_1_conversion_coefficient_5", ">i2"),
-                   ("reserved4", ">i2"),
-                   ("blackbody_temperature_2_conversion_coefficient_1", ">i2"),
-                   ("blackbody_temperature_2_conversion_coefficient_2", ">i2"),
-                   ("blackbody_temperature_2_conversion_coefficient_3", ">i2"),
-                   ("blackbody_temperature_2_conversion_coefficient_4", ">i2"),
-                   ("blackbody_temperature_2_conversion_coefficient_5", ">i2"),
-                   ("reserved5", ">i2"),
-                   ("blackbody_temperature_3_conversion_coefficient_1", ">i2"),
-                   ("blackbody_temperature_3_conversion_coefficient_2", ">i2"),
-                   ("blackbody_temperature_3_conversion_coefficient_3", ">i2"),
-                   ("blackbody_temperature_3_conversion_coefficient_4", ">i2"),
-                   ("blackbody_temperature_3_conversion_coefficient_5", ">i2"),
-                   ("reserved6", ">i2"),
-                   ("blackbody_temperature_4_conversion_coefficient_1", ">i2"),
-                   ("blackbody_temperature_4_conversion_coefficient_2", ">i2"),
-                   ("blackbody_temperature_4_conversion_coefficient_3", ">i2"),
-                   ("blackbody_temperature_4_conversion_coefficient_4", ">i2"),
-                   ("blackbody_temperature_4_conversion_coefficient_5", ">i2"),
-                   ("reserved7", ">i2"),
-                   ("electronics_current_conversion_coefficient_1", ">i2"),
-                   ("electronics_current_conversion_coefficient_2", ">i2"),
-                   ("electronics_current_conversion_coefficient_3", ">i2"),
-                   ("electronics_current_conversion_coefficient_4", ">i2"),
-                   ("electronics_current_conversion_coefficient_5", ">i2"),
-                   ("reserved8", ">i2"),
-                   ("motor_current_conversion_coefficient_1", ">i2"),
-                   ("motor_current_conversion_coefficient_2", ">i2"),
-                   ("motor_current_conversion_coefficient_3", ">i2"),
-                   ("motor_current_conversion_coefficient_4", ">i2"),
-                   ("motor_current_conversion_coefficient_5", ">i2"),
-                   ("reserved9", ">i2"),
-                   ("earth_shield_position_conversion_coefficient_1", ">i2"),
-                   ("earth_shield_position_conversion_coefficient_2", ">i2"),
-                   ("earth_shield_position_conversion_coefficient_3", ">i2"),
-                   ("earth_shield_position_conversion_coefficient_4", ">i2"),
-                   ("earth_shield_position_conversion_coefficient_5", ">i2"),
-                   ("reserved10", ">i2"),
-                   ("electronics_temperature_conversion_coefficient_1", ">i2"),
-                   ("electronics_temperature_conversion_coefficient_2", ">i2"),
-                   ("electronics_temperature_conversion_coefficient_3", ">i2"),
-                   ("electronics_temperature_conversion_coefficient_4", ">i2"),
-                   ("electronics_temperature_conversion_coefficient_5", ">i2"),
-                   ("reserved11", ">i2"),
-                   ("cooler_housing_temperature_conversion_coefficient_1",
-                    ">i2"),
-                   ("cooler_housing_temperature_conversion_coefficient_2",
-                    ">i2"),
-                   ("cooler_housing_temperature_conversion_coefficient_3",
-                    ">i2"),
-                   ("cooler_housing_temperature_conversion_coefficient_4",
-                    ">i2"),
-                   ("cooler_housing_temperature_conversion_coefficient_5",
-                    ">i2"),
-                   ("reserved12", ">i2"),
-                   ("baseplate_temperature_conversion_coefficient_1", ">i2"),
-                   ("baseplate_temperature_conversion_coefficient_2", ">i2"),
-                   ("baseplate_temperature_conversion_coefficient_3", ">i2"),
-                   ("baseplate_temperature_conversion_coefficient_4", ">i2"),
-                   ("baseplate_temperature_conversion_coefficient_5", ">i2"),
-                   ("reserved13", ">i2"),
-                   ("motor_housing_temperature_conversion_coefficient_1",
-                    ">i2"),
-                   ("motor_housing_temperature_conversion_coefficient_2",
-                    ">i2"),
-                   ("motor_housing_temperature_conversion_coefficient_3",
-                    ">i2"),
-                   ("motor_housing_temperature_conversion_coefficient_4",
-                    ">i2"),
-                   ("motor_housing_temperature_conversion_coefficient_5",
-                    ">i2"),
-                   ("reserved14", ">i2"),
-                   ("a/d_converter_temperature_conversion_coefficient_1",
-                    ">i2"),
-                   ("a/d_converter_temperature_conversion_coefficient_2",
-                    ">i2"),
-                   ("a/d_converter_temperature_conversion_coefficient_3",
-                    ">i2"),
-                   ("a/d_converter_temperature_conversion_coefficient_4",
-                    ">i2"),
-                   ("a/d_converter_temperature_conversion_coefficient_5",
-                    ">i2"),
-                   ("reserved15", ">i2"),
-                   ("detector_#4_bias_voltage_conversion_coefficient_1",
-                    ">i2"),
-                   ("detector_#4_bias_voltage_conversion_coefficient_2",
-                    ">i2"),
-                   ("detector_#4_bias_voltage_conversion_coefficient_3",
-                    ">i2"),
-                   ("detector_#4_bias_voltage_conversion_coefficient_4",
-                    ">i2"),
-                   ("detector_#4_bias_voltage_conversion_coefficient_5",
-                    ">i2"),
-                   ("reserved16", ">i2"),
-                   ("detector_#5_bias_voltage_conversion_coefficient_1",
-                    ">i2"),
-                   ("detector_#5_bias_voltage_conversion_coefficient_2",
-                    ">i2"),
-                   ("detector_#5_bias_voltage_conversion_coefficient_3",
-                    ">i2"),
-                   ("detector_#5_bias_voltage_conversion_coefficient_4",
-                    ">i2"),
-                   ("detector_#5_bias_voltage_conversion_coefficient_5",
-                    ">i2"),
-                   ("reserved17", ">i2"),
-                   ("channel_3b_blackbody_view_conversion_coefficient_1",
-                    ">i2"),
-                   ("channel_3b_blackbody_view_conversion_coefficient_2",
-                    ">i2"),
-                   ("channel_3b_blackbody_view_conversion_coefficient_3",
-                    ">i2"),
-                   ("channel_3b_blackbody_view_conversion_coefficient_4",
-                    ">i2"),
-                   ("channel_3b_blackbody_view_conversion_coefficient_5",
-                    ">i2"),
-                   ("reserved18", ">i2"),
-                   ("channel_4_blackbody_view_conversion_coefficient_1",
-                    ">i2"),
-                   ("channel_4_blackbody_view_conversion_coefficient_2",
-                    ">i2"),
-                   ("channel_4_blackbody_view_conversion_coefficient_3",
-                    ">i2"),
-                   ("channel_4_blackbody_view_conversion_coefficient_4",
-                    ">i2"),
-                   ("channel_4_blackbody_view_conversion_coefficient_5",
-                    ">i2"),
-                   ("reserved19", ">i2"),
-                   ("channel_5_blackbody_view_conversion_coefficient_1",
-                    ">i2"),
-                   ("channel_5_blackbody_view_conversion_coefficient_2",
-                    ">i2"),
-                   ("channel_5_blackbody_view_conversion_coefficient_3",
-                    ">i2"),
-                   ("channel_5_blackbody_view_conversion_coefficient_4",
-                    ">i2"),
-                   ("channel_5_blackbody_view_conversion_coefficient_5",
-                    ">i2"),
-                   ("reserved20", ">i2"),
-                   ("reference_voltage_conversion_coefficient_1", ">i2"),
-                   ("reference_voltage_conversion_coefficient_2", ">i2"),
-                   ("reference_voltage_conversion_coefficient_3", ">i2"),
-                   ("reference_voltage_conversion_coefficient_4", ">i2"),
-                   ("reference_voltage_conversion_coefficient_5", ">i2"),
-                   ("reserved21", ">i2")])
+                    ">i4"),
+                   ("patch_temperature_extended_conversion_coefficient_6", ">i4"),
+                   ("patch_power_conversion_coefficient_1", ">i4"),
+                   ("patch_power_conversion_coefficient_2", ">i4"),
+                   ("patch_power_conversion_coefficient_3", ">i4"),
+                   ("patch_power_conversion_coefficient_4", ">i4"),
+                   ("patch_power_conversion_coefficient_5", ">i4"),
+                   ("patch_power_conversion_coefficient_6", ">i4"),
+                   ("radiator_temperature_conversion_coefficient_1", ">i4"),
+                   ("radiator_temperature_conversion_coefficient_2", ">i4"),
+                   ("radiator_temperature_conversion_coefficient_3", ">i4"),
+                   ("radiator_temperature_conversion_coefficient_4", ">i4"),
+                   ("radiator_temperature_conversion_coefficient_5", ">i4"),
+                   ("radiator_temperature_conversion_coefficient_6", ">i4"),
+                   ("blackbody_temperature_1_conversion_coefficient_1", ">i4"),
+                   ("blackbody_temperature_1_conversion_coefficient_2", ">i4"),
+                   ("blackbody_temperature_1_conversion_coefficient_3", ">i4"),
+                   ("blackbody_temperature_1_conversion_coefficient_4", ">i4"),
+                   ("blackbody_temperature_1_conversion_coefficient_5", ">i4"),
+                   ("blackbody_temperature_1_conversion_coefficient_6", ">i4"),
+                   ("blackbody_temperature_2_conversion_coefficient_1", ">i4"),
+                   ("blackbody_temperature_2_conversion_coefficient_2", ">i4"),
+                   ("blackbody_temperature_2_conversion_coefficient_3", ">i4"),
+                   ("blackbody_temperature_2_conversion_coefficient_4", ">i4"),
+                   ("blackbody_temperature_2_conversion_coefficient_5", ">i4"),
+                   ("blackbody_temperature_2_conversion_coefficient_6", ">i4"),
+                   ("blackbody_temperature_3_conversion_coefficient_1", ">i4"),
+                   ("blackbody_temperature_3_conversion_coefficient_2", ">i4"),
+                   ("blackbody_temperature_3_conversion_coefficient_3", ">i4"),
+                   ("blackbody_temperature_3_conversion_coefficient_4", ">i4"),
+                   ("blackbody_temperature_3_conversion_coefficient_5", ">i4"),
+                   ("blackbody_temperature_3_conversion_coefficient_6", ">i4"),
+                   ("blackbody_temperature_4_conversion_coefficient_1", ">i4"),
+                   ("blackbody_temperature_4_conversion_coefficient_2", ">i4"),
+                   ("blackbody_temperature_4_conversion_coefficient_3", ">i4"),
+                   ("blackbody_temperature_4_conversion_coefficient_4", ">i4"),
+                   ("blackbody_temperature_4_conversion_coefficient_5", ">i4"),
+                   ("blackbody_temperature_4_conversion_coefficient_6", ">i4"),
+                   ("electronics_current_conversion_coefficient_1", ">i4"),
+                   ("electronics_current_conversion_coefficient_2", ">i4"),
+                   ("electronics_current_conversion_coefficient_3", ">i4"),
+                   ("electronics_current_conversion_coefficient_4", ">i4"),
+                   ("electronics_current_conversion_coefficient_5", ">i4"),
+                   ("electronics_current_conversion_coefficient_6", ">i4"),
+                   ("motor_current_conversion_coefficient_1", ">i4"),
+                   ("motor_current_conversion_coefficient_2", ">i4"),
+                   ("motor_current_conversion_coefficient_3", ">i4"),
+                   ("motor_current_conversion_coefficient_4", ">i4"),
+                   ("motor_current_conversion_coefficient_5", ">i4"),
+                   ("motor_current_conversion_coefficient_6", ">i4"),
+                   ("earth_shield_position_conversion_coefficient_1", ">i4"),
+                   ("earth_shield_position_conversion_coefficient_2", ">i4"),
+                   ("earth_shield_position_conversion_coefficient_3", ">i4"),
+                   ("earth_shield_position_conversion_coefficient_4", ">i4"),
+                   ("earth_shield_position_conversion_coefficient_5", ">i4"),
+                   ("earth_shield_position_conversion_coefficient_6", ">i4"),
+                   ("electronics_temperature_conversion_coefficient_1", ">i4"),
+                   ("electronics_temperature_conversion_coefficient_2", ">i4"),
+                   ("electronics_temperature_conversion_coefficient_3", ">i4"),
+                   ("electronics_temperature_conversion_coefficient_4", ">i4"),
+                   ("electronics_temperature_conversion_coefficient_5", ">i4"),
+                   ("electronics_temperature_conversion_coefficient_6", ">i4"),
+                   ("cooler_housing_temperature_conversion_coefficient_1", ">i4"),
+                   ("cooler_housing_temperature_conversion_coefficient_2", ">i4"),
+                   ("cooler_housing_temperature_conversion_coefficient_3", ">i4"),
+                   ("cooler_housing_temperature_conversion_coefficient_4", ">i4"),
+                   ("cooler_housing_temperature_conversion_coefficient_5", ">i4"),
+                   ("cooler_housing_temperature_conversion_coefficient_6", ">i4"),
+                   ("baseplate_temperature_conversion_coefficient_1", ">i4"),
+                   ("baseplate_temperature_conversion_coefficient_2", ">i4"),
+                   ("baseplate_temperature_conversion_coefficient_3", ">i4"),
+                   ("baseplate_temperature_conversion_coefficient_4", ">i4"),
+                   ("baseplate_temperature_conversion_coefficient_5", ">i4"),
+                   ("baseplate_temperature_conversion_coefficient_6", ">i4"),
+                   ("motor_housing_temperature_conversion_coefficient_1", ">i4"),
+                   ("motor_housing_temperature_conversion_coefficient_2", ">i4"),
+                   ("motor_housing_temperature_conversion_coefficient_3", ">i4"),
+                   ("motor_housing_temperature_conversion_coefficient_4", ">i4"),
+                   ("motor_housing_temperature_conversion_coefficient_5", ">i4"),
+                   ("motor_housing_temperature_conversion_coefficient_6", ">i4"),
+                   ("a/d_converter_temperature_conversion_coefficient_1", ">i4"),
+                   ("a/d_converter_temperature_conversion_coefficient_2", ">i4"),
+                   ("a/d_converter_temperature_conversion_coefficient_3", ">i4"),
+                   ("a/d_converter_temperature_conversion_coefficient_4", ">i4"),
+                   ("a/d_converter_temperature_conversion_coefficient_5", ">i4"),
+                   ("a/d_converter_temperature_conversion_coefficient_6", ">i4"),
+                   ("detector_#4_bias_voltage_conversion_coefficient_1", ">i4"),
+                   ("detector_#4_bias_voltage_conversion_coefficient_2", ">i4"),
+                   ("detector_#4_bias_voltage_conversion_coefficient_3", ">i4"),
+                   ("detector_#4_bias_voltage_conversion_coefficient_4", ">i4"),
+                   ("detector_#4_bias_voltage_conversion_coefficient_5", ">i4"),
+                   ("detector_#4_bias_voltage_conversion_coefficient_6", ">i4"),
+                   ("detector_#5_bias_voltage_conversion_coefficient_1", ">i4"),
+                   ("detector_#5_bias_voltage_conversion_coefficient_2", ">i4"),
+                   ("detector_#5_bias_voltage_conversion_coefficient_3", ">i4"),
+                   ("detector_#5_bias_voltage_conversion_coefficient_4", ">i4"),
+                   ("detector_#5_bias_voltage_conversion_coefficient_5", ">i4"),
+                   ("detector_#5_bias_voltage_conversion_coefficient_6", ">i4"),
+                   ("blackbody_temperature_channel3b_conversion_coefficient_1", ">i4"),
+                   ("blackbody_temperature_channel3b_conversion_coefficient_2", ">i4"),
+                   ("blackbody_temperature_channel3b_conversion_coefficient_3", ">i4"),
+                   ("blackbody_temperature_channel3b_conversion_coefficient_4", ">i4"),
+                   ("blackbody_temperature_channel3b_conversion_coefficient_5", ">i4"),
+                   ("blackbody_temperature_channel3b_conversion_coefficient_6", ">i4"),
+                   ("blackbody_temperature_channel4_conversion_coefficient_1",
+                    ">i4"),
+                   ("blackbody_temperature_channel4_conversion_coefficient_2",
+                    ">i4"),
+                   ("blackbody_temperature_channel4_conversion_coefficient_3",
+                    ">i4"),
+                   ("blackbody_temperature_channel4_conversion_coefficient_4",
+                    ">i4"),
+                   ("blackbody_temperature_channel4_conversion_coefficient_5",
+                    ">i4"),
+                   ("blackbody_temperature_channel4_conversion_coefficient_6",
+                    ">i4"),
+                   ("blackbody_temperature_channel5_conversion_coefficient_1",
+                    ">i4"),
+                   ("blackbody_temperature_channel5_conversion_coefficient_2",
+                    ">i4"),
+                   ("blackbody_temperature_channel5_conversion_coefficient_3",
+                    ">i4"),
+                   ("blackbody_temperature_channel5_conversion_coefficient_4",
+                    ">i4"),
+                   ("blackbody_temperature_channel5_conversion_coefficient_5",
+                    ">i4"),
+                   ("blackbody_temperature_channel5_conversion_coefficient_6",
+                    ">i4"),
+                   ("reference_voltage_conversion_coefficient_1", ">i4"),
+                   ("reference_voltage_conversion_coefficient_2", ">i4"),
+                   ("reference_voltage_conversion_coefficient_3", ">i4"),
+                   ("reference_voltage_conversion_coefficient_4", ">i4"),
+                   ("reference_voltage_conversion_coefficient_5", ">i4"),
+                   ("reference_voltage_conversion_coefficient_6", ">i4"),
+                   # METOP MANEUVERS IDENTIFICATION
+                   ("start_of_maneuver_year", ">u2"),
+                   ("start_of_maneuver_day", ">u2"),
+                   ("start_of_maneuver_utc_time_of_day", ">u4"),
+                   ("end_of_manuever_year", ">u2"),
+                   ("end_of_maneuver_day", ">u2"),
+                   ("end_of_maneuver_utc_time_of_day", ">u4"),
+                   ("change_in_spacecraft_velocity", ">i4"),
+                   ("change in spacecraft_mass", ">u4"),
+                   # CLOUDS FROM AVHRR(CLAVR)
+                   ("clavr_status_bit_field", ">u2"),
+                   ("zero_fill9", ">i2")])
 # FILLER
-#                  ("zero_fill9", ">i4", (4608 - 688, ))])
+#                  ("zero_fill10", ">i4", (4608 - 688, ))])
 
 
 # video data object
-
 scanline = np.dtype([("scan_line_number", ">u2"),
-                     ("scan_line_year", ">u2"),
+                     ("scan_line_year", ">i2"),
                      ("scan_line_day_of_year", ">u2"),
                      ("satellite_clock_drift_delta", ">i2"),
                      ("scan_line_utc_time_of_day", ">u4"),
@@ -362,7 +338,10 @@ scanline = np.dtype([("scan_line_number", ">u2"),
                      ("zero_fill0", ">i2", (5,)),
                      # QUALITY INDICATORS
                      ("quality_indicator_bit_field", ">u4"),
-                     ("scan_line_quality_flags", ">u4"),
+                     ("scan_line_quality_flags_reserved", ">u1"),
+                     ("scan_line_quality_flags_time_problem_code", ">u1"),
+                     ("scan_line_quality_flags_calibration_problem_code", ">u1"),
+                     ("scan_line_quality_flags_earth_location_problem_code", ">u1"),
                      ("calibration_quality_flags", ">u2", (3,)),
                      ("count_of_bit_errors_in_frame_sync", ">u2"),
                      ("zero_fill1", ">i4", (2,)),
@@ -430,45 +409,79 @@ scanline = np.dtype([("scan_line_number", ">u2"),
                      ("ir_test_cal_ch_5_coefficient_1", ">i4"),
                      ("ir_test_cal_ch_5_coefficient_2", ">i4"),
                      ("ir_test_cal_ch_5_coefficient_3", ">i4"),
-                     ("zero_fill2", ">i4", (3,)),
                      # NAVIGATION
+                     ("computed_yaw_steering", ">i2", (3,)),
+                     ("total_applied_attitude_correction", ">i2", (3,)),
                      ("navigation_status_bit_field", ">u4"),
-                     ("time_associated_with_tip_euler_angles", ">u4"),
-                     ("tip_euler_angles", ">i2", (3,)),
+                     ("time_associated_with_euler_angles", ">u4"),
+                     ("euler_angles", ">i2", (3,)),
                      ("spacecraft_altitude_above_reference_ellipsoid", ">u2"),
                      ("angular_relationships", ">i2", (153,)),
-                     ("zero_fill3", ">i2", (3,)),
+                     ("zero_fill2", ">i2", (3,)),
                      ("earth_location", ">i4", (102,)),
-                     ("zero_fill4", ">i4", (2,)),
-                     # HRPT MINOR FRAME TELEMETRY
+                     ("zero_fill3", ">i4", (2,)),
+                     # FRAME TELEMETRY
                      ("frame_sync", ">u2", (6,)),
                      ("id", ">u2", (2,)),
                      ("time_code", ">u2", (4,)),
-                     ("telemetry", ">u2", (10,)),
+                     ("ramp_calibration", ">u2", (5,)),
+                     ("internal_target_temperature", ">u2", (3,)),
+                     ("patch_temperature", ">u2"),
+                     ("undefined", ">u2"),
                      ("back_scan", ">u2", (30,)),
                      ("space_data", ">u2", (50,)),
                      ("sync_delta", ">u2"),
-                     ("zero_fill5", ">i2"),
-                     # AVHRR SENSOR DATA
-                     ("sensor_data", ">u4", (682,)),
-                     ("zero_fill6", ">i4", (2,)),
-                     # DIGITAL B TELEMETRY
-                     ("invalid_word_bit_flags1", ">u2"),
+                     ("zero_fill4", ">i2"),
+                     # EARTH OBSERVATIONS
+                     ("sensor_data", ">u4", (3414,)),
+                     ("zero_fill5", ">i4", (2,)),
+                     # DIGITAL B HOUSEKEEPING TELEMETRY
+                     ("digital_b_telemetry_update_flags", ">u2"),
                      ("avhrr_digital_b_data", ">u2"),
-                     ("zero_fill7", ">i4", (3,)),
+                     ("zero_fill6", ">i4", (3,)),
                      # ANALOG HOUSEKEEPING DATA (TIP)
-                     ("invalid_word_bit_flags2", ">u4"),
-                     ("word_1_patch_temperature", ">u1", (22,)),
-                     ("zero_fill8", ">i2", (3,)),
+                     ("analog_telemetry_update_flags", ">u4"),
+                     ("patch_temperature_range_0_255", ">u1"),
+                     ("patch_temperature_extended", ">u1"),
+                     ("patch_power", ">u1"),
+                     ("radiator_temperature", ">u1"),
+                     ("blackbody_temperature_1", ">u1"),
+                     ("blackbody_temperature_2", ">u1"),
+                     ("blackbody_temperature_3", ">u1"),
+                     ("blackbody_temperature_4", ">u1"),
+                     ("electronics_current", ">u1"),
+                     ("motor_current", ">u1"),
+                     ("earth_shield_position", ">u1"),
+                     ("electronics_temperature", ">u1"),
+                     ("cooler_housing_temperature", ">u1"),
+                     ("baseplate_temperature", ">u1"),
+                     ("motor_housing_temperature", ">u1"),
+                     ("a/d_converter_temperature", ">u1"),
+                     ("detector_#4_bias_voltage", ">u1"),
+                     ("detector_#5_bias_voltage", ">u1"),
+                     ("blackbody_temperature_channel3b", ">u1"),
+                     ("blackbody_temperature_channel4", ">u1"),
+                     ("blackbody_temperature_channel5", ">u1"),
+                     ("reference_voltage", ">u1"),
+                     ("zero_fill7", ">i2", (3,)),
                      # CLOUDS FROM AVHRR (CLAVR)
-                     ("reserved0", ">u4"),
-                     ("reserved1", ">u4"),
-                     ("reserved2", ">u2", (52,)),
+                     ("reserved_clavr_status_bit_field", ">u4"),
+                     ("reserved_clavr", ">u4"),
+                     ("reserved_clavr_ccm", ">u2", (256,)),
                      # FILLER
-                     ("zero_fill9", ">i4", (112,))])
+                     ("zero_fill8", ">i4", (94,))])
 
 
-class KLMReader(GACReader):
+class KLMReader(LACReader):
+    instrument_ids = {4:  15,
+                      2:  16,
+                      6:  17,
+                      7:  18,
+                      8:  19,
+                      12: 'a',
+                      11: 'b',
+                      }
+
     spacecraft_names = {4:  'noaa15',
                         2:  'noaa16',
                         6:  'noaa17',
@@ -489,15 +502,17 @@ class KLMReader(GACReader):
     def read(self, filename):
         with open(filename) as fd_:
             self.head = np.fromfile(fd_, dtype=header, count=1)[0]
-            fd_.seek(4608, 0)
+            # The value below is very important, in this case:15872, from the LAC header table last row.
+            fd_.seek(15872, 0)
             self.scans = np.fromfile(
                 fd_, dtype=scanline, count=self.head["count_of_data_records"])
 
         self.spacecraft_id = self.head["noaa_spacecraft_identification_code"]
+        self.instrument_id = self.instrument_ids[self.spacecraft_id]
         self.spacecraft_name = self.spacecraft_names[self.spacecraft_id]
 
     def get_telemetry(self):
-        prt_counts = np.mean(self.scans["telemetry"][:, 5:8], axis=1)
+        prt_counts = np.mean(self.scans["internal_target_temperature"][:, 0:3], axis=1)
 
         # getting ICT counts
 
@@ -519,7 +534,7 @@ class KLMReader(GACReader):
         arr_lat = self.scans["earth_location"][:, 0::2] / 1e4
         arr_lon = self.scans["earth_location"][:, 1::2] / 1e4
 
-        self.lons, self.lats = gtp.gac_geo_interpolator(arr_lon, arr_lat)
+        self.lons, self.lats = gtp.lac_geo_interpolator(arr_lon, arr_lat)
         return self.lons, self.lats
 
     def get_times(self):
@@ -546,7 +561,7 @@ class KLMReader(GACReader):
                 ((self.scans["quality_indicator_bit_field"] << 3) >> 31) |
                 ((self.scans["quality_indicator_bit_field"] << 4) >> 31))
 
-        number_of_scans = self.scans["telemetry"].shape[0]
+        number_of_scans = self.scans["internal_target_temperature"].shape[0]
         qual_flags = np.zeros((int(number_of_scans), 7))
         qual_flags[:, 0] = self.scans["scan_line_number"]
         qual_flags[:, 1] = (self.scans["quality_indicator_bit_field"] >> 31)
@@ -559,57 +574,30 @@ class KLMReader(GACReader):
         return mask.astype(bool), qual_flags
 
 
-def main(filename, start_line, end_line):
+def main(filename):
     tic = datetime.datetime.now()
     reader = KLMReader()
     reader.read(filename)
     reader.get_lonlat()
+    reader.adjust_clock_drift()
     channels = reader.get_calibrated_channels()
     sat_azi, sat_zen, sun_azi, sun_zen, rel_azi = reader.get_angles()
 
-    """ 
-    year = reader.head["start_of_data_set_year"]
-    jday = reader.head["start_of_data_set_day_of_year"]
-    msec = reader.head["start_of_data_set_utc_time_of_day"]
-    xutcs = (((year - 1970).astype('datetime64[Y]')
-                  + (jday - 1).astype('timedelta64[D]')).astype('datetime64[ms]')
-                  + msec.astype('timedelta64[ms]'))
-    xtimes1 = xutcs.astype(datetime.datetime)
-
-    year = reader.head["end_of_data_set_year"]
-    jday = reader.head["end_of_data_set_day_of_year"]
-    msec = reader.head["end_of_data_set_utc_time_of_day"]
-    xutcs = (((year - 1970).astype('datetime64[Y]')
-                  + (jday - 1).astype('timedelta64[D]')).astype('datetime64[ms]')
-                  + msec.astype('timedelta64[ms]'))
-    xtimes2 = xutcs.astype(datetime.datetime)
-    """
-
-    xtimes1 = reader.utcs[int(start_line)].astype(datetime.datetime)
-    if int(end_line) == 0:
-        xtimes2 = reader.utcs[-1].astype(datetime.datetime)
-    else:
-        xtimes2 = reader.utcs[int(end_line)].astype(datetime.datetime)
-
-    mask, qual_flags = reader.get_corrupt_mask()
-    if (np.all(mask)):
-        print "ERROR: All data is masked out. Stop processing"
-        raise ValueError("All data is masked out.")
-
+    mask = reader.get_corrupt_mask()
     gac_io.save_gac(reader.spacecraft_name,
-                    xtimes1, xtimes2,
+                    reader.times[0], reader.times[1],
                     reader.lats, reader.lons,
                     channels[:, :, 0], channels[:, :, 1],
+                    np.ones_like(channels[:, :, 0]) * -1,
                     channels[:, :, 2],
                     channels[:, :, 3],
                     channels[:, :, 4],
-                    channels[:, :, 5],
                     sun_zen, sat_zen, sun_azi, sat_azi, rel_azi,
-                    mask, qual_flags, start_line, end_line, reader.get_ch3_switch())
+                    mask)
     LOG.info("pygac took: %s", str(datetime.datetime.now() - tic))
 
 
 if __name__ == "__main__":
     import sys
 
-    main(sys.argv[1], sys.argv[2], sys.argv[3])
+    main(sys.argv[1])
