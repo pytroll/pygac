@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2014 Martin Raspaud
+# Copyright (c) 2014, 2015 Martin Raspaud
 
 # Author(s):
 
@@ -126,12 +126,14 @@ class LACReader(object):
                 utcs -= (offsets * 1000).astype('timedelta64[ms]')
 
         t = utcs[0].astype(datetime.datetime)
-        #roll = (self.head["roll_fixed_error_correction"] / 1e5) * 0.01745329252
-        #pitch = (self.head["pitch_fixed_error_correction"] / 1e5) * 0.01745329252
-        #yaw = (self.head["yaw_fixed_error_correction"] / 1e5) * 0.01745329252
-        rpy_spacecraft = rpy_coeffs[self.spacecraft_name]
-        rpy = [rpy_spacecraft['roll'], rpy_spacecraft['pitch'], rpy_spacecraft['yaw']]
-        
+
+        if "constant_yaw_attitude_error" in self.head.dtype.fields:
+            rpy = np.deg2rad([self.head["constant_roll_attitude_error"] / 1e3,
+                              self.head["constant_pitch_attitude_error"] / 1e3,
+                              self.head["constant_yaw_attitude_error"] / 1e3])
+        else:
+            rpy = [0, 0, 0]
+
         LOG.info("Using rpy: %s", str(rpy))
 	
         from pyorbital.geoloc_instrument_definitions import avhrr_gac
