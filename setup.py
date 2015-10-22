@@ -21,7 +21,6 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-
 try:
     with open("./README", "r") as fd:
         long_description = fd.read()
@@ -50,20 +49,20 @@ setup(name='pygac',
       long_description=long_description,
       license='GPLv3',
 
-      packages = ['pygac'],
+      packages=['pygac'],
 
       # Project should use reStructuredText, so ensure that the docutils get
       # installed or upgraded on the target machine
-      install_requires=['docutils>=0.3', 
-                        'numpy', 'pyorbital>=v0.3.2',
+      install_requires=['docutils>=0.3',
+                        'numpy>=1.8.0', 'pyorbital>=v0.3.2',
                         'h5py'],
-      extras_require = {'geolocation interpolation': ['python-geotiepoints'],
-                        },
-      scripts = [],      
+      extras_require={'geolocation interpolation': ['python-geotiepoints'],
+                      },
+      scripts=[],
       data_files=[('etc', ['etc/pygac.cfg.template']),
                   ('gapfilled_tles', ['gapfilled_tles/TLE_noaa16.txt'])],
-      test_suite="nose.collector",
+      test_suite="pygac.tests.suite",
       tests_require=[],
 
-      zip_safe = False
+      zip_safe=False
       )

@@ -1,3 +1,4 @@
+
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
@@ -62,14 +63,20 @@ def check_file_version(filename):
         return main
 
 
+
 if __name__ == "__main__":
     import sys
     try:
         filename = sys.argv[1]
+	start_line = sys.argv[2]
+	end_line = sys.argv[3] 
     except IndexError:
-	print "Usage: gac_run <filename>"
+	print "Usage: gac_run <filename> <start scan line number> <end scan line number>"
 	sys.exit(1)
 
     reader = check_file_version(filename)
-    reader(filename)
+    try:
+        reader(filename, start_line, end_line)
+    except ValueError:
+        print "Value error"
 

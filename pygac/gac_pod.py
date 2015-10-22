@@ -2,12 +2,13 @@
 
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2014 Abhay Devasthale
+# Copyright (c) 2014, 2015 Abhay Devasthale
 
 # Author(s):
 
 #   Abhay Devasthale <abhay.devasthale@smhi.se>
 #   Adam Dybbroe <adam.dybbroe@smhi.se>
+#   Martin Raspaud <martin.raspaud@smhi.se>
 
 # This work was done in the framework of ESA-CCI-Clouds phase I
 
@@ -34,92 +35,120 @@ http://www.ncdc.noaa.gov/oa/pod-guide/ncdc/docs/podug/html/c3/sec3-1.htm
 
 """
 
-import sys
 import numpy as np
-import geotiepoints as gtp
+from pygac.gac_reader import GACReader
+import pygac.geotiepoints as gtp
 import datetime
-from pyorbital import astronomy
-import pygac.calibrate_pod as cal_pod
 from pygac import gac_io
-import pprint
-
-from pyorbital.orbital import Orbital
 
 import logging
 LOG = logging.getLogger(__name__)
 
-import ConfigParser
-import os
-
-try:
-    CONFIG_FILE = os.environ['PYGAC_CONFIG_FILE']
-except KeyError:
-    LOG.exception('Environment variable PYGAC_CONFIG_FILE not set!')
-    raise
-
-if not os.path.exists(CONFIG_FILE) or not os.path.isfile(CONFIG_FILE):
-    raise IOError(str(CONFIG_FILE) + " pointed to by the environment " +
-                  "variable PYGAC_CONFIG_FILE is not a file or does not exist!")
+# common header
+header0 = np.dtype([("noaa_spacecraft_identification_code", ">u1"),
+                    ("data_type_code", ">u1"),
+                    ("start_time", ">u2", (3, )),
+                    ("number_of_scans", ">u2"),
+                    ("end_time", ">u2", (3, ))])
 
 
-# setting up constants used in the processing
+# until 8 september 1992
+header1 = np.dtype([("noaa_spacecraft_identification_code", ">u1"),
+                    ("data_type_code", ">u1"),
+                    ("start_time", ">u2", (3, )),
+                    ("number_of_scans", ">u2"),
+                    ("end_time", ">u2", (3, )),
+                    ("processing_block_id", "S7"),
+                    ("ramp_auto_calibration", ">u1"),
+                    ("number_of_data_gaps", ">u2"),
+                    ("dacs_quality", ">u1", (6, )),
+                    ("calibration_parameter_id", ">i2"),
+                    ("dacs_status", ">u1"),
+                    ("spare1", ">i1", (5, )),
+                    ("data_set_name", "S44"),
+                    ("spare2", ">u2", (1568, ))])
 
-AVHRR_SWATH_WIDTH_DEG=55.385
-sat_altitude=850000.0
-M_PI=3.14159265359
-AHA_DEG_TO_RAD=M_PI/180.
-AHA_RAD_TO_DEG=180./M_PI
-earth_radius=6370997.0
-wholeday_ms=24.0*3600.0*1000.0
-GAC_NEAR_NADIR_POSITION=207
-MISSING_DATA = -32001
+header2 = np.dtype([("noaa_spacecraft_identification_code", ">u1"),
+                    ("data_type_code", ">u1"),
+                    ("start_time", ">u2", (3, )),
+                    ("number_of_scans", ">u2"),
+                    ("end_time", ">u2", (3, )),
+                    ("processing_block_id", "S7"),
+                    ("ramp_auto_calibration", ">u1"),
+                    ("number_of_data_gaps", ">u2"),
+                    ("dacs_quality", ">u1", (6, )),
+                    ("calibration_parameter_id", ">i2"),
+                    ("dacs_status", ">u1"),
+                    ("spare1", ">i1", (5, )),
+                    ("data_set_name", "S42"),
+                    ("blankfill", "S2"),
+                    ("year_of_epoch", ">u2"),
+                    ("julian_day_of_epoch", ">u2"),
+                    ("millisecond_utc_epoch_time_of_day", ">u4"),
+                    # Keplerian orbital elements
+                    ("semi_major_axis", ">f8"),
+                    ("eccentricity", ">f8"),
+                    ("inclination", ">f8"),
+                    ("argument_of_perigee", ">f8"),
+                    ("right_ascension", ">f8"),
+                    ("mean_anomaly", ">f8"),
+                    # cartesian inertial true date of elements
+                    ("x_component_of_position_vector", ">f8"),
+                    ("y_component_of_position_vector", ">f8"),
+                    ("z_component_of_position_vector", ">f8"),
+                    ("x_dot_component_of_position_vector", ">f8"),
+                    ("y_dot_component_of_position_vector", ">f8"),
+                    ("z_dot_component_of_position_vector", ">f8"),
+                    ("spare2", ">u2", (1516, ))])
+
+header3 = np.dtype([("noaa_spacecraft_identification_code", ">u1"),
+                    ("data_type_code", ">u1"),
+                    ("start_time", ">u2", (3, )),
+                    ("number_of_scans", ">u2"),
+                    ("end_time", ">u2", (3, )),
+                    ("processing_block_id", "S7"),
+                    ("ramp_auto_calibration", ">u1"),
+                    ("number_of_data_gaps", ">u2"),
+                    ("dacs_quality", ">u1", (6, )),
+                    ("calibration_parameter_id", ">i2"),
+                    ("dacs_status", ">u1"),
+                    ("reserved_for_mounting_and_fixed_attitude_correction_indicator",
+                     ">i1"),
+                    ("nadir_earth_location_tolerance", ">i1"),
+                    ("spare1", ">i1"),
+                    ("start_of_data_set_year", ">u2"),
+                    ("data_set_name", "S44"),
+                    ("year_of_epoch", ">u2"),
+                    ("julian_day_of_epoch", ">u2"),
+                    ("millisecond_utc_epoch_time_of_day", ">u4"),
+                    # Keplerian orbital elements
+                    ("semi_major_axis", ">i4"),
+                    ("eccentricity", ">i4"),
+                    ("inclination", ">i4"),
+                    ("argument_of_perigee", ">i4"),
+                    ("right_ascension", ">i4"),
+                    ("mean_anomaly", ">i4"),
+                    # cartesian inertial true date of elements
+                    ("x_component_of_position_vector", ">i4"),
+                    ("y_component_of_position_vector", ">i4"),
+                    ("z_component_of_position_vector", ">i4"),
+                    ("x_dot_component_of_position_vector", ">i4"),
+                    ("y_dot_component_of_position_vector", ">i4"),
+                    ("z_dot_component_of_position_vector", ">i4"),
+                    # future use
+                    ("yaw_fixed_error_correction", ">i2"),
+                    ("roll_fixed_error_correction", ">i2"),
+                    ("pitch_fixed_error_correction", ">i2"),
+                    ("spare2", ">u2", (1537, ))])
 
 
-header = np.dtype([("noaa_spacecraft_identification_code", ">u1"),
-                   ("data_type_code", ">u1"),
-                   ("start_time", ">u1", (6, )),
-                   ("number_of_scans", ">u2"),
-                   ("end_time", ">u1", (6, )),
-                   ("processing_block_id", "S7"),
-                   ("ramp_auto_calibration", ">u1"),
-                   ("number_of_data_gaps", ">u2"),
-                   ("dacs_quality", ">u1", (6, )),
-                   ("calibration_parameter_id", ">i2"),
-                   ("dacs_status", ">u1"),
-                   ("reserved_for_mounting_and_fixed_attitude_correction_indicator", ">i1"),
-                   ("nadir_earth_location_tolerance", ">i1"),
-                   ("spare1", ">i1"),
-                   ("start_of_data_set_year", ">u2"),
-                   ("data_set_name", "S44"),
-                   ("year_of_epoch", ">u2"),
-                   ("julian_day_of_epoch", ">u2"),
-                   ("millisecond_utc_epoch_time_of_day", ">u4"),
-                   # Keplerian orbital elements
-                   ("semi_major_axis", ">u4"),
-                   ("eccentricity", ">u4"),
-                   ("inclination", ">u4"),
-                   ("argument_of_perigee", ">u4"),
-                   ("right_ascension", ">u4"),
-                   ("mean_anomaly", ">u4"),
-                   # cartesian inertial true date of elements
-                   ("x_component_of_position_vector", ">u4"),
-                   ("y_component_of_position_vector", ">u4"),
-                   ("z_component_of_position_vector", ">u4"),
-                   ("x_dot_component_of_position_vector", ">u4"),
-                   ("y_dot_component_of_position_vector", ">u4"),
-                   ("z_dot_component_of_position_vector", ">u4"),
-                   # future use
-                   ("yaw_fixed_error_correction", ">u2"),
-                   ("roll_fixed_error_correction", ">u2"),
-                   ("pitch_fixed_error_correction", ">u2"),
-                   ("spare2", ">u2", (1537, ))])
-
-
-scanline = np.dtype([("scan_line_number", ">u2"),
-                     ("time_code", ">u1", (6, )),
+scanline = np.dtype([("scan_line_number", ">i2"),
+                     ("time_code", ">u2", (3, )),
+                     #("time_code", ">u1", (6, )),
                      ("quality_indicators", ">u4"),
                      ("calibration_coefficients", ">i4", (10, )),
-                     ("number_of_meaningful_zenith_angles_and_earth_location_appended", ">u1"),
+                     ("number_of_meaningful_zenith_angles_and_earth_location_appended",
+                      ">u1"),
                      ("solar_zenith_angles", "i1", (51, )),
                      ("earth_location", ">i2", (102, )),
                      ("telemetry", ">u4", (35, )),
@@ -129,351 +158,270 @@ scanline = np.dtype([("scan_line_number", ">u2"),
                      ("spare3", "u2", (11, ))])
 
 
-def main(filename):
+class PODReader(GACReader):
 
-    with open(filename) as fd_:
-        head = np.fromfile(fd_, dtype=header, count=1)
-        scans = np.fromfile(fd_, dtype=scanline, count=head["number_of_scans"])
-
-    # cleaning up the data
-    if scans["scan_line_number"][0] != 1:
-        scans = scans[1:]
-    scans = scans[scans["scan_line_number"] != 0]
-
-    number_of_scans = len(scans)
-
-    spacecraft_id=int(head["noaa_spacecraft_identification_code"])
-    spacecrafts = {4: 'noaa07',
-                   7: 'noaa09',
-		   8: 'noaa10',
-		   1: 'noaa11',
-		   5: 'noaa12',
-		   3: 'noaa14',
-                   }
-
-    try:
-        satellite_name = spacecrafts[spacecraft_id]
-    except KeyError:
-        raise KeyError("Wrong satellite id: " + str(spacecraft_id))
-
-    conf = ConfigParser.ConfigParser()
-    try:
-        conf.read(CONFIG_FILE)
-    except ConfigParser.NoSectionError:
-        LOG.exception('Failed reading configuration file: ' + str(CONFIG_FILE))
-        raise
-
-    values = {"satname": satellite_name, }
-
-    options = {}
-    for option, value in conf.items('tle', raw = True):
-        options[option] = value
-
-    tle_filename = os.path.join(options['tledir'],
-                                options["tlename"] % values)
-    LOG.info('TLE filename = ' + str(tle_filename))
-
-
-    # unpacking raw data to get counts
-
-    packed_data = scans["sensor_data"]
-    #LOG.debug("Header: %s", pprint.pformat(dict(zip(head[0].dtype.names,
-    #                                                head[0]))))
-    gac_counts = np.zeros((int(number_of_scans), 409 * 5))
-    gac_counts[:, 0::3] = (packed_data & (1023 << 20)) >> 20
-    gac_counts[:, 1::3] = (packed_data & (1023 << 10)) >> 10
-    gac_counts[:, 2::3] = (packed_data & 1023)[:, :-1]
-
-
-
-    # interpolating lat-on points using PYTROLL geotiepoints
-
-    arrLat = np.zeros((int(number_of_scans), 51))
-    arrLon = np.zeros((int(number_of_scans), 51))
-    arrLat = scans["earth_location"][:, 0::2] / 128.0
-    arrLon = scans["earth_location"][:, 1::2] / 128.0
-
-
-    arrLon_full, arrLat_full = gtp.Gac_Lat_Lon_Interpolator(arrLon,arrLat)
-
-
-    # getting time information and calculating solar zenith angle for the entire orbit
-
-    arrYear = ((np.uint16(scans["time_code"][:,0]) << 8) | (np.uint16(scans["time_code"][:,1]) & 65535)) >> 9
-    arrYear = np.where(arrYear>75, arrYear+1900, arrYear+2000)
-    arrJDay = ((np.uint16(scans["time_code"][:,0]) << 8) | (np.uint16(scans["time_code"][:,1]) & 65535)) & 0x01ff
-
-    arrUTC = ((np.uint32(scans["time_code"][:,2] & 7) << 24) | (np.uint32(scans["time_code"][:,3]) << 16) | (np.uint32(scans["time_code"][:,4]) << 8) | (np.uint32(scans["time_code"][:,5])));
-    #arrUTC = ((np.uint32(scans["time_code"][:,2]) << 24) | (np.uint32(scans["time_code"][:,3]) << 16) | (np.uint32(scans["time_code"][:,4]) << 8) | (np.uint32(scans["time_code"][:,5]) & 4294967295)) & 0x07ffffff;
-    #print arrYear, arrJDay, arrUTC
-
-    # Calculating solar zenith angle
-
-    arrSZA = np.zeros((int(number_of_scans), 409))
-    for i in range(number_of_scans):
-            temp_utc = datetime.datetime(int(arrYear[i]), 1, 1) + datetime.timedelta(int(arrJDay[i]) - 1) + datetime.timedelta(milliseconds=int(arrUTC[i]))
-            arrSZA[i,:]= astronomy.sun_zenith_angle(temp_utc, arrLon_full[i,:], arrLat_full[i,:])
-
-
-
-    # calculating satellite zenith angle
-
-    pixel_pos = np.zeros((int(number_of_scans), 409))
-    for i in range(number_of_scans):
-            pixel_pos[i,:] = np.arange(0,409,1)
-
-    scan_angle = AVHRR_SWATH_WIDTH_DEG*np.divide(np.absolute(pixel_pos-205),205.0)
-    arrSTZ = np.zeros((int(number_of_scans), 409))
-    arrSTZ = np.arcsin((1.0+sat_altitude/earth_radius)*np.sin(scan_angle*AHA_DEG_TO_RAD))*AHA_RAD_TO_DEG;
-
-
-
-    # calculating solar azimuth angle
-
-    arrSAA = np.zeros((int(number_of_scans), 409))
-    for i in range(number_of_scans):
-            temp_utc = datetime.datetime(int(arrYear[i]), 1, 1) + datetime.timedelta(int(arrJDay[i]) - 1) + datetime.timedelta(milliseconds=int(arrUTC[i]));
-            temp_alt, temp_suna = astronomy.get_alt_az(temp_utc, arrLon_full[i,:], arrLat_full[i,:]);
-            temp_suna=temp_suna*180.0/M_PI;
-            suna=temp_suna*0.0;
-            ii=np.where(temp_suna<0.0);
-            suna[ii]=temp_suna[ii]+180.0;
-            jj=np.where(temp_suna>=0.0);
-            suna[jj]=temp_suna[jj]-180.0;
-            arrSAA[i,:]=suna;
-
-
-    # calculating satellite azimuth angle
-
-    tle_name = tle_filename # './noaa_tle/TLE_%s.txt' % satellite_name
-    if arrYear[1]<=1999:
-	yearJday = '%02d%03d.%06d' % (arrYear[1]%1900,arrJDay[1], arrUTC[1])
-    else:
-	yearJday = '%02d%03d.%06d' % (arrYear[1]%2000,arrJDay[1], arrUTC[1])
-
-
-    tlep=open(tle_name,'rt')
-    tle_data=tlep.readlines()
-    tlep.close()
-
-    def find_tle_index(tle_data, yearJday):
-        # for iindex, stringYearJday in enumerate(tle_data):
-        # 	if yearJday in stringYearJday:
-        #       		return iindex
-    	# raise IndexError("Can't find tle data for %s on the %s"%(satellite_name, yearJday))
-
-        dates = np.array([float(line[18:32]) for line in tle_data[::2]])
-        dates = np.where(dates > 50000, dates + 1900000, dates + 2000000)
-
-        sdate = float(yearJday)
-        if sdate > 50000:
-            sdate += 1900000
-        else:
-            sdate += 2000000
-
-        iindex = np.searchsorted(dates, sdate)
-
-        if iindex == 0 and abs(sdate - dates[0]) > 7:
-            raise IndexError("Can't find tle data for %s on the %s"%(satellite_name, yearJday))
-        if iindex == len(dates) - 1 and abs(sdate - dates[-1]) > 7:
-            raise IndexError("Can't find tle data for %s on the %s"%(satellite_name, yearJday))
-
-        if abs(sdate - dates[iindex - 1]) < abs(sdate - dates[iindex]):
-            iindex -= 1
-
-        if abs(sdate - dates[iindex]) > 3:
-            LOG.warning("Found TLE data for %f that is %f days appart", sdate, abs(sdate - dates[iindex]))
-        else:            
-            LOG.debug("Found TLE data for %f that is %f days appart", sdate, abs(sdate - dates[iindex]))
-
-        return iindex * 2
-
-
-    try:
-    	iindex = find_tle_index(tle_data,yearJday)
-    	tle1 = tle_data[iindex]
-    	tle2 = tle_data[iindex+1]
-    except KeyError:
-    	print "Could't find TLE - exit";
-        sys.exit(1);
-
-
-    spacecraft_id=int(head["noaa_spacecraft_identification_code"])
     spacecrafts_orbital = {4: 'noaa 7',
-                   7: 'noaa 9',
-		   8: 'noaa 10',
-		   1: 'noaa 11',
-		   5: 'noaa 12',
-		   3: 'noaa 14',
-                   }
+                           7: 'noaa 9',
+                           8: 'noaa 10',
+                           1: 'noaa 11',
+                           5: 'noaa 12',
+                           3: 'noaa 14',
+                           }
+    spacecraft_names = {4: 'noaa7',
+                        7: 'noaa9',
+                        8: 'noaa10',
+                        1: 'noaa11',
+                        5: 'noaa12',
+                        3: 'noaa14',
+                        }
 
-    try:
-        satellite_name_orbital = spacecrafts_orbital[spacecraft_id]
-    except KeyError:
-        print "wrong satellite id - exit";
-        sys.exit(1);
+    def read(self, filename):
+        # choose the right header depending on the date
+        with open(filename) as fd_:
+            head = np.fromfile(fd_, dtype=header0, count=1)[0]
+            year = head["start_time"][0] >> 9
+            year = np.where(year > 75, year + 1900, year + 2000)
+            jday = (head["start_time"][0] & 0x1FF)
 
+            start_date = (datetime.date(year,1,1) + datetime.timedelta(days=jday - 1))
 
-    orb = Orbital(satellite_name_orbital, line1=tle1, line2=tle2)
+            if start_date < datetime.date(1992, 9, 8):
+                header = header1
+            elif start_date <= datetime.date(1994, 11, 15):
+                header = header2
+            else:
+                header = header3
 
-    arrSTA = np.zeros((int(number_of_scans), 409), dtype='float')
-    for i in range(number_of_scans):
-            temp_utc = datetime.datetime(int(arrYear[i]), 1, 1) + datetime.timedelta(int(arrJDay[i]) - 1) + datetime.timedelta(milliseconds=int(arrUTC[i]));
-    	    arr_psta, arr_ele = orb.get_observer_look(temp_utc, arrLon_full[i,:], arrLat_full[i,:], 0)
-    	    arrSTA[i,:]=arr_psta;
+        with open(filename) as fd_:
+            self.head = np.fromfile(fd_, dtype=header, count=1)[0]
+            scans = np.fromfile(fd_,
+                                dtype=scanline,
+                                count=self.head["number_of_scans"])
 
-    arrSTA[:,205]=arrSTA[:,204]
+        # cleaning up the data
+        min_scanline_number = np.amin(np.absolute(scans["scan_line_number"][:]))
+	if scans["scan_line_number"][0] == scans["scan_line_number"][-1] + 1:
+            while scans["scan_line_number"][0] != min_scanline_number:
+                scans = np.roll(scans, -1)
+        else:
+            while scans["scan_line_number"][0] != min_scanline_number:
+                scans = scans[1:]
 
+        self.scans = scans[scans["scan_line_number"] != 0]
 
+        self.spacecraft_id = self.head["noaa_spacecraft_identification_code"]
+        self.spacecraft_name = self.spacecraft_names[self.spacecraft_id]
+        LOG.info(
+            "Reading %s data", self.spacecrafts_orbital[self.spacecraft_id])
 
-    # calculating relative azimuth angle
+        return self.head, self.scans
 
-    arrRAA = np.zeros((int(number_of_scans), 409));
-    arrRAA = np.absolute(arrSTA-arrSAA);
-    arrRAA = np.where(arrRAA>180.0, 360.0-arrRAA, arrRAA);
-
-
-    # scaling angles and lat-lon values
-
-
-    arrSTA=arrSTA-180.0;
-    arrRAA=np.where(arrRAA<0.0,-1.0*arrRAA,arrRAA);
-    arrRAA=180.0-arrRAA;
-
-    arrSZA=arrSZA*100.0;
-    arrSTZ=arrSTZ*100.0;
-    arrSAA=arrSAA*100.0;
-    arrSTA=arrSTA*100.0;
-    arrRAA=arrRAA*100.0;
-
-    arrLat_full=arrLat_full*100.0;
-    arrLon_full=arrLon_full*100.0;
-
-
-    # Earth-Sun distance correction factor
-
-    corr = 1.0 - 0.0334*np.cos(2.0*M_PI*(arrJDay[0]-2)/365.25)
-
-
-
-    # Calibrating solar channels
-
-    channel3_switch=np.zeros(int(number_of_scans));
-    channel3_switch=0;
-    ref1,ref2,ref3=cal_pod.calibrate_solar_pod(gac_counts, int(arrYear[0]), int(arrJDay[0]), int(head["noaa_spacecraft_identification_code"]), channel3_switch, corr, int(number_of_scans));
-
-
-    # Calibrating thermal channels
-
-    decode_tele=np.zeros((int(number_of_scans),140));
-    j=0;
-    for i in range (35):
-            decode_tele[:,j] = (scans["telemetry"][:,i] << 2) >> 22;
-            j=j+1;
-            decode_tele[:,j] = (scans["telemetry"][:,i] << 12) >> 22;
-            j=j+1;
-            decode_tele[:,j] = (scans["telemetry"][:,i] << 22) >> 22;
-            j=j+1;
+    def get_times(self):
+        if self.utcs is None:
+            year = self.scans["time_code"][:, 0] >> 9
+            year = np.where(year > 75, year + 1900, year + 2000)
+            jday = (self.scans["time_code"][:, 0] & 0x1FF)
+            msec = ((np.uint32(self.scans["time_code"][:, 1] & 2047) << 16) |
+                    (np.uint32(self.scans["time_code"][:, 2])))
 
 
-    prt_counts=np.mean(decode_tele[:,17:20], axis=1);
+            jday = np.where(np.logical_or(jday<1, jday>366),np.median(jday),jday)
+            if_wrong_jday = np.ediff1d(jday, to_begin=0)
+            jday = np.where(if_wrong_jday<0, max(jday), jday)
+
+            if_wrong_msec = np.where(msec<1)
+            if_wrong_msec = if_wrong_msec[0]
+            if len(if_wrong_msec) > 0:
+                if if_wrong_msec[0] !=0:
+                   msec = msec[0] + 0.5 * 1000.0 * (self.scans["scan_line_number"] - 1)
+                else:
+                   msec = np.median(msec - 0.5 * 1000.0 * (self.scans["scan_line_number"] - 1))
+
+            if_wrong_msec = np.ediff1d(msec, to_begin=0)
+            msec = np.where(np.logical_or(if_wrong_msec<-1000, if_wrong_msec>1000), msec[0] + 0.5 * 1000.0 * (self.scans["scan_line_number"] - 1), msec)
 
 
-    # getting ICT counts
+            self.utcs = (((year - 1970).astype('datetime64[Y]')
+                          + (jday - 1).astype('timedelta64[D]')).astype('datetime64[ms]')
+                         + msec.astype('timedelta64[ms]'))
+            self.times = self.utcs.astype(datetime.datetime)
 
-    ict_counts=np.zeros((int(number_of_scans),3));
-    ict_counts[:,0]=np.mean(decode_tele[:,22:50:3],axis=1);
-    ict_counts[:,1]=np.mean(decode_tele[:,23:51:3],axis=1);
-    ict_counts[:,2]=np.mean(decode_tele[:,24:52:3],axis=1);
+	    # checking if year value is out of valid range
+	    if_wrong_year = np.where(np.logical_or(year<1978, year>2015))
+	    if_wrong_year = if_wrong_year[0]
+	    if len(if_wrong_year) > 0:
+		# if the first scanline has valid time stamp
+		if if_wrong_year[0] != 0:
+			year = year[0]
+			jday = jday[0]
+			msec = msec[0] + 0.5 * 1000.0 * (self.scans["scan_line_number"] - 1)
+			self.utcs = (((year - 1970).astype('datetime64[Y]')
+                          	      + (jday - 1).astype('timedelta64[D]')).astype('datetime64[ms]')
+                         	     + msec.astype('timedelta64[ms]'))
+            		self.times = self.utcs.astype(datetime.datetime)
+		# Otherwise use median time stamp
+		else:
+			year = np.median(year)
+			jday = np.median(jday)
+			msec = np.median(msec - 0.5 * 1000.0 * (self.scans["scan_line_number"] - 1))
+			self.utcs = (((year - 1970).astype('datetime64[Y]')
+                                      + (jday - 1).astype('timedelta64[D]')).astype('datetime64[ms]')
+                                     + msec.astype('timedelta64[ms]'))
+                        self.times = self.utcs.astype(datetime.datetime)
+		
+        return self.utcs
+
+    def adjust_clock_drift(self):
+        """Adjust the geolocation to compensate for the clock error.
+
+        TODO: bad things might happen when scanlines are skipped.
+        """
+        tic = datetime.datetime.now()
+        self.get_times()
+        from pygac.clock_offsets_converter import get_offsets
+        try:
+            offset_times, clock_error = get_offsets(self.spacecraft_name)
+        except KeyError:
+            LOG.info("No clock drift info available for %s",
+                     self.spacecraft_name)
+        else:
+            offset_times = np.array(offset_times, dtype='datetime64[ms]')
+            offsets = np.interp(self.utcs.astype(np.uint64),
+                                offset_times.astype(np.uint64),
+                                clock_error)
+            LOG.info("Adjusting for clock drift of %s to %s",
+                     str(min(offsets)),
+                     str(max(offsets)))
+            self.times = (self.utcs +
+                          offsets.astype('timedelta64[s]')).astype(datetime.datetime)
+            offsets *= -2
+
+            int_offsets = np.floor(offsets).astype(np.int)
+
+            # filling out missing geolocations with computation from pyorbital.
+            line_indices = (self.scans["scan_line_number"]
+                            + int_offsets)
+
+            missed = sorted((set(line_indices) |
+                             set(line_indices + 1))
+                            - set(self.scans["scan_line_number"]))
+
+            min_idx = min(line_indices)
+            max_idx = max(max(line_indices),
+                          max(self.scans["scan_line_number"] - min_idx)) + 1
+            idx_len = max_idx - min_idx + 2
+
+            complete_lons = np.zeros((idx_len, 409), dtype=np.float) * np.nan
+            complete_lats = np.zeros((idx_len, 409), dtype=np.float) * np.nan
+
+            complete_lons[self.scans["scan_line_number"] - min_idx] = self.lons
+            complete_lats[self.scans["scan_line_number"] - min_idx] = self.lats
+
+            missed_utcs = ((np.array(missed) - 1) * np.timedelta64(500, "ms")
+                           + self.utcs[0])
+
+            mlons, mlats = self.compute_lonlat(missed_utcs, True)
+
+            complete_lons[missed - min_idx] = mlons
+            complete_lats[missed - min_idx] = mlats
+
+            from pygac.slerp import slerp
+            off = offsets - np.floor(offsets)
+            res = slerp(complete_lons[line_indices - min_idx, :],
+                        complete_lats[line_indices - min_idx, :],
+                        complete_lons[line_indices - min_idx + 1, :],
+                        complete_lats[line_indices - min_idx + 1, :],
+                        off[:, np.newaxis, np.newaxis])
+
+            self.lons = res[:, :, 0]
+            self.lats = res[:, :, 1]
+            self.utcs += offsets.astype('timedelta64[s]')
+
+        toc = datetime.datetime.now()
+        LOG.debug("clock drift adjustment took %s", str(toc - tic))
+
+    def get_lonlat(self):
+        # interpolating lat-on points using PYTROLL geotiepoints
+        arr_lat = self.scans["earth_location"][:, 0::2] / 128.0
+        arr_lon = self.scans["earth_location"][:, 1::2] / 128.0
+
+        self.lons, self.lats = gtp.Gac_Lat_Lon_Interpolator(arr_lon, arr_lat)
+        return self.lons, self.lats
+
+    def get_telemetry(self):
+        number_of_scans = self.scans["telemetry"].shape[0]
+        decode_tele = np.zeros((int(number_of_scans), 105))
+        decode_tele[:, ::3] = (self.scans["telemetry"] >> 20) & 1023
+        decode_tele[:, 1::3] = (self.scans["telemetry"] >> 10) & 1023
+        decode_tele[:, 2::3] = self.scans["telemetry"] & 1023
+
+        prt_counts = np.mean(decode_tele[:, 17:20], axis=1)
+
+        # getting ICT counts
+
+        ict_counts = np.zeros((int(number_of_scans), 3))
+        ict_counts[:, 0] = np.mean(decode_tele[:, 22:50:3], axis=1)
+        ict_counts[:, 1] = np.mean(decode_tele[:, 23:51:3], axis=1)
+        ict_counts[:, 2] = np.mean(decode_tele[:, 24:52:3], axis=1)
+
+        # getting space counts
+
+        space_counts = np.zeros((int(number_of_scans), 3))
+        space_counts[:, 0] = np.mean(decode_tele[:, 54:100:5], axis=1)
+        space_counts[:, 1] = np.mean(decode_tele[:, 55:101:5], axis=1)
+        space_counts[:, 2] = np.mean(decode_tele[:, 56:102:5], axis=1)
+
+        return prt_counts, ict_counts, space_counts
+
+    def get_corrupt_mask(self):
+
+        # corrupt scanlines
+
+        mask = ((self.scans["quality_indicators"] >> 31) |
+                ((self.scans["quality_indicators"] << 4) >> 31) |
+                ((self.scans["quality_indicators"] << 5) >> 31))
+
+        number_of_scans = self.scans["telemetry"].shape[0]
+        qual_flags = np.zeros((int(number_of_scans), 7))
+        qual_flags[:, 0] = self.scans["scan_line_number"]
+        qual_flags[:, 1] = (self.scans["quality_indicators"] >> 31)
+        qual_flags[:, 2] = ((self.scans["quality_indicators"] << 4) >> 31)
+        qual_flags[:, 3] = ((self.scans["quality_indicators"] << 5) >> 31)
+        qual_flags[:, 4] = ((self.scans["quality_indicators"] << 13) >> 31)
+        qual_flags[:, 5] = ((self.scans["quality_indicators"] << 14) >> 31)
+        qual_flags[:, 6] = ((self.scans["quality_indicators"] << 15) >> 31)
+
+        return mask.astype(bool), qual_flags
 
 
-    # getting space counts
+def main(filename, start_line, end_line):
+    tic = datetime.datetime.now()
+    reader = PODReader()
+    reader.read(filename)
+    reader.get_lonlat()
+    reader.adjust_clock_drift()
+    channels = reader.get_calibrated_channels()
+    sat_azi, sat_zen, sun_azi, sun_zen, rel_azi = reader.get_angles()
 
-    space_counts=np.zeros((int(number_of_scans),3));
-    space_counts[:,0]=np.mean(decode_tele[:,54:100:5],axis=1);
-    space_counts[:,1]=np.mean(decode_tele[:,55:101:5],axis=1);
-    space_counts[:,2]=np.mean(decode_tele[:,56:102:5],axis=1);
-
-
-
-    # calibrating channels 3b, 4 and 5
-
-    bt3=cal_pod.calibrate_thermal_pod(gac_counts[:,2::5],
-                                      prt_counts,
-                                      ict_counts[:,0],
-                                      space_counts[:,0],
-                                      int(number_of_scans),
-                                      int(head["noaa_spacecraft_identification_code"]),
-                                      channel=3,
-                                      line_numbers=scans["scan_line_number"])
-    bt4=cal_pod.calibrate_thermal_pod(gac_counts[:,3::5],
-                                      prt_counts,
-                                      ict_counts[:,1],
-                                      space_counts[:,1],
-                                      int(number_of_scans),
-                                      int(head["noaa_spacecraft_identification_code"]),
-                                      channel=4,
-                                      line_numbers=scans["scan_line_number"])
-    bt5=cal_pod.calibrate_thermal_pod(gac_counts[:,4::5],
-                                      prt_counts,
-                                      ict_counts[:,2],
-                                      space_counts[:,2],
-                                      int(number_of_scans),
-                                      int(head["noaa_spacecraft_identification_code"]),
-                                      channel=5,
-                                      line_numbers=scans["scan_line_number"])
+    mask, qual_flags = reader.get_corrupt_mask()
+    if (np.all(mask)):
+        print "ERROR: All data is masked out. Stop processing"
+        raise ValueError("All data is masked out.")
 
 
-    bt3=(bt3-273.15)*100.0;
-    bt4=(bt4-273.15)*100.0;
-    bt5=(bt5-273.15)*100.0;
-
-
-    # masking out corrupt scanlines
-
-    scanline_quality=np.zeros((int(number_of_scans),3));
-    scanline_quality[:,0]=scans["quality_indicators"]>>31;
-    scanline_quality[:,1]=(scans["quality_indicators"]<<4)>>31;
-    scanline_quality[:,2]=(scans["quality_indicators"]<<5)>>31;
-
-    ii=np.where((scanline_quality[:,0]==1) | (scanline_quality[:,1]==1) | (scanline_quality[:,2]==1));
-    arrLat_full[ii]=MISSING_DATA;
-    arrLon_full[ii]=MISSING_DATA;
-    ref1[ii]=MISSING_DATA;
-    ref2[ii]=MISSING_DATA;
-    ref3[ii]=MISSING_DATA;
-    bt3[ii]=MISSING_DATA;
-    bt4[ii]=MISSING_DATA;
-    bt5[ii]=MISSING_DATA;
-    arrSZA[ii]=MISSING_DATA;
-    arrSTZ[ii]=MISSING_DATA;
-    arrSAA[ii]=MISSING_DATA;
-    arrSTA[ii]=MISSING_DATA;
-    arrRAA[ii]=MISSING_DATA;
-
-    ii=np.where(ref1<0);   
-    ref1[ii]=MISSING_DATA;
-    ii=np.where(ref2<0); 
-    ref2[ii]=MISSING_DATA;
-
-    # writing out calibrated AVHRR channel data and various sun-sat angles
-
-
-    t = datetime.datetime(int(arrYear[1]), 1, 1) + datetime.timedelta(int(arrJDay[1]) - 1) + datetime.timedelta(milliseconds=int(arrUTC[1]))
-    tenth_s = int(t.microsecond/100000)
-    startdate = '%d%02d%02d' % (t.year,t.month,t.day)
-    starttime = '%02d%02d%02d%01d' % (t.hour,t.minute,t.second,tenth_s)
-
-    t = datetime.datetime(int(arrYear[-1]), 1, 1) + datetime.timedelta(int(arrJDay[-1]) - 1) + datetime.timedelta(milliseconds=int(arrUTC[-1]))
-    tenth_s = int(t.microsecond/100000)
-    enddate = '%d%02d%02d' % (t.year,t.month,t.day)
-    endtime = '%02d%02d%02d%01d' % (t.hour,t.minute,t.second,tenth_s)
-
-    gac_io.avhrrGAC_io(satellite_name, startdate, enddate, starttime, endtime, arrLat_full, arrLon_full, ref1, ref2, ref3, bt3, bt4, bt5, arrSZA, arrSTZ, arrSAA, arrSTA, arrRAA)
-
+    gac_io.save_gac(reader.spacecraft_name,
+                    reader.utcs,
+                    reader.lats, reader.lons,
+                    channels[:, :, 0], channels[:,:, 1],
+                    np.ones_like(channels[:, :, 0]) * -1,
+                    channels[:, :, 2],
+                    channels[:, :, 3],
+                    channels[:, :, 4],
+                    sun_zen, sat_zen, sun_azi, sat_azi, rel_azi,
+                    mask, qual_flags, start_line, end_line)
+    LOG.info("pygac took: %s", str(datetime.datetime.now() - tic))
 
 
 if __name__ == "__main__":
-    main(filename)
-
-
+    import sys
+    main(sys.argv[1], sys.argv[2], sys.argv[3])
