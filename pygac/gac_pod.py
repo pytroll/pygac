@@ -160,14 +160,18 @@ scanline = np.dtype([("scan_line_number", ">i2"),
 
 class PODReader(GACReader):
 
-    spacecrafts_orbital = {4: 'noaa 7',
+    spacecrafts_orbital = {2: 'noaa 6',
+                           4: 'noaa 7',
+                           6: 'noaa 8',
                            7: 'noaa 9',
                            8: 'noaa 10',
                            1: 'noaa 11',
                            5: 'noaa 12',
                            3: 'noaa 14',
                            }
-    spacecraft_names = {4: 'noaa7',
+    spacecraft_names = {2: 'noaa6',
+                        4: 'noaa7',
+                        6: 'noaa8',
                         7: 'noaa9',
                         8: 'noaa10',
                         1: 'noaa11',
@@ -224,7 +228,8 @@ class PODReader(GACReader):
             msec = ((np.uint32(self.scans["time_code"][:, 1] & 2047) << 16) |
                     (np.uint32(self.scans["time_code"][:, 2])))
 
-
+            #print jday[10150:10171]
+            #print msec[10150:10171]
             jday = np.where(np.logical_or(jday<1, jday>366),np.median(jday),jday)
             if_wrong_jday = np.ediff1d(jday, to_begin=0)
             jday = np.where(if_wrong_jday<0, max(jday), jday)
@@ -246,6 +251,9 @@ class PODReader(GACReader):
                          + msec.astype('timedelta64[ms]'))
             self.times = self.utcs.astype(datetime.datetime)
 
+            #print jday[10150:10171]
+            #print msec[10150:10171]
+            #print self.utcs[10150:10171].astype(datetime.datetime)
 	    # checking if year value is out of valid range
 	    if_wrong_year = np.where(np.logical_or(year<1978, year>2015))
 	    if_wrong_year = if_wrong_year[0]
