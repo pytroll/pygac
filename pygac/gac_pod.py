@@ -243,7 +243,8 @@ class PODReader(GACReader):
                    msec = np.median(msec - 0.5 * 1000.0 * (self.scans["scan_line_number"] - 1))
 
             if_wrong_msec = np.ediff1d(msec, to_begin=0)
-            msec = np.where(np.logical_or(if_wrong_msec<-1000, if_wrong_msec>1000), msec[0] + 0.5 * 1000.0 * (self.scans["scan_line_number"] - 1), msec)
+            #msec = np.where(np.logical_or(if_wrong_msec<-1000, if_wrong_msec>1000), msec[0] + 0.5 * 1000.0 * (self.scans["scan_line_number"] - 1), msec)
+            msec = np.where(np.logical_and(np.logical_or(if_wrong_msec<-1000, if_wrong_msec>1000), if_wrong_jday!=1), msec[0] + 0.5 * 1000.0 * (self.scans["scan_line_number"] - 1), msec)
 
 
             self.utcs = (((year - 1970).astype('datetime64[Y]')
@@ -251,6 +252,8 @@ class PODReader(GACReader):
                          + msec.astype('timedelta64[ms]'))
             self.times = self.utcs.astype(datetime.datetime)
 
+	    #print if_wrong_jday[10150:10171];
+	    #print if_wrong_msec[10150:10171];
             #print jday[10150:10171]
             #print msec[10150:10171]
             #print self.utcs[10150:10171].astype(datetime.datetime)
