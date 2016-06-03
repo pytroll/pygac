@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2014 Adam.Dybbroe
+# Copyright (c) 2013, 2014 Martin Raspaud
 
 # Author(s):
 
-#   Adam.Dybbroe <a000680@c14526.ad.smhi.se>
+#   Martin Raspaud <martin.raspaud@smhi.se>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,21 +20,19 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+"""The tests package.
 """
-"""
 
-import version
-__version__ = version.__version__
+from pygac.tests import test_calibrate_pod, test_slerp, test_calibrate_klm
+import unittest
 
-import os
-import logging
-LOG = logging.getLogger(__name__)
-try:
-    CONFIG_FILE = os.environ['PYGAC_CONFIG_FILE']
-except KeyError:
-    LOG.exception('Environment variable PYGAC_CONFIG_FILE not set!')
-    raise
 
-if not os.path.exists(CONFIG_FILE) or not os.path.isfile(CONFIG_FILE):
-    LOG.warning(str(CONFIG_FILE) + " pointed to by the environment " +
-                "variable PYGAC_CONFIG_FILE is not a file or does not exist!")
+def suite():
+    """The global test suite.
+    """
+    mysuite = unittest.TestSuite()
+    mysuite.addTests(test_slerp.suite())
+    mysuite.addTests(test_calibrate_pod.suite())
+    mysuite.addTests(test_calibrate_klm.suite())
+
+    return mysuite
