@@ -1,0 +1,3 @@
+include etc/*
+include testdata/*
+include gapfilled_tles/*

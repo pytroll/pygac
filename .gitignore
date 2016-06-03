@@ -1,0 +1,7 @@
+build
+doc/build
+*.so
+*.pyc
+*~
+dist
+pygac.egg-info
