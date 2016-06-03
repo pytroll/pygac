@@ -74,6 +74,29 @@ coeffs = {
                'b1': np.array([1 - 0.0, 1 - 0.10152, 1 - 0.06249]),
                'b2': np.array([0.0, 0.00046964, 0.00025239]),
                },
+    'noaa6': {'ah': np.array([0.145, 0.179, 0.0]),
+              'al': np.array([0.145, 0.179, 0.0]),
+              'bh': np.array([-28.117, -30.385, 9.412]),
+              'bl': np.array([-28.117, -30.385, 9.412]),
+              'ch': np.array([9.103, 9.412, 0.0]),
+              'cl': np.array([9.103, 9.412, 0.0]),
+              'c_dark': np.array([39.44, 39.40, 37.51]),
+              'l_date': 1979.490,
+              'd': np.array([[0, 0, 0, 0, 0],  # reset prt
+                             [277.659, 0.051275, 1.363e-06, 0, 0],
+                             [276.659, 0.051275, 1.363e-06, 0, 0],
+                             [276.659, 0.051275, 1.363e-06, 0, 0],
+                             [276.659, 0.051275, 1.363e-06, 0, 0]]),
+              'n_s': np.array([0.0, -3.26, -3.26]),
+              'c_wn': np.array([2671.5433, 913.46088, 913.46088]),
+              'a': np.array([1.76671100, 0.50395970, 0.50395970]),
+              'b': np.array([1.0 / 1.0024428,
+                             1.0 / 1.0013592,
+                             1.0 / 1.0013592]),
+              'b1': np.array([1.0, 1.0-0.03964, 1.0-0.03964]),
+              'b2': np.array([0.0, 0.00016925, 0.00016925]),
+              'b0': np.array([0.0, 2.24, 2.24]),
+              },
     'noaa7': {'ah': np.array([0.114, 0.126, 0.0]),
               'al': np.array([0.114, 0.126, 0.0]),
               'bh': np.array([5.492, 6.801, 0.0]),
@@ -96,6 +119,29 @@ coeffs = {
               'b1': np.array([1.0, 0.89783, 0.93683]),
               'b2': np.array([0.0, 0.0004819, 0.0002425]),
               'b0': np.array([0.0, 5.25, 3.93]),
+              },
+    'noaa8': {'ah': np.array([0.118, 0.140, 0.0]),
+              'al': np.array([0.118, 0.140, 0.0]),
+              'bh': np.array([14.334, 17.711, 0.0]),
+              'bl': np.array([14.334, 17.711, 0.0]),
+              'ch': np.array([-3.061, -4.086, 0.0]),
+              'cl': np.array([-3.061, -4.086, 0.0]),
+              'c_dark': np.array([39.44, 39.40, 37.51]),
+              'l_date': 1983.241,
+              'd': np.array([[0, 0, 0, 0, 0],  # reset prt
+                             [277.659, 0.051275, 1.363e-06, 0, 0],
+                             [276.659, 0.051275, 1.363e-06, 0, 0],
+                             [276.659, 0.051275, 1.363e-06, 0, 0],
+                             [276.659, 0.051275, 1.363e-06, 0, 0]]),
+              'n_s': np.array([0.0, -3.26, -3.26]),
+              'c_wn': np.array([2651.3776, 915.30330, 915.30330]),
+              'a': np.array([1.76641050, 0.50017997, 0.50017997]),
+              'b': np.array([1.0 / 1.0024260,
+                             1.0 / 1.0013460,
+                             1.0 / 1.0013460]),
+              'b1': np.array([1.0, 1.0-0.03964, 1.0-0.03964]),
+              'b2': np.array([0.0, 0.00016925, 0.00016925]),
+              'b0': np.array([0.0, 2.24, 2.24]),
               },
     'noaa9': {'ah': np.array([0.108, 0.120, 0.0]),
               'al': np.array([0.108, 0.120, 0.0]),
@@ -364,6 +410,7 @@ def calibrate_solar(counts, chan, year, jday, spacecraft, corr=1):
     """
     cal = Calibrator(spacecraft)
 
+
     t = (year + jday / 365.0) - cal.l_date
     stl = (cal.al[chan] * (100.0 + cal.bl[chan] * t +
                            cal.cl[chan] * t * t)) / 100.0
@@ -381,6 +428,8 @@ def calibrate_solar(counts, chan, year, jday, spacecraft, corr=1):
 def calibrate_thermal(counts, prt, ict, space, line_numbers, channel, spacecraft):
     """Do the thermal calibration and return brightness temperatures (K).
     """
+
+
     cal = Calibrator(spacecraft)
 
     chan = channel - 3
@@ -483,7 +532,7 @@ def calibrate_thermal(counts, prt, ict, space, line_numbers, channel, spacecraft
     tsE = ((1.4387752 * cal.c_wn[chan])
            / np.log(1.0 + nBB_num / Ne))
     bt = (tsE - cal.a[chan]) / cal.b[chan]
-
+    
     if chan == 0:
         bt = np.where((counts - new_space) >= 0, 0.0, bt)
 
