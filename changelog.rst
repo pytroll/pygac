@@ -6,6 +6,12 @@ Changelog
 
 - Update changelog. [Martin Raspaud]
 
+- Bump version: 1.0.0 → 1.0.1. [Martin Raspaud]
+
+- Use version number from version.py. [Martin Raspaud]
+
+- Update changelog. [Martin Raspaud]
+
 - Bump version: 0.1.0 → 1.0.0. [Martin Raspaud]
 
 - Do style cleanup for gac_pod. [Martin Raspaud]
