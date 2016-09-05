@@ -23,17 +23,19 @@
 """
 """
 
+import logging
+import os
+
 import version
+
 __version__ = version.__version__
 
-import os
-import logging
 LOG = logging.getLogger(__name__)
 try:
     CONFIG_FILE = os.environ['PYGAC_CONFIG_FILE']
 except KeyError:
-    LOG.exception('Environment variable PYGAC_CONFIG_FILE not set!')
-    raise
+    LOG.error('Environment variable PYGAC_CONFIG_FILE not set!')
+    CONFIG_FILE = ''
 
 if not os.path.exists(CONFIG_FILE) or not os.path.isfile(CONFIG_FILE):
     LOG.warning(str(CONFIG_FILE) + " pointed to by the environment " +
