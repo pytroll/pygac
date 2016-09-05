@@ -35,13 +35,15 @@ http://www.ncdc.noaa.gov/oa/pod-guide/ncdc/docs/podug/html/c3/sec3-1.htm
 
 """
 
-import numpy as np
-from pygac.gac_reader import GACReader
-import pygac.geotiepoints as gtp
 import datetime
-from pygac import gac_io
-
 import logging
+
+import numpy as np
+
+import pygac.geotiepoints as gtp
+from pygac import gac_io
+from pygac.gac_reader import GACReader
+
 LOG = logging.getLogger(__name__)
 
 # common header
@@ -187,7 +189,8 @@ class PODReader(GACReader):
             year = np.where(year > 75, year + 1900, year + 2000)
             jday = (head["start_time"][0] & 0x1FF)
 
-            start_date = (datetime.date(year,1,1) + datetime.timedelta(days=jday - 1))
+            start_date = (datetime.date(year, 1, 1) +
+                          datetime.timedelta(days=int(jday) - 1))
 
             if start_date < datetime.date(1992, 9, 8):
                 header = header1
@@ -203,8 +206,9 @@ class PODReader(GACReader):
                                 count=self.head["number_of_scans"])
 
         # cleaning up the data
-        min_scanline_number = np.amin(np.absolute(scans["scan_line_number"][:]))
-	if scans["scan_line_number"][0] == scans["scan_line_number"][-1] + 1:
+        min_scanline_number = np.amin(
+            np.absolute(scans["scan_line_number"][:]))
+        if scans["scan_line_number"][0] == scans["scan_line_number"][-1] + 1:
             while scans["scan_line_number"][0] != min_scanline_number:
                 scans = np.roll(scans, -1)
         else:
@@ -228,58 +232,63 @@ class PODReader(GACReader):
             msec = ((np.uint32(self.scans["time_code"][:, 1] & 2047) << 16) |
                     (np.uint32(self.scans["time_code"][:, 2])))
 
-            #print jday[10150:10171]
-            #print msec[10150:10171]
-            jday = np.where(np.logical_or(jday<1, jday>366),np.median(jday),jday)
+            # print jday[10150:10171]
+            # print msec[10150:10171]
+            jday = np.where(np.logical_or(jday < 1, jday > 366),
+                            np.median(jday), jday)
             if_wrong_jday = np.ediff1d(jday, to_begin=0)
-            jday = np.where(if_wrong_jday<0, max(jday), jday)
+            jday = np.where(if_wrong_jday < 0, max(jday), jday)
 
-            if_wrong_msec = np.where(msec<1)
+            if_wrong_msec = np.where(msec < 1)
             if_wrong_msec = if_wrong_msec[0]
             if len(if_wrong_msec) > 0:
-                if if_wrong_msec[0] !=0:
-                   msec = msec[0] + 0.5 * 1000.0 * (self.scans["scan_line_number"] - 1)
+                if if_wrong_msec[0] != 0:
+                    msec = msec[0] + 0.5 * 1000.0 * \
+                        (self.scans["scan_line_number"] - 1)
                 else:
-                   msec = np.median(msec - 0.5 * 1000.0 * (self.scans["scan_line_number"] - 1))
+                    msec = np.median(msec - 0.5 * 1000.0 *
+                                     (self.scans["scan_line_number"] - 1))
 
             if_wrong_msec = np.ediff1d(msec, to_begin=0)
             #msec = np.where(np.logical_or(if_wrong_msec<-1000, if_wrong_msec>1000), msec[0] + 0.5 * 1000.0 * (self.scans["scan_line_number"] - 1), msec)
-            msec = np.where(np.logical_and(np.logical_or(if_wrong_msec<-1000, if_wrong_msec>1000), if_wrong_jday!=1), msec[0] + 0.5 * 1000.0 * (self.scans["scan_line_number"] - 1), msec)
-
+            msec = np.where(np.logical_and(np.logical_or(if_wrong_msec < -1000, if_wrong_msec > 1000),
+                                           if_wrong_jday != 1), msec[0] + 0.5 * 1000.0 * (self.scans["scan_line_number"] - 1), msec)
 
             self.utcs = (((year - 1970).astype('datetime64[Y]')
                           + (jday - 1).astype('timedelta64[D]')).astype('datetime64[ms]')
                          + msec.astype('timedelta64[ms]'))
             self.times = self.utcs.astype(datetime.datetime)
 
-	    #print if_wrong_jday[10150:10171];
-	    #print if_wrong_msec[10150:10171];
-            #print jday[10150:10171]
-            #print msec[10150:10171]
-            #print self.utcs[10150:10171].astype(datetime.datetime)
-	    # checking if year value is out of valid range
-	    if_wrong_year = np.where(np.logical_or(year<1978, year>2015))
-	    if_wrong_year = if_wrong_year[0]
-	    if len(if_wrong_year) > 0:
-		# if the first scanline has valid time stamp
-		if if_wrong_year[0] != 0:
-			year = year[0]
-			jday = jday[0]
-			msec = msec[0] + 0.5 * 1000.0 * (self.scans["scan_line_number"] - 1)
-			self.utcs = (((year - 1970).astype('datetime64[Y]')
-                          	      + (jday - 1).astype('timedelta64[D]')).astype('datetime64[ms]')
-                         	     + msec.astype('timedelta64[ms]'))
-            		self.times = self.utcs.astype(datetime.datetime)
-		# Otherwise use median time stamp
-		else:
-			year = np.median(year)
-			jday = np.median(jday)
-			msec = np.median(msec - 0.5 * 1000.0 * (self.scans["scan_line_number"] - 1))
-			self.utcs = (((year - 1970).astype('datetime64[Y]')
-                                      + (jday - 1).astype('timedelta64[D]')).astype('datetime64[ms]')
-                                     + msec.astype('timedelta64[ms]'))
-                        self.times = self.utcs.astype(datetime.datetime)
-		
+            # print if_wrong_jday[10150:10171];
+            # print if_wrong_msec[10150:10171];
+            # print jday[10150:10171]
+            # print msec[10150:10171]
+            # print self.utcs[10150:10171].astype(datetime.datetime)
+            # checking if year value is out of valid range
+            if_wrong_year = np.where(np.logical_or(year < 1978, year > 2015))
+            if_wrong_year = if_wrong_year[0]
+            if len(if_wrong_year) > 0:
+                # if the first scanline has valid time stamp
+                if if_wrong_year[0] != 0:
+                    year = year[0]
+                    jday = jday[0]
+                    msec = msec[0] + 0.5 * 1000.0 * \
+                        (self.scans["scan_line_number"] - 1)
+                    self.utcs = (((year - 1970).astype('datetime64[Y]')
+                                  + (jday - 1).astype('timedelta64[D]')).astype('datetime64[ms]')
+                                 + msec.astype('timedelta64[ms]'))
+                    self.times = self.utcs.astype(datetime.datetime)
+                # Otherwise use median time stamp
+                else:
+                    year = np.median(year)
+                    jday = np.median(jday)
+                    msec = np.median(msec - 0.5 * 1000.0 *
+                                     (self.scans["scan_line_number"] - 1))
+                    self.utcs = (((year - 1970).astype('datetime64[Y]')
+                                  + (jday - 1).astype('timedelta64[D]')).astype('datetime64[ms]')
+                                 + msec.astype('timedelta64[ms]'))
+                    self.times = self.utcs.astype(datetime.datetime)
+
         return self.utcs
 
     def adjust_clock_drift(self):
@@ -419,11 +428,10 @@ def main(filename, start_line, end_line):
         print "ERROR: All data is masked out. Stop processing"
         raise ValueError("All data is masked out.")
 
-
     gac_io.save_gac(reader.spacecraft_name,
                     reader.utcs,
                     reader.lats, reader.lons,
-                    channels[:, :, 0], channels[:,:, 1],
+                    channels[:, :, 0], channels[:, :, 1],
                     np.ones_like(channels[:, :, 0]) * -1,
                     channels[:, :, 2],
                     channels[:, :, 3],
