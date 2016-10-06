@@ -1,7 +1,6 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-
+#!/usr/bin/python
 # Copyright (c) 2014-2016
+#
 
 # Author(s):
 
@@ -23,11 +22,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-"""Read a gac file.
-Reads L1b GAC data from KLM series of satellites (NOAA-15 and later) and does most of the computations.
-Format specification can be found here:
-http://www.ncdc.noaa.gov/oa/pod-guide/ncdc/docs/klm/html/c8/sec83142-1.htm
-
+"""
 """
 
 import datetime
@@ -37,7 +32,7 @@ import numpy as np
 
 import pygac.gac_lac_geotiepoints as gtp
 from pygac.klm_reader import KLMReader
-from pygac.reader import GACReader
+from pygac.reader import LACReader
 
 LOG = logging.getLogger(__name__)
 
@@ -133,9 +128,9 @@ scanline = np.dtype([("scan_line_number", ">u2"),
                      ("tip_euler_angles", ">i2", (3, )),
                      ("spacecraft_altitude_above_reference_ellipsoid", ">u2"),
                      ("angular_relationships", ">i2", (153, )),
-                     ("zero_fill3", ">i2", (3, )),
+                     ("zero_fill2", ">i2", (3, )),
                      ("earth_location", ">i4", (102, )),
-                     ("zero_fill4", ">i4", (2, )),
+                     ("zero_fill3", ">i4", (2, )),
                      # HRPT MINOR FRAME TELEMETRY
                      ("frame_sync", ">u2", (6, )),
                      ("id", ">u2", (2, )),
@@ -147,16 +142,16 @@ scanline = np.dtype([("scan_line_number", ">u2"),
                      ("back_scan", ">u2", (30, )),
                      ("space_data", ">u2", (50, )),
                      ("sync_delta", ">u2"),
-                     ("zero_fill5", ">i2"),
-                     # AVHRR SENSOR DATA
-                     ("sensor_data", ">u4", (682, )),
-                     ("zero_fill6", ">i4", (2, )),
-                     # DIGITAL B TELEMETRY
-                     ("invalid_word_bit_flags1", ">u2"),
+                     ("zero_fill4", ">i2"),
+                     # EARTH OBSERVATIONS
+                     ("sensor_data", ">u4", (3414,)),
+                     ("zero_fill5", ">i4", (2,)),
+                     # DIGITAL B HOUSEKEEPING TELEMETRY
+                     ("digital_b_telemetry_update_flags", ">u2"),
                      ("avhrr_digital_b_data", ">u2"),
-                     ("zero_fill7", ">i4", (3, )),
+                     ("zero_fill6", ">i4", (3,)),
                      # ANALOG HOUSEKEEPING DATA (TIP)
-                     ("invalid_word_bit_flags2", ">u4"),
+                     ("analog_telemetry_update_flags", ">u4"),
                      ("patch_temperature_range", ">u1"),
                      ("patch_temperature_extended", ">u1"),
                      ("patch_power", ">u1"),
@@ -179,27 +174,27 @@ scanline = np.dtype([("scan_line_number", ">u2"),
                      ("blackbody_temperature_channel4", ">u1"),
                      ("blackbody_temperature_channel5", ">u1"),
                      ("reference_voltage", ">u1"),
-                     ("zero_fill8", ">i2", (3, )),
+                     ("zero_fill7", ">i2", (3,)),
                      # CLOUDS FROM AVHRR (CLAVR)
-                     ("reserved0", ">u4"),
-                     ("reserved1", ">u4"),
-                     ("reserved2", ">u2", (52, )),
+                     ("reserved_clavr_status_bit_field", ">u4"),
+                     ("reserved_clavr", ">u4"),
+                     ("reserved_clavr_ccm", ">u2", (256,)),
                      # FILLER
-                     ("zero_fill9", ">i4", (112, ))])
+                     ("zero_fill8", ">i4", (94,))])
 
 
-class GACKLMReader(GACReader, KLMReader):
+class LACKLMReader(LACReader, KLMReader):
 
     def __init__(self):
-        GACReader.__init__(self)
+        LACReader.__init__(self)
         self.scanline_type = scanline
-        self.offset = 4608
+        self.offset = 15872
 
 
 def main(filename, start_line, end_line):
     from pygac import gac_io
     tic = datetime.datetime.now()
-    reader = GACKLMReader()
+    reader = LACKLMReader()
     reader.read(filename)
     reader.get_lonlat()
     channels = reader.get_calibrated_channels()

@@ -20,23 +20,53 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-"""Generic reader for GAC data. Can't be used as is, has to be subclassed to add
+"""Generic reader for GAC and LAC data. Can't be used as is, has to be subclassed to add
 specific read functions.
 """
-import numpy as np
-from pygac import CONFIG_FILE
 import ConfigParser
-import os
-import logging
-from pyorbital.orbital import Orbital
-from pyorbital import astronomy
 import datetime
-from pygac.gac_calibration import calibrate_solar, calibrate_thermal
+import logging
+import os
+
+import numpy as np
+
+from pygac import CONFIG_FILE
+from pygac.calibration import calibrate_solar, calibrate_thermal
+from pyorbital import astronomy
+from pyorbital.orbital import Orbital
 
 LOG = logging.getLogger(__name__)
 
+# rpy values from
+# here:http://yyy.rsmas.miami.edu/groups/rrsl/pathfinder/Processing/proc_app_a.html
+rpy_coeffs = {
+    'noaa7':  {'roll':  0.000,
+               'pitch': 0.000,
+               'yaw':   0.000,
+               },
+    'noaa9':  {'roll':  0.000,
+               'pitch': 0.0025,
+               'yaw':   0.000,
+               },
+    'noaa10': {'roll':  0.000,
+               'pitch': 0.000,
+               'yaw':   0.000,
+               },
+    'noaa11': {'roll': -0.0019,
+               'pitch': -0.0037,
+               'yaw':   0.000,
+               },
+    'noaa12': {'roll':  0.000,
+               'pitch': 0.000,
+               'yaw':   0.000,
+               },
+    'noaa14': {'roll':  0.000,
+               'pitch': 0.000,
+               'yaw':   0.000,
+               }}
 
-class GACReader(object):
+
+class Reader(object):
 
     def __init__(self):
         self.head = None
@@ -48,37 +78,45 @@ class GACReader(object):
         self.lons = None
         self.times = None
         self.tle_lines = None
+        self.scan_width = None
+        self.scan_points = None
 
     def get_counts(self):
         packed_data = self.scans["sensor_data"]
-        gac_counts = np.zeros((len(self.scans), 409 * 5))
-        gac_counts[:, 0::3] = (packed_data >> 20) & 1023
-        gac_counts[:, 1::3] = (packed_data >> 10) & 1023
-        gac_counts[:, 2::3] = (packed_data & 1023)[:, :-1]
-        gac_counts = gac_counts.reshape((-1, 409, 5))
+        counts = np.zeros((len(self.scans), self.scan_width * 5))
+        counts_nb = (self.scan_width * 5) / 3
+        remainder = (self.scan_width * 5) % 3
+        if remainder == 0:
+            nb1 = nb2 = nb3 = counts_nb
+        elif remainder == 1:
+            nb1 = counts_nb + 1
+            nb2 = nb3 = counts_nb
+        elif remainder == 2:
+            nb1 = nb2 = counts_nb + 1
+            nb3 = counts_nb
+
+        counts[:, 0::3] = ((packed_data >> 20) & 1023)[:, :nb1]
+        counts[:, 1::3] = ((packed_data >> 10) & 1023)[:, :nb2]
+        counts[:, 2::3] = (packed_data & 1023)[:, :nb3]
+        counts = counts.reshape((-1, self.scan_width, 5))
         try:
             switch = self.get_ch3_switch()
         except AttributeError:
-            return gac_counts
+            return counts
         else:
-            channels = np.zeros((len(self.scans), 409, 6),
-                                dtype=gac_counts.dtype)
-            channels[:, :, :2] = gac_counts[:, :, :2]
-            channels[:, :, -2:] = gac_counts[:, :, -2:]
-            channels[:, :, 2][switch == 1] = gac_counts[:, :, 2][switch == 1]
-            channels[:, :, 3][switch == 0] = gac_counts[:, :, 2][switch == 0]
+            channels = np.zeros((len(self.scans), self.scan_width, 6),
+                                dtype=counts.dtype)
+            channels[:, :, :2] = counts[:, :, :2]
+            channels[:, :, -2:] = counts[:, :, -2:]
+            channels[:, :, 2][switch == 1] = counts[:, :, 2][switch == 1]
+            channels[:, :, 3][switch == 0] = counts[:, :, 2][switch == 0]
             return channels
 
-    def get_times(self):
-        raise NotImplementedError
-
     def compute_lonlat(self, utcs=None, clock_drift_adjust=True):
-        tle1, tle2 = self.get_tle_lines()
-
-        scan_points = np.arange(3.5, 2048, 5)
-
         if utcs is None:
             utcs = self.get_times()
+
+        tle1, tle2 = self.get_tle_lines()
 
         # adjusting clock for drift
         tic = datetime.datetime.now()
@@ -99,17 +137,26 @@ class GACReader(object):
         t = utcs[0].astype(datetime.datetime)
 
         if "constant_yaw_attitude_error" in self.head.dtype.fields:
+            LOG.debug("Using attitude correction from file")
             rpy = np.deg2rad([self.head["constant_roll_attitude_error"] / 1e3,
                               self.head["constant_pitch_attitude_error"] / 1e3,
                               self.head["constant_yaw_attitude_error"] / 1e3])
         else:
-            rpy = [0, 0, 0]
+            try:
+                rpy_spacecraft = rpy_coeffs[self.spacecraft_name]
+                rpy = [rpy_spacecraft['roll'], rpy_spacecraft[
+                    'pitch'], rpy_spacecraft['yaw']]
+                LOG.debug("Using static attitude correction")
+            except KeyError:
+                LOG.debug("Not applying attitude correction")
+                rpy = [0, 0, 0]
 
         LOG.info("Using rpy: %s", str(rpy))
 
         from pyorbital.geoloc_instrument_definitions import avhrr_gac
         from pyorbital.geoloc import compute_pixels, get_lonlatalt
-        sgeom = avhrr_gac(utcs.astype(datetime.datetime), scan_points, 55.385)
+        sgeom = avhrr_gac(utcs.astype(datetime.datetime),
+                          self.scan_points, 55.385)
         s_times = sgeom.times(t)
 
         pixels_pos = compute_pixels((tle1, tle2), sgeom, s_times, rpy)
@@ -121,7 +168,7 @@ class GACReader(object):
 
         lons, lats = pos_time[:2]
 
-        return lons.reshape(-1, 409), lats.reshape(-1, 409)
+        return lons.reshape(-1, len(self.scan_points)), lats.reshape(-1, len(self.scan_points))
 
     def get_calibrated_channels(self):
         channels = self.get_counts()
@@ -232,3 +279,19 @@ class GACReader(object):
         rel_azi = np.where(rel_azi > 180.0, 360.0 - rel_azi, rel_azi)
 
         return sat_azi, sat_zenith, sun_azi, sun_zenith, rel_azi
+
+
+class GACReader(Reader):
+
+    def __init__(self):
+        super(GACReader, self).__init__()
+        self.scan_width = 409
+        self.scan_points = np.arange(4, 405, 8)
+
+
+class LACReader(Reader):
+
+    def __init__(self):
+        super(LACReader, self).__init__()
+        self.scan_width = 2048
+        self.scan_points = np.arange(24, 2048, 40)

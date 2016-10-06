@@ -9,9 +9,6 @@
 #   Sajid Pareeth <sajid.pareeth@fmach.it>
 #   Martin Raspaud <martin.raspaud@smhi.se>
 
-# This work was done in the framework of ESA-CCI-Clouds phase I
-
-
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
@@ -25,13 +22,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-
-"""Read a gac file.
-
-Format specification can be found here:
-http://www.ncdc.noaa.gov/oa/pod-guide/ncdc/docs/podug/html/c2/sec2-0.htm
-http://www.ncdc.noaa.gov/oa/pod-guide/ncdc/docs/podug/html/c3/sec3-1.htm
-
+"""
 """
 
 import datetime
@@ -39,9 +30,10 @@ import logging
 
 import numpy as np
 
+import pygac.gac_lac_geotiepoints as gtp
 from pygac import gac_io
 from pygac.pod_reader import PODReader
-from pygac.reader import GACReader
+from pygac.reader import LACReader
 
 LOG = logging.getLogger(__name__)
 
@@ -54,23 +46,23 @@ scanline = np.dtype([("scan_line_number", ">i2"),
                      ("solar_zenith_angles", "i1", (51, )),
                      ("earth_location", ">i2", (102, )),
                      ("telemetry", ">u4", (35, )),
-                     ("sensor_data", ">u4", (682, )),
+                     ("sensor_data", ">u4", (3414, )),
                      ("add_on_zenith", ">u2", (10, )),
-                     ("clock_drift_delta", ">u2"),
-                     ("spare3", "u2", (11, ))])
+                     ("clock_drift_delta", ">u2"),  # only in newest version
+                     ("spare3", "u2", (337, ))])
 
 
-class GACPODReader(GACReader, PODReader):
+class LACPODReader(LACReader, PODReader):
 
     def __init__(self):
-        GACReader.__init__(self)
+        LACReader.__init__(self)
         self.scanline_type = scanline
-        self.offset = 3220
+        self.offset = 14800
 
 
 def main(filename, start_line, end_line):
     tic = datetime.datetime.now()
-    reader = GACPODReader()
+    reader = LACPODReader()
     reader.read(filename)
     reader.get_lonlat()
     reader.adjust_clock_drift()
