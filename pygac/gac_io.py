@@ -111,7 +111,6 @@ def save_gac(satellite_name,
         bt3[switch == 2] = MISSING_DATA
 
 
-
     no_wrong_lat = np.where(lats!=MISSING_DATA_LATLON)	
     temp_start_line = min(no_wrong_lat[0]) 
     temp_end_line = max(no_wrong_lat[0])
@@ -150,6 +149,7 @@ def save_gac(satellite_name,
     else:
         end = xutcs[end_line].astype(datetime.datetime)
 
+
     startdate = start.strftime("%Y%m%d")
     starttime = start.strftime("%H%M%S%f")[:-5]
     enddate = end.strftime("%Y%m%d")
@@ -180,6 +180,10 @@ def save_gac(satellite_name,
        lons = lons[start_line:end_line+1,:].copy()
        qual_flags = qual_flags[start_line:end_line+1,:].copy()
         
+
+    for array in [ref1, ref2, ref3, bt3, bt4, bt5]: 
+        array[np.isnan(array)] = MISSING_DATA
+
 
     avhrrGAC_io(satellite_name, startdate, enddate, starttime, endtime,
                 lats, lons, ref1, ref2, ref3, bt3, bt4, bt5,
