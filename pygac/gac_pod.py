@@ -36,11 +36,12 @@ http://www.ncdc.noaa.gov/oa/pod-guide/ncdc/docs/podug/html/c3/sec3-1.htm
 """
 
 import numpy as np
+import os
 from pygac.gac_reader import GACReader
 import pygac.geotiepoints as gtp
 import datetime
 from pygac import gac_io
-
+import pytz
 import logging
 LOG = logging.getLogger(__name__)
 
@@ -179,7 +180,24 @@ class PODReader(GACReader):
                         3: 'noaa14',
                         }
 
+    def correct_scan_line_numbers(self, plot=False):
+        # Perform common corrections first.
+        super(PODReader, self).correct_scan_line_numbers(plot=plot)
+
+        # cleaning up the data
+        min_scanline_number = np.amin(np.absolute(self.scans["scan_line_number"][:]))
+        if self.scans["scan_line_number"][0] == self.scans["scan_line_number"][-1] + 1:
+            while self.scans["scan_line_number"][0] != min_scanline_number:
+                self.scans = np.roll(self.scans, -1)
+        else:
+            while self.scans["scan_line_number"][0] != min_scanline_number:
+                self.scans = self.scans[1:]
+
+        self.scans = self.scans[self.scans["scan_line_number"] != 0]
+
     def read(self, filename):
+        super(PODReader, self).read(filename=filename)
+
         # choose the right header depending on the date
         with open(filename) as fd_:
             head = np.fromfile(fd_, dtype=header0, count=1)[0]
@@ -198,27 +216,30 @@ class PODReader(GACReader):
 
         with open(filename) as fd_:
             self.head = np.fromfile(fd_, dtype=header, count=1)[0]
-            scans = np.fromfile(fd_,
-                                dtype=scanline,
-                                count=self.head["number_of_scans"])
-
-        # cleaning up the data
-        min_scanline_number = np.amin(np.absolute(scans["scan_line_number"][:]))
-	if scans["scan_line_number"][0] == scans["scan_line_number"][-1] + 1:
-            while scans["scan_line_number"][0] != min_scanline_number:
-                scans = np.roll(scans, -1)
-        else:
-            while scans["scan_line_number"][0] != min_scanline_number:
-                scans = scans[1:]
-
-        self.scans = scans[scans["scan_line_number"] != 0]
-
+            self.scans = np.fromfile(fd_,
+                                     dtype=scanline,
+                                     count=self.head["number_of_scans"])
+        self.correct_scan_line_numbers()
         self.spacecraft_id = self.head["noaa_spacecraft_identification_code"]
         self.spacecraft_name = self.spacecraft_names[self.spacecraft_id]
         LOG.info(
             "Reading %s data", self.spacecrafts_orbital[self.spacecraft_id])
 
         return self.head, self.scans
+
+    def get_header_timestamp(self):
+        t = self.head['start_time']
+        year = (t[0] >> 9)
+        year = np.where(year > 75, year + 1900, year + 2000)
+        msec = (np.uint32(t[1] & 2047) << 16) | np.uint32(t[2])
+        doy = t[0] & 0x1FF
+        try:
+            return pytz.utc.localize(
+                datetime.datetime(year=year, month=1, day=1) +
+                datetime.timedelta(days=doy-1) +
+                datetime.timedelta(milliseconds=msec))
+        except ValueError as err:
+            raise ValueError('Corrupt header timestamp: {0}'.format(err))
 
     def get_times(self):
         if self.utcs is None:
@@ -251,7 +272,6 @@ class PODReader(GACReader):
             self.utcs = (((year - 1970).astype('datetime64[Y]')
                           + (jday - 1).astype('timedelta64[D]')).astype('datetime64[ms]')
                          + msec.astype('timedelta64[ms]'))
-            self.times = self.utcs.astype(datetime.datetime)
 
 	    #print if_wrong_jday[10150:10171];
 	    #print if_wrong_msec[10150:10171];
@@ -271,17 +291,21 @@ class PODReader(GACReader):
 			self.utcs = (((year - 1970).astype('datetime64[Y]')
                           	      + (jday - 1).astype('timedelta64[D]')).astype('datetime64[ms]')
                          	     + msec.astype('timedelta64[ms]'))
-            		self.times = self.utcs.astype(datetime.datetime)
 		# Otherwise use median time stamp
 		else:
 			year = np.median(year)
 			jday = np.median(jday)
-			msec = np.median(msec - 0.5 * 1000.0 * (self.scans["scan_line_number"] - 1))
+			msec0 = np.median(msec - 0.5 * 1000.0 * (self.scans["scan_line_number"] - 1))
+			msec = msec0 + 0.5 * 1000.0 * (self.scans["scan_line_number"] - 1)
 			self.utcs = (((year - 1970).astype('datetime64[Y]')
                                       + (jday - 1).astype('timedelta64[D]')).astype('datetime64[ms]')
                                      + msec.astype('timedelta64[ms]'))
-                        self.times = self.utcs.astype(datetime.datetime)
-		
+
+            # Correct corrupt timestamps
+            self.correct_utcs()
+
+            # Convert timestamps to datetime objects
+	    self.times = self.utcs.astype(datetime.datetime)
         return self.utcs
 
     def adjust_clock_drift(self):
