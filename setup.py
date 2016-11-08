@@ -55,7 +55,7 @@ setup(name='pygac',
       # installed or upgraded on the target machine
       install_requires=['docutils>=0.3',
                         'numpy>=1.8.0', 'pyorbital>=v0.3.2',
-                        'h5py'],
+                        'h5py', 'weave'],
       extras_require={'geolocation interpolation': ['python-geotiepoints'],
                       },
       scripts=[],
