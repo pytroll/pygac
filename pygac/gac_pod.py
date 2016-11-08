@@ -258,7 +258,8 @@ class PODReader(GACReader):
             #print msec[10150:10171]
             #print self.utcs[10150:10171].astype(datetime.datetime)
 	    # checking if year value is out of valid range
-	    if_wrong_year = np.where(np.logical_or(year<1978, year>2015))
+	    if_wrong_year = np.where(np.logical_or(year<1978,
+				     year>datetime.datetime.now().year))
 	    if_wrong_year = if_wrong_year[0]
 	    if len(if_wrong_year) > 0:
 		# if the first scanline has valid time stamp
