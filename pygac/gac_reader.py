@@ -32,11 +32,14 @@ from pyorbital.orbital import Orbital
 from pyorbital import astronomy
 import datetime
 from pygac.gac_calibration import calibrate_solar, calibrate_thermal
+from abc import ABCMeta, abstractmethod
 
 LOG = logging.getLogger(__name__)
 
 
 class GACReader(object):
+
+    __metaclass__ = ABCMeta
 
     def __init__(self):
         self.head = None
@@ -48,6 +51,12 @@ class GACReader(object):
         self.lons = None
         self.times = None
         self.tle_lines = None
+        self.filename = None
+
+    @abstractmethod
+    def read(self, filename):
+        self.filename = os.path.basename(filename)
+        LOG.info('Reading ' + self.filename)
 
     def get_counts(self):
         packed_data = self.scans["sensor_data"]
@@ -232,3 +241,235 @@ class GACReader(object):
         rel_azi = np.where(rel_azi > 180.0, 360.0 - rel_azi, rel_azi)
 
         return sat_azi, sat_zenith, sun_azi, sun_zenith, rel_azi
+
+    @abstractmethod
+    def get_header_timestamp(self):
+        """
+        Read start timestamp from the header.
+        @rtype: datetime.datetime
+        """
+        raise NotImplementedError
+
+    def correct_scan_line_numbers(self, plot=False):
+        """
+        Remove scanlines with corrupt scanline numbers, i.e.
+
+            - Scanline numbers outside the valide range
+            - Scanline numbers deviating more than a certain threshold from the
+            ideal case (1,2,3,...N)
+
+        Example files having corrupt scanline numbers:
+            - NSS.GHRR.NJ.D96144.S2000.E2148.B0720102.GC
+            - NSS.GHRR.NJ.D96064.S0043.E0236.B0606162.WI
+            - NSS.GHRR.NJ.D99286.S1818.E2001.B2466869.WI
+
+        @param plot: If True, plot results.
+        """
+        along_track = np.arange(1, len(self.scans["scan_line_number"])+1)
+
+        # Plot original scanline numbers
+        if plot:
+            import matplotlib.pyplot as plt
+            fig, (ax0, ax1) = plt.subplots(nrows=2)
+            ax0.plot(along_track, self.scans["scan_line_number"], "b-",
+                     label="original")
+
+        # Remove scanlines whose scanline number is outside the valid range
+        within_range = np.logical_and(self.scans["scan_line_number"] < 15000,
+                                      self.scans["scan_line_number"] >= 0)
+        self.scans = self.scans[within_range]
+
+        # Remove scanlines deviating more than a certain threshold from the
+        # ideal case (1,2,3,...N).
+        ideal = np.arange(1, len(self.scans["scan_line_number"])+1)
+
+        # ... Estimate possible offset (in case some scanlines are missing in
+        # the beginning of the scan)
+        offsets = self.scans["scan_line_number"] - ideal
+        med_offset = np.median(offsets)
+
+        # ... Compute difference to ideal case (1,2,3,...N) + offset
+        diffs = np.abs(self.scans["scan_line_number"] - (ideal + med_offset))
+
+        # ... Remove those scanlines whose difference is larger than a certain
+        # threshold. For the threshold computation we only regard nonzero
+        # differences.
+        nz_diffs = diffs[diffs > 0]
+        if len(nz_diffs) < 50:
+            # Not enough differences for reliable statistics. Use fixed
+            # threshold.
+            thresh = 500
+        else:
+            mean_nz_diffs = np.mean(nz_diffs)
+            std_nz_diffs = np.std(nz_diffs)
+            med_nz_diffs = np.median(nz_diffs)
+            mad_nz_diffs = np.median(np.abs(nz_diffs - med_nz_diffs))
+            if mean_nz_diffs / float(med_nz_diffs) < 3:
+                # Relatively small variation, keep (almost) everything
+                thresh = mean_nz_diffs + 3*std_nz_diffs
+            else:
+                # Large variation, filter more agressively. Use median and
+                # median absolute deviation (MAD) as they are less sensitive to
+                # outliers. However, allow differences < 500 scanlines as they
+                # occur quite often.
+                thresh = max(500, med_nz_diffs + 3*mad_nz_diffs)
+        self.scans = self.scans[diffs <= thresh]
+
+        LOG.debug('Removed {0} scanline(s) with corrupt scanline numbers'
+                  .format(len(along_track) - len(self.scans)))
+
+        # Plot corrected scanline numbers
+        if plot:
+            along_track = along_track[within_range]
+            along_track = along_track[diffs <= thresh]
+            ax0.plot(along_track, self.scans["scan_line_number"], "r--",
+                     label="corrected")
+            ax0.set_ylabel("Scanline Number")
+            ax0.set_xlabel("Along Track")
+            ax0.legend(loc="best")
+
+            ax1.plot(np.arange(len(nz_diffs)), nz_diffs)
+            ax1.axhline(thresh, color="r", label="thresh={0:.2f}"
+                        .format(thresh))
+            ax1.set_xlabel("Index")
+            ax1.set_ylabel("nonzero |n - n'|")
+            ax1.legend()
+
+            plt.tight_layout()
+            plt.savefig(self.filename + "_scanline_number_correction.png",
+                        bbox_inches='tight')
+
+    def correct_utcs(self, max_diff_from_t0_head=6*60*1000,
+                     min_frac_near_t0_head=0.01, max_diff_from_ideal_t=10*1000,
+                     plot=False):
+        """
+        Correct corrupt scanline timestamps using the scanline number and an
+        approximate scanning rate of 2 lines per second.
+
+        The header timestamp is used as a guideline to estimate the offset
+        between timestamps computed from the scanline number and the actual
+        scanline timestamps in the data. If header timestamp and scanline
+        timestamps do not match, no correction is applied.
+
+        Once the offset has been estimated, one can calculate the ideal
+        timestamps based on the scanline number. Timestamps deviating more than
+        a certain threshold from the ideal timestamps are replaced by
+        the ideal timestamps.
+
+        Example files having corrupt timestamps:
+            - NSS.GHRR.NA.D81193.S2329.E0116.B1061214.WI
+            - NSS.GHRR.NL.D01035.S2342.E0135.B0192627.WI
+
+        @param max_diff_from_t0_head: Threshold for offset estimation: A
+        scanline timestamp matches the header timestamp t0_head if it is
+        within the interval
+
+          [t0_head - max_diff_from_t0_head, t0_head + max_diff_from_t0_head]
+
+        around the header timestamp.
+        @param min_frac_near_t0_head: Specifies the minimum fraction of
+        scanline timestamps matching the header timestamp required for
+        applying the correction.
+        @param max_diff_from_ideal_t: Threshold for timestamp correction: If
+        a scanline timestamp deviates more than max_diff_from_ideal_t from
+        the ideal timestamp, it is regarded as corrupt and will be replaced with
+        the ideal timestamp.
+        @param plot: If True, plot results.
+        """
+        apply_corr = True
+        fail_reason = ""
+        scanning_rate = 2.0 / 1000.0  # scanlines per millisecond
+        dt64_msec = ">M8[ms]"
+
+        # Check whether scanline number increases monotonically
+        n = self.scans["scan_line_number"]
+        if np.any(np.diff(n) < 0):
+            LOG.error("Cannot perform timestamp correction. Scanline number "
+                      "does not increase monotonically.")
+            apply_corr = False
+            fail_reason = "Scanline number jumps backwards"
+            # We could already return here, but continue for plotting purpose
+
+        # Convert time to milliseconds since 1970-01-01
+        t = self.utcs.astype("i8")
+        try:
+            t0_head = np.array([self.get_header_timestamp().isoformat()],
+                               dtype="datetime64[ms]").astype("i8")[0]
+        except ValueError as err:
+            LOG.error("Cannot perform timestamp correction: {0}".format(err))
+            return
+
+        # Compute ideal timestamps based on the scanline number. Still
+        # without offset, i.e. scanline 0 has timestamp 1970-01-01 00:00
+        tn = (self.scans["scan_line_number"] - 1) / scanning_rate
+
+        # Try to determine the timestamp t0 of the first scanline. Since none
+        # of the actual timestamps is trustworthy, use the header timestamp
+        # as a guideline. However, the header timestamp may also be corrupted,
+        # so we only apply corrections if there is a minimum fraction of
+        # scanlines whose timestamps match the header timestamp.
+        #
+        # 1) Compute offsets between actual timestamps and idealized timestamps
+        offsets = t - tn
+
+        # 2) If the offsets of a certain minimum fraction of scanlines are
+        #    within a certain interval around the header timestamp, estimate
+        #    t0 by calculating the median offset among these timestamps. If not,
+        #    we do not have reliable information and cannot proceed.
+        near_t0_head = np.where(
+            np.fabs(offsets - t0_head) <= max_diff_from_t0_head)[0]
+        if near_t0_head.size / float(n.size) >= min_frac_near_t0_head:
+            t0 = np.median(offsets[near_t0_head])
+        else:
+            LOG.error("Timestamp mismatch. Cannot perform correction.")
+            fail_reason = "Timestamp mismatch"
+            apply_corr = False
+            t0 = 0
+
+        # Add estimated offset to the ideal timestamps
+        tn += t0
+
+        # Replace timestamps deviating more than a certain threshold from the
+        # ideal timestamp with the ideal timestamp.
+        if apply_corr:
+            corrupt_lines = np.where(np.fabs(t - tn) > max_diff_from_ideal_t)
+            self.utcs[corrupt_lines] = tn[corrupt_lines].astype(dt64_msec)
+            LOG.debug("Corrected {0} timestamp(s)".format(
+                      len(corrupt_lines[0])))
+
+        # Plot results
+        if plot:
+            import matplotlib.pyplot as plt
+            along_track = np.arange(n.size)
+            fig, (ax0, ax1, ax2) = plt.subplots(nrows=3, sharex=True,
+                                                figsize=(8, 10))
+
+            ax0.plot(along_track, t, "b-", label="original")
+            if apply_corr:
+                ax0.plot(along_track, self.utcs, color="red", linestyle="--",
+                         label="corrected")
+            else:
+                ax0.set_title(fail_reason)
+            ax0.set_ylabel("Time [ms since 1970]")
+            ax0.set_ylim((self.utcs.min()-np.timedelta64(30, "m")).astype("i8"),
+                         (self.utcs.max()+np.timedelta64(30, "m")).astype("i8"))
+            ax0.legend(loc="best")
+            ax2.plot(along_track, n)
+            ax2.set_ylabel("Scanline number")
+            ax2.set_xlabel("Along Track")
+
+            ax1.plot(along_track, offsets)
+            ax1.fill_between(
+                along_track,
+                t0_head - np.ones(along_track.size)*max_diff_from_t0_head,
+                t0_head + np.ones(along_track.size)*max_diff_from_t0_head,
+                facecolor="g", alpha=0.33)
+            ax1.axhline(y=t0_head, color="g", linestyle="--",
+                        label="Header timestamp")
+            ax1.set_ylim(t0_head-5*max_diff_from_t0_head,
+                         t0_head+5*max_diff_from_t0_head)
+            ax1.set_ylabel("Offset t-tn [ms]")
+            ax1.legend(loc="best")
+
+            plt.savefig(self.filename+"_timestamp_correction.png",
+                        bbox_inches="tight", dpi=100)
