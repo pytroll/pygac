@@ -14,7 +14,7 @@
 
 import os
 import numpy as np
-import weave
+import scipy.weave as weave
 
 
 def gridbox_mean(data, fill_value, box_size):
