@@ -160,7 +160,8 @@ scanline = np.dtype([("scan_line_number", ">i2"),
 
 class PODReader(GACReader):
 
-    spacecrafts_orbital = {2: 'noaa 6',
+    spacecrafts_orbital = {25: 'tiros n',
+                           2: 'noaa 6',
                            4: 'noaa 7',
                            6: 'noaa 8',
                            7: 'noaa 9',
@@ -169,7 +170,8 @@ class PODReader(GACReader):
                            5: 'noaa 12',
                            3: 'noaa 14',
                            }
-    spacecraft_names = {2: 'noaa6',
+    spacecraft_names = {25: 'tirosn',
+                        2: 'noaa6',
                         4: 'noaa7',
                         6: 'noaa8',
                         7: 'noaa9',
@@ -214,6 +216,8 @@ class PODReader(GACReader):
         self.scans = scans[scans["scan_line_number"] != 0]
 
         self.spacecraft_id = self.head["noaa_spacecraft_identification_code"]
+        if self.spacecraft_id == 1 and start_date < datetime.date(1982, 1, 1):
+            self.spacecraft_id = 25
         self.spacecraft_name = self.spacecraft_names[self.spacecraft_id]
         LOG.info(
             "Reading %s data", self.spacecrafts_orbital[self.spacecraft_id])
