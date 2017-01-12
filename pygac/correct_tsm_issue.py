@@ -135,11 +135,12 @@ def get_tsm_idx(tar1, tar2, tar4, tar5):
     return idx
 
 
-def flag_pixels(c1, c2, c3, c4, c5, c6, fillv):
+def flag_pixels(channel1, channel2, channel3b,
+                channel4, channel5, channel3a, fillv):
     """
     Set bad pixels due to temporary scan motor issue to fill value.
     Scale reflectances ranging from 0 to 1.5
-    Scale brightness temperature ranging from 170 to 350. 
+    Scale brightness temperature ranging from 170 to 350.
     """
     # ------------------------------------------------------------------------
     # (1) Scaling measurements w.r.t. threshold values
@@ -151,21 +152,21 @@ def flag_pixels(c1, c2, c3, c4, c5, c6, fillv):
     bt_gain = 0.01
     bt_offs = 273.15
     # original ref data
-    ch1 = ref_gain * np.ma.masked_equal(c1, fillv) + ref_offs
-    ch2 = ref_gain * np.ma.masked_equal(c2, fillv) + ref_offs
-    ch6 = ref_gain * np.ma.masked_equal(c6, fillv) + ref_offs
+    ch1 = ref_gain * np.ma.masked_equal(channel1, fillv) + ref_offs
+    ch2 = ref_gain * np.ma.masked_equal(channel2, fillv) + ref_offs
+    ch3a = ref_gain * np.ma.masked_equal(channel3a, fillv) + ref_offs
     # original bt data
-    ch3 = bt_gain * np.ma.masked_equal(c3, fillv) + bt_offs
-    ch4 = bt_gain * np.ma.masked_equal(c4, fillv) + bt_offs
-    ch5 = bt_gain * np.ma.masked_equal(c5, fillv) + bt_offs
-    
+    ch3b = bt_gain * np.ma.masked_equal(channel3b, fillv) + bt_offs
+    ch4 = bt_gain * np.ma.masked_equal(channel4, fillv) + bt_offs
+    ch5 = bt_gain * np.ma.masked_equal(channel5, fillv) + bt_offs
+
     # ------------------------------------------------------------------------
     # (2) TSM Correction
     # ------------------------------------------------------------------------
     # find indices of tsm issue affected pixels
     idx = get_tsm_idx(ch1, ch2, ch4, ch5)
     # apply correction index using fill_value and fill masked elements
-    for array in [ch1, ch2, ch3, ch4, ch5, ch6]:
+    for array in [ch1, ch2, ch3b, ch4, ch5, ch3a]:
         if isinstance(array.mask, np.bool_): 
             array.mask = np.zeros(array.shape, dtype='bool') 
         array.mask[idx] = True
@@ -175,13 +176,13 @@ def flag_pixels(c1, c2, c3, c4, c5, c6, fillv):
     # (3) Re-scaling measurments
     # ------------------------------------------------------------------------
     # re-scaling reflectance obs
-    for array in [ch1, ch2, ch6]:
+    for array in [ch1, ch2, ch3a]:
         if np.ma.count(array[array!=fillv]) > 0: 
             array[array!=fillv] = (array[array!=fillv] - ref_offs) / ref_gain
     # re-scaling brightness temperature obs
-    for array in [ch3, ch4, ch5]:
+    for array in [ch3b, ch4, ch5]:
         if np.ma.count(array[array!=fillv]) > 0: 
             array[array!=fillv] = (array[array!=fillv] - bt_offs) / bt_gain
 
-    return ch1, ch2, ch3, ch4, ch5, ch6
+    return ch1, ch2, ch3b, ch4, ch5, ch3a
 
