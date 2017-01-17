@@ -43,6 +43,9 @@ class TestGACReader(GACReader):
     def get_header_timestamp(self):
         return TEST_TIMESTAMP
 
+    def _get_times(self):
+        pass
+
 
 class TestCorrections(unittest.TestCase):
     def setUp(self):
@@ -126,7 +129,7 @@ class TestCorrections(unittest.TestCase):
         Test whether timestamp correction works as expected.
         """
         self.reader.correct_scan_line_numbers()
-        self.reader.correct_utcs()
+        self.reader.correct_times_thresh()
         self.assertTrue(np.allclose(self.correct_utcs.astype('i8'),
                                     self.reader.utcs.astype('i8')),
                         msg='Timestamp correction failed')

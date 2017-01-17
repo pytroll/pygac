@@ -537,59 +537,11 @@ class KLMReader(GACReader):
         except ValueError as err:
             raise ValueError('Corrupt header timestamp: {0}'.format(err))
 
-    def get_times(self):
-        if self.utcs is None:
-            year = self.scans["scan_line_year"]
-            jday = self.scans["scan_line_day_of_year"]
-            msec = self.scans["scan_line_utc_time_of_day"]
-
-            jday = np.where(np.logical_or(jday<1, jday>366),np.median(jday),jday)
-            if_wrong_jday = np.ediff1d(jday, to_begin=0)
-            jday = np.where(if_wrong_jday<0, max(jday), jday)
-
-            if_wrong_msec = np.where(msec<1)
-            if_wrong_msec = if_wrong_msec[0]
-            if len(if_wrong_msec) > 0:
-                if if_wrong_msec[0] !=0:
-                    msec = msec[0] + 0.5 * 1000.0 * (self.scans["scan_line_number"] - 1)
-                else:
-                    msec0 = np.median(msec - 0.5 * 1000.0 * (self.scans["scan_line_number"] - 1))
-                    msec = msec0 + 0.5 * 1000.0 * (self.scans["scan_line_number"] - 1)
-
-            if_wrong_msec = np.ediff1d(msec, to_begin=0)
-            msec = np.where(np.logical_and(np.logical_or(if_wrong_msec<-1000, if_wrong_msec>1000),if_wrong_jday!=1), msec[0] + 0.5 * 1000.0 * (self.scans["scan_line_number"] - 1), msec)
-
-
-            self.utcs = self.to_datetime64(year=year, jday=jday, msec=msec)
-
-            # checking if year value is out of valid range
-            if_wrong_year = np.where(
-                np.logical_or(year<1978, year>datetime.datetime.now().year))
-            if_wrong_year = if_wrong_year[0]
-            if len(if_wrong_year) > 0:
-                # if the first scanline has valid time stamp
-                if if_wrong_year[0] != 0:
-                    year = year[0]
-                    jday = jday[0]
-                    msec = msec[0] + 0.5 * 1000.0 * (self.scans["scan_line_number"] - 1)
-                    self.utcs = self.to_datetime64(year=year, jday=jday,
-                                                   msec=msec)
-                # Otherwise use median time stamp
-                else:
-                    year = np.median(year)
-                    jday = np.median(jday)
-                    msec0 = np.median(msec - 0.5 * 1000.0 * (self.scans["scan_line_number"] - 1))
-                    msec = msec0 + 0.5 * 1000.0 * (self.scans["scan_line_number"] - 1)
-                    self.utcs = self.to_datetime64(year=year, jday=jday,
-                                                   msec=msec)
-
-            # Correct corrupt timestamps
-            self.correct_utcs()
-
-            # Convert timestamps to datetime objects
-            self.times = self.to_datetime(self.utcs)
-
-        return self.utcs
+    def _get_times(self):
+        year = self.scans["scan_line_year"]
+        jday = self.scans["scan_line_day_of_year"]
+        msec = self.scans["scan_line_utc_time_of_day"]
+        return year, jday, msec
 
     def get_ch3_switch(self):
         """0 for 3b, 1 for 3a

@@ -41,6 +41,9 @@ class GACReader(object):
 
     __metaclass__ = ABCMeta
 
+    scan_freq = 2.0/1000.0
+    """Scanning frequency (scanlines per millisecond)"""
+
     def __init__(self):
         self.head = None
         self.scans = None
@@ -57,6 +60,14 @@ class GACReader(object):
     def read(self, filename):
         self.filename = os.path.basename(filename)
         LOG.info('Reading ' + self.filename)
+
+    @abstractmethod
+    def get_header_timestamp(self):
+        """
+        Read start timestamp from the header.
+        @rtype: datetime.datetime
+        """
+        raise NotImplementedError
 
     def get_counts(self):
         packed_data = self.scans["sensor_data"]
@@ -78,8 +89,30 @@ class GACReader(object):
             channels[:, :, 3][switch == 0] = gac_counts[:, :, 2][switch == 0]
             return channels
 
-    def get_times(self):
+    @abstractmethod
+    def _get_times(self):
+        """
+        Specifies how to read scanline timestamps from GAC data.
+        @return: year, day of year, milliseconds since 00:00
+        """
         raise NotImplementedError
+
+    def get_times(self):
+        """Read scanline timestamps and try to correct invalid values."""
+        if self.utcs is None:
+            # Read timestamps
+            year, jday, msec = self._get_times()
+
+            # Correct invalid values
+            year, jday, msec = self.correct_times_median(year=year, jday=jday,
+                                                         msec=msec)
+            self.utcs = self.to_datetime64(year=year, jday=jday, msec=msec)
+            self.correct_times_thresh()
+
+            # Convert timestamps to datetime objects
+            self.times = self.to_datetime(self.utcs)
+
+        return self.utcs
 
     @staticmethod
     def to_datetime64(year, jday, msec):
@@ -93,6 +126,14 @@ class GACReader(object):
     def to_datetime(datetime64):
         """Convert numpy.datetime64 to datetime.datetime"""
         return datetime64.astype(datetime.datetime)
+
+    def lineno2msec(self, scan_line_number):
+        """
+        Compute ideal scanline timestamp based on the scanline number
+        assuming a constant scanning frequency. The timestamps are in milli-
+        seconds since 1970-01-01 00:00, i.e. the first scanline has timestamp 0.
+        """
+        return (scan_line_number - 1) / self.scan_freq
 
     def compute_lonlat(self, utcs=None, clock_drift_adjust=True):
         tle1, tle2 = self.get_tle_lines()
@@ -255,13 +296,51 @@ class GACReader(object):
 
         return sat_azi, sat_zenith, sun_azi, sun_zenith, rel_azi
 
-    @abstractmethod
-    def get_header_timestamp(self):
+    def correct_times_median(self, year, jday, msec):
         """
-        Read start timestamp from the header.
-        @rtype: datetime.datetime
+        Replace invalid values in year, jday, msec with statistical estimates
+        (using median). Assumes that the majority of timestamps is ok.
+
+        @return: corrected year, corrected jday, corrected msec
         """
-        raise NotImplementedError
+        # Estimate ideal timestamps based on the scanline number. Still without
+        # offset, e.g. the first scanline has timestamp 1970-01-01 00:00
+        msec_lineno = self.lineno2msec(self.scans["scan_line_number"])
+
+        jday = np.where(np.logical_or(jday<1, jday>366),np.median(jday),jday)
+        if_wrong_jday = np.ediff1d(jday, to_begin=0)
+        jday = np.where(if_wrong_jday<0, max(jday), jday)
+
+        if_wrong_msec = np.where(msec<1)
+        if_wrong_msec = if_wrong_msec[0]
+        if len(if_wrong_msec) > 0:
+            if if_wrong_msec[0] !=0:
+                msec = msec[0] + msec_lineno
+            else:
+                msec0 = np.median(msec - msec_lineno)
+                msec = msec0 + msec_lineno
+
+        if_wrong_msec = np.ediff1d(msec, to_begin=0)
+        msec = np.where(np.logical_and(np.logical_or(if_wrong_msec<-1000, if_wrong_msec>1000),if_wrong_jday!=1), msec[0] + msec_lineno, msec)
+
+        # checking if year value is out of valid range
+        if_wrong_year = np.where(
+            np.logical_or(year<1978, year>datetime.datetime.now().year))
+        if_wrong_year = if_wrong_year[0]
+        if len(if_wrong_year) > 0:
+            # if the first scanline has valid time stamp
+            if if_wrong_year[0] != 0:
+                year = year[0]
+                jday = jday[0]
+                msec = msec[0] + msec_lineno
+            # Otherwise use median time stamp
+            else:
+                year = np.median(year)
+                jday = np.median(jday)
+                msec0 = np.median(msec - msec_lineno)
+                msec = msec0 + msec_lineno
+
+        return year, jday, msec
 
     def correct_scan_line_numbers(self, plot=False):
         """
@@ -352,12 +431,13 @@ class GACReader(object):
             plt.savefig(self.filename + "_scanline_number_correction.png",
                         bbox_inches='tight')
 
-    def correct_utcs(self, max_diff_from_t0_head=6*60*1000,
-                     min_frac_near_t0_head=0.01, max_diff_from_ideal_t=10*1000,
-                     plot=False):
+    def correct_times_thresh(self, max_diff_from_t0_head=6*60*1000,
+                             min_frac_near_t0_head=0.01,
+                             max_diff_from_ideal_t=10*1000, plot=False):
         """
-        Correct corrupt scanline timestamps using the scanline number and an
-        approximate scanning rate of 2 lines per second.
+        Try to correct corrupt scanline timestamps using a threshold approach
+        based on the scanline number and the header timestamp. Also works if
+        the majority of scanlines has corrupted timestamps.
 
         The header timestamp is used as a guideline to estimate the offset
         between timestamps computed from the scanline number and the actual
@@ -391,7 +471,6 @@ class GACReader(object):
         """
         apply_corr = True
         fail_reason = ""
-        scanning_rate = 2.0 / 1000.0  # scanlines per millisecond
         dt64_msec = ">M8[ms]"
 
         # Check whether scanline number increases monotonically
@@ -414,7 +493,7 @@ class GACReader(object):
 
         # Compute ideal timestamps based on the scanline number. Still
         # without offset, i.e. scanline 0 has timestamp 1970-01-01 00:00
-        tn = (self.scans["scan_line_number"] - 1) / scanning_rate
+        tn = self.lineno2msec(self.scans["scan_line_number"])
 
         # Try to determine the timestamp t0 of the first scanline. Since none
         # of the actual timestamps is trustworthy, use the header timestamp
