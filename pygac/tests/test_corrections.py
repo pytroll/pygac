@@ -32,9 +32,15 @@ import datetime
 
 
 TEST_TIMESTAMP = datetime.datetime(2016, 8, 16, 16, 07, 36)
+TEST_SPACECRAFT_ID = 1
 
 
 class TestGACReader(GACReader):
+    tsm_affected_intervals = {
+        TEST_SPACECRAFT_ID: [(TEST_TIMESTAMP.replace(hour=0, minute=0),
+                             TEST_TIMESTAMP.replace(hour=23, minute=59))]
+    }
+
     def read(self, filename):
         pass
 
@@ -80,6 +86,7 @@ class TestCorrections(unittest.TestCase):
         self.reader.filename = 'test'
         self.reader.scans = scans
         self.reader.utcs = msecs.astype(">M8[ms]")
+        self.reader.times = self.reader.utcs.astype(datetime.datetime)
 
         # Create artificial channel data with some noisy regions. Channel order:
         # 1, 2, 3b, 4, 5, 3a
@@ -150,6 +157,27 @@ class TestCorrections(unittest.TestCase):
             self.assertTrue(
                 np.allclose(channel_corr[nonoise] - channel[nonoise], 0.0),
                 msg='Non-corrupt pixels have been modified')
+
+    def test_is_tsm_affected(self):
+        """
+        Test whether identification of TSM affected orbits works as expected
+        """
+        # Affected platform and time interval
+        self.reader.spacecraft_id = TEST_SPACECRAFT_ID
+        self.assertTrue(self.reader.is_tsm_affected(),
+                        msg='Affected orbit is not recognized')
+
+        # Unaffected platform
+        self.reader.spacecraft_id = TEST_SPACECRAFT_ID + 31415
+        self.assertFalse(self.reader.is_tsm_affected(),
+                         msg='Unaffected platform is recognized mistakenly')
+
+        # Unaffected time
+        self.reader.spacecraft_id = TEST_SPACECRAFT_ID
+        self.reader.times = [t + datetime.timedelta(days=365*12)
+                             for t in self.reader.times]
+        self.assertFalse(self.reader.is_tsm_affected(),
+                         msg='Unaffected time is recognized mistakenly')
 
 
 class MeanFilterTest(unittest.TestCase):

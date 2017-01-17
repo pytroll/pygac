@@ -30,13 +30,12 @@ http://www.ncdc.noaa.gov/oa/pod-guide/ncdc/docs/klm/html/c8/sec83142-1.htm
 """
 
 import numpy as np
-import os
+from .correct_tsm_issue import tsm_affected_intervals_klm
 from pygac.gac_reader import GACReader
 import pygac.geotiepoints as gtp
 import datetime
 from pygac import gac_io
 import logging
-import pytz
 
 LOG = logging.getLogger(__name__)
 
@@ -489,6 +488,8 @@ class KLMReader(GACReader):
                            11: 'metop 01',
                            }
 
+    tsm_affected_intervals = tsm_affected_intervals_klm
+
     def read(self, filename):
         super(KLMReader, self).read(filename=filename)
 
@@ -591,7 +592,9 @@ def main(filename, start_line, end_line):
                     channels[:, :, 4],
                     channels[:, :, 5],
                     sun_zen, sat_zen, sun_azi, sat_azi, rel_azi,
-                    mask, qual_flags, start_line, end_line, reader.get_ch3_switch())
+                    mask, qual_flags, start_line, end_line,
+                    reader.is_tsm_affected(),
+                    reader.get_ch3_switch())
     LOG.info("pygac took: %s", str(datetime.datetime.now() - tic))
 
 if __name__ == "__main__":

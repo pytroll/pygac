@@ -32,7 +32,7 @@ from pyorbital.orbital import Orbital
 from pyorbital import astronomy
 import datetime
 from pygac.gac_calibration import calibrate_solar, calibrate_thermal
-from abc import ABCMeta, abstractmethod
+from abc import ABCMeta, abstractmethod, abstractproperty
 
 LOG = logging.getLogger(__name__)
 
@@ -565,3 +565,32 @@ class GACReader(object):
 
             plt.savefig(self.filename+"_timestamp_correction.png",
                         bbox_inches="tight", dpi=100)
+
+    @abstractproperty
+    def tsm_affected_intervals(self):
+        """
+        Specifies the time intervals being affected by the temporary scan motor
+        problem.
+        @rtype: dictionary containing a list of (start, end) tuples for each
+        affected platform. Both start and end must be datetime.datetime objects.
+        """
+        raise NotImplementedError
+
+    def is_tsm_affected(self):
+        """
+        Determine whether the currently processed orbit is affected by the
+        temporary scan motor problem.
+        """
+        self.get_times()
+        ts = self.times[0]
+        te = self.times[-1]
+        try:
+            for interval in self.tsm_affected_intervals[self.spacecraft_id]:
+                if ts >= interval[0] and te <= interval[1]:
+                    return True
+            else:
+                # No matching interval, orbit is not affected
+                return False
+        except KeyError:
+            # Platform is not affected at all
+            return False
