@@ -28,6 +28,7 @@ Test corrections of scanline numbers, timestamps and scan motor issue.
 import unittest
 from pygac.gac_reader import GACReader
 import pygac.correct_tsm_issue as tsm
+
 import numpy as np
 import datetime
 
@@ -79,7 +80,8 @@ class TestCorrections(unittest.TestCase):
         self.reader.scans = scans
         self.reader.utcs = msecs.astype(">M8[ms]")
 
-        # Create artificial channel data with some noisy regions
+        # Create artificial channel data with some noisy regions. Channel order:
+        # 1, 2, 3b, 4, 5, 3a
         cols = np.arange(409)
         rows = np.arange(12000)
         mcols, mrows = np.meshgrid(cols, rows)
@@ -91,10 +93,9 @@ class TestCorrections(unittest.TestCase):
         noise_cols, noise_rows = np.meshgrid(np.arange(200, 300),
                                              np.arange(4000, 5000))
         ampl = 0.5
-        channels_noise[0][noise_rows, noise_cols] += ampl*np.random.rand(
-            noise_rows.shape[0], noise_rows.shape[1])
-        channels_noise[3][noise_rows, noise_cols] += ampl*np.random.rand(
-            noise_rows.shape[0], noise_rows.shape[1])
+        for ichan in (0, 3):
+            channels_noise[ichan][noise_rows, noise_cols] += ampl*np.random.rand(
+                noise_rows.shape[0], noise_rows.shape[1])
 
         # ... scale data
         for i in (0, 1, 5):
@@ -135,9 +136,11 @@ class TestCorrections(unittest.TestCase):
         Test whether correction of the scan motor issue works as expected.
         """
         fv = -32001
-        ch1, ch2, ch3, ch4, ch5, ch6 = self.channels_noise
-        channels_corr = tsm.flag_pixels(c1=ch1, c2=ch2, c3=ch3, c4=ch4, c5=ch5,
-                                        c6=ch6, fillv=fv)
+        ch1, ch2, ch3b, ch4, ch5, ch3a = self.channels_noise
+        channels_corr = tsm.flag_pixels(channel1=ch1, channel2=ch2,
+                                        channel3b=ch3b, channel4=ch4,
+                                        channel5=ch5, channel3a=ch3a,
+                                        fillv=fv)
         for channel, channel_corr in zip(self.channels, channels_corr):
             nonoise = channel_corr != fv
             self.assertTrue(
