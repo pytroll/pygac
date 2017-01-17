@@ -1,16 +1,27 @@
-#
-# Copyright (c) Nov 2016, DWD
-#
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
 # Author(s):
-#
+
 #   Stephan Finkensieper <stephan.finkensieper@dwd.dwd>
 #   Cornelia Schlundt <cornelia.schlundt@dwd.de>
-#
-# Purpose
-#   NOAA-14, 15 and 16 suffer from temporary scan motor issue
-#   i.e. parts of an orbit contain corrupt data,
-#        which are flagged with fill_values
-#
+
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+"""NOAA-14, 15 and 16 suffer from temporary scan motor issue i.e. parts of
+an orbit contain corrupt data. This module identifies affected pixels and flags
+them with fill values."""
 
 import numpy as np
 from _filter import _mean_filter
