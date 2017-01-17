@@ -24,7 +24,7 @@ an orbit contain corrupt data. This module identifies affected pixels and flags
 them with fill values."""
 
 import numpy as np
-from _filter import _mean_filter
+from ._filter import _mean_filter
 
 
 def mean_filter(data, fill_value, box_size):
