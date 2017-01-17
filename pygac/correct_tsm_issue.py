@@ -12,102 +12,60 @@
 #        which are flagged with fill_values
 #
 
-import os
 import numpy as np
-import scipy.weave as weave
+from _filter import _mean_filter
 
 
-def gridbox_mean(data, fill_value, box_size):
+def mean_filter(data, fill_value, box_size):
     """
-    For each element in C{data}, calculate the mean value of all valid elements
-    in the C{box_size} x C{box_size} box around it.
+    Filter the given 2D array 'data' by averaging the valid elements within a
+    box of size (boxsize x boxsize) around each pixel. Fill values are not
+    taken into account.
 
-    Masked values are not taken into account.
+    @param data: 2D array to be filtered
+    @param box_size: Specifies the boxsize. Must be odd.
+    @param fill_value: Value indicating invalid/missing data
 
-    @param data: 2D masked array
-    @param fill_value: Value to be used to fill masked elements
-    @param box_size: Box size
-    @return: Gridbox mean
-    @rtype: numpy.ma.core.MaskedArray
+    @return: The filtered array.
     """
     if not box_size % 2 == 1:
         raise ValueError('Box size must be odd.')
 
-    # Fill masked elements
-    fdata = data.astype('f8').filled(fill_value)
+    # Replace masked elements with fill_value
+    if isinstance(data, np.ma.core.MaskedArray):
+        filled = data.filled(fill_value)
+    else:
+        filled = data
 
-    # Allocate filtered image
-    filtered = np.zeros(data.shape, dtype='f8')
-    nrows, ncols = data.shape
-
-    c_code = """
-    int row, col, rowbox, colbox, nbox;
-    double fill_value_d = (double) fill_value;
-    int radius = (box_size-1)/2;
-
-
-    for(row=0; row<nrows; row++)
-    {
-        for(col=0; col<ncols; col++)
-        {
-            filtered(row,col) = 0;
-            nbox = 0;
-            for(rowbox=row-radius; rowbox<=row+radius; rowbox++)
-            {
-                for(colbox=col-radius; colbox<=col+radius; colbox++)
-                {
-                    if(rowbox >= 0 && rowbox < nrows && colbox >= 0 and colbox < ncols)
-                    {
-                        if(fdata(rowbox,colbox) != fill_value_d)
-                        {
-                            filtered(row,col) += fdata(rowbox,colbox);
-                            nbox += 1;
-                        }
-                    }
-                }
-            }
-            if(nbox > 0)
-            {
-                filtered(row,col) /= (double) nbox;
-            }
-        }
-    }
-    return_val=0;
-    """
-
-    # Execute inline C code
-    err = weave.inline(
-        c_code,
-        ['fdata', 'filtered', 'fill_value', 'box_size', 'nrows', 'ncols'],
-        type_converters=weave.converters.blitz,
-        compiler="gcc"
-    )
-    if err != 0:
-        raise RuntimeError('Blitz failed with returncode {0}'.format(err))
+    # Convert data to double (this is what _mean_filter() is expecting) and
+    # apply mean filter
+    filtered = _mean_filter(data=filled.astype('f8'), box_size=box_size,
+                            fill_value=fill_value)
 
     # Re-mask fill values
     return np.ma.masked_equal(filtered, fill_value)
 
 
-def gridbox_std(data, box_size, fill_value):
+def std_filter(data, box_size, fill_value):
     """
-    For each element in C{data}, calculate the standard deviation of all valid
-    elements in the C{box_size} x C{box_size} box around it.
+    Filter the given 2D array 'data' by computing the standard deviation of the
+    valid elements within a box of size (box_size x box_size) around each pixel.
 
     Masked values are not taken into account. Since
 
         std = sqrt( mean(data^2) - mean(data)^2 )
 
-    we can use L{gridbox_mean} to compute the standard deviation.
+    we can use mean_filter() to compute the standard deviation.
 
-    @param data: 2D masked array
-    @param fill_value: Value to be used to fill masked elements
-    @param box_size: Box size
-    @return: Gridbox standard deviation
-    @rtype: numpy.ma.core.MaskedArray
+    @param data: 2D array to be filtered
+    @param fill_value: Value indicating invalid/missing data
+    @param box_size: Specifies the boxsize. Must be odd.
+    @return: The filtered array
     """
-    mean_squared = np.square(gridbox_mean(data, box_size=box_size, fill_value=fill_value))
-    squared_mean = gridbox_mean(np.square(data), box_size=box_size, fill_value=fill_value)
+    mean_squared = np.square(mean_filter(data, box_size=box_size,
+                                         fill_value=fill_value))
+    squared_mean = mean_filter(np.square(data), box_size=box_size,
+                               fill_value=fill_value)
     return np.ma.sqrt(squared_mean - mean_squared)
 
 
@@ -124,8 +82,8 @@ def get_tsm_idx(tar1, tar2, tar4, tar5):
     # standard deviation of abs_d12 and rel_d45
     box_size = 3
     fill_value = -9999.0
-    std_d12 = gridbox_std(abs_d12, box_size, fill_value)
-    std_d45 = gridbox_std(rel_d45, box_size, fill_value)
+    std_d12 = std_filter(abs_d12, box_size, fill_value)
+    std_d45 = std_filter(rel_d45, box_size, fill_value)
 
     # using ch1, ch2, ch4, ch5 in combination
     # all channels seems to be affected throughout the whole orbit,

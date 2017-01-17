@@ -148,6 +148,38 @@ class TestCorrections(unittest.TestCase):
                 msg='Non-corrupt pixels have been modified')
 
 
+class MeanFilterTest(unittest.TestCase):
+    """
+    Test whether the gridbox mean filter works correctly.
+    """
+    def runTest(self):
+        # Define test data
+        data = np.ma.array(
+            [[1, 2, 2, 1],
+             [2, 1, 2, 1],
+             [1, 1, 2, 2],
+             [2, 2, 1, 1]]
+        )
+        data.mask = np.zeros(data.shape)
+        data.mask[1, 1:3] = 1
+        data.mask[3, -1] = 1
+
+        # Define reference
+        filtered_ref = np.array(
+            [[5/3., 7/4., 6/4., 4/3.],
+             [7/5., 11/7., 11/7., 8/5.],
+             [8/5., 11/7., 9/6., 6/4.],
+             [6/4., 9/6., 8/5., 5/3.]]
+        )
+
+        # Apply mean
+        filtered = tsm.mean_filter(data=data, box_size=3, fill_value=-999)
+
+        # Compare results against reference
+        self.assertTrue(np.allclose(filtered, filtered_ref),
+                        msg='Mean filter produces incorrect results.')
+
+
 def suite():
     """
     The suite for test_corrections
@@ -155,6 +187,7 @@ def suite():
     loader = unittest.TestLoader()
     mysuite = unittest.TestSuite()
     mysuite.addTest(loader.loadTestsFromTestCase(TestCorrections))
+    mysuite.addTest(MeanFilterTest)
 
     return mysuite
 
