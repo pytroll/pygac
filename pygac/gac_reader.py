@@ -81,6 +81,19 @@ class GACReader(object):
     def get_times(self):
         raise NotImplementedError
 
+    @staticmethod
+    def to_datetime64(year, jday, msec):
+        """Convert day, day of year and milliseconds since 00:00 to
+        numpy.datetime64"""
+        return (((year - 1970).astype('datetime64[Y]')
+                + (jday - 1).astype('timedelta64[D]')).astype('datetime64[ms]')
+                + msec.astype('timedelta64[ms]'))
+
+    @staticmethod
+    def to_datetime(datetime64):
+        """Convert numpy.datetime64 to datetime.datetime"""
+        return datetime64.astype(datetime.datetime)
+
     def compute_lonlat(self, utcs=None, clock_drift_adjust=True):
         tle1, tle2 = self.get_tle_lines()
 

@@ -201,9 +201,7 @@ class PODReader(GACReader):
         # choose the right header depending on the date
         with open(filename) as fd_:
             head = np.fromfile(fd_, dtype=header0, count=1)[0]
-            year = head["start_time"][0] >> 9
-            year = np.where(year > 75, year + 1900, year + 2000)
-            jday = (head["start_time"][0] & 0x1FF)
+            year, jday, _ = self.decode_timestamps(head["start_time"])
 
             start_date = (datetime.date(year,1,1) + datetime.timedelta(days=jday - 1))
 
@@ -228,26 +226,43 @@ class PODReader(GACReader):
         return self.head, self.scans
 
     def get_header_timestamp(self):
-        t = self.head['start_time']
-        year = (t[0] >> 9)
-        year = np.where(year > 75, year + 1900, year + 2000)
-        msec = (np.uint32(t[1] & 2047) << 16) | np.uint32(t[2])
-        doy = t[0] & 0x1FF
+        year, jday, msec = self.decode_timestamps(self.head["start_time"])
         try:
-            return pytz.utc.localize(
-                datetime.datetime(year=year, month=1, day=1) +
-                datetime.timedelta(days=doy-1) +
-                datetime.timedelta(milliseconds=msec))
+            return self.to_datetime(self.to_datetime64(year=year, jday=jday,
+                                                       msec=msec))
         except ValueError as err:
             raise ValueError('Corrupt header timestamp: {0}'.format(err))
 
+    @staticmethod
+    def decode_timestamps(encoded):
+        """
+        Decode timestamps.
+        @return: year, day of year, milliseconds since 00:00
+        """
+        ndims = len(encoded.shape)
+        if ndims == 1:
+            # Single header timestamp
+            enc0 = encoded[0]
+            enc1 = encoded[1]
+            enc2 = encoded[2]
+        elif ndims == 2:
+            # Scanline timestamps
+            enc0 = encoded[:, 0]
+            enc1 = encoded[:, 1]
+            enc2 = encoded[:, 2]
+        else:
+            raise ValueError('Invalid timestamp dimension')
+
+        year = enc0 >> 9
+        year = np.where(year > 75, year + 1900, year + 2000)
+        jday = (enc0 & 0x1FF)
+        msec = ((np.uint32(enc1 & 2047) << 16) | (np.uint32(enc2)))
+
+        return year, jday, msec
+
     def get_times(self):
         if self.utcs is None:
-            year = self.scans["time_code"][:, 0] >> 9
-            year = np.where(year > 75, year + 1900, year + 2000)
-            jday = (self.scans["time_code"][:, 0] & 0x1FF)
-            msec = ((np.uint32(self.scans["time_code"][:, 1] & 2047) << 16) |
-                    (np.uint32(self.scans["time_code"][:, 2])))
+            year, jday, msec = self.decode_timestamps(self.scans["time_code"])
 
             #print jday[10150:10171]
             #print msec[10150:10171]
@@ -269,9 +284,7 @@ class PODReader(GACReader):
             msec = np.where(np.logical_and(np.logical_or(if_wrong_msec<-1000, if_wrong_msec>1000), if_wrong_jday!=1), msec[0] + 0.5 * 1000.0 * (self.scans["scan_line_number"] - 1), msec)
 
 
-            self.utcs = (((year - 1970).astype('datetime64[Y]')
-                          + (jday - 1).astype('timedelta64[D]')).astype('datetime64[ms]')
-                         + msec.astype('timedelta64[ms]'))
+            self.utcs = self.to_datetime64(year=year, jday=jday, msec=msec)
 
             #print if_wrong_jday[10150:10171];
             #print if_wrong_msec[10150:10171];
@@ -288,24 +301,22 @@ class PODReader(GACReader):
                     year = year[0]
                     jday = jday[0]
                     msec = msec[0] + 0.5 * 1000.0 * (self.scans["scan_line_number"] - 1)
-                    self.utcs = (((year - 1970).astype('datetime64[Y]')
-                                          + (jday - 1).astype('timedelta64[D]')).astype('datetime64[ms]')
-                                         + msec.astype('timedelta64[ms]'))
+                    self.utcs = self.to_datetime64(year=year, jday=jday,
+                                                   msec=msec)
                 # Otherwise use median time stamp
                 else:
                     year = np.median(year)
                     jday = np.median(jday)
                     msec0 = np.median(msec - 0.5 * 1000.0 * (self.scans["scan_line_number"] - 1))
                     msec = msec0 + 0.5 * 1000.0 * (self.scans["scan_line_number"] - 1)
-                    self.utcs = (((year - 1970).astype('datetime64[Y]')
-                                              + (jday - 1).astype('timedelta64[D]')).astype('datetime64[ms]')
-                                             + msec.astype('timedelta64[ms]'))
+                    self.utcs = self.to_datetime64(year=year, jday=jday,
+                                                   msec=msec)
 
             # Correct corrupt timestamps
             self.correct_utcs()
 
-            # Convert timestamps to datetime objects
-            self.times = self.utcs.astype(datetime.datetime)
+            # Convert numpy timestamps to datetime objects
+            self.times = self.to_datetime(self.utcs)
         return self.utcs
 
     def adjust_clock_drift(self):
