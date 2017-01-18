@@ -122,7 +122,7 @@ class TestCorrections(unittest.TestCase):
 
     def test_scan_line_number(self):
         """
-        Test whether scan line number correction works as expected.
+        Test whether scan line number correction works as expected
         """
         self.reader.correct_scan_line_numbers()
         self.assertTrue(np.allclose(self.correct_scan_line_numbers,
@@ -131,7 +131,7 @@ class TestCorrections(unittest.TestCase):
 
     def test_timestamp(self):
         """
-        Test whether timestamp correction works as expected.
+        Test whether timestamp correction works as expected
         """
         self.reader.correct_scan_line_numbers()
         self.reader.correct_times_thresh()
@@ -141,7 +141,7 @@ class TestCorrections(unittest.TestCase):
 
     def test_scan_motor_issue(self):
         """
-        Test whether correction of the scan motor issue works as expected.
+        Test whether correction of the scan motor issue works as expected
         """
         fv = -32001
         ch1, ch2, ch3b, ch4, ch5, ch3a = self.channels_noise
@@ -182,7 +182,7 @@ class TestCorrections(unittest.TestCase):
 
 class MeanFilterTest(unittest.TestCase):
     """
-    Test whether the gridbox mean filter works correctly.
+    Test whether the gridbox mean filter works correctly
     """
     def runTest(self):
         # Define test data
