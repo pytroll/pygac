@@ -35,7 +35,7 @@ LOG = logging.getLogger(__name__)
 
 import ConfigParser
 import os
-import correct_tsm_issue as tsm
+from .correct_tsm_issue import flag_pixels as flag_tsm_pixels
 
 try:
     CONFIG_FILE = os.environ['PYGAC_CONFIG_FILE']
@@ -194,15 +194,14 @@ def save_gac(satellite_name,
     if tsmcorr:
         LOG.info('Correcting for temporary scan motor issue')
         tic = datetime.datetime.now()
-        (ref1, ref2, bt3, bt4, bt5, ref3) = tsm.flag_pixels(channel1=ref1,
+        (ref1, ref2, bt3, bt4, bt5, ref3) = flag_tsm_pixels(channel1=ref1,
                                                             channel2=ref2,
                                                             channel3b=bt3,
                                                             channel4=bt4,
                                                             channel5=bt5,
                                                             channel3a=ref3,
                                                             fillv=MISSING_DATA)
-        LOG.debug('TSM correction took: {0}'.format(
-            str(datetime.datetime.now() - tic)))
+        LOG.debug('TSM correction took: %s', str(datetime.datetime.now() - tic))
 
     avhrrGAC_io(satellite_name, startdate, enddate, starttime, endtime,
                 lats, lons, ref1, ref2, ref3, bt3, bt4, bt5,

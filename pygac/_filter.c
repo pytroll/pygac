@@ -1306,12 +1306,12 @@ static PyObject *__pyx_codeobj__8;
  * 
  * def _mean_filter(np.ndarray[DTYPE_T, ndim=2] data, int box_size,             # <<<<<<<<<<<<<<
  *                  DTYPE_T fill_value):
- *     """
+ *     """Filter a 2D array using an arithmetic mean kernel.
  */
 
 /* Python wrapper */
 static PyObject *__pyx_pw_5pygac_7_filter_1_mean_filter(PyObject *__pyx_self, PyObject *__pyx_args, PyObject *__pyx_kwds); /*proto*/
-static char __pyx_doc_5pygac_7_filter__mean_filter[] = "\n    Filter the given 2D array 'data' by averaging the valid elements within \n    a box of size (box_size x box_size) around each pixel. Fill values are \n    not taken into account.\n\n    @param data: 2D array to be filtered. Masked arrays are not supported, \n    invalid data must be filled with fill_value.\n    @param box_size: Specifies the box_size. Must be odd.\n    @param fill_value: Value indicating missing data\n\n    @return: The filtered array \n    ";
+static char __pyx_doc_5pygac_7_filter__mean_filter[] = "Filter a 2D array using an arithmetic mean kernel.\n\n    Compute the arithmetic mean of the valid elements within a box of size\n    (boxsize x boxsize) around each pixel. Fill values are not taken into\n    account.\n\n    Args:\n        data (np.ndarray): 2D array to be filtered. Masked arrays are not\n            supported, invalid data must be filled with fill_value.\n        box_size (int): Specifies the box_size. Must be odd.\n        fill_value: Value indicating missing data.\n\n    Returns:\n        np.ndarray: The filtered array\n    ";
 static PyMethodDef __pyx_mdef_5pygac_7_filter_1_mean_filter = {"_mean_filter", (PyCFunction)__pyx_pw_5pygac_7_filter_1_mean_filter, METH_VARARGS|METH_KEYWORDS, __pyx_doc_5pygac_7_filter__mean_filter};
 static PyObject *__pyx_pw_5pygac_7_filter_1_mean_filter(PyObject *__pyx_self, PyObject *__pyx_args, PyObject *__pyx_kwds) {
   PyArrayObject *__pyx_v_data = 0;
@@ -1440,8 +1440,8 @@ static PyObject *__pyx_pf_5pygac_7_filter__mean_filter(CYTHON_UNUSED PyObject *_
   }
   __pyx_pybuffernd_data.diminfo[0].strides = __pyx_pybuffernd_data.rcbuffer->pybuffer.strides[0]; __pyx_pybuffernd_data.diminfo[0].shape = __pyx_pybuffernd_data.rcbuffer->pybuffer.shape[0]; __pyx_pybuffernd_data.diminfo[1].strides = __pyx_pybuffernd_data.rcbuffer->pybuffer.strides[1]; __pyx_pybuffernd_data.diminfo[1].shape = __pyx_pybuffernd_data.rcbuffer->pybuffer.shape[1];
 
-  /* "pygac/_filter.pyx":21
- *     @return: The filtered array
+  /* "pygac/_filter.pyx":24
+ *         np.ndarray: The filtered array
  *     """
  *     assert data.dtype == DTYPE             # <<<<<<<<<<<<<<
  * 
@@ -1449,23 +1449,23 @@ static PyObject *__pyx_pf_5pygac_7_filter__mean_filter(CYTHON_UNUSED PyObject *_
  */
   #ifndef CYTHON_WITHOUT_ASSERTIONS
   if (unlikely(!Py_OptimizeFlag)) {
-    __pyx_t_1 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_data), __pyx_n_s_dtype); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 21, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_data), __pyx_n_s_dtype); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 24, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
-    __pyx_t_2 = __Pyx_GetModuleGlobalName(__pyx_n_s_DTYPE); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 21, __pyx_L1_error)
+    __pyx_t_2 = __Pyx_GetModuleGlobalName(__pyx_n_s_DTYPE); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 24, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_2);
-    __pyx_t_3 = PyObject_RichCompare(__pyx_t_1, __pyx_t_2, Py_EQ); __Pyx_XGOTREF(__pyx_t_3); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 21, __pyx_L1_error)
+    __pyx_t_3 = PyObject_RichCompare(__pyx_t_1, __pyx_t_2, Py_EQ); __Pyx_XGOTREF(__pyx_t_3); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 24, __pyx_L1_error)
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
     __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
-    __pyx_t_4 = __Pyx_PyObject_IsTrue(__pyx_t_3); if (unlikely(__pyx_t_4 < 0)) __PYX_ERR(0, 21, __pyx_L1_error)
+    __pyx_t_4 = __Pyx_PyObject_IsTrue(__pyx_t_3); if (unlikely(__pyx_t_4 < 0)) __PYX_ERR(0, 24, __pyx_L1_error)
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
     if (unlikely(!__pyx_t_4)) {
       PyErr_SetNone(PyExc_AssertionError);
-      __PYX_ERR(0, 21, __pyx_L1_error)
+      __PYX_ERR(0, 24, __pyx_L1_error)
     }
   }
   #endif
 
-  /* "pygac/_filter.pyx":23
+  /* "pygac/_filter.pyx":26
  *     assert data.dtype == DTYPE
  * 
  *     cdef int nrows = data.shape[0]             # <<<<<<<<<<<<<<
@@ -1474,7 +1474,7 @@ static PyObject *__pyx_pf_5pygac_7_filter__mean_filter(CYTHON_UNUSED PyObject *_
  */
   __pyx_v_nrows = (__pyx_v_data->dimensions[0]);
 
-  /* "pygac/_filter.pyx":24
+  /* "pygac/_filter.pyx":27
  * 
  *     cdef int nrows = data.shape[0]
  *     cdef int ncols = data.shape[1]             # <<<<<<<<<<<<<<
@@ -1483,33 +1483,33 @@ static PyObject *__pyx_pf_5pygac_7_filter__mean_filter(CYTHON_UNUSED PyObject *_
  */
   __pyx_v_ncols = (__pyx_v_data->dimensions[1]);
 
-  /* "pygac/_filter.pyx":27
+  /* "pygac/_filter.pyx":30
  *     cdef int row, col, brow, bcol, num_valid
  *     cdef DTYPE_T sum_valid
  *     cdef np.ndarray[DTYPE_T, ndim=2] filtered = fill_value*np.ones(             # <<<<<<<<<<<<<<
  *         (nrows, ncols), dtype=DTYPE)
  *     cdef int radius = box_size//2
  */
-  __pyx_t_3 = PyFloat_FromDouble(__pyx_v_fill_value); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 27, __pyx_L1_error)
+  __pyx_t_3 = PyFloat_FromDouble(__pyx_v_fill_value); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 30, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_3);
-  __pyx_t_2 = __Pyx_GetModuleGlobalName(__pyx_n_s_np); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 27, __pyx_L1_error)
+  __pyx_t_2 = __Pyx_GetModuleGlobalName(__pyx_n_s_np); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 30, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
-  __pyx_t_1 = __Pyx_PyObject_GetAttrStr(__pyx_t_2, __pyx_n_s_ones); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 27, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_PyObject_GetAttrStr(__pyx_t_2, __pyx_n_s_ones); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 30, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
-  /* "pygac/_filter.pyx":28
+  /* "pygac/_filter.pyx":31
  *     cdef DTYPE_T sum_valid
  *     cdef np.ndarray[DTYPE_T, ndim=2] filtered = fill_value*np.ones(
  *         (nrows, ncols), dtype=DTYPE)             # <<<<<<<<<<<<<<
  *     cdef int radius = box_size//2
  * 
  */
-  __pyx_t_2 = __Pyx_PyInt_From_int(__pyx_v_nrows); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 28, __pyx_L1_error)
+  __pyx_t_2 = __Pyx_PyInt_From_int(__pyx_v_nrows); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 31, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
-  __pyx_t_5 = __Pyx_PyInt_From_int(__pyx_v_ncols); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 28, __pyx_L1_error)
+  __pyx_t_5 = __Pyx_PyInt_From_int(__pyx_v_ncols); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 31, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
-  __pyx_t_6 = PyTuple_New(2); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 28, __pyx_L1_error)
+  __pyx_t_6 = PyTuple_New(2); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 31, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_6);
   __Pyx_GIVEREF(__pyx_t_2);
   PyTuple_SET_ITEM(__pyx_t_6, 0, __pyx_t_2);
@@ -1518,56 +1518,56 @@ static PyObject *__pyx_pf_5pygac_7_filter__mean_filter(CYTHON_UNUSED PyObject *_
   __pyx_t_2 = 0;
   __pyx_t_5 = 0;
 
-  /* "pygac/_filter.pyx":27
+  /* "pygac/_filter.pyx":30
  *     cdef int row, col, brow, bcol, num_valid
  *     cdef DTYPE_T sum_valid
  *     cdef np.ndarray[DTYPE_T, ndim=2] filtered = fill_value*np.ones(             # <<<<<<<<<<<<<<
  *         (nrows, ncols), dtype=DTYPE)
  *     cdef int radius = box_size//2
  */
-  __pyx_t_5 = PyTuple_New(1); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 27, __pyx_L1_error)
+  __pyx_t_5 = PyTuple_New(1); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 30, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
   __Pyx_GIVEREF(__pyx_t_6);
   PyTuple_SET_ITEM(__pyx_t_5, 0, __pyx_t_6);
   __pyx_t_6 = 0;
 
-  /* "pygac/_filter.pyx":28
+  /* "pygac/_filter.pyx":31
  *     cdef DTYPE_T sum_valid
  *     cdef np.ndarray[DTYPE_T, ndim=2] filtered = fill_value*np.ones(
  *         (nrows, ncols), dtype=DTYPE)             # <<<<<<<<<<<<<<
  *     cdef int radius = box_size//2
  * 
  */
-  __pyx_t_6 = PyDict_New(); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 28, __pyx_L1_error)
+  __pyx_t_6 = PyDict_New(); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 31, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_6);
-  __pyx_t_2 = __Pyx_GetModuleGlobalName(__pyx_n_s_DTYPE); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 28, __pyx_L1_error)
+  __pyx_t_2 = __Pyx_GetModuleGlobalName(__pyx_n_s_DTYPE); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 31, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
-  if (PyDict_SetItem(__pyx_t_6, __pyx_n_s_dtype, __pyx_t_2) < 0) __PYX_ERR(0, 28, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_t_6, __pyx_n_s_dtype, __pyx_t_2) < 0) __PYX_ERR(0, 31, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
-  /* "pygac/_filter.pyx":27
+  /* "pygac/_filter.pyx":30
  *     cdef int row, col, brow, bcol, num_valid
  *     cdef DTYPE_T sum_valid
  *     cdef np.ndarray[DTYPE_T, ndim=2] filtered = fill_value*np.ones(             # <<<<<<<<<<<<<<
  *         (nrows, ncols), dtype=DTYPE)
  *     cdef int radius = box_size//2
  */
-  __pyx_t_2 = __Pyx_PyObject_Call(__pyx_t_1, __pyx_t_5, __pyx_t_6); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 27, __pyx_L1_error)
+  __pyx_t_2 = __Pyx_PyObject_Call(__pyx_t_1, __pyx_t_5, __pyx_t_6); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 30, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
   __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
-  __pyx_t_6 = PyNumber_Multiply(__pyx_t_3, __pyx_t_2); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 27, __pyx_L1_error)
+  __pyx_t_6 = PyNumber_Multiply(__pyx_t_3, __pyx_t_2); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 30, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_6);
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
-  if (!(likely(((__pyx_t_6) == Py_None) || likely(__Pyx_TypeTest(__pyx_t_6, __pyx_ptype_5numpy_ndarray))))) __PYX_ERR(0, 27, __pyx_L1_error)
+  if (!(likely(((__pyx_t_6) == Py_None) || likely(__Pyx_TypeTest(__pyx_t_6, __pyx_ptype_5numpy_ndarray))))) __PYX_ERR(0, 30, __pyx_L1_error)
   __pyx_t_7 = ((PyArrayObject *)__pyx_t_6);
   {
     __Pyx_BufFmt_StackElem __pyx_stack[1];
     if (unlikely(__Pyx_GetBufferAndValidate(&__pyx_pybuffernd_filtered.rcbuffer->pybuffer, (PyObject*)__pyx_t_7, &__Pyx_TypeInfo_nn___pyx_t_5pygac_7_filter_DTYPE_T, PyBUF_FORMAT| PyBUF_STRIDES| PyBUF_WRITABLE, 2, 0, __pyx_stack) == -1)) {
       __pyx_v_filtered = ((PyArrayObject *)Py_None); __Pyx_INCREF(Py_None); __pyx_pybuffernd_filtered.rcbuffer->pybuffer.buf = NULL;
-      __PYX_ERR(0, 27, __pyx_L1_error)
+      __PYX_ERR(0, 30, __pyx_L1_error)
     } else {__pyx_pybuffernd_filtered.diminfo[0].strides = __pyx_pybuffernd_filtered.rcbuffer->pybuffer.strides[0]; __pyx_pybuffernd_filtered.diminfo[0].shape = __pyx_pybuffernd_filtered.rcbuffer->pybuffer.shape[0]; __pyx_pybuffernd_filtered.diminfo[1].strides = __pyx_pybuffernd_filtered.rcbuffer->pybuffer.strides[1]; __pyx_pybuffernd_filtered.diminfo[1].shape = __pyx_pybuffernd_filtered.rcbuffer->pybuffer.shape[1];
     }
   }
@@ -1575,7 +1575,7 @@ static PyObject *__pyx_pf_5pygac_7_filter__mean_filter(CYTHON_UNUSED PyObject *_
   __pyx_v_filtered = ((PyArrayObject *)__pyx_t_6);
   __pyx_t_6 = 0;
 
-  /* "pygac/_filter.pyx":29
+  /* "pygac/_filter.pyx":32
  *     cdef np.ndarray[DTYPE_T, ndim=2] filtered = fill_value*np.ones(
  *         (nrows, ncols), dtype=DTYPE)
  *     cdef int radius = box_size//2             # <<<<<<<<<<<<<<
@@ -1584,7 +1584,7 @@ static PyObject *__pyx_pf_5pygac_7_filter__mean_filter(CYTHON_UNUSED PyObject *_
  */
   __pyx_v_radius = __Pyx_div_long(__pyx_v_box_size, 2);
 
-  /* "pygac/_filter.pyx":31
+  /* "pygac/_filter.pyx":34
  *     cdef int radius = box_size//2
  * 
  *     for row in range(nrows):             # <<<<<<<<<<<<<<
@@ -1595,7 +1595,7 @@ static PyObject *__pyx_pf_5pygac_7_filter__mean_filter(CYTHON_UNUSED PyObject *_
   for (__pyx_t_9 = 0; __pyx_t_9 < __pyx_t_8; __pyx_t_9+=1) {
     __pyx_v_row = __pyx_t_9;
 
-    /* "pygac/_filter.pyx":32
+    /* "pygac/_filter.pyx":35
  * 
  *     for row in range(nrows):
  *         for col in range(ncols):             # <<<<<<<<<<<<<<
@@ -1606,7 +1606,7 @@ static PyObject *__pyx_pf_5pygac_7_filter__mean_filter(CYTHON_UNUSED PyObject *_
     for (__pyx_t_11 = 0; __pyx_t_11 < __pyx_t_10; __pyx_t_11+=1) {
       __pyx_v_col = __pyx_t_11;
 
-      /* "pygac/_filter.pyx":34
+      /* "pygac/_filter.pyx":37
  *         for col in range(ncols):
  *             # Reset values
  *             sum_valid = 0.             # <<<<<<<<<<<<<<
@@ -1615,7 +1615,7 @@ static PyObject *__pyx_pf_5pygac_7_filter__mean_filter(CYTHON_UNUSED PyObject *_
  */
       __pyx_v_sum_valid = 0.;
 
-      /* "pygac/_filter.pyx":35
+      /* "pygac/_filter.pyx":38
  *             # Reset values
  *             sum_valid = 0.
  *             num_valid = 0             # <<<<<<<<<<<<<<
@@ -1624,7 +1624,7 @@ static PyObject *__pyx_pf_5pygac_7_filter__mean_filter(CYTHON_UNUSED PyObject *_
  */
       __pyx_v_num_valid = 0;
 
-      /* "pygac/_filter.pyx":39
+      /* "pygac/_filter.pyx":42
  *             # Compute box mean
  *             for brow in range(max(row-radius, 0),
  *                               min(row+radius+1, nrows)):             # <<<<<<<<<<<<<<
@@ -1640,7 +1640,7 @@ static PyObject *__pyx_pf_5pygac_7_filter__mean_filter(CYTHON_UNUSED PyObject *_
       }
       __pyx_t_13 = __pyx_t_14;
 
-      /* "pygac/_filter.pyx":38
+      /* "pygac/_filter.pyx":41
  * 
  *             # Compute box mean
  *             for brow in range(max(row-radius, 0),             # <<<<<<<<<<<<<<
@@ -1657,7 +1657,7 @@ static PyObject *__pyx_pf_5pygac_7_filter__mean_filter(CYTHON_UNUSED PyObject *_
       for (__pyx_t_12 = __pyx_t_15; __pyx_t_12 < __pyx_t_13; __pyx_t_12+=1) {
         __pyx_v_brow = __pyx_t_12;
 
-        /* "pygac/_filter.pyx":41
+        /* "pygac/_filter.pyx":44
  *                               min(row+radius+1, nrows)):
  *                 for bcol in range(max(col-radius, 0),
  *                                   min(col+radius+1, ncols)):             # <<<<<<<<<<<<<<
@@ -1673,7 +1673,7 @@ static PyObject *__pyx_pf_5pygac_7_filter__mean_filter(CYTHON_UNUSED PyObject *_
         }
         __pyx_t_14 = __pyx_t_17;
 
-        /* "pygac/_filter.pyx":40
+        /* "pygac/_filter.pyx":43
  *             for brow in range(max(row-radius, 0),
  *                               min(row+radius+1, nrows)):
  *                 for bcol in range(max(col-radius, 0),             # <<<<<<<<<<<<<<
@@ -1690,7 +1690,7 @@ static PyObject *__pyx_pf_5pygac_7_filter__mean_filter(CYTHON_UNUSED PyObject *_
         for (__pyx_t_16 = __pyx_t_18; __pyx_t_16 < __pyx_t_14; __pyx_t_16+=1) {
           __pyx_v_bcol = __pyx_t_16;
 
-          /* "pygac/_filter.pyx":42
+          /* "pygac/_filter.pyx":45
  *                 for bcol in range(max(col-radius, 0),
  *                                   min(col+radius+1, ncols)):
  *                     if data[brow, bcol] != fill_value:             # <<<<<<<<<<<<<<
@@ -1710,12 +1710,12 @@ static PyObject *__pyx_pf_5pygac_7_filter__mean_filter(CYTHON_UNUSED PyObject *_
           } else if (unlikely(__pyx_t_20 >= __pyx_pybuffernd_data.diminfo[1].shape)) __pyx_t_21 = 1;
           if (unlikely(__pyx_t_21 != -1)) {
             __Pyx_RaiseBufferIndexError(__pyx_t_21);
-            __PYX_ERR(0, 42, __pyx_L1_error)
+            __PYX_ERR(0, 45, __pyx_L1_error)
           }
           __pyx_t_4 = (((*__Pyx_BufPtrStrided2d(__pyx_t_5pygac_7_filter_DTYPE_T *, __pyx_pybuffernd_data.rcbuffer->pybuffer.buf, __pyx_t_19, __pyx_pybuffernd_data.diminfo[0].strides, __pyx_t_20, __pyx_pybuffernd_data.diminfo[1].strides)) != __pyx_v_fill_value) != 0);
           if (__pyx_t_4) {
 
-            /* "pygac/_filter.pyx":43
+            /* "pygac/_filter.pyx":46
  *                                   min(col+radius+1, ncols)):
  *                     if data[brow, bcol] != fill_value:
  *                         sum_valid += data[brow, bcol]             # <<<<<<<<<<<<<<
@@ -1735,11 +1735,11 @@ static PyObject *__pyx_pf_5pygac_7_filter__mean_filter(CYTHON_UNUSED PyObject *_
             } else if (unlikely(__pyx_t_23 >= __pyx_pybuffernd_data.diminfo[1].shape)) __pyx_t_21 = 1;
             if (unlikely(__pyx_t_21 != -1)) {
               __Pyx_RaiseBufferIndexError(__pyx_t_21);
-              __PYX_ERR(0, 43, __pyx_L1_error)
+              __PYX_ERR(0, 46, __pyx_L1_error)
             }
             __pyx_v_sum_valid = (__pyx_v_sum_valid + (*__Pyx_BufPtrStrided2d(__pyx_t_5pygac_7_filter_DTYPE_T *, __pyx_pybuffernd_data.rcbuffer->pybuffer.buf, __pyx_t_22, __pyx_pybuffernd_data.diminfo[0].strides, __pyx_t_23, __pyx_pybuffernd_data.diminfo[1].strides)));
 
-            /* "pygac/_filter.pyx":44
+            /* "pygac/_filter.pyx":47
  *                     if data[brow, bcol] != fill_value:
  *                         sum_valid += data[brow, bcol]
  *                         num_valid += 1             # <<<<<<<<<<<<<<
@@ -1748,7 +1748,7 @@ static PyObject *__pyx_pf_5pygac_7_filter__mean_filter(CYTHON_UNUSED PyObject *_
  */
             __pyx_v_num_valid = (__pyx_v_num_valid + 1);
 
-            /* "pygac/_filter.pyx":42
+            /* "pygac/_filter.pyx":45
  *                 for bcol in range(max(col-radius, 0),
  *                                   min(col+radius+1, ncols)):
  *                     if data[brow, bcol] != fill_value:             # <<<<<<<<<<<<<<
@@ -1759,7 +1759,7 @@ static PyObject *__pyx_pf_5pygac_7_filter__mean_filter(CYTHON_UNUSED PyObject *_
         }
       }
 
-      /* "pygac/_filter.pyx":45
+      /* "pygac/_filter.pyx":48
  *                         sum_valid += data[brow, bcol]
  *                         num_valid += 1
  *             if num_valid > 0:             # <<<<<<<<<<<<<<
@@ -1769,7 +1769,7 @@ static PyObject *__pyx_pf_5pygac_7_filter__mean_filter(CYTHON_UNUSED PyObject *_
       __pyx_t_4 = ((__pyx_v_num_valid > 0) != 0);
       if (__pyx_t_4) {
 
-        /* "pygac/_filter.pyx":46
+        /* "pygac/_filter.pyx":49
  *                         num_valid += 1
  *             if num_valid > 0:
  *                 filtered[row, col] = sum_valid/float(num_valid)             # <<<<<<<<<<<<<<
@@ -1778,7 +1778,7 @@ static PyObject *__pyx_pf_5pygac_7_filter__mean_filter(CYTHON_UNUSED PyObject *_
  */
         if (unlikely(((double)__pyx_v_num_valid) == 0)) {
           PyErr_SetString(PyExc_ZeroDivisionError, "float division");
-          __PYX_ERR(0, 46, __pyx_L1_error)
+          __PYX_ERR(0, 49, __pyx_L1_error)
         }
         __pyx_t_24 = __pyx_v_row;
         __pyx_t_25 = __pyx_v_col;
@@ -1793,11 +1793,11 @@ static PyObject *__pyx_pf_5pygac_7_filter__mean_filter(CYTHON_UNUSED PyObject *_
         } else if (unlikely(__pyx_t_25 >= __pyx_pybuffernd_filtered.diminfo[1].shape)) __pyx_t_12 = 1;
         if (unlikely(__pyx_t_12 != -1)) {
           __Pyx_RaiseBufferIndexError(__pyx_t_12);
-          __PYX_ERR(0, 46, __pyx_L1_error)
+          __PYX_ERR(0, 49, __pyx_L1_error)
         }
         *__Pyx_BufPtrStrided2d(__pyx_t_5pygac_7_filter_DTYPE_T *, __pyx_pybuffernd_filtered.rcbuffer->pybuffer.buf, __pyx_t_24, __pyx_pybuffernd_filtered.diminfo[0].strides, __pyx_t_25, __pyx_pybuffernd_filtered.diminfo[1].strides) = (__pyx_v_sum_valid / ((double)__pyx_v_num_valid));
 
-        /* "pygac/_filter.pyx":45
+        /* "pygac/_filter.pyx":48
  *                         sum_valid += data[brow, bcol]
  *                         num_valid += 1
  *             if num_valid > 0:             # <<<<<<<<<<<<<<
@@ -1808,11 +1808,10 @@ static PyObject *__pyx_pf_5pygac_7_filter__mean_filter(CYTHON_UNUSED PyObject *_
     }
   }
 
-  /* "pygac/_filter.pyx":48
+  /* "pygac/_filter.pyx":51
  *                 filtered[row, col] = sum_valid/float(num_valid)
  * 
  *     return filtered             # <<<<<<<<<<<<<<
- * 
  */
   __Pyx_XDECREF(__pyx_r);
   __Pyx_INCREF(((PyObject *)__pyx_v_filtered));
@@ -1824,7 +1823,7 @@ static PyObject *__pyx_pf_5pygac_7_filter__mean_filter(CYTHON_UNUSED PyObject *_
  * 
  * def _mean_filter(np.ndarray[DTYPE_T, ndim=2] data, int box_size,             # <<<<<<<<<<<<<<
  *                  DTYPE_T fill_value):
- *     """
+ *     """Filter a 2D array using an arithmetic mean kernel.
  */
 
   /* function exit code */
@@ -4036,7 +4035,7 @@ static __Pyx_StringTabEntry __pyx_string_tab[] = {
   {0, 0, 0, 0, 0, 0, 0}
 };
 static int __Pyx_InitCachedBuiltins(void) {
-  __pyx_builtin_range = __Pyx_GetBuiltinName(__pyx_n_s_range); if (!__pyx_builtin_range) __PYX_ERR(0, 31, __pyx_L1_error)
+  __pyx_builtin_range = __Pyx_GetBuiltinName(__pyx_n_s_range); if (!__pyx_builtin_range) __PYX_ERR(0, 34, __pyx_L1_error)
   __pyx_builtin_ValueError = __Pyx_GetBuiltinName(__pyx_n_s_ValueError); if (!__pyx_builtin_ValueError) __PYX_ERR(1, 218, __pyx_L1_error)
   __pyx_builtin_RuntimeError = __Pyx_GetBuiltinName(__pyx_n_s_RuntimeError); if (!__pyx_builtin_RuntimeError) __PYX_ERR(1, 799, __pyx_L1_error)
   return 0;
@@ -4119,7 +4118,7 @@ static int __Pyx_InitCachedConstants(void) {
  * 
  * def _mean_filter(np.ndarray[DTYPE_T, ndim=2] data, int box_size,             # <<<<<<<<<<<<<<
  *                  DTYPE_T fill_value):
- *     """
+ *     """Filter a 2D array using an arithmetic mean kernel.
  */
   __pyx_tuple__7 = PyTuple_Pack(13, __pyx_n_s_data, __pyx_n_s_box_size, __pyx_n_s_fill_value, __pyx_n_s_nrows, __pyx_n_s_ncols, __pyx_n_s_row, __pyx_n_s_col, __pyx_n_s_brow, __pyx_n_s_bcol, __pyx_n_s_num_valid, __pyx_n_s_sum_valid, __pyx_n_s_filtered, __pyx_n_s_radius); if (unlikely(!__pyx_tuple__7)) __PYX_ERR(0, 7, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_tuple__7);
@@ -4274,7 +4273,7 @@ PyMODINIT_FUNC PyInit__filter(void)
  * 
  * def _mean_filter(np.ndarray[DTYPE_T, ndim=2] data, int box_size,             # <<<<<<<<<<<<<<
  *                  DTYPE_T fill_value):
- *     """
+ *     """Filter a 2D array using an arithmetic mean kernel.
  */
   __pyx_t_2 = PyCFunction_NewEx(&__pyx_mdef_5pygac_7_filter_1_mean_filter, NULL, __pyx_n_s_pygac__filter); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 7, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);

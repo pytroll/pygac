@@ -30,8 +30,8 @@ http://www.ncdc.noaa.gov/oa/pod-guide/ncdc/docs/klm/html/c8/sec83142-1.htm
 """
 
 import numpy as np
-from .correct_tsm_issue import tsm_affected_intervals_klm
-from pygac.gac_reader import GACReader
+from .correct_tsm_issue import TSM_AFFECTED_INTERVALS_KLM
+from pygac.gac_reader import GACReader, inherit_doc
 import pygac.geotiepoints as gtp
 import datetime
 from pygac import gac_io
@@ -469,6 +469,7 @@ scanline = np.dtype([("scan_line_number", ">u2"),
                      ("zero_fill9", ">i4", (112, ))])
 
 
+@inherit_doc
 class KLMReader(GACReader):
 
     spacecraft_names = {4: 'noaa15',
@@ -488,7 +489,7 @@ class KLMReader(GACReader):
                            11: 'metop 01',
                            }
 
-    tsm_affected_intervals = tsm_affected_intervals_klm
+    tsm_affected_intervals = TSM_AFFECTED_INTERVALS_KLM
 
     def read(self, filename):
         super(KLMReader, self).read(filename=filename)

@@ -18,9 +18,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-"""
-Test corrections of scanline numbers, timestamps and scan motor issue.
-"""
+"""Test corrections of scanline numbers, timestamps and scan motor issue"""
 
 
 import unittest
@@ -52,6 +50,8 @@ class TestGACReader(GACReader):
 
 
 class TestCorrections(unittest.TestCase):
+    """Test corrections of scanline numbers, timestamps and scan motor issue"""
+
     def setUp(self):
         # Create artificial scanline numbers
         along_track = 12000
@@ -121,18 +121,14 @@ class TestCorrections(unittest.TestCase):
         self.noise_rows = noise_rows
 
     def test_scan_line_number(self):
-        """
-        Test whether scan line number correction works as expected
-        """
+        """Test scan line number correction"""
         self.reader.correct_scan_line_numbers()
         self.assertTrue(np.allclose(self.correct_scan_line_numbers,
                                     self.reader.scans["scan_line_number"]),
                         msg='Scanline number correction failed')
 
     def test_timestamp(self):
-        """
-        Test whether timestamp correction works as expected
-        """
+        """Test timestamp correction"""
         self.reader.correct_scan_line_numbers()
         self.reader.correct_times_thresh()
         self.assertTrue(np.allclose(self.correct_utcs.astype('i8'),
@@ -140,9 +136,7 @@ class TestCorrections(unittest.TestCase):
                         msg='Timestamp correction failed')
 
     def test_scan_motor_issue(self):
-        """
-        Test whether correction of the scan motor issue works as expected
-        """
+        """Test correction of the scan motor issue"""
         fv = -32001
         ch1, ch2, ch3b, ch4, ch5, ch3a = self.channels_noise
         channels_corr = tsm.flag_pixels(channel1=ch1, channel2=ch2,
@@ -159,9 +153,7 @@ class TestCorrections(unittest.TestCase):
                 msg='Non-corrupt pixels have been modified')
 
     def test_is_tsm_affected(self):
-        """
-        Test whether identification of TSM affected orbits works as expected
-        """
+        """Test identification of TSM affected orbits"""
         # Affected platform and time interval
         self.reader.spacecraft_id = TEST_SPACECRAFT_ID
         self.assertTrue(self.reader.is_tsm_affected(),
@@ -181,9 +173,8 @@ class TestCorrections(unittest.TestCase):
 
 
 class MeanFilterTest(unittest.TestCase):
-    """
-    Test whether the gridbox mean filter works correctly
-    """
+    """Test gridbox mean filter"""
+
     def runTest(self):
         # Define test data
         data = np.ma.array(
@@ -213,9 +204,7 @@ class MeanFilterTest(unittest.TestCase):
 
 
 def suite():
-    """
-    The suite for test_corrections
-    """
+    """The suite for test_corrections"""
     loader = unittest.TestLoader()
     mysuite = unittest.TestSuite()
     mysuite.addTest(loader.loadTestsFromTestCase(TestCorrections))

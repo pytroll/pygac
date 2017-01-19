@@ -33,6 +33,7 @@ from pyorbital import astronomy
 import datetime
 from pygac.gac_calibration import calibrate_solar, calibrate_thermal
 from abc import ABCMeta, abstractmethod, abstractproperty
+import types
 
 LOG = logging.getLogger(__name__)
 
@@ -58,14 +59,20 @@ class GACReader(object):
 
     @abstractmethod
     def read(self, filename):
+        """Read GAC data.
+
+        Args:
+            filename (str): Specifies the GAC file to be read.
+        """
         self.filename = os.path.basename(filename)
-        LOG.info('Reading ' + self.filename)
+        LOG.info('Reading %s', self.filename)
 
     @abstractmethod
     def get_header_timestamp(self):
-        """
-        Read start timestamp from the header.
-        @rtype: datetime.datetime
+        """Read start timestamp from the header.
+
+        Returns:
+            datetime.datetime: Start timestamp
         """
         raise NotImplementedError
 
@@ -91,14 +98,24 @@ class GACReader(object):
 
     @abstractmethod
     def _get_times(self):
-        """
-        Specifies how to read scanline timestamps from GAC data.
-        @return: year, day of year, milliseconds since 00:00
+        """Specifies how to read scanline timestamps from GAC data.
+
+        Returns:
+            int: year
+            int: day of year
+            int: milliseconds since 00:00
         """
         raise NotImplementedError
 
     def get_times(self):
-        """Read scanline timestamps and try to correct invalid values."""
+        """Read scanline timestamps and try to correct invalid values.
+
+        Note:
+            Also sets self.utcs and self.times!
+
+        Returns:
+            UTC timestamps
+        """
         if self.utcs is None:
             # Read timestamps
             year, jday, msec = self._get_times()
@@ -116,22 +133,43 @@ class GACReader(object):
 
     @staticmethod
     def to_datetime64(year, jday, msec):
-        """Convert day, day of year and milliseconds since 00:00 to
-        numpy.datetime64"""
+        """Convert timestamps to numpy.datetime64
+
+        Args:
+            year: Year
+            jday: Day of the year (1-based)
+            msec: Milliseconds since 00:00
+
+        Returns:
+            numpy.datetime64: Converted timestamps
+        """
         return (((year - 1970).astype('datetime64[Y]')
                 + (jday - 1).astype('timedelta64[D]')).astype('datetime64[ms]')
                 + msec.astype('timedelta64[ms]'))
 
     @staticmethod
     def to_datetime(datetime64):
-        """Convert numpy.datetime64 to datetime.datetime"""
+        """Convert numpy.datetime64 to datetime.datetime
+
+        Args:
+            datetime64 (numpy.datetime64): Numpy timestamp to be converted.
+
+        Returns:
+            datetime.datetime: Converted timestamp
+        """
         return datetime64.astype(datetime.datetime)
 
     def lineno2msec(self, scan_line_number):
-        """
-        Compute ideal scanline timestamp based on the scanline number
-        assuming a constant scanning frequency. The timestamps are in milli-
-        seconds since 1970-01-01 00:00, i.e. the first scanline has timestamp 0.
+        """Compute ideal scanline timestamp based on the scanline number.
+
+        Assumes a constant scanning frequency.
+
+        Args:
+            scan_line_number: Specifies the scanline number (1-based)
+
+        Returns:
+            Corresponding timestamps in milliseconds since 1970-01-01 00:00,
+            i.e. the first scanline has timestamp 0.
         """
         return (scan_line_number - 1) / self.scan_freq
 
@@ -297,11 +335,19 @@ class GACReader(object):
         return sat_azi, sat_zenith, sun_azi, sun_zenith, rel_azi
 
     def correct_times_median(self, year, jday, msec):
-        """
-        Replace invalid values in year, jday, msec with statistical estimates
-        (using median). Assumes that the majority of timestamps is ok.
+        """Replace invalid timestamps with statistical estimates (using median).
 
-        @return: corrected year, corrected jday, corrected msec
+        Assumes that the majority of timestamps is ok.
+
+        Args:
+            year: Year
+            jday: Day of the year
+            msec: Milliseconds since 00:00
+
+        Returns:
+            Corrected year
+            Corrected day of the year
+            Corrected milliseconds
         """
         # Estimate ideal timestamps based on the scanline number. Still without
         # offset, e.g. the first scanline has timestamp 1970-01-01 00:00
@@ -343,9 +389,9 @@ class GACReader(object):
         return year, jday, msec
 
     def correct_scan_line_numbers(self, plot=False):
-        """
-        Remove scanlines with corrupt scanline numbers, i.e.
+        """Remove scanlines with corrupted scanline numbers
 
+        This includes:
             - Scanline numbers outside the valide range
             - Scanline numbers deviating more than a certain threshold from the
             ideal case (1,2,3,...N)
@@ -355,14 +401,15 @@ class GACReader(object):
             - NSS.GHRR.NJ.D96064.S0043.E0236.B0606162.WI
             - NSS.GHRR.NJ.D99286.S1818.E2001.B2466869.WI
 
-        @param plot: If True, plot results.
+        Args:
+            plot (bool): If True, plot results.
         """
         along_track = np.arange(1, len(self.scans["scan_line_number"])+1)
 
         # Plot original scanline numbers
         if plot:
             import matplotlib.pyplot as plt
-            fig, (ax0, ax1) = plt.subplots(nrows=2)
+            _, (ax0, ax1) = plt.subplots(nrows=2)
             ax0.plot(along_track, self.scans["scan_line_number"], "b-",
                      label="original")
 
@@ -407,8 +454,8 @@ class GACReader(object):
                 thresh = max(500, med_nz_diffs + 3*mad_nz_diffs)
         self.scans = self.scans[diffs <= thresh]
 
-        LOG.debug('Removed {0} scanline(s) with corrupt scanline numbers'
-                  .format(len(along_track) - len(self.scans)))
+        LOG.debug('Removed %s scanline(s) with corrupt scanline numbers',
+                  str(len(along_track) - len(self.scans)))
 
         # Plot corrected scanline numbers
         if plot:
@@ -434,10 +481,11 @@ class GACReader(object):
     def correct_times_thresh(self, max_diff_from_t0_head=6*60*1000,
                              min_frac_near_t0_head=0.01,
                              max_diff_from_ideal_t=10*1000, plot=False):
-        """
-        Try to correct corrupt scanline timestamps using a threshold approach
-        based on the scanline number and the header timestamp. Also works if
-        the majority of scanlines has corrupted timestamps.
+        """Correct corrupted timestamps using a threshold approach.
+
+        The threshold approach is based on the scanline number and the header
+        timestamp. It also works if the majority of scanlines has corrupted
+        timestamps.
 
         The header timestamp is used as a guideline to estimate the offset
         between timestamps computed from the scanline number and the actual
@@ -453,21 +501,23 @@ class GACReader(object):
             - NSS.GHRR.NA.D81193.S2329.E0116.B1061214.WI
             - NSS.GHRR.NL.D01035.S2342.E0135.B0192627.WI
 
-        @param max_diff_from_t0_head: Threshold for offset estimation: A
-        scanline timestamp matches the header timestamp t0_head if it is
-        within the interval
+        Args:
+            max_diff_from_t0_head (int): Threshold for offset estimation: A
+                scanline timestamp matches the header timestamp t0_head if it is
+                within the interval
 
-          [t0_head - max_diff_from_t0_head, t0_head + max_diff_from_t0_head]
+                    [t0_head - max_diff_from_t0_head,
+                    t0_head + max_diff_from_t0_head]
 
-        around the header timestamp.
-        @param min_frac_near_t0_head: Specifies the minimum fraction of
-        scanline timestamps matching the header timestamp required for
-        applying the correction.
-        @param max_diff_from_ideal_t: Threshold for timestamp correction: If
-        a scanline timestamp deviates more than max_diff_from_ideal_t from
-        the ideal timestamp, it is regarded as corrupt and will be replaced with
-        the ideal timestamp.
-        @param plot: If True, plot results.
+                around the header timestamp.
+            min_frac_near_t0_head (float): Specifies the minimum fraction of
+                scanline timestamps matching the header timestamp required for
+                applying the correction.
+            max_diff_from_ideal_t (float): Threshold for timestamp correction:
+                If a scanline timestamp deviates more than max_diff_from_ideal_t
+                from the ideal timestamp, it is regarded as corrupt and will be
+                replaced with the ideal timestamp.
+            plot (bool): If True, plot results.
         """
         apply_corr = True
         fail_reason = ""
@@ -488,7 +538,7 @@ class GACReader(object):
             t0_head = np.array([self.get_header_timestamp().isoformat()],
                                dtype="datetime64[ms]").astype("i8")[0]
         except ValueError as err:
-            LOG.error("Cannot perform timestamp correction: {0}".format(err))
+            LOG.error("Cannot perform timestamp correction: %s", err)
             return
 
         # Compute ideal timestamps based on the scanline number. Still
@@ -526,15 +576,14 @@ class GACReader(object):
         if apply_corr:
             corrupt_lines = np.where(np.fabs(t - tn) > max_diff_from_ideal_t)
             self.utcs[corrupt_lines] = tn[corrupt_lines].astype(dt64_msec)
-            LOG.debug("Corrected {0} timestamp(s)".format(
-                      len(corrupt_lines[0])))
+            LOG.debug("Corrected %s timestamp(s)", str(len(corrupt_lines[0])))
 
         # Plot results
         if plot:
             import matplotlib.pyplot as plt
             along_track = np.arange(n.size)
-            fig, (ax0, ax1, ax2) = plt.subplots(nrows=3, sharex=True,
-                                                figsize=(8, 10))
+            _, (ax0, ax1, ax2) = plt.subplots(nrows=3, sharex=True,
+                                              figsize=(8, 10))
 
             ax0.plot(along_track, t, "b-", label="original")
             if apply_corr:
@@ -568,18 +617,20 @@ class GACReader(object):
 
     @abstractproperty
     def tsm_affected_intervals(self):
-        """
-        Specifies the time intervals being affected by the temporary scan motor
-        problem.
-        @rtype: dictionary containing a list of (start, end) tuples for each
-        affected platform. Both start and end must be datetime.datetime objects.
+        """Specifies time intervals being affected by the scan motor problem.
+
+        Returns:
+            dict: Affected time intervals. A dictionary containing a list of
+                (start, end) tuples for each affected platform. Both start and
+                end must be datetime.datetime objects.
         """
         raise NotImplementedError
 
     def is_tsm_affected(self):
-        """
-        Determine whether the currently processed orbit is affected by the
-        temporary scan motor problem.
+        """Determine whether this orbit is affected by the scan motor problem.
+
+        Returns:
+            bool: True if the orbit is affected, False otherwise.
         """
         self.get_times()
         ts = self.times[0]
@@ -587,10 +638,26 @@ class GACReader(object):
         try:
             for interval in self.tsm_affected_intervals[self.spacecraft_id]:
                 if ts >= interval[0] and te <= interval[1]:
+                    # Found a matching interval
                     return True
-            else:
-                # No matching interval, orbit is not affected
-                return False
+
+            # No matching interval, orbit is not affected
+            return False
         except KeyError:
             # Platform is not affected at all
             return False
+
+
+def inherit_doc(cls):
+    """Make a class method inherit its docstring from the parent class.
+
+    Copied from http://stackoverflow.com/a/8101598/5703449 .
+    """
+    for name, func in vars(cls).items():
+        if isinstance(func, types.FunctionType) and not func.__doc__:
+            for parent in cls.__bases__:
+                parfunc = getattr(parent, name, None)
+                if parfunc and getattr(parfunc, '__doc__', None):
+                    func.__doc__ = parfunc.__doc__
+                    break
+    return cls

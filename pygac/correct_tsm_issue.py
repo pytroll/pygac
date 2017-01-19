@@ -27,7 +27,7 @@ import numpy as np
 import datetime
 from ._filter import _mean_filter
 
-tsm_affected_intervals_pod = {
+TSM_AFFECTED_INTERVALS_POD = {
     3: [(datetime.datetime(2001, 10, 19, 4, 50), datetime.datetime(2001, 10, 19, 13, 38)),
         (datetime.datetime(2001, 10, 19, 16, 58), datetime.datetime(2001, 10, 19, 18, 7)),
         (datetime.datetime(2001, 10, 19, 23, 55), datetime.datetime(2001, 10, 27, 3, 19)),
@@ -51,9 +51,9 @@ tsm_affected_intervals_pod = {
         (datetime.datetime(2002, 7, 29, 5, 26), datetime.datetime(2002, 8, 8, 0, 2)),
         (datetime.datetime(2002, 8, 8, 1, 32), datetime.datetime(2002, 8, 12, 22, 51)),
         (datetime.datetime(2002, 8, 13, 0, 25), datetime.datetime(2002, 9, 30, 4, 8))
-    ]  # NOAA-14
+        ]  # NOAA-14
 }
-tsm_affected_intervals_klm = {
+TSM_AFFECTED_INTERVALS_KLM = {
     4: [(datetime.datetime(2001, 1, 8, 23, 55), datetime.datetime(2001, 1, 9, 23, 47)),
         (datetime.datetime(2001, 1, 10, 1, 14), datetime.datetime(2001, 1, 11, 1, 6)),
         (datetime.datetime(2001, 1, 23, 18, 32), datetime.datetime(2001, 1, 26, 0, 25)),
@@ -128,7 +128,7 @@ tsm_affected_intervals_klm = {
         (datetime.datetime(2002, 3, 17, 14, 29), datetime.datetime(2002, 3, 18, 2, 4)),
         (datetime.datetime(2002, 3, 18, 5, 11), datetime.datetime(2002, 3, 18, 7, 15)),
         (datetime.datetime(2002, 3, 18, 18, 53), datetime.datetime(2002, 3, 18, 20, 48))
-    ],   # NOAA-15
+        ],   # NOAA-15
     2: [(datetime.datetime(2004, 1, 14, 14, 13), datetime.datetime(2004, 1, 14, 22, 46)),
         (datetime.datetime(2004, 1, 15, 15, 45), datetime.datetime(2004, 1, 15, 19, 3)),
         (datetime.datetime(2004, 1, 15, 22, 28), datetime.datetime(2004, 1, 16, 2, 6)),
@@ -204,21 +204,25 @@ tsm_affected_intervals_klm = {
         (datetime.datetime(2004, 5, 15, 19, 22), datetime.datetime(2004, 5, 15, 21, 24)),
         (datetime.datetime(2004, 5, 19, 22, 9), datetime.datetime(2004, 5, 20, 22, 9)),
         (datetime.datetime(2004, 5, 21, 8, 28), datetime.datetime(2004, 5, 21, 10, 19))
-    ]  # NOAA-16
+        ]  # NOAA-16
 }
 
 
 def mean_filter(data, fill_value, box_size):
-    """
-    Filter the given 2D array 'data' by averaging the valid elements within a
-    box of size (boxsize x boxsize) around each pixel. Fill values are not
-    taken into account.
+    """Filter a 2D array using an arithmetic mean kernel.
 
-    @param data: 2D array to be filtered
-    @param box_size: Specifies the boxsize. Must be odd.
-    @param fill_value: Value indicating invalid/missing data
+    Compute the arithmetic mean of the valid elements within a box of size
+    (boxsize x boxsize) around each pixel. Masked elements are not taken into
+    account.
 
-    @return: The filtered array.
+    Args:
+        data (numpy.ma.core.MaskedArray): 2D array to be filtered
+        box_size (int): Specifies the boxsize. Must be odd.
+        fill_value: Value to fill masked elements with. Must be outside the
+            valid range of the data.
+
+    Returns:
+        numpy.ma.core.MaskedArray: The filtered array.
     """
     if not box_size % 2 == 1:
         raise ValueError('Box size must be odd.')
@@ -239,20 +243,23 @@ def mean_filter(data, fill_value, box_size):
 
 
 def std_filter(data, box_size, fill_value):
-    """
-    Filter the given 2D array 'data' by computing the standard deviation of the
-    valid elements within a box of size (box_size x box_size) around each pixel.
+    """Filter a 2D array using a standard deviation kernel.
 
-    Masked values are not taken into account. Since
+    Compute the standard deviation of the valid elements within a box of size
+    (box_size x box_size) around each pixel. Masked values are not taken into
+    account. Since
 
         std = sqrt( mean(data^2) - mean(data)^2 )
 
     we can use mean_filter() to compute the standard deviation.
 
-    @param data: 2D array to be filtered
-    @param fill_value: Value indicating invalid/missing data
-    @param box_size: Specifies the boxsize. Must be odd.
-    @return: The filtered array
+    Args:
+        data (np.ma.core.MaskedArray): 2D array to be filtered
+        box_size (int): Specifies the boxsize. Must be odd.
+        fill_value: Value indicating invalid/missing data
+
+    Returns:
+        np.ma.core.MaskedArray: The filtered array
     """
     mean_squared = np.square(mean_filter(data, box_size=box_size,
                                          fill_value=fill_value))
@@ -261,15 +268,13 @@ def std_filter(data, box_size, fill_value):
     return np.ma.sqrt(squared_mean - mean_squared)
 
 
-def get_tsm_idx(tar1, tar2, tar4, tar5): 
-    """
-    Return index of pixels where TSM issue occurs.
-    """
+def get_tsm_idx(ch1, ch2, ch4, ch5):
+    """Determine indices of TSM affected pixels."""
 
     # absolute difference because ch1 is very similar to ch2
-    abs_d12 = abs(tar1 - tar2)
+    abs_d12 = abs(ch1 - ch2)
     # relative difference because ch4 and ch5 differ
-    rel_d45 = 100.0*(tar4 - tar5)/tar5
+    rel_d45 = 100.0*(ch4 - ch5) / ch5
 
     # standard deviation of abs_d12 and rel_d45
     box_size = 3
@@ -280,17 +285,17 @@ def get_tsm_idx(tar1, tar2, tar4, tar5):
     # using ch1, ch2, ch4, ch5 in combination
     # all channels seems to be affected throughout the whole orbit,
     # independent of VIS and NIR or day and night
-    idx = np.where( (std_d12 > 0.02) & (std_d45 > 2.00) )
+    idx = np.where((std_d12 > 0.02) & (std_d45 > 2.00))
 
     return idx
 
 
 def flag_pixels(channel1, channel2, channel3b,
                 channel4, channel5, channel3a, fillv):
-    """
-    Set bad pixels due to temporary scan motor issue to fill value.
-    Scale reflectances ranging from 0 to 1.5
-    Scale brightness temperature ranging from 170 to 350.
+    """Set TSM affected pixels to fill value.
+
+    Scale reflectances ranging from 0 to 1.5 and brightness temperatures
+    ranging from 170 to 350.
     """
     # ------------------------------------------------------------------------
     # (1) Scaling measurements w.r.t. threshold values
@@ -320,19 +325,19 @@ def flag_pixels(channel1, channel2, channel3b,
         if isinstance(array.mask, np.bool_): 
             array.mask = np.zeros(array.shape, dtype='bool') 
         array.mask[idx] = True
-        array[:,:] = np.ma.filled(array, fillv)
+        array[:, :] = np.ma.filled(array, fillv)
 
     # ------------------------------------------------------------------------
     # (3) Re-scaling measurments
     # ------------------------------------------------------------------------
     # re-scaling reflectance obs
     for array in [ch1, ch2, ch3a]:
-        if np.ma.count(array[array!=fillv]) > 0: 
-            array[array!=fillv] = (array[array!=fillv] - ref_offs) / ref_gain
+        if np.ma.count(array[array != fillv]) > 0:
+            array[array != fillv] = (array[array != fillv] - ref_offs) / ref_gain
     # re-scaling brightness temperature obs
     for array in [ch3b, ch4, ch5]:
-        if np.ma.count(array[array!=fillv]) > 0: 
-            array[array!=fillv] = (array[array!=fillv] - bt_offs) / bt_gain
+        if np.ma.count(array[array != fillv]) > 0:
+            array[array != fillv] = (array[array != fillv] - bt_offs) / bt_gain
 
     return ch1, ch2, ch3b, ch4, ch5, ch3a
 
