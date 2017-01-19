@@ -1,11 +1,9 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2016 Stephan Finkensieper
-
 # Author(s):
 
-#   Stephan Finkensieper <stephan.finkensieper@dwd.se>
+#   Stephan Finkensieper <stephan.finkensieper@dwd.de>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -28,19 +26,29 @@ Test corrections of scanline numbers, timestamps and scan motor issue.
 import unittest
 from pygac.gac_reader import GACReader
 import pygac.correct_tsm_issue as tsm
+
 import numpy as np
 import datetime
 
 
 TEST_TIMESTAMP = datetime.datetime(2016, 8, 16, 16, 07, 36)
+TEST_SPACECRAFT_ID = 1
 
 
 class TestGACReader(GACReader):
+    tsm_affected_intervals = {
+        TEST_SPACECRAFT_ID: [(TEST_TIMESTAMP.replace(hour=0, minute=0),
+                             TEST_TIMESTAMP.replace(hour=23, minute=59))]
+    }
+
     def read(self, filename):
         pass
 
     def get_header_timestamp(self):
         return TEST_TIMESTAMP
+
+    def _get_times(self):
+        pass
 
 
 class TestCorrections(unittest.TestCase):
@@ -78,8 +86,10 @@ class TestCorrections(unittest.TestCase):
         self.reader.filename = 'test'
         self.reader.scans = scans
         self.reader.utcs = msecs.astype(">M8[ms]")
+        self.reader.times = self.reader.utcs.astype(datetime.datetime)
 
-        # Create artificial channel data with some noisy regions
+        # Create artificial channel data with some noisy regions. Channel order:
+        # 1, 2, 3b, 4, 5, 3a
         cols = np.arange(409)
         rows = np.arange(12000)
         mcols, mrows = np.meshgrid(cols, rows)
@@ -91,10 +101,9 @@ class TestCorrections(unittest.TestCase):
         noise_cols, noise_rows = np.meshgrid(np.arange(200, 300),
                                              np.arange(4000, 5000))
         ampl = 0.5
-        channels_noise[0][noise_rows, noise_cols] += ampl*np.random.rand(
-            noise_rows.shape[0], noise_rows.shape[1])
-        channels_noise[3][noise_rows, noise_cols] += ampl*np.random.rand(
-            noise_rows.shape[0], noise_rows.shape[1])
+        for ichan in (0, 3):
+            channels_noise[ichan][noise_rows, noise_cols] += ampl*np.random.rand(
+                noise_rows.shape[0], noise_rows.shape[1])
 
         # ... scale data
         for i in (0, 1, 5):
@@ -113,7 +122,7 @@ class TestCorrections(unittest.TestCase):
 
     def test_scan_line_number(self):
         """
-        Test whether scan line number correction works as expected.
+        Test whether scan line number correction works as expected
         """
         self.reader.correct_scan_line_numbers()
         self.assertTrue(np.allclose(self.correct_scan_line_numbers,
@@ -122,22 +131,24 @@ class TestCorrections(unittest.TestCase):
 
     def test_timestamp(self):
         """
-        Test whether timestamp correction works as expected.
+        Test whether timestamp correction works as expected
         """
         self.reader.correct_scan_line_numbers()
-        self.reader.correct_utcs()
+        self.reader.correct_times_thresh()
         self.assertTrue(np.allclose(self.correct_utcs.astype('i8'),
                                     self.reader.utcs.astype('i8')),
                         msg='Timestamp correction failed')
 
     def test_scan_motor_issue(self):
         """
-        Test whether correction of the scan motor issue works as expected.
+        Test whether correction of the scan motor issue works as expected
         """
         fv = -32001
-        ch1, ch2, ch3, ch4, ch5, ch6 = self.channels_noise
-        channels_corr = tsm.flag_pixels(c1=ch1, c2=ch2, c3=ch3, c4=ch4, c5=ch5,
-                                        c6=ch6, fillv=fv)
+        ch1, ch2, ch3b, ch4, ch5, ch3a = self.channels_noise
+        channels_corr = tsm.flag_pixels(channel1=ch1, channel2=ch2,
+                                        channel3b=ch3b, channel4=ch4,
+                                        channel5=ch5, channel3a=ch3a,
+                                        fillv=fv)
         for channel, channel_corr in zip(self.channels, channels_corr):
             nonoise = channel_corr != fv
             self.assertTrue(
@@ -147,6 +158,59 @@ class TestCorrections(unittest.TestCase):
                 np.allclose(channel_corr[nonoise] - channel[nonoise], 0.0),
                 msg='Non-corrupt pixels have been modified')
 
+    def test_is_tsm_affected(self):
+        """
+        Test whether identification of TSM affected orbits works as expected
+        """
+        # Affected platform and time interval
+        self.reader.spacecraft_id = TEST_SPACECRAFT_ID
+        self.assertTrue(self.reader.is_tsm_affected(),
+                        msg='Affected orbit is not recognized')
+
+        # Unaffected platform
+        self.reader.spacecraft_id = TEST_SPACECRAFT_ID + 31415
+        self.assertFalse(self.reader.is_tsm_affected(),
+                         msg='Unaffected platform is recognized mistakenly')
+
+        # Unaffected time
+        self.reader.spacecraft_id = TEST_SPACECRAFT_ID
+        self.reader.times = [t + datetime.timedelta(days=365*12)
+                             for t in self.reader.times]
+        self.assertFalse(self.reader.is_tsm_affected(),
+                         msg='Unaffected time is recognized mistakenly')
+
+
+class MeanFilterTest(unittest.TestCase):
+    """
+    Test whether the gridbox mean filter works correctly
+    """
+    def runTest(self):
+        # Define test data
+        data = np.ma.array(
+            [[1, 2, 2, 1],
+             [2, 1, 2, 1],
+             [1, 1, 2, 2],
+             [2, 2, 1, 1]]
+        )
+        data.mask = np.zeros(data.shape)
+        data.mask[1, 1:3] = 1
+        data.mask[3, -1] = 1
+
+        # Define reference
+        filtered_ref = np.array(
+            [[5/3., 7/4., 6/4., 4/3.],
+             [7/5., 11/7., 11/7., 8/5.],
+             [8/5., 11/7., 9/6., 6/4.],
+             [6/4., 9/6., 8/5., 5/3.]]
+        )
+
+        # Apply mean
+        filtered = tsm.mean_filter(data=data, box_size=3, fill_value=-999)
+
+        # Compare results against reference
+        self.assertTrue(np.allclose(filtered, filtered_ref),
+                        msg='Mean filter produces incorrect results.')
+
 
 def suite():
     """
@@ -155,6 +219,7 @@ def suite():
     loader = unittest.TestLoader()
     mysuite = unittest.TestSuite()
     mysuite.addTest(loader.loadTestsFromTestCase(TestCorrections))
+    mysuite.addTest(MeanFilterTest)
 
     return mysuite
 
