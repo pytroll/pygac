@@ -208,7 +208,7 @@ def suite():
     loader = unittest.TestLoader()
     mysuite = unittest.TestSuite()
     mysuite.addTest(loader.loadTestsFromTestCase(TestCorrections))
-    mysuite.addTest(MeanFilterTest)
+    mysuite.addTest(loader.loadTestsFromTestCase(MeanFilterTest))
 
     return mysuite
 

@@ -23,7 +23,8 @@
 """The tests package.
 """
 
-from pygac.tests import test_calibrate_pod, test_slerp, test_calibrate_klm
+from pygac.tests import test_calibrate_pod, test_slerp, test_calibrate_klm, \
+    test_pod, test_corrections
 import unittest
 
 
@@ -31,8 +32,9 @@ def suite():
     """The global test suite.
     """
     mysuite = unittest.TestSuite()
-    mysuite.addTests(test_slerp.suite())
-    mysuite.addTests(test_calibrate_pod.suite())
-    mysuite.addTests(test_calibrate_klm.suite())
+    tests = (test_slerp, test_calibrate_klm, test_calibrate_pod,
+             test_pod, test_corrections)
+    for test in tests:
+        mysuite.addTests(test.suite())
 
     return mysuite
