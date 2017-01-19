@@ -36,7 +36,7 @@ http://www.ncdc.noaa.gov/oa/pod-guide/ncdc/docs/podug/html/c3/sec3-1.htm
 """
 
 import numpy as np
-from pygac.gac_reader import GACReader
+from pygac.gac_reader import GACReader, inherit_doc
 import pygac.geotiepoints as gtp
 from .correct_tsm_issue import tsm_affected_intervals_pod
 import datetime
@@ -158,6 +158,7 @@ scanline = np.dtype([("scan_line_number", ">i2"),
                      ("spare3", "u2", (11, ))])
 
 
+@inherit_doc
 class PODReader(GACReader):
 
     spacecrafts_orbital = {2: 'noaa 6',

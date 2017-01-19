@@ -6,17 +6,20 @@ ctypedef np.double_t DTYPE_T
 
 def _mean_filter(np.ndarray[DTYPE_T, ndim=2] data, int box_size, 
                  DTYPE_T fill_value):
-    """
-    Filter the given 2D array 'data' by averaging the valid elements within 
-    a box of size (box_size x box_size) around each pixel. Fill values are 
-    not taken into account.
+    """Filter a 2D array using an arithmetic mean kernel.
 
-    @param data: 2D array to be filtered. Masked arrays are not supported, 
-    invalid data must be filled with fill_value.
-    @param box_size: Specifies the box_size. Must be odd.
-    @param fill_value: Value indicating missing data
+    Compute the arithmetic mean of the valid elements within a box of size
+    (boxsize x boxsize) around each pixel. Fill values are not taken into
+    account.
 
-    @return: The filtered array 
+    Args:
+        data (np.ndarray): 2D array to be filtered. Masked arrays are not
+            supported, invalid data must be filled with fill_value.
+        box_size (int): Specifies the box_size. Must be odd.
+        fill_value: Value indicating missing data.
+
+    Returns:
+        np.ndarray: The filtered array
     """
     assert data.dtype == DTYPE
 
@@ -46,4 +49,3 @@ def _mean_filter(np.ndarray[DTYPE_T, ndim=2] data, int box_size,
                 filtered[row, col] = sum_valid/float(num_valid)
 
     return filtered 
-
