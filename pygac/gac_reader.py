@@ -65,7 +65,7 @@ class GACReader(object):
             filename (str): Specifies the GAC file to be read.
         """
         self.filename = os.path.basename(filename)
-        LOG.info('Reading ' + self.filename)
+        LOG.info('Reading %s', self.filename)
 
     @abstractmethod
     def get_header_timestamp(self):
@@ -454,8 +454,8 @@ class GACReader(object):
                 thresh = max(500, med_nz_diffs + 3*mad_nz_diffs)
         self.scans = self.scans[diffs <= thresh]
 
-        LOG.debug('Removed {0} scanline(s) with corrupt scanline numbers'
-                  .format(len(along_track) - len(self.scans)))
+        LOG.debug('Removed %s scanline(s) with corrupt scanline numbers',
+                  str(len(along_track) - len(self.scans)))
 
         # Plot corrected scanline numbers
         if plot:
@@ -538,7 +538,7 @@ class GACReader(object):
             t0_head = np.array([self.get_header_timestamp().isoformat()],
                                dtype="datetime64[ms]").astype("i8")[0]
         except ValueError as err:
-            LOG.error("Cannot perform timestamp correction: {0}".format(err))
+            LOG.error("Cannot perform timestamp correction: %s", err)
             return
 
         # Compute ideal timestamps based on the scanline number. Still
@@ -576,8 +576,7 @@ class GACReader(object):
         if apply_corr:
             corrupt_lines = np.where(np.fabs(t - tn) > max_diff_from_ideal_t)
             self.utcs[corrupt_lines] = tn[corrupt_lines].astype(dt64_msec)
-            LOG.debug("Corrected {0} timestamp(s)".format(
-                      len(corrupt_lines[0])))
+            LOG.debug("Corrected %s timestamp(s)", str(len(corrupt_lines[0])))
 
         # Plot results
         if plot:

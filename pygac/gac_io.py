@@ -201,8 +201,7 @@ def save_gac(satellite_name,
                                                             channel5=bt5,
                                                             channel3a=ref3,
                                                             fillv=MISSING_DATA)
-        LOG.debug('TSM correction took: {0}'.format(
-            str(datetime.datetime.now() - tic)))
+        LOG.debug('TSM correction took: %s', str(datetime.datetime.now() - tic))
 
     avhrrGAC_io(satellite_name, startdate, enddate, starttime, endtime,
                 lats, lons, ref1, ref2, ref3, bt3, bt4, bt5,
