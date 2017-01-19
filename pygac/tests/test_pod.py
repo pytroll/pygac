@@ -44,5 +44,14 @@ class TestPOD(unittest.TestCase):
         self.assertEqual(PODReader.decode_timestamps(t1900_enc), t1900_ref,
                          msg='Timestamp before 2000 was decoded incorrectly')
 
+
+def suite():
+    """The suite for test_pod"""
+    loader = unittest.TestLoader()
+    mysuite = unittest.TestSuite()
+    mysuite.addTest(loader.loadTestsFromTestCase(TestPOD))
+    return mysuite
+
+
 if __name__ == '__main__':
     unittest.main()
