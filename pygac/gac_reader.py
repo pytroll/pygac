@@ -409,7 +409,7 @@ class GACReader(object):
         # Plot original scanline numbers
         if plot:
             import matplotlib.pyplot as plt
-            fig, (ax0, ax1) = plt.subplots(nrows=2)
+            _, (ax0, ax1) = plt.subplots(nrows=2)
             ax0.plot(along_track, self.scans["scan_line_number"], "b-",
                      label="original")
 
@@ -582,8 +582,8 @@ class GACReader(object):
         if plot:
             import matplotlib.pyplot as plt
             along_track = np.arange(n.size)
-            fig, (ax0, ax1, ax2) = plt.subplots(nrows=3, sharex=True,
-                                                figsize=(8, 10))
+            _, (ax0, ax1, ax2) = plt.subplots(nrows=3, sharex=True,
+                                              figsize=(8, 10))
 
             ax0.plot(along_track, t, "b-", label="original")
             if apply_corr:
@@ -638,10 +638,11 @@ class GACReader(object):
         try:
             for interval in self.tsm_affected_intervals[self.spacecraft_id]:
                 if ts >= interval[0] and te <= interval[1]:
+                    # Found a matching interval
                     return True
-            else:
-                # No matching interval, orbit is not affected
-                return False
+
+            # No matching interval, orbit is not affected
+            return False
         except KeyError:
             # Platform is not affected at all
             return False

@@ -38,7 +38,7 @@ http://www.ncdc.noaa.gov/oa/pod-guide/ncdc/docs/podug/html/c3/sec3-1.htm
 import numpy as np
 from pygac.gac_reader import GACReader, inherit_doc
 import pygac.geotiepoints as gtp
-from .correct_tsm_issue import tsm_affected_intervals_pod
+from .correct_tsm_issue import TSM_AFFECTED_INTERVALS_POD
 import datetime
 from pygac import gac_io
 import logging
@@ -180,7 +180,7 @@ class PODReader(GACReader):
                         3: 'noaa14',
                         }
 
-    tsm_affected_intervals = tsm_affected_intervals_pod
+    tsm_affected_intervals = TSM_AFFECTED_INTERVALS_POD
 
     def correct_scan_line_numbers(self, plot=False):
         # Perform common corrections first.
