@@ -32,11 +32,18 @@ from pyorbital.orbital import Orbital
 from pyorbital import astronomy
 import datetime
 from pygac.gac_calibration import calibrate_solar, calibrate_thermal
+from abc import ABCMeta, abstractmethod, abstractproperty
+import types
 
 LOG = logging.getLogger(__name__)
 
 
 class GACReader(object):
+
+    __metaclass__ = ABCMeta
+
+    scan_freq = 2.0/1000.0
+    """Scanning frequency (scanlines per millisecond)"""
 
     def __init__(self):
         self.head = None
@@ -48,6 +55,26 @@ class GACReader(object):
         self.lons = None
         self.times = None
         self.tle_lines = None
+        self.filename = None
+
+    @abstractmethod
+    def read(self, filename):
+        """Read GAC data.
+
+        Args:
+            filename (str): Specifies the GAC file to be read.
+        """
+        self.filename = os.path.basename(filename)
+        LOG.info('Reading %s', self.filename)
+
+    @abstractmethod
+    def get_header_timestamp(self):
+        """Read start timestamp from the header.
+
+        Returns:
+            datetime.datetime: Start timestamp
+        """
+        raise NotImplementedError
 
     def get_counts(self):
         packed_data = self.scans["sensor_data"]
@@ -69,8 +96,82 @@ class GACReader(object):
             channels[:, :, 3][switch == 0] = gac_counts[:, :, 2][switch == 0]
             return channels
 
-    def get_times(self):
+    @abstractmethod
+    def _get_times(self):
+        """Specifies how to read scanline timestamps from GAC data.
+
+        Returns:
+            int: year
+            int: day of year
+            int: milliseconds since 00:00
+        """
         raise NotImplementedError
+
+    def get_times(self):
+        """Read scanline timestamps and try to correct invalid values.
+
+        Note:
+            Also sets self.utcs and self.times!
+
+        Returns:
+            UTC timestamps
+        """
+        if self.utcs is None:
+            # Read timestamps
+            year, jday, msec = self._get_times()
+
+            # Correct invalid values
+            year, jday, msec = self.correct_times_median(year=year, jday=jday,
+                                                         msec=msec)
+            self.utcs = self.to_datetime64(year=year, jday=jday, msec=msec)
+            self.correct_times_thresh()
+
+            # Convert timestamps to datetime objects
+            self.times = self.to_datetime(self.utcs)
+
+        return self.utcs
+
+    @staticmethod
+    def to_datetime64(year, jday, msec):
+        """Convert timestamps to numpy.datetime64
+
+        Args:
+            year: Year
+            jday: Day of the year (1-based)
+            msec: Milliseconds since 00:00
+
+        Returns:
+            numpy.datetime64: Converted timestamps
+        """
+        return (((year - 1970).astype('datetime64[Y]')
+                + (jday - 1).astype('timedelta64[D]')).astype('datetime64[ms]')
+                + msec.astype('timedelta64[ms]'))
+
+    @staticmethod
+    def to_datetime(datetime64):
+        """Convert numpy.datetime64 to datetime.datetime
+
+        Args:
+            datetime64 (numpy.datetime64): Numpy timestamp to be converted.
+
+        Returns:
+            datetime.datetime: Converted timestamp
+        """
+        return datetime64.astype(datetime.datetime)
+
+    def lineno2msec(self, scan_line_number):
+        """Compute ideal scanline timestamp based on the scanline number.
+
+        Assumes a constant scanning frequency.
+
+        Args:
+            scan_line_number: Specifies the scanline number (1-based)
+
+        Returns:
+            Corresponding timestamps in milliseconds since 1970-01-01 00:00,
+            i.e. the first scanline has timestamp 0.
+        """
+        return (scan_line_number - 1) / self.scan_freq
 
     def compute_lonlat(self, utcs=None, clock_drift_adjust=True):
         tle1, tle2 = self.get_tle_lines()
@@ -232,3 +333,331 @@ class GACReader(object):
         rel_azi = np.where(rel_azi > 180.0, 360.0 - rel_azi, rel_azi)
 
         return sat_azi, sat_zenith, sun_azi, sun_zenith, rel_azi
+
+    def correct_times_median(self, year, jday, msec):
+        """Replace invalid timestamps with statistical estimates (using median).
+
+        Assumes that the majority of timestamps is ok.
+
+        Args:
+            year: Year
+            jday: Day of the year
+            msec: Milliseconds since 00:00
+
+        Returns:
+            Corrected year
+            Corrected day of the year
+            Corrected milliseconds
+        """
+        # Estimate ideal timestamps based on the scanline number. Still without
+        # offset, e.g. the first scanline has timestamp 1970-01-01 00:00
+        msec_lineno = self.lineno2msec(self.scans["scan_line_number"])
+
+        jday = np.where(np.logical_or(jday<1, jday>366),np.median(jday),jday)
+        if_wrong_jday = np.ediff1d(jday, to_begin=0)
+        jday = np.where(if_wrong_jday<0, max(jday), jday)
+
+        if_wrong_msec = np.where(msec<1)
+        if_wrong_msec = if_wrong_msec[0]
+        if len(if_wrong_msec) > 0:
+            if if_wrong_msec[0] !=0:
+                msec = msec[0] + msec_lineno
+            else:
+                msec0 = np.median(msec - msec_lineno)
+                msec = msec0 + msec_lineno
+
+        if_wrong_msec = np.ediff1d(msec, to_begin=0)
+        msec = np.where(np.logical_and(np.logical_or(if_wrong_msec<-1000, if_wrong_msec>1000),if_wrong_jday!=1), msec[0] + msec_lineno, msec)
+
+        # checking if year value is out of valid range
+        if_wrong_year = np.where(
+            np.logical_or(year<1978, year>datetime.datetime.now().year))
+        if_wrong_year = if_wrong_year[0]
+        if len(if_wrong_year) > 0:
+            # if the first scanline has valid time stamp
+            if if_wrong_year[0] != 0:
+                year = year[0]
+                jday = jday[0]
+                msec = msec[0] + msec_lineno
+            # Otherwise use median time stamp
+            else:
+                year = np.median(year)
+                jday = np.median(jday)
+                msec0 = np.median(msec - msec_lineno)
+                msec = msec0 + msec_lineno
+
+        return year, jday, msec
+
+    def correct_scan_line_numbers(self, plot=False):
+        """Remove scanlines with corrupted scanline numbers
+
+        This includes:
+            - Scanline numbers outside the valide range
+            - Scanline numbers deviating more than a certain threshold from the
+            ideal case (1,2,3,...N)
+
+        Example files having corrupt scanline numbers:
+            - NSS.GHRR.NJ.D96144.S2000.E2148.B0720102.GC
+            - NSS.GHRR.NJ.D96064.S0043.E0236.B0606162.WI
+            - NSS.GHRR.NJ.D99286.S1818.E2001.B2466869.WI
+
+        Args:
+            plot (bool): If True, plot results.
+        """
+        along_track = np.arange(1, len(self.scans["scan_line_number"])+1)
+
+        # Plot original scanline numbers
+        if plot:
+            import matplotlib.pyplot as plt
+            _, (ax0, ax1) = plt.subplots(nrows=2)
+            ax0.plot(along_track, self.scans["scan_line_number"], "b-",
+                     label="original")
+
+        # Remove scanlines whose scanline number is outside the valid range
+        within_range = np.logical_and(self.scans["scan_line_number"] < 15000,
+                                      self.scans["scan_line_number"] >= 0)
+        self.scans = self.scans[within_range]
+
+        # Remove scanlines deviating more than a certain threshold from the
+        # ideal case (1,2,3,...N).
+        ideal = np.arange(1, len(self.scans["scan_line_number"])+1)
+
+        # ... Estimate possible offset (in case some scanlines are missing in
+        # the beginning of the scan)
+        offsets = self.scans["scan_line_number"] - ideal
+        med_offset = np.median(offsets)
+
+        # ... Compute difference to ideal case (1,2,3,...N) + offset
+        diffs = np.abs(self.scans["scan_line_number"] - (ideal + med_offset))
+
+        # ... Remove those scanlines whose difference is larger than a certain
+        # threshold. For the threshold computation we only regard nonzero
+        # differences.
+        nz_diffs = diffs[diffs > 0]
+        if len(nz_diffs) < 50:
+            # Not enough differences for reliable statistics. Use fixed
+            # threshold.
+            thresh = 500
+        else:
+            mean_nz_diffs = np.mean(nz_diffs)
+            std_nz_diffs = np.std(nz_diffs)
+            med_nz_diffs = np.median(nz_diffs)
+            mad_nz_diffs = np.median(np.abs(nz_diffs - med_nz_diffs))
+            if mean_nz_diffs / float(med_nz_diffs) < 3:
+                # Relatively small variation, keep (almost) everything
+                thresh = mean_nz_diffs + 3*std_nz_diffs
+            else:
+                # Large variation, filter more agressively. Use median and
+                # median absolute deviation (MAD) as they are less sensitive to
+                # outliers. However, allow differences < 500 scanlines as they
+                # occur quite often.
+                thresh = max(500, med_nz_diffs + 3*mad_nz_diffs)
+        self.scans = self.scans[diffs <= thresh]
+
+        LOG.debug('Removed %s scanline(s) with corrupt scanline numbers',
+                  str(len(along_track) - len(self.scans)))
+
+        # Plot corrected scanline numbers
+        if plot:
+            along_track = along_track[within_range]
+            along_track = along_track[diffs <= thresh]
+            ax0.plot(along_track, self.scans["scan_line_number"], "r--",
+                     label="corrected")
+            ax0.set_ylabel("Scanline Number")
+            ax0.set_xlabel("Along Track")
+            ax0.legend(loc="best")
+
+            ax1.plot(np.arange(len(nz_diffs)), nz_diffs)
+            ax1.axhline(thresh, color="r", label="thresh={0:.2f}"
+                        .format(thresh))
+            ax1.set_xlabel("Index")
+            ax1.set_ylabel("nonzero |n - n'|")
+            ax1.legend()
+
+            plt.tight_layout()
+            plt.savefig(self.filename + "_scanline_number_correction.png",
+                        bbox_inches='tight')
+
+    def correct_times_thresh(self, max_diff_from_t0_head=6*60*1000,
+                             min_frac_near_t0_head=0.01,
+                             max_diff_from_ideal_t=10*1000, plot=False):
+        """Correct corrupted timestamps using a threshold approach.
+
+        The threshold approach is based on the scanline number and the header
+        timestamp. It also works if the majority of scanlines has corrupted
+        timestamps.
+
+        The header timestamp is used as a guideline to estimate the offset
+        between timestamps computed from the scanline number and the actual
+        scanline timestamps in the data. If header timestamp and scanline
+        timestamps do not match, no correction is applied.
+
+        Once the offset has been estimated, one can calculate the ideal
+        timestamps based on the scanline number. Timestamps deviating more than
+        a certain threshold from the ideal timestamps are replaced by
+        the ideal timestamps.
+
+        Example files having corrupt timestamps:
+            - NSS.GHRR.NA.D81193.S2329.E0116.B1061214.WI
+            - NSS.GHRR.NL.D01035.S2342.E0135.B0192627.WI
+
+        Args:
+            max_diff_from_t0_head (int): Threshold for offset estimation: A
+                scanline timestamp matches the header timestamp t0_head if it is
+                within the interval
+
+                    [t0_head - max_diff_from_t0_head,
+                    t0_head + max_diff_from_t0_head]
+
+                around the header timestamp.
+            min_frac_near_t0_head (float): Specifies the minimum fraction of
+                scanline timestamps matching the header timestamp required for
+                applying the correction.
+            max_diff_from_ideal_t (float): Threshold for timestamp correction:
+                If a scanline timestamp deviates more than max_diff_from_ideal_t
+                from the ideal timestamp, it is regarded as corrupt and will be
+                replaced with the ideal timestamp.
+            plot (bool): If True, plot results.
+        """
+        apply_corr = True
+        fail_reason = ""
+        dt64_msec = ">M8[ms]"
+
+        # Check whether scanline number increases monotonically
+        n = self.scans["scan_line_number"]
+        if np.any(np.diff(n) < 0):
+            LOG.error("Cannot perform timestamp correction. Scanline number "
+                      "does not increase monotonically.")
+            apply_corr = False
+            fail_reason = "Scanline number jumps backwards"
+            # We could already return here, but continue for plotting purpose
+
+        # Convert time to milliseconds since 1970-01-01
+        t = self.utcs.astype("i8")
+        try:
+            t0_head = np.array([self.get_header_timestamp().isoformat()],
+                               dtype="datetime64[ms]").astype("i8")[0]
+        except ValueError as err:
+            LOG.error("Cannot perform timestamp correction: %s", err)
+            return
+
+        # Compute ideal timestamps based on the scanline number. Still
+        # without offset, i.e. scanline 0 has timestamp 1970-01-01 00:00
+        tn = self.lineno2msec(self.scans["scan_line_number"])
+
+        # Try to determine the timestamp t0 of the first scanline. Since none
+        # of the actual timestamps is trustworthy, use the header timestamp
+        # as a guideline. However, the header timestamp may also be corrupted,
+        # so we only apply corrections if there is a minimum fraction of
+        # scanlines whose timestamps match the header timestamp.
+        #
+        # 1) Compute offsets between actual timestamps and idealized timestamps
+        offsets = t - tn
+
+        # 2) If the offsets of a certain minimum fraction of scanlines are
+        #    within a certain interval around the header timestamp, estimate
+        #    t0 by calculating the median offset among these timestamps. If not,
+        #    we do not have reliable information and cannot proceed.
+        near_t0_head = np.where(
+            np.fabs(offsets - t0_head) <= max_diff_from_t0_head)[0]
+        if near_t0_head.size / float(n.size) >= min_frac_near_t0_head:
+            t0 = np.median(offsets[near_t0_head])
+        else:
+            LOG.error("Timestamp mismatch. Cannot perform correction.")
+            fail_reason = "Timestamp mismatch"
+            apply_corr = False
+            t0 = 0
+
+        # Add estimated offset to the ideal timestamps
+        tn += t0
+
+        # Replace timestamps deviating more than a certain threshold from the
+        # ideal timestamp with the ideal timestamp.
+        if apply_corr:
+            corrupt_lines = np.where(np.fabs(t - tn) > max_diff_from_ideal_t)
+            self.utcs[corrupt_lines] = tn[corrupt_lines].astype(dt64_msec)
+            LOG.debug("Corrected %s timestamp(s)", str(len(corrupt_lines[0])))
+
+        # Plot results
+        if plot:
+            import matplotlib.pyplot as plt
+            along_track = np.arange(n.size)
+            _, (ax0, ax1, ax2) = plt.subplots(nrows=3, sharex=True,
+                                              figsize=(8, 10))
+
+            ax0.plot(along_track, t, "b-", label="original")
+            if apply_corr:
+                ax0.plot(along_track, self.utcs, color="red", linestyle="--",
+                         label="corrected")
+            else:
+                ax0.set_title(fail_reason)
+            ax0.set_ylabel("Time [ms since 1970]")
+            ax0.set_ylim((self.utcs.min()-np.timedelta64(30, "m")).astype("i8"),
+                         (self.utcs.max()+np.timedelta64(30, "m")).astype("i8"))
+            ax0.legend(loc="best")
+            ax2.plot(along_track, n)
+            ax2.set_ylabel("Scanline number")
+            ax2.set_xlabel("Along Track")
+
+            ax1.plot(along_track, offsets)
+            ax1.fill_between(
+                along_track,
+                t0_head - np.ones(along_track.size)*max_diff_from_t0_head,
+                t0_head + np.ones(along_track.size)*max_diff_from_t0_head,
+                facecolor="g", alpha=0.33)
+            ax1.axhline(y=t0_head, color="g", linestyle="--",
+                        label="Header timestamp")
+            ax1.set_ylim(t0_head-5*max_diff_from_t0_head,
+                         t0_head+5*max_diff_from_t0_head)
+            ax1.set_ylabel("Offset t-tn [ms]")
+            ax1.legend(loc="best")
+
+            plt.savefig(self.filename+"_timestamp_correction.png",
+                        bbox_inches="tight", dpi=100)
+
+    @abstractproperty
+    def tsm_affected_intervals(self):
+        """Specifies time intervals being affected by the scan motor problem.
+
+        Returns:
+            dict: Affected time intervals. A dictionary containing a list of
+                (start, end) tuples for each affected platform. Both start and
+                end must be datetime.datetime objects.
+        """
+        raise NotImplementedError
+
+    def is_tsm_affected(self):
+        """Determine whether this orbit is affected by the scan motor problem.
+
+        Returns:
+            bool: True if the orbit is affected, False otherwise.
+        """
+        self.get_times()
+        ts = self.times[0]
+        te = self.times[-1]
+        try:
+            for interval in self.tsm_affected_intervals[self.spacecraft_id]:
+                if ts >= interval[0] and te <= interval[1]:
+                    # Found a matching interval
+                    return True
+
+            # No matching interval, orbit is not affected
+            return False
+        except KeyError:
+            # Platform is not affected at all
+            return False
+
+
+def inherit_doc(cls):
+    """Make a class method inherit its docstring from the parent class.
+
+    Copied from http://stackoverflow.com/a/8101598/5703449 .
+    """
+    for name, func in vars(cls).items():
+        if isinstance(func, types.FunctionType) and not func.__doc__:
+            for parent in cls.__bases__:
+                parfunc = getattr(parent, name, None)
+                if parfunc and getattr(parfunc, '__doc__', None):
+                    func.__doc__ = parfunc.__doc__
+                    break
+    return cls
