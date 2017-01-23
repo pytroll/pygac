@@ -35,6 +35,7 @@ LOG = logging.getLogger(__name__)
 
 import ConfigParser
 import os
+from .correct_tsm_issue import flag_pixels as flag_tsm_pixels
 
 try:
     CONFIG_FILE = os.environ['PYGAC_CONFIG_FILE']
@@ -73,7 +74,7 @@ def save_gac(satellite_name,
              ref1, ref2, ref3,
              bt3, bt4, bt5,
              sun_zen, sat_zen, sun_azi, sat_azi, rel_azi,
-             mask, qual_flags, start_line, end_line, switch=None):
+             mask, qual_flags, start_line, end_line, tsmcorr, switch=None):
 
  
     start_line = int(start_line)
@@ -109,7 +110,6 @@ def save_gac(satellite_name,
         bt3[switch == 1] = MISSING_DATA
         ref3[switch == 2] = MISSING_DATA
         bt3[switch == 2] = MISSING_DATA
-
 
 
     no_wrong_lat = np.where(lats!=MISSING_DATA_LATLON)	
@@ -150,6 +150,7 @@ def save_gac(satellite_name,
     else:
         end = xutcs[end_line].astype(datetime.datetime)
 
+
     startdate = start.strftime("%Y%m%d")
     starttime = start.strftime("%H%M%S%f")[:-5]
     enddate = end.strftime("%Y%m%d")
@@ -179,19 +180,40 @@ def save_gac(satellite_name,
        lats = lats[start_line:end_line+1,:].copy()
        lons = lons[start_line:end_line+1,:].copy()
        qual_flags = qual_flags[start_line:end_line+1,:].copy()
-        
+
+
+    for array in [ref1, ref2, ref3, bt3, bt4, bt5]:
+        array[np.isnan(array)] = MISSING_DATA
+
+    # Correct for temporary scan motor issue.
+    #
+    # TODO: The thresholds in tsm.flag_pixels() were derived from the final
+    #       pygac output, that's why the correction is applied here. It would
+    #       certainly be more consistent to apply the correction in GACReader,
+    #       but that requires a new threshold analysis.
+    if tsmcorr:
+        LOG.info('Correcting for temporary scan motor issue')
+        tic = datetime.datetime.now()
+        (ref1, ref2, bt3, bt4, bt5, ref3) = flag_tsm_pixels(channel1=ref1,
+                                                            channel2=ref2,
+                                                            channel3b=bt3,
+                                                            channel4=bt4,
+                                                            channel5=bt5,
+                                                            channel3a=ref3,
+                                                            fillv=MISSING_DATA)
+        LOG.debug('TSM correction took: %s', str(datetime.datetime.now() - tic))
 
     avhrrGAC_io(satellite_name, startdate, enddate, starttime, endtime,
                 lats, lons, ref1, ref2, ref3, bt3, bt4, bt5,
-                sun_zen, sat_zen, sun_azi, sat_azi, rel_azi, qual_flags, 
-		start_line, end_line, total_number_of_scan_lines,
+                sun_zen, sat_zen, sun_azi, sat_azi, rel_azi, qual_flags,
+                start_line, end_line, total_number_of_scan_lines,
                 last_scan_line_number, corr)
 
 
 def avhrrGAC_io(satellite_name, startdate, enddate, starttime, endtime,
                 arrLat_full, arrLon_full, ref1, ref2, ref3, bt3, bt4, bt5,
-                arrSZA, arrSTZ, arrSAA, arrSTA, arrRAA, qual_flags, 
-		start_line, end_line, total_number_of_scan_lines,
+                arrSZA, arrSTZ, arrSAA, arrSTA, arrRAA, qual_flags,
+                start_line, end_line, total_number_of_scan_lines,
                 last_scan_line_number, corr):
     import os
 

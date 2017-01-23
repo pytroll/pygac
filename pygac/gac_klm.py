@@ -30,11 +30,13 @@ http://www.ncdc.noaa.gov/oa/pod-guide/ncdc/docs/klm/html/c8/sec83142-1.htm
 """
 
 import numpy as np
-from pygac.gac_reader import GACReader
+from .correct_tsm_issue import TSM_AFFECTED_INTERVALS_KLM
+from pygac.gac_reader import GACReader, inherit_doc
 import pygac.geotiepoints as gtp
 import datetime
 from pygac import gac_io
 import logging
+
 LOG = logging.getLogger(__name__)
 
 #np.set_printoptions(threshold=np.nan)
@@ -467,6 +469,7 @@ scanline = np.dtype([("scan_line_number", ">u2"),
                      ("zero_fill9", ">i4", (112, ))])
 
 
+@inherit_doc
 class KLMReader(GACReader):
 
     spacecraft_names = {4: 'noaa15',
@@ -486,13 +489,17 @@ class KLMReader(GACReader):
                            11: 'metop 01',
                            }
 
+    tsm_affected_intervals = TSM_AFFECTED_INTERVALS_KLM
+
     def read(self, filename):
+        super(KLMReader, self).read(filename=filename)
+
         with open(filename) as fd_:
             self.head = np.fromfile(fd_, dtype=header, count=1)[0]
             fd_.seek(4608, 0)
             self.scans = np.fromfile(
                 fd_, dtype=scanline, count=self.head["count_of_data_records"])
-
+        self.correct_scan_line_numbers()
         self.spacecraft_id = self.head["noaa_spacecraft_identification_code"]
         self.spacecraft_name = self.spacecraft_names[self.spacecraft_id]
 
@@ -522,58 +529,21 @@ class KLMReader(GACReader):
         self.lons, self.lats = gtp.Gac_Lat_Lon_Interpolator(arr_lon, arr_lat)
         return self.lons, self.lats
 
-    def get_times(self):
-        if self.utcs is None:
-            year = self.scans["scan_line_year"]
-            jday = self.scans["scan_line_day_of_year"]
-            msec = self.scans["scan_line_utc_time_of_day"]
+    def get_header_timestamp(self):
+        year = self.head['start_of_data_set_year']
+        jday = self.head['start_of_data_set_day_of_year']
+        msec = self.head['start_of_data_set_utc_time_of_day']
+        try:
+            return self.to_datetime(self.to_datetime64(year=year, jday=jday,
+                                                       msec=msec))
+        except ValueError as err:
+            raise ValueError('Corrupt header timestamp: {0}'.format(err))
 
-	    jday = np.where(np.logical_or(jday<1, jday>366),np.median(jday),jday)
-	    if_wrong_jday = np.ediff1d(jday, to_begin=0)
-	    jday = np.where(if_wrong_jday<0, max(jday), jday)
-
-	    if_wrong_msec = np.where(msec<1)
-	    if_wrong_msec = if_wrong_msec[0]
-	    if len(if_wrong_msec) > 0:
-		if if_wrong_msec[0] !=0:
-		   msec = msec[0] + 0.5 * 1000.0 * (self.scans["scan_line_number"] - 1)
-		else:
-		   msec = np.median(msec - 0.5 * 1000.0 * (self.scans["scan_line_number"] - 1))	    
-	    
-	    if_wrong_msec = np.ediff1d(msec, to_begin=0)
-            msec = np.where(np.logical_and(np.logical_or(if_wrong_msec<-1000, if_wrong_msec>1000),if_wrong_jday!=1), msec[0] + 0.5 * 1000.0 * (self.scans["scan_line_number"] - 1), msec)
-
-
-            self.utcs = (((year - 1970).astype('datetime64[Y]')
-                          + (jday - 1).astype('timedelta64[D]')).astype('datetime64[ms]')
-                         + msec.astype('timedelta64[ms]'))
-            self.times = self.utcs.astype(datetime.datetime)
-
-
-	    # checking if year value is out of valid range
-            if_wrong_year = np.where(np.logical_or(year<1978, year>2015))
-            if_wrong_year = if_wrong_year[0]
-            if len(if_wrong_year) > 0:
-                # if the first scanline has valid time stamp
-                if if_wrong_year[0] != 0:
-                        year = year[0]
-                        jday = jday[0]
-                        msec = msec[0] + 0.5 * 1000.0 * (self.scans["scan_line_number"] - 1)
-                        self.utcs = (((year - 1970).astype('datetime64[Y]')
-                                      + (jday - 1).astype('timedelta64[D]')).astype('datetime64[ms]')
-                                     + msec.astype('timedelta64[ms]'))
-                        self.times = self.utcs.astype(datetime.datetime)
-                # Otherwise use median time stamp
-                else:
-                        year = np.median(year)
-                        jday = np.median(jday)
-                        msec = np.median(msec - 0.5 * 1000.0 * (self.scans["scan_line_number"] - 1))
-                        self.utcs = (((year - 1970).astype('datetime64[Y]')
-                                      + (jday - 1).astype('timedelta64[D]')).astype('datetime64[ms]')
-                                     + msec.astype('timedelta64[ms]'))
-                        self.times = self.utcs.astype(datetime.datetime)
-
-        return self.utcs
+    def _get_times(self):
+        year = self.scans["scan_line_year"]
+        jday = self.scans["scan_line_day_of_year"]
+        msec = self.scans["scan_line_utc_time_of_day"]
+        return year, jday, msec
 
     def get_ch3_switch(self):
         """0 for 3b, 1 for 3a
@@ -588,7 +558,7 @@ class KLMReader(GACReader):
                 ((self.scans["quality_indicator_bit_field"] << 3) >> 31) |
                 ((self.scans["quality_indicator_bit_field"] << 4) >> 31)) 
         
-	number_of_scans = self.scans["telemetry"].shape[0]
+        number_of_scans = self.scans["telemetry"].shape[0]
         qual_flags = np.zeros((int(number_of_scans),7))
         qual_flags[:,0]=self.scans["scan_line_number"] 
         qual_flags[:,1]=(self.scans["quality_indicator_bit_field"] >> 31)
@@ -598,7 +568,7 @@ class KLMReader(GACReader):
         qual_flags[:,5]=((self.scans["quality_indicator_bit_field"] << 26) >> 30)
         qual_flags[:,6]=((self.scans["quality_indicator_bit_field"] << 28) >> 30)
 
-	return mask.astype(bool), qual_flags
+        return mask.astype(bool), qual_flags
 
 
 def main(filename, start_line, end_line):
@@ -623,7 +593,9 @@ def main(filename, start_line, end_line):
                     channels[:, :, 4],
                     channels[:, :, 5],
                     sun_zen, sat_zen, sun_azi, sat_azi, rel_azi,
-                    mask, qual_flags, start_line, end_line, reader.get_ch3_switch())
+                    mask, qual_flags, start_line, end_line,
+                    reader.is_tsm_affected(),
+                    reader.get_ch3_switch())
     LOG.info("pygac took: %s", str(datetime.datetime.now() - tic))
 
 if __name__ == "__main__":

@@ -74,6 +74,29 @@ coeffs = {
                'b1': np.array([1 - 0.0, 1 - 0.10152, 1 - 0.06249]),
                'b2': np.array([0.0, 0.00046964, 0.00025239]),
                },
+    'tirosn': {'ah': np.array([0.105, 0.121, 0.0]),
+               'al': np.array([0.105, 0.121, 0.0]),
+               'bh': np.array([27.015, 10.709, 0.0]),
+               'bl': np.array([27.015, 10.709, 0.0]),
+               'ch': np.array([-12.876, -0.643, 0.0]),
+               'cl': np.array([-12.876, -0.643, 0.0]),
+               'c_dark': np.array([39.44, 39.40, 37.51]),
+               'l_date': 1978.783,
+               'd': np.array([[0, 0, 0, 0, 0],  # reset prt
+                              [277.659, 0.051275, 1.363e-06, 0, 0],
+                              [276.659, 0.051275, 1.363e-06, 0, 0],
+                              [276.659, 0.051275, 1.363e-06, 0, 0],
+                              [276.659, 0.051275, 1.363e-06, 0, 0]]),
+               'n_s': np.array([-0.0039, -8.130, -8.130]),
+               'c_wn': np.array([2655.7409, 913.0537, 913.0537]),
+               'a': np.array([1.6485446, 0.53135445, 0.53135445]),
+               'b': np.array([1.0 / 1.0020894,
+                              1.0 / 1.0014343,
+                              1.0 / 1.0014343]),
+               'b1': np.array([1.0 - 0.015, 1.0 - 0.131942, 1.0 - 0.131942]),
+               'b2': np.array([0.011, 0.000673193, 0.000673193]),
+               'b0': np.array([0.00195, 6.13, 6.13]),
+               },
     'noaa6': {'ah': np.array([0.145, 0.179, 0.0]),
               'al': np.array([0.145, 0.179, 0.0]),
               'bh': np.array([-28.117, -30.385, 9.412]),
@@ -93,7 +116,7 @@ coeffs = {
               'b': np.array([1.0 / 1.0024428,
                              1.0 / 1.0013592,
                              1.0 / 1.0013592]),
-              'b1': np.array([1.0, 1.0-0.03964, 1.0-0.03964]),
+              'b1': np.array([1.0, 1.0 - 0.03964, 1.0 - 0.03964]),
               'b2': np.array([0.0, 0.00016925, 0.00016925]),
               'b0': np.array([0.0, 2.24, 2.24]),
               },
@@ -139,7 +162,7 @@ coeffs = {
               'b': np.array([1.0 / 1.0024260,
                              1.0 / 1.0013460,
                              1.0 / 1.0013460]),
-              'b1': np.array([1.0, 1.0-0.03964, 1.0-0.03964]),
+              'b1': np.array([1.0, 1.0 - 0.03964, 1.0 - 0.03964]),
               'b2': np.array([0.0, 0.00016925, 0.00016925]),
               'b0': np.array([0.0, 2.24, 2.24]),
               },
@@ -186,7 +209,7 @@ coeffs = {
                'b': np.array([1.0 / 1.0026326,
                               1.0 / 1.0012272,
                               1.0 / 1.0012272]),
-               'b1': np.array([1.0, 1.0-0.1157, 1.0-0.1157]),
+               'b1': np.array([1.0, 1.0 - 0.1157, 1.0 - 0.1157]),
                'b2': np.array([0.0, 0.0005885, 0.0005882]),
                'b0': np.array([0.0, 5.76, 5.76]),
                },
@@ -256,7 +279,7 @@ coeffs = {
                'b1': np.array([1.00359, 0.92378, 0.96194]),
                'b2': np.array([0.0, 0.0003822, 0.0001742]),
                'b0': np.array([-0.0031, 3.72, 2.00]),
-		},
+               },
     'noaa15': {'ah': np.array([0.184, 0.209, 0.0]),
                'al': np.array([0.061, 0.070, 0.0]),
                'bh': np.array([-0.633, 0.248, 0.0]),
@@ -410,7 +433,6 @@ def calibrate_solar(counts, chan, year, jday, spacecraft, corr=1):
     """
     cal = Calibrator(spacecraft)
 
-
     t = (year + jday / 365.0) - cal.l_date
     stl = (cal.al[chan] * (100.0 + cal.bl[chan] * t +
                            cal.cl[chan] * t * t)) / 100.0
@@ -428,7 +450,6 @@ def calibrate_solar(counts, chan, year, jday, spacecraft, corr=1):
 def calibrate_thermal(counts, prt, ict, space, line_numbers, channel, spacecraft):
     """Do the thermal calibration and return brightness temperatures (K).
     """
-
 
     cal = Calibrator(spacecraft)
 
@@ -532,7 +553,7 @@ def calibrate_thermal(counts, prt, ict, space, line_numbers, channel, spacecraft
     tsE = ((1.4387752 * cal.c_wn[chan])
            / np.log(1.0 + nBB_num / Ne))
     bt = (tsE - cal.a[chan]) / cal.b[chan]
-    
+
     if chan == 0:
         bt = np.where((counts - new_space) >= 0, 0.0, bt)
 

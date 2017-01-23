@@ -28,42 +28,85 @@ except IOError:
     long_description = ""
 
 
-import imp
-
 from setuptools import setup
+import imp
+import sys
+import os
+from distutils.extension import Extension
+from setuptools.command.build_ext import build_ext as _build_ext
 
 version = imp.load_source('pygac.version', 'pygac/version.py')
 
-setup(name='pygac',
-      version=version.__version__,
-      description='NOAA AVHRR GAC reader and calibration',
-      author='Abhay Devasthale',
-      author_email='adam.dybbroe@smhi.se',
-      classifiers=["Development Status :: 4 - Beta",
-                   "Intended Audience :: Science/Research",
-                   "License :: OSI Approved :: GNU General Public License v3 " +
-                   "or later (GPLv3+)",
-                   "Operating System :: OS Independent",
-                   "Programming Language :: Python",
-                   "Topic :: Scientific/Engineering"],
-      url="https://github.com/adybbroe/pygac",
-      long_description=long_description,
-      license='GPLv3',
+def set_builtin(name, value):
+    if isinstance(__builtins__, dict):
+        __builtins__[name] = value
+    else:
+        setattr(__builtins__, name, value)
 
-      packages=['pygac'],
 
-      # Project should use reStructuredText, so ensure that the docutils get
-      # installed or upgraded on the target machine
-      install_requires=['docutils>=0.3',
-                        'numpy>=1.8.0', 'pyorbital>=v0.3.2',
-                        'h5py'],
-      extras_require={'geolocation interpolation': ['python-geotiepoints'],
-                      },
-      scripts=[],
-      data_files=[('etc', ['etc/pygac.cfg.template']),
-                  ('gapfilled_tles', ['gapfilled_tles/TLE_noaa16.txt'])],
-      test_suite="pygac.tests.suite",
-      tests_require=[],
+class build_ext(_build_ext):
+    """Work around to bootstrap numpy includes in to extensions.
+    Copied from:
+        http://stackoverflow.com/questions/19919905/how-to-bootstrap-numpy-installation-in-setup-py
+    """
 
-      zip_safe=False
-      )
+    def finalize_options(self):
+        _build_ext.finalize_options(self)
+        # Prevent numpy from thinking it is still in its setup process:
+        set_builtin('__NUMPY_SETUP__', False)
+        import numpy
+        self.include_dirs.append(numpy.get_include())
+
+
+if __name__ == '__main__':
+    version = imp.load_source('pygac.version', 'pygac/version.py')
+
+    # Build extensions. On the development side, i.e. if the module is built
+    # using the 'build_ext' or 'sdist' arguments, compile *.pyx using Cython.
+    # On the user side, compile *.c files.
+    use_cython = 'build_ext' in sys.argv or 'sdist' in sys.argv
+    file_ext = '.pyx' if use_cython else '.c'
+    extensions = [
+        Extension('pygac._filter',
+                  sources=['pygac/_filter' + file_ext])
+    ]
+    if use_cython:
+        from Cython.Build import cythonize
+        extensions = cythonize(extensions)
+
+    setup(name='pygac',
+          version=version.__version__,
+          description='NOAA AVHRR GAC reader and calibration',
+          author='Abhay Devasthale',
+          author_email='adam.dybbroe@smhi.se',
+          classifiers=["Development Status :: 4 - Beta",
+                       "Intended Audience :: Science/Research",
+                       "License :: OSI Approved :: GNU General Public License v3 " +
+                       "or later (GPLv3+)",
+                       "Operating System :: OS Independent",
+                       "Programming Language :: Python",
+                       "Topic :: Scientific/Engineering"],
+          url="https://github.com/pytroll/pygac",
+          long_description=long_description,
+          license='GPLv3',
+
+          packages=['pygac'],
+          cmdclass={'build_ext': build_ext},
+          ext_modules=extensions,
+
+          # Project should use reStructuredText, so ensure that the docutils get
+          # installed or upgraded on the target machine
+          install_requires=['docutils>=0.3',
+                            'numpy>=1.8.0',
+                            'pyorbital>=v0.3.2',
+                            'h5py'],
+          extras_require={'geolocation interpolation': ['python-geotiepoints'],
+                          },
+          scripts=[],
+          data_files=[('etc', ['etc/pygac.cfg.template']),
+                      ('gapfilled_tles', ['gapfilled_tles/TLE_noaa16.txt'])],
+          test_suite="pygac.tests.suite",
+          tests_require=[],
+
+          zip_safe=False
+          )

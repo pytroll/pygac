@@ -1,11 +1,9 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2013, 2014 Martin Raspaud
-
 # Author(s):
 
-#   Martin Raspaud <martin.raspaud@smhi.se>
+#   Stephan Finkensieper <stephan.finkensieper@dwd.de>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,21 +18,23 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-"""The tests package.
-"""
-
-from pygac.tests import test_calibrate_pod, test_slerp, test_calibrate_klm, \
-    test_pod, test_corrections
 import unittest
+import numpy as np
+from pygac.gac_reader import GACReader
 
 
-def suite():
-    """The global test suite.
-    """
-    mysuite = unittest.TestSuite()
-    tests = (test_slerp, test_calibrate_klm, test_calibrate_pod,
-             test_pod, test_corrections)
-    for test in tests:
-        mysuite.addTests(test.suite())
+class TestGacReader(unittest.TestCase):
+    """Test the common GAC Reader"""
 
-    return mysuite
+    longMessage = True
+
+    def test_to_datetime64(self):
+        """Test conversion from (year, jday, msec) to datetime64"""
+        t0 = GACReader.to_datetime64(year=np.array(1970), jday=np.array(1),
+                                     msec=np.array(0))
+        self.assertEqual(t0.astype('i8'), 0,
+                         msg='Conversion from (year, jday, msec) to datetime64 '
+                             'is not correct')
+
+if __name__ == '__main__':
+    unittest.main()

@@ -26,15 +26,15 @@
 
 """
 
-
+import argparse
 import logging
-
 from datetime import datetime
 
 logger = logging.getLogger("")
 logger.setLevel(logging.DEBUG)
 ch = logging.StreamHandler()
 ch.setLevel(logging.DEBUG)
+
 
 class MyFormatter(logging.Formatter):
     converter = datetime.fromtimestamp
@@ -52,9 +52,13 @@ formatter = MyFormatter('[ %(levelname)s %(name)s %(asctime)s] %(message)s')
 ch.setFormatter(formatter)
 logger.addHandler(ch)
 
+
 def check_file_version(filename):
-    with open(filename) as fdes:
-        data = fdes.read(3)
+    try:
+        with open(filename) as fdes:
+            data = fdes.read(3)
+    except IOError as err:
+        raise IOError('Failed to read GAC file: {0}'.format(err))
     if data in ["CMS", "NSS", "UKM", "DSS"]:
         from pygac.gac_klm import main
         return main
@@ -63,20 +67,38 @@ def check_file_version(filename):
         return main
 
 
+def str2scanline(string):
+    """Convert string to scanline.
+
+    Make sure, the scanline is not negative.
+
+    Args:
+        string (str): String to be converted
+
+    Returns:
+        int: Scanline
+    """
+    integer = int(string)
+    if integer < 0:
+        raise argparse.ArgumentTypeError('Scanlines must be >= 0')
+    return integer
+
+
+def validate_args(args):
+    if args.start_line > args.end_line:
+        raise ValueError('Start Scanline > End Scanline')
 
 if __name__ == "__main__":
-    import sys
-    try:
-        filename = sys.argv[1]
-	start_line = sys.argv[2]
-	end_line = sys.argv[3] 
-    except IndexError:
-	print "Usage: gac_run <filename> <start scan line number> <end scan line number>"
-	sys.exit(1)
+    parser = argparse.ArgumentParser(
+        description='Read, calibrate and navigate NOAA AVHRR GAC data')
+    parser.add_argument('filename', type=str, help='GAC file to be processed')
+    parser.add_argument('start_line', type=str2scanline,
+                        help='First scanline to be processed (0-based)')
+    parser.add_argument('end_line', type=str2scanline,
+                        help='Last scanline to be processed (0-based, '
+                             'set to 0 for the last available scanline)')
+    args = parser.parse_args()
+    validate_args(args)
 
-    reader = check_file_version(filename)
-    try:
-        reader(filename, start_line, end_line)
-    except ValueError:
-        print "Value error"
-
+    reader = check_file_version(args.filename)
+    reader(args.filename, args.start_line, args.end_line)

@@ -24,10 +24,12 @@
 """
 
 
+import unittest
+
+import numpy as np
+
 from pygac import calibrate_klm
 from pygac.gac_calibration import calibrate_solar, calibrate_thermal
-import unittest
-import numpy as np
 
 
 class TestGenericCalibration(unittest.TestCase):
@@ -64,15 +66,16 @@ class TestGenericCalibration(unittest.TestCase):
         ref3 = calibrate_solar(data, channel, year, jday,
                                spacecraft_id, corr)
 
-        expected = (np.array([[-2.13225247,   27.71598482,  111.96193939],
-                              [0.12090091,    6.11099162,   58.71058259]]),
-                    np.array([[-2.41276542e+00,   3.06897170e+01,   1.25011705e+02],
-                              [1.23731560e-01,   6.86710159e+00,   6.53913486e+01]]),
-                    np.ones((2, 3)) * -32001)
+        expected = (np.array([[-2.13242781,   27.71826394,  111.97114617],
+                              [0.12091086,    6.11149413,   58.71541044]]),
+                    np.array([[-2.41293841e+00,   3.06919173e+01,   1.25020668e+02],
+                              [1.23740431e-01,   6.86759394e+00,   6.53960369e+01]]),
+                    np.array([[0.,   512.,  1023.],
+                              [41.,   150.,   700.]]))
 
         self.assertTrue(np.allclose(ref1, expected[0]))
         self.assertTrue(np.allclose(ref2, expected[1]))
-        self.assertTrue(np.allclose(ref3.filled(-32001), expected[2]))
+        self.assertTrue(np.allclose(ref3, expected[2]))
 
     def test_calibration_ir(self):
         counts = np.array([[0, 0, 612, 0, 0,

@@ -24,10 +24,12 @@
 """
 
 
+import unittest
+
+import numpy as np
+
 from pygac import calibrate_pod
 from pygac.gac_calibration import calibrate_solar, calibrate_thermal
-import unittest
-import numpy as np
 
 
 class TestGenericCalibration(unittest.TestCase):
@@ -64,10 +66,10 @@ class TestGenericCalibration(unittest.TestCase):
         ref3 = calibrate_solar(data, channel, year, jday,
                                spacecraft_id, corr)
 
-        expected = (np.array([[-5.34164812, 61.36381128, 127.93898657],
-                              [0., 14.20096694, 85.85722215]]),
-                    np.array([[-6.49947747, 74.66472898, 155.67041159],
-                              [0., 17.27909864, 104.46721104]]),
+        expected = (np.array([[-5.34517394,   61.40431529,  128.02343443],
+                              [0.,   14.21034048,   85.91389337]]),
+                    np.array([[-6.50301792,   74.70540093,  155.75520959],
+                              [0.,   17.28851104,  104.52411723]]),
                     np.array([[-32001., -32001., -32001.],
                               [-32001., -32001., -32001.]]))
 
