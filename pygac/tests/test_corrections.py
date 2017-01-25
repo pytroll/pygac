@@ -27,7 +27,7 @@ import unittest
 import numpy as np
 
 import pygac.correct_tsm_issue as tsm
-from pygac.gac_reader import GACReader
+from pygac.reader import GACReader
 
 TEST_TIMESTAMP = datetime.datetime(2016, 8, 16, 16, 07, 36)
 TEST_SPACECRAFT_ID = 1
