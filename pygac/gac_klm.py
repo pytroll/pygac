@@ -33,7 +33,7 @@ http://www.ncdc.noaa.gov/oa/pod-guide/ncdc/docs/klm/html/c8/sec83142-1.htm
 import datetime
 import logging
 
-import numpy as np
+#np.set_printoptions(threshold=np.nan)
 
 import pygac.gac_lac_geotiepoints as gtp
 from pygac.klm_reader import KLMReader
@@ -188,6 +188,7 @@ scanline = np.dtype([("scan_line_number", ">u2"),
                      ("zero_fill9", ">i4", (112, ))])
 
 
+@inherit_doc
 class GACKLMReader(GACReader, KLMReader):
 
     def __init__(self):
@@ -219,7 +220,9 @@ def main(filename, start_line, end_line):
                     channels[:, :, 4],
                     channels[:, :, 5],
                     sun_zen, sat_zen, sun_azi, sat_azi, rel_azi,
-                    mask, qual_flags, start_line, end_line, reader.get_ch3_switch())
+                    mask, qual_flags, start_line, end_line,
+                    reader.is_tsm_affected(),
+                    reader.get_ch3_switch())
     LOG.info("pygac took: %s", str(datetime.datetime.now() - tic))
 
 

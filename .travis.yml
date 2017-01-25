@@ -7,7 +7,7 @@ install:
   - pip install .
   - pip install coveralls
 # command to run tests, e.g. python setup.py test
-env: PYGAC_CONFIG_FILE=bla
+env: PYGAC_CONFIG_FILE=etc/pygac.cfg.template
 script: coverage run --source=pygac setup.py test
 before_install:
   - sudo apt-get install -qq python-numpy python-h5py python-scipy libhdf5-serial-dev

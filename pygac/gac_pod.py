@@ -91,7 +91,8 @@ def main(filename, start_line, end_line):
                     channels[:, :, 3],
                     channels[:, :, 4],
                     sun_zen, sat_zen, sun_azi, sat_azi, rel_azi,
-                    mask, qual_flags, start_line, end_line)
+                    mask, qual_flags, start_line, end_line,
+                    reader.is_tsm_affected())
     LOG.info("pygac took: %s", str(datetime.datetime.now() - tic))
 
 

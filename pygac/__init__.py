@@ -25,6 +25,7 @@
 
 import logging
 import os
+import types
 
 import version
 
@@ -40,3 +41,18 @@ except KeyError:
 if not os.path.exists(CONFIG_FILE) or not os.path.isfile(CONFIG_FILE):
     LOG.warning(str(CONFIG_FILE) + " pointed to by the environment " +
                 "variable PYGAC_CONFIG_FILE is not a file or does not exist!")
+
+
+def inherit_doc(cls):
+    """Make a class method inherit its docstring from the parent class.
+
+    Copied from http://stackoverflow.com/a/8101598/5703449 .
+    """
+    for name, func in vars(cls).items():
+        if isinstance(func, types.FunctionType) and not func.__doc__:
+            for parent in cls.__bases__:
+                parfunc = getattr(parent, name, None)
+                if parfunc and getattr(parfunc, '__doc__', None):
+                    func.__doc__ = parfunc.__doc__
+                    break
+    return cls

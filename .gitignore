@@ -5,3 +5,5 @@ doc/build
 *~
 dist
 pygac.egg-info
+etc/*.cfg
+gapfilled_tles/
