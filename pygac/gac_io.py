@@ -24,18 +24,20 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-import h5py
-import numpy as np
-import time
 import calendar
+import ConfigParser
 import datetime
-
 import logging
+import os
+import time
+
+import numpy as np
+
+import h5py
+from pygac.correct_tsm_issue import flag_pixels as flag_tsm_pixels
+
 LOG = logging.getLogger(__name__)
 
-import ConfigParser
-import os
-from .correct_tsm_issue import flag_pixels as flag_tsm_pixels
 
 try:
     CONFIG_FILE = os.environ['PYGAC_CONFIG_FILE']
@@ -65,7 +67,7 @@ SUNSATANGLES_DIR = os.environ.get('SM_SUNSATANGLES_DIR', OUTDIR)
 AVHRR_DIR = os.environ.get('SM_AVHRR_DIR', OUTDIR)
 QUAL_DIR = os.environ.get('SM_AVHRR_DIR', OUTDIR)
 MISSING_DATA = -32001
-MISSING_DATA_LATLON =  -999999
+MISSING_DATA_LATLON = -999999
 
 
 def save_gac(satellite_name,
@@ -76,30 +78,35 @@ def save_gac(satellite_name,
              sun_zen, sat_zen, sun_azi, sat_azi, rel_azi,
              mask, qual_flags, start_line, end_line, tsmcorr, switch=None):
 
- 
     start_line = int(start_line)
     end_line = int(end_line)
 
-    bt3 = np.where(np.logical_or(bt3<170.0, bt3>350.0), MISSING_DATA, bt3-273.15) 
-    bt4 = np.where(np.logical_or(bt4<170.0, bt4>350.0), MISSING_DATA, bt4-273.15) 
-    bt5 = np.where(np.logical_or(bt5<170.0, bt5>350.0), MISSING_DATA, bt5-273.15) 
+    bt3 = np.where(np.logical_or(bt3 < 170.0, bt3 > 350.0),
+                   MISSING_DATA, bt3 - 273.15)
+    bt4 = np.where(np.logical_or(bt4 < 170.0, bt4 > 350.0),
+                   MISSING_DATA, bt4 - 273.15)
+    bt5 = np.where(np.logical_or(bt5 < 170.0, bt5 > 350.0),
+                   MISSING_DATA, bt5 - 273.15)
 
-    lats = np.where(np.logical_or(lats<-90.00, lats>90.00), MISSING_DATA_LATLON, lats)
-    lons = np.where(np.logical_or(lons<-180.00, lons>180.00), MISSING_DATA_LATLON, lons)
+    lats = np.where(np.logical_or(lats < -90.00, lats > 90.00),
+                    MISSING_DATA_LATLON, lats)
+    lons = np.where(np.logical_or(lons < -180.00, lons >
+                                  180.00), MISSING_DATA_LATLON, lons)
 
     sat_azi -= 180.0
     rel_azi = abs(rel_azi)
     rel_azi = 180.0 - rel_azi
 
     for array in [bt3, bt4, bt5]:
-        array[array!=MISSING_DATA]=100*array[array!=MISSING_DATA]
+        array[array != MISSING_DATA] = 100 * array[array != MISSING_DATA]
         array[mask] = MISSING_DATA
     for array in [ref1, ref2, ref3,
                   sun_zen, sat_zen, sun_azi, sat_azi, rel_azi]:
-        array *= 100        
+        array *= 100
         array[mask] = MISSING_DATA
     for array in [lats, lons]:
-        array[array!=MISSING_DATA_LATLON]= 1000.0*array[array!=MISSING_DATA_LATLON]
+        array[array != MISSING_DATA_LATLON] = 1000.0 * \
+            array[array != MISSING_DATA_LATLON]
         array[mask] = MISSING_DATA_LATLON
 
     for ref in [ref1, ref2, ref3]:
@@ -111,37 +118,36 @@ def save_gac(satellite_name,
         ref3[switch == 2] = MISSING_DATA
         bt3[switch == 2] = MISSING_DATA
 
-
-    no_wrong_lat = np.where(lats!=MISSING_DATA_LATLON)	
-    temp_start_line = min(no_wrong_lat[0]) 
+    no_wrong_lat = np.where(lats != MISSING_DATA_LATLON)
+    temp_start_line = min(no_wrong_lat[0])
     temp_end_line = max(no_wrong_lat[0])
 
-
-    if temp_start_line>0 or temp_start_line>start_line:
-       LOG.info('New start_line chosen (due to invalid lat/lon info) = ' + str(temp_start_line))
+    if temp_start_line > 0 or temp_start_line > start_line:
+        LOG.info(
+            'New start_line chosen (due to invalid lat/lon info) = ' + str(temp_start_line))
     if temp_end_line < lats.shape[0] or (end_line == 0 and temp_end_line < lats.shape[0]):
-       LOG.info('New temporary end_line chosen (due to invalid lat/lon info) = ' + str(temp_end_line))
-    if end_line>temp_end_line:
-       end_line = temp_end_line
-       LOG.info('New end_line chosen (due to invalid lat/lon info) = ' + str(temp_end_line))
+        LOG.info(
+            'New temporary end_line chosen (due to invalid lat/lon info) = ' + str(temp_end_line))
+    if end_line > temp_end_line:
+        end_line = temp_end_line
+        LOG.info(
+            'New end_line chosen (due to invalid lat/lon info) = ' + str(temp_end_line))
 
-  
-    ref1 = ref1[temp_start_line:temp_end_line+1,:].copy()
-    ref2 = ref2[temp_start_line:temp_end_line+1,:].copy()
-    ref3 = ref3[temp_start_line:temp_end_line+1,:].copy()
-    bt3 = bt3[temp_start_line:temp_end_line+1,:].copy()
-    bt4 = bt4[temp_start_line:temp_end_line+1,:].copy()
-    bt5 = bt5[temp_start_line:temp_end_line+1,:].copy()
-    sun_zen = sun_zen[temp_start_line:temp_end_line+1,:].copy()
-    sun_azi = sun_azi[temp_start_line:temp_end_line+1,:].copy()
-    sat_zen = sat_zen[temp_start_line:temp_end_line+1,:].copy()
-    sat_azi = sat_azi[temp_start_line:temp_end_line+1,:].copy()
-    rel_azi = rel_azi[temp_start_line:temp_end_line+1,:].copy()
-    lats = lats[temp_start_line:temp_end_line+1,:].copy()
-    lons = lons[temp_start_line:temp_end_line+1,:].copy()
-    qual_flags = qual_flags[temp_start_line:temp_end_line+1,:].copy()
-    xutcs = xutcs[temp_start_line:temp_end_line+1].copy()
-
+    ref1 = ref1[temp_start_line:temp_end_line + 1, :].copy()
+    ref2 = ref2[temp_start_line:temp_end_line + 1, :].copy()
+    ref3 = ref3[temp_start_line:temp_end_line + 1, :].copy()
+    bt3 = bt3[temp_start_line:temp_end_line + 1, :].copy()
+    bt4 = bt4[temp_start_line:temp_end_line + 1, :].copy()
+    bt5 = bt5[temp_start_line:temp_end_line + 1, :].copy()
+    sun_zen = sun_zen[temp_start_line:temp_end_line + 1, :].copy()
+    sun_azi = sun_azi[temp_start_line:temp_end_line + 1, :].copy()
+    sat_zen = sat_zen[temp_start_line:temp_end_line + 1, :].copy()
+    sat_azi = sat_azi[temp_start_line:temp_end_line + 1, :].copy()
+    rel_azi = rel_azi[temp_start_line:temp_end_line + 1, :].copy()
+    lats = lats[temp_start_line:temp_end_line + 1, :].copy()
+    lons = lons[temp_start_line:temp_end_line + 1, :].copy()
+    qual_flags = qual_flags[temp_start_line:temp_end_line + 1, :].copy()
+    xutcs = xutcs[temp_start_line:temp_end_line + 1].copy()
 
     # Reading time from the body of the gac file
     start = xutcs[start_line].astype(datetime.datetime)
@@ -150,37 +156,33 @@ def save_gac(satellite_name,
     else:
         end = xutcs[end_line].astype(datetime.datetime)
 
-
     startdate = start.strftime("%Y%m%d")
     starttime = start.strftime("%H%M%S%f")[:-5]
     enddate = end.strftime("%Y%m%d")
     endtime = end.strftime("%H%M%S%f")[:-5]
     jday = int(start.strftime("%j"))
-   
+
     # Earth-Sun distance correction factor
     corr = 1.0 - 0.0334 * np.cos(2.0 * np.pi * (jday - 2) / 365.25)
 
-   
-    total_number_of_scan_lines = end_line - start_line + 1 
-    last_scan_line_number = qual_flags[-1,0]
+    total_number_of_scan_lines = end_line - start_line + 1
+    last_scan_line_number = qual_flags[-1, 0]
 
-
-    if end_line>0:
-       ref1 = ref1[start_line:end_line+1,:].copy()
-       ref2 = ref2[start_line:end_line+1,:].copy()
-       ref3 = ref3[start_line:end_line+1,:].copy()
-       bt3 = bt3[start_line:end_line+1,:].copy()
-       bt4 = bt4[start_line:end_line+1,:].copy()
-       bt5 = bt5[start_line:end_line+1,:].copy()
-       sun_zen = sun_zen[start_line:end_line+1,:].copy()
-       sun_azi = sun_azi[start_line:end_line+1,:].copy()
-       sat_zen = sat_zen[start_line:end_line+1,:].copy()
-       sat_azi = sat_azi[start_line:end_line+1,:].copy()
-       rel_azi = rel_azi[start_line:end_line+1,:].copy()
-       lats = lats[start_line:end_line+1,:].copy()
-       lons = lons[start_line:end_line+1,:].copy()
-       qual_flags = qual_flags[start_line:end_line+1,:].copy()
-
+    if end_line > 0:
+        ref1 = ref1[start_line:end_line + 1, :].copy()
+        ref2 = ref2[start_line:end_line + 1, :].copy()
+        ref3 = ref3[start_line:end_line + 1, :].copy()
+        bt3 = bt3[start_line:end_line + 1, :].copy()
+        bt4 = bt4[start_line:end_line + 1, :].copy()
+        bt5 = bt5[start_line:end_line + 1, :].copy()
+        sun_zen = sun_zen[start_line:end_line + 1, :].copy()
+        sun_azi = sun_azi[start_line:end_line + 1, :].copy()
+        sat_zen = sat_zen[start_line:end_line + 1, :].copy()
+        sat_azi = sat_azi[start_line:end_line + 1, :].copy()
+        rel_azi = rel_azi[start_line:end_line + 1, :].copy()
+        lats = lats[start_line:end_line + 1, :].copy()
+        lons = lons[start_line:end_line + 1, :].copy()
+        qual_flags = qual_flags[start_line:end_line + 1, :].copy()
 
     for array in [ref1, ref2, ref3, bt3, bt4, bt5]:
         array[np.isnan(array)] = MISSING_DATA
@@ -201,7 +203,8 @@ def save_gac(satellite_name,
                                                             channel5=bt5,
                                                             channel3a=ref3,
                                                             fillv=MISSING_DATA)
-        LOG.debug('TSM correction took: %s', str(datetime.datetime.now() - tic))
+        LOG.debug('TSM correction took: %s', str(
+            datetime.datetime.now() - tic))
 
     avhrrGAC_io(satellite_name, startdate, enddate, starttime, endtime,
                 lats, lons, ref1, ref2, ref3, bt3, bt4, bt5,
@@ -229,7 +232,7 @@ def avhrrGAC_io(satellite_name, startdate, enddate, starttime, endtime,
                                    satellite_name + '_99999_' +
                                    startdate + 'T' + starttime + 'Z_' +
                                    enddate + 'T' + endtime + 'Z.h5'))
-    
+
     LOG.info('Filename: ' + str(os.path.basename(ofn)))
 
     fout = h5py.File(ofn, "w")
@@ -411,7 +414,7 @@ def avhrrGAC_io(satellite_name, startdate, enddate, starttime, endtime,
 
     # SHq: Is the sun_earth_distance correction applied?
     g1.attrs["sun_earth_distance_correction_applied"] = np.string_("TRUE")
-    g1.attrs["sun_earth_distance_correction_factor"] = corr 
+    g1.attrs["sun_earth_distance_correction_factor"] = corr
     g2.attrs["sun_earth_distance_correction_applied"] = np.string_("TRUE")
     g2.attrs["sun_earth_distance_correction_factor"] = corr
     # No attributes on 'how' for image3,4,5
@@ -438,7 +441,7 @@ def avhrrGAC_io(satellite_name, startdate, enddate, starttime, endtime,
                        (OUTPUT_FILE_PREFIX + '_sunsatangles_' +
                         satellite_name + '_99999_' + startdate +
                         'T' + starttime + 'Z_' +
-                        enddate + 'T' + endtime + 'Z.h5')) 
+                        enddate + 'T' + endtime + 'Z.h5'))
 
     LOG.info('Filename: ' + str(os.path.basename(ofn)))
     fout = h5py.File(ofn, "w")
@@ -513,7 +516,7 @@ def avhrrGAC_io(satellite_name, startdate, enddate, starttime, endtime,
 
     g3.attrs["product"] = np.string_("SSAZD")
     g3.attrs["quantity"] = np.string_("DEG")
-    g3.attrs["dataset_name"] = np.string_( \
+    g3.attrs["dataset_name"] = np.string_(
         'Relative satellite-sun azimuth angle')
     g3.attrs["units"] = np.string_('Deg')
     g3.attrs["gain"] = np.float32(0.01)
@@ -593,19 +596,19 @@ def avhrrGAC_io(satellite_name, startdate, enddate, starttime, endtime,
 
     fout.close()
 
-
     LOG.info('Quality flags will be ' +
              'written to ' + str(QUAL_DIR))
     ofn = os.path.join(QUAL_DIR,
                        (OUTPUT_FILE_PREFIX + '_qualflags_' +
                         satellite_name + '_99999_' + startdate +
                         'T' + starttime + 'Z_' +
-                        enddate + 'T' + endtime + 'Z.h5')) 
+                        enddate + 'T' + endtime + 'Z.h5'))
 
     LOG.info('Filename: ' + str(os.path.basename(ofn)))
     fout = h5py.File(ofn, "w")
 
-    dset1 = fout.create_dataset("/qual_flags/data", dtype='int16', data=qual_flags)
+    dset1 = fout.create_dataset(
+        "/qual_flags/data", dtype='int16', data=qual_flags)
 
     g1 = fout.require_group("/qual_flags")
 
@@ -622,7 +625,6 @@ def avhrrGAC_io(satellite_name, startdate, enddate, starttime, endtime,
     g1.attrs["startdate"] = np.string_(startdate)
     g1.attrs["enddate"] = np.string_(enddate)
     g1.attrs["total_number_of_data_records"] = total_number_of_scan_lines
-    g1.attrs["last_scan_line_number"] = last_scan_line_number 
+    g1.attrs["last_scan_line_number"] = last_scan_line_number
 
     fout.close()
-
