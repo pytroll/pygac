@@ -577,8 +577,9 @@ class Reader(object):
         dt64_msec = ">M8[ms]"
 
         # Check whether scanline number increases monotonically
-        n = self.scans["scan_line_number"]
-        if np.any(np.diff(n) < 0):
+        nums = self.scans["scan_line_number"]
+
+        if np.any(np.diff(nums) < 0):
             LOG.error("Cannot perform timestamp correction. Scanline number "
                       "does not increase monotonically.")
             apply_corr = False
@@ -597,7 +598,7 @@ class Reader(object):
 
         # Compute ideal timestamps based on the scanline number. Still
         # without offset, i.e. scanline 0 has timestamp 1970-01-01 00:00
-        tn = self.lineno2msec(self.scans["scan_line_number"])
+        tn = self.lineno2msec(nums)
 
         # Try to determine the timestamp t0 of the first scanline. Since none
         # of the actual timestamps is trustworthy, use the header timestamp
@@ -615,7 +616,7 @@ class Reader(object):
         #    we do not have reliable information and cannot proceed.
         near_t0_head = np.where(
             np.fabs(offsets - t0_head) <= max_diff_from_t0_head)[0]
-        if near_t0_head.size / float(n.size) >= min_frac_near_t0_head:
+        if near_t0_head.size / float(nums.size) >= min_frac_near_t0_head:
             t0 = np.median(offsets[near_t0_head])
         else:
             LOG.error("Timestamp mismatch. Cannot perform correction.")
