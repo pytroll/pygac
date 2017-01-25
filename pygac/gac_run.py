@@ -38,6 +38,7 @@ ch.setLevel(logging.DEBUG)
 
 class MyFormatter(logging.Formatter):
     converter = datetime.fromtimestamp
+
     def formatTime(self, record, datefmt=None):
         ct = self.converter(record.created)
         if datefmt:
@@ -60,9 +61,14 @@ def check_file_version(filename):
     except IOError as err:
         raise IOError('Failed to read GAC file: {0}'.format(err))
     if data in ["CMS", "NSS", "UKM", "DSS"]:
+        if 'LHRR' in filename:
+            from pygac.lac_klm import main
+            return main
         from pygac.gac_klm import main
         return main
     else:
+        if 'LHRR' in filename:
+            from pygac.lac_pod import main
         from pygac.gac_pod import main
         return main
 
