@@ -33,7 +33,7 @@ http://www.ncdc.noaa.gov/oa/pod-guide/ncdc/docs/klm/html/c8/sec83142-1.htm
 import datetime
 import logging
 
-#np.set_printoptions(threshold=np.nan)
+import numpy as np
 
 import pygac.gac_lac_geotiepoints as gtp
 from pygac.klm_reader import KLMReader

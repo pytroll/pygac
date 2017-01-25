@@ -142,13 +142,7 @@ header3 = np.dtype([("noaa_spacecraft_identification_code", ">u1"),
 
 
 class PODReader(Reader):
-    instrument_ids = {4: 7,
-                      7: 9,
-                      8: 10,
-                      1: 11,
-                      5: 12,
-                      3: 14,
-                      }
+
     spacecrafts_orbital = {25: 'tiros n',
                            2: 'noaa 6',
                            4: 'noaa 7',
@@ -173,6 +167,7 @@ class PODReader(Reader):
     tsm_affected_intervals = TSM_AFFECTED_INTERVALS_POD
 
     def read(self, filename):
+        super(PODReader, self).read(filename=filename)
         # choose the right header depending on the date
         with open(filename) as fd_:
             head = np.fromfile(fd_, dtype=header0, count=1)[0]
@@ -199,7 +194,6 @@ class PODReader(Reader):
         self.spacecraft_id = self.head["noaa_spacecraft_identification_code"]
         if self.spacecraft_id == 1 and start_date < datetime.date(1982, 1, 1):
             self.spacecraft_id = 25
-        self.instrument_id = self.instrument_ids[self.spacecraft_id]
         self.spacecraft_name = self.spacecraft_names[self.spacecraft_id]
         LOG.info(
             "Reading %s data", self.spacecrafts_orbital[self.spacecraft_id])

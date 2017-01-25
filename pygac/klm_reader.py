@@ -519,14 +519,6 @@ analog_telemetry_v5 = np.dtype([("patch_temperature_conversion_coefficient_1", "
 
 
 class KLMReader(Reader):
-    instrument_ids = {4:  15,
-                      2:  16,
-                      6:  17,
-                      7:  18,
-                      8:  19,
-                      12: 'a',
-                      11: 'b',
-                      }
 
     spacecraft_names = {4: 'noaa15',
                         2: 'noaa16',
@@ -548,6 +540,7 @@ class KLMReader(Reader):
     tsm_affected_intervals = TSM_AFFECTED_INTERVALS_KLM
 
     def read(self, filename):
+        super(KLMReader, self).read(filename=filename)
         with open(filename) as fd_:
             self.head = np.fromfile(fd_, dtype=header, count=1)[0]
             self.header_version = self.head[
@@ -561,12 +554,11 @@ class KLMReader(Reader):
             # LAC: 1, GAC: 2, ...
             self.data_type = self.head['data_type_code']
             fd_.seek(self.offset, 0)
-            self.scans = np.fromfile(
-                fd_, dtype=self.scanline_type, count=self.head["count_of_data_records"])
+            self.scans = np.fromfile(fd_, dtype=self.scanline_type,
+                                     count=self.head["count_of_data_records"])
 
         self.correct_scan_line_numbers()
         self.spacecraft_id = self.head["noaa_spacecraft_identification_code"]
-        self.instrument_id = self.instrument_ids[self.spacecraft_id]
         self.spacecraft_name = self.spacecraft_names[self.spacecraft_id]
 
     def get_telemetry(self):
