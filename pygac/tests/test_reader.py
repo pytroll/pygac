@@ -73,5 +73,13 @@ class TestGacReader(unittest.TestCase):
                              msg='Incorrect midnight scanline')
 
 
+def suite():
+    """The suite for test_reader"""
+    loader = unittest.TestLoader()
+    mysuite = unittest.TestSuite()
+    mysuite.addTest(loader.loadTestsFromTestCase(TestGacReader))
+    return mysuite
+
+
 if __name__ == '__main__':
     unittest.main()
