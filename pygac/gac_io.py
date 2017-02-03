@@ -74,7 +74,8 @@ def save_gac(satellite_name,
              ref1, ref2, ref3,
              bt3, bt4, bt5,
              sun_zen, sat_zen, sun_azi, sat_azi, rel_azi,
-             mask, qual_flags, start_line, end_line, tsmcorr, switch=None):
+             mask, qual_flags, start_line, end_line, tsmcorr,
+             gac_file, midnight_scanline, switch=None):
 
  
     start_line = int(start_line)
@@ -207,14 +208,14 @@ def save_gac(satellite_name,
                 lats, lons, ref1, ref2, ref3, bt3, bt4, bt5,
                 sun_zen, sat_zen, sun_azi, sat_azi, rel_azi, qual_flags,
                 start_line, end_line, total_number_of_scan_lines,
-                last_scan_line_number, corr)
+                last_scan_line_number, corr, gac_file, midnight_scanline)
 
 
 def avhrrGAC_io(satellite_name, startdate, enddate, starttime, endtime,
                 arrLat_full, arrLon_full, ref1, ref2, ref3, bt3, bt4, bt5,
                 arrSZA, arrSTZ, arrSAA, arrSTA, arrRAA, qual_flags,
                 start_line, end_line, total_number_of_scan_lines,
-                last_scan_line_number, corr):
+                last_scan_line_number, corr, gac_file, midnight_scanline):
     import os
 
     # Calculate start and end time in sec1970
@@ -427,6 +428,8 @@ def avhrrGAC_io(satellite_name, startdate, enddate, starttime, endtime,
     g10.attrs["platform"] = np.string_(satellite_name)
     g10.attrs["instrument"] = np.string_("avhrr")
     g10.attrs["orbit_number"] = np.int32(99999)
+    g10.attrs["gac_file"] = np.string_(gac_file)
+    g10.attrs["midnight_scanline"] = np.string_(midnight_scanline)
     g10.attrs["software"] = np.string_("pyGAC")
     g10.attrs["version"] = np.string_("1.0")
 
@@ -588,6 +591,8 @@ def avhrrGAC_io(satellite_name, startdate, enddate, starttime, endtime,
     g9.attrs["platform"] = np.string_(satellite_name)
     g9.attrs["instrument"] = np.string_("avhrr")
     g9.attrs["orbit_number"] = np.int32(99999)
+    g9.attrs["gac_file"] = np.string_(gac_file)
+    g9.attrs["midnight_scanline"] = np.string_(midnight_scanline)
     g9.attrs["software"] = np.string_("pyGAC")
     g9.attrs["version"] = np.string_("1.0")
 
