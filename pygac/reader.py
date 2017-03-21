@@ -158,7 +158,7 @@ class Reader(object):
                 offsets = np.interp(utcs.astype(np.uint64),
                                     offset_times.astype(np.uint64),
                                     clock_error)
-                utcs -= (offsets * 1000).astype('timedelta64[ms]')
+                utcs = utcs - (offsets * 1000).astype('timedelta64[ms]')
 
         t = utcs[0].astype(datetime.datetime)
 
@@ -261,7 +261,6 @@ class Reader(object):
         dates = np.where(dates > 50000, dates + 1900000, dates + 2000000)
 
         iindex = np.searchsorted(dates, sdate)
-
         if ((iindex == 0 and abs(sdate - dates[0]) > 7) or
                 (iindex == len(dates) - 1 and abs(sdate - dates[-1]) > 7)):
             raise IndexError(
