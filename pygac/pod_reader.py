@@ -140,6 +140,22 @@ header3 = np.dtype([("noaa_spacecraft_identification_code", ">u1"),
                     ("pitch_fixed_error_correction", ">i2"),
                     ("spare2", ">u2", (1537, ))])
 
+# archive header
+tbm_header = np.dtype([('fill', 'S30'),
+                       ('data_set_name', 'S44'),
+                       ('select_flag', 'S1'),
+                       ('beginning_latitude', 'S3'),
+                       ('ending_latitude', 'S3'),
+                       ('beginning_longitude', 'S4'),
+                       ('ending_longitude', 'S4'),
+                       ('start_hour', 'S2'),
+                       ('start_minute', 'S2'),
+                       ('number_of_minutes', 'S3'),
+                       ('appended_data_flag', 'S1'),
+                       ('channel_select_flag', 'S1', (20, )),
+                       ('sensor_data_word_size', 'S2'),
+                       ('fill2', 'S3')])
+
 
 class PODReader(Reader):
 
@@ -169,7 +185,17 @@ class PODReader(Reader):
     def read(self, filename):
         super(PODReader, self).read(filename=filename)
         # choose the right header depending on the date
+        offset = 0
         with open(filename) as fd_:
+            # read archive header
+            self.tbm_head = np.fromfile(fd_, dtype=tbm_header, count=1)[0]
+            if ((not self.tbm_head['data_set_name'].startswith('NSS.')) and
+                    (self.tbm_head['data_set_name'] != b'\x00' * 42 + b'  ')):
+                fd_.seek(0)
+                self.tbm_head = None
+            else:
+                offset = tbm_header.itemsize
+
             head = np.fromfile(fd_, dtype=header0, count=1)[0]
             year, jday, _ = self.decode_timestamps(head["start_time"])
 
@@ -183,7 +209,7 @@ class PODReader(Reader):
             else:
                 header = header3
 
-        with open(filename) as fd_:
+            fd_.seek(offset)
             self.head = np.fromfile(fd_, dtype=header, count=1)[0]
             fd_.seek(self.offset, 0)
             self.scans = np.fromfile(fd_,

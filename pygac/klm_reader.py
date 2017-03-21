@@ -518,6 +518,40 @@ analog_telemetry_v5 = np.dtype([("patch_temperature_conversion_coefficient_1", "
                                 ("zero_fill9", ">i2")])
 
 
+ars_header = np.dtype([('COST_number', 'S6'),
+                       ('SAA_number', 'S8'),
+                       ('order_creation_year', 'S4'),
+                       ('order_creation_day_of_year', 'S3'),
+                       ('processing_site_code', 'S1'),
+                       ('processing_software', 'S8'),
+                       # data selection criteria
+                       ('data_set_name', 'S42'),
+                       ('ascii_blank_', 'S2'),
+                       ('select_flag', 'S1'),
+                       ('beginning_latitude', 'S3'),
+                       ('ending_latitude', 'S3'),
+                       ('beginning_longitude', 'S4'),
+                       ('ending_longitude', 'S4'),
+                       ('start_hour', 'S2'),
+                       ('start_minute', 'S2'),
+                       ('number_of_minutes', 'S3'),
+                       ('appended_data_flag', 'S1'),
+                       ('channel_select_flag', 'S1', (20, )),
+                       # dataset summary
+                       ('ascii_blank__', 'S29'),
+                       ('ascend_descend_flag', 'S1'),
+                       ('first_latitude', 'S3'),
+                       ('last_latitude', 'S3'),
+                       ('first_longitude', 'S4'),
+                       ('last_longitude', 'S4'),
+                       ('data_format', 'S20'),
+                       ('size_of_record', 'S6'),
+                       ('number_of_records', 'S6'),
+                       # filler
+                       ('ascii_blank', 'S319')
+                       ])
+
+
 class KLMReader(Reader):
 
     spacecraft_names = {4: 'noaa15',
@@ -542,6 +576,10 @@ class KLMReader(Reader):
     def read(self, filename):
         super(KLMReader, self).read(filename=filename)
         with open(filename) as fd_:
+            self.ars_head = np.fromfile(fd_, dtype=ars_header, count=1)[0]
+            if not self.ars_head['data_set_name'].startswith('NSS.'):
+                fd_.seek(0)
+                self.ars_head = None
             self.head = np.fromfile(fd_, dtype=header, count=1)[0]
             self.header_version = self.head[
                 "noaa_level_1b_format_version_number"]
