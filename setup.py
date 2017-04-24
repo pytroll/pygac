@@ -99,7 +99,8 @@ if __name__ == '__main__':
           install_requires=['docutils>=0.3',
                             'numpy>=1.8.0',
                             'pyorbital>=v0.3.2',
-                            'h5py'],
+                            'h5py',
+                            'scipy'],
           extras_require={'geolocation interpolation': ['python-geotiepoints'],
                           },
           scripts=[],
@@ -110,3 +111,4 @@ if __name__ == '__main__':
 
           zip_safe=False
           )
+
