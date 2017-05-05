@@ -25,7 +25,7 @@ You can see that the first two scanlines are missing and the orbit is actually s
 
 *pygac* would rearrange the entire orbit in the increasing order of the scanline numbers.
 
-Sometimes the scanlines have erroneous time information. Here is an example of time stamp from few consecutive scanlines from a radom orbit from NOAA-11:
+Sometimes the scanlines have erroneous time information. Here is an example of time stamp from few consecutive scanlines from a radom orbit from NOAA-11::
 
        [datetime.datetime(2071, 4, 28, 15, 44, 46, 329000)],
        [datetime.datetime(2067, 4, 27, 15, 44, 46, 336000)],
@@ -102,31 +102,31 @@ The I/O module generates three HDF5 files, one containing reflectances, brightne
 
 The output file name format is:
 
-ECC_GAC_avhrr_satellitename_99999_yyyymmddThhmmsstZ_yyyymmddThhmmsstZ.h5
+``ECC_GAC_avhrr_satellitename_99999_yyyymmddThhmmsstZ_yyyymmddThhmmsstZ.h5``
 
 and
 
-ECC_GAC_sunsatangles_satellitename_99999_yyyymmddThhmmsstZ_yyyymmddThhmmsstZ.h5
+``ECC_GAC_sunsatangles_satellitename_99999_yyyymmddThhmmsstZ_yyyymmddThhmmsstZ.h5``
 
 and
 
-ECC_GAC_qualflags_satellitename_99999_yyyymmddThhmmsstZ_yyyymmddThhmmsstZ.h5
+``ECC_GAC_qualflags_satellitename_99999_yyyymmddThhmmsstZ_yyyymmddThhmmsstZ.h5``
 
 where,
 
-ECC: ESA CCI Clouds (This prefix can be changed/specified by the user)
+``ECC``: ESA CCI Clouds (This prefix can be changed/specified by the user)
 
-avhrr: denoting that it contains reflectances and BTs
+``avhrr``: denoting that it contains reflectances and BTs
 
-sunsatangles: denoting that it contains angles
+``sunsatangles``: denoting that it contains angles
 
-qualflags: denoting that it contains quality flag information
+``qualflags``: denoting that it contains quality flag information
 
-yyyymmddThhmmsstZ: yy:year, mm:month, dd:day, hh:hour, mm:min, ss:sec, t:tenth of second (for the start and the end of the orbit).
+``yyyymmddThhmmsstZ``: yy:year, mm:month, dd:day, hh:hour, mm:min, ss:sec, t:tenth of second (for the start and the end of the orbit).
 
-Letters T and Z are separators for time info.
+Letters ``T`` and ``Z`` are separators for time info.
 
-The value of 99999 is currently used instead of providing actual orbit number.
+The value of ``99999`` is currently used instead of providing actual orbit number.
 
 Appendices A, B and C provide detailed format of these files, including variable names, scaling, etc.
 
@@ -146,214 +146,43 @@ Supplement A: Structure of an output file containing reflectances and brightness
    :members:
    :undoc-members:
    
-Input: L1b file: NSS.GHRR.NN.D06279.S1800.E1955.B0711012.GC
+Input: L1b file: ``NSS.GHRR.NN.D06279.S1800.E1955.B0711012.GC``
 
-Output: 
+Output::
 
-Group how {
-   variables:
-     char channel_list(6, 9);
-       :_lastModified = "2014-10-29T13:55:05Z";
-
-   how:yaw_error = 0.0; // double
-   how:roll_error = 0.0; // double
-   how:pich_error = 0.0; // double
-   how:startepochs = 1160157611L; // long
-   how:endepochs = 1160164510L; // long
-   how:platform = "noaa18";
-   how:instrument = "avhrr";
-   how:orbit_number = 99999; // int
-   how:software = "pyGAC";
-   how:version = "1.0";
- }
-
- Group image1 {
-   variables:
-     short data(13686, 409);
-       :_lastModified = "2014-10-29T13:55:05Z";
-
-   Group how {
-     how:sun_earth_distance_correction_applied = "TRUE";
-     how:sun_earth_distance_correction_factor = 0.9982412208987179; // double
-   }
-
-   Group what {
-     what:product = "SATCH";
-     what:quantity = "REFL";
-     what:dataset_name = "Channel 1 reflectance";
-     what:units = "%";
-     what:gain = 0.01f; // float
-     what:offset = 0.0f; // float
-     what:missingdata = -32001; // int
-     what:nodata = -32001; // int
-     what:starttime = "180011";
-     what:endtime = "195510";
-     what:startdate = "20061006";
-     what:enddate = "20061006";
-   }
-
-   image1:channel = "1";
-   image1:description = "AVHRR ch1";
- }
-
- Group image2 {
-   variables:
-     short data(13686, 409);
-       :_lastModified = "2014-10-29T13:55:05Z";
-
-   Group how {
-     how:sun_earth_distance_correction_applied = "TRUE";
-     how:sun_earth_distance_correction_factor = 0.9982412208987179; // double
-   }
-
-   Group what {
-     what:product = "SATCH";
-     what:quantity = "REFL";
-     what:dataset_name = "Channel 2 reflectance";
-     what:units = "%";
-     what:gain = 0.01f; // float
-     what:offset = 0.0f; // float
-     what:missingdata = -32001; // int
-     what:nodata = -32001; // int
-     what:starttime = "180011";
-     what:endtime = "195510";
-     what:startdate = "20061006";
-     what:enddate = "20061006";
-   }
-
-   image2:channel = "2";
-   image2:description = "AVHRR ch2";
- }
-
- Group image3 {
-   variables:
-     short data(13686, 409);
-       :_lastModified = "2014-10-29T13:55:05Z";
-
-   Group how {
-   }
-
-   Group what {
-     what:product = "SATCH";
-     what:quantity = "TB";
-     what:dataset_name = "Channel 3b brightness temperature";
-     what:units = "K";
-     what:gain = 0.01f; // float
-     what:offset = 273.15f; // float
-     what:missingdata = -32001; // int
-     what:nodata = -32001; // int
-     what:starttime = "180011";
-     what:endtime = "195510";
-     what:startdate = "20061006";
-     what:enddate = "20061006";
-   }
-
-   image3:description = "AVHRR ch3b";
-   image3:channel = "3b";
- }
-
- Group image4 {
-   variables:
-     short data(13686, 409);
-       :_lastModified = "2014-10-29T13:55:05Z";
-
-   Group how {
-   }
-
-   Group what {
-     what:product = "SATCH";
-     what:quantity = "TB";
-     what:dataset_name = "Channel 4 brightness temperature";
-     what:units = "K";
-     what:gain = 0.01f; // float
-     what:offset = 273.15f; // float
-     what:missingdata = -32001; // int
-     what:nodata = -32001; // int
-     what:starttime = "180011";
-     what:endtime = "195510";
-     what:startdate = "20061006";
-     what:enddate = "20061006";
-   }
-
-   image4:channel = "4";
-   image4:description = "AVHRR ch4";
- }
-
- Group image5 {
-   variables:
-     short data(13686, 409);
-       :_lastModified = "2014-10-29T13:55:05Z";
-
-   Group how {
-   }
-
-   Group what {
-     what:product = "SATCH";
-     what:quantity = "TB";
-     what:dataset_name = "Channel 5 brightness temperature";
-     what:units = "K";
-     what:gain = 0.01f; // float
-     what:offset = 273.15f; // float
-     what:missingdata = -32001; // int
-     what:nodata = -32001; // int
-     what:starttime = "180011";
-     what:endtime = "195510";
-     what:startdate = "20061006";
-     what:enddate = "20061006";
-   }
-
-   image5:channel = "5";
-   image5:description = "AVHRR ch5";
- }
-
- Group image6 {
-   variables:
-     short data(13686, 409);
-       :_lastModified = "2014-10-29T13:55:05Z";
-
-   Group how {
-     how:sun_earth_distance_correction_applied = "TRUE";
-     how:sun_earth_distance_correction_factor = 0.9982412208987179; // double
-   }
-
-   Group what {
-     what:product = "SATCH";
-     what:quantity = "REFL";
-     what:dataset_name = "Channel 3a reflectance";
-     what:units = "%";
-     what:gain = 0.01f; // float
-     what:offset = 0.0f; // float
-     what:missingdata = -32001; // int
-     what:nodata = -32001; // int
-     what:starttime = "180011";
-     what:endtime = "195510";
-     what:startdate = "20061006";
-     what:enddate = "20061006";
-   }
-
-   image6:channel = "3a";
-   image6:description = "AVHRR ch3a";
- }
-
- Group what {
-   what:object = "SATP";
-   what:sets = 6; // int
-   what:version = "H5rad ?.?";
-   what:date = "20061006";
-   what:time = "180011";
- }
-
- Group where {
-
-   Group lat {
+  Group how {
      variables:
-       int data(13686, 409);
+       char channel_list(6, 9);
          :_lastModified = "2014-10-29T13:55:05Z";
 
+     how:yaw_error = 0.0; // double
+     how:roll_error = 0.0; // double
+     how:pich_error = 0.0; // double
+     how:startepochs = 1160157611L; // long
+     how:endepochs = 1160164510L; // long
+     how:platform = "noaa18";
+     how:instrument = "avhrr";
+     how:orbit_number = 99999; // int
+     how:software = "pyGAC";
+     how:version = "1.0";
+   }
+
+   Group image1 {
+     variables:
+       short data(13686, 409);
+         :_lastModified = "2014-10-29T13:55:05Z";
+
+     Group how {
+       how:sun_earth_distance_correction_applied = "TRUE";
+       how:sun_earth_distance_correction_factor = 0.9982412208987179; // double
+     }
+
      Group what {
-       what:dataset_name = "Latitude";
-       what:units = "Deg";
-       what:gain = 0.001f; // float
+       what:product = "SATCH";
+       what:quantity = "REFL";
+       what:dataset_name = "Channel 1 reflectance";
+       what:units = "%";
+       what:gain = 0.01f; // float
        what:offset = 0.0f; // float
        what:missingdata = -32001; // int
        what:nodata = -32001; // int
@@ -362,17 +191,27 @@ Group how {
        what:startdate = "20061006";
        what:enddate = "20061006";
      }
+
+     image1:channel = "1";
+     image1:description = "AVHRR ch1";
    }
 
-   Group lon {
+   Group image2 {
      variables:
-       int data(13686, 409);
+       short data(13686, 409);
          :_lastModified = "2014-10-29T13:55:05Z";
 
+     Group how {
+       how:sun_earth_distance_correction_applied = "TRUE";
+       how:sun_earth_distance_correction_factor = 0.9982412208987179; // double
+     }
+
      Group what {
-       what:dataset_name = "Longitude";
-       what:units = "Deg";
-       what:gain = 0.001f; // float
+       what:product = "SATCH";
+       what:quantity = "REFL";
+       what:dataset_name = "Channel 2 reflectance";
+       what:units = "%";
+       what:gain = 0.01f; // float
        what:offset = 0.0f; // float
        what:missingdata = -32001; // int
        what:nodata = -32001; // int
@@ -381,14 +220,175 @@ Group how {
        what:startdate = "20061006";
        what:enddate = "20061006";
      }
+
+     image2:channel = "2";
+     image2:description = "AVHRR ch2";
    }
 
-   where:num_of_pixels = 409; // int
-   where:num_of_lines = 13686; // int
-   where:xscale = 0.0f; // float
-   where:yscale = 0.0f; // float
- }
-}
+   Group image3 {
+     variables:
+       short data(13686, 409);
+         :_lastModified = "2014-10-29T13:55:05Z";
+
+     Group how {
+     }
+
+     Group what {
+       what:product = "SATCH";
+       what:quantity = "TB";
+       what:dataset_name = "Channel 3b brightness temperature";
+       what:units = "K";
+       what:gain = 0.01f; // float
+       what:offset = 273.15f; // float
+       what:missingdata = -32001; // int
+       what:nodata = -32001; // int
+       what:starttime = "180011";
+       what:endtime = "195510";
+       what:startdate = "20061006";
+       what:enddate = "20061006";
+     }
+
+     image3:description = "AVHRR ch3b";
+     image3:channel = "3b";
+   }
+
+   Group image4 {
+     variables:
+       short data(13686, 409);
+         :_lastModified = "2014-10-29T13:55:05Z";
+
+     Group how {
+     }
+
+     Group what {
+       what:product = "SATCH";
+       what:quantity = "TB";
+       what:dataset_name = "Channel 4 brightness temperature";
+       what:units = "K";
+       what:gain = 0.01f; // float
+       what:offset = 273.15f; // float
+       what:missingdata = -32001; // int
+       what:nodata = -32001; // int
+       what:starttime = "180011";
+       what:endtime = "195510";
+       what:startdate = "20061006";
+       what:enddate = "20061006";
+     }
+
+     image4:channel = "4";
+     image4:description = "AVHRR ch4";
+   }
+
+   Group image5 {
+     variables:
+       short data(13686, 409);
+         :_lastModified = "2014-10-29T13:55:05Z";
+
+     Group how {
+     }
+
+     Group what {
+       what:product = "SATCH";
+       what:quantity = "TB";
+       what:dataset_name = "Channel 5 brightness temperature";
+       what:units = "K";
+       what:gain = 0.01f; // float
+       what:offset = 273.15f; // float
+       what:missingdata = -32001; // int
+       what:nodata = -32001; // int
+       what:starttime = "180011";
+       what:endtime = "195510";
+       what:startdate = "20061006";
+       what:enddate = "20061006";
+     }
+
+     image5:channel = "5";
+     image5:description = "AVHRR ch5";
+   }
+
+   Group image6 {
+     variables:
+       short data(13686, 409);
+         :_lastModified = "2014-10-29T13:55:05Z";
+
+     Group how {
+       how:sun_earth_distance_correction_applied = "TRUE";
+       how:sun_earth_distance_correction_factor = 0.9982412208987179; // double
+     }
+
+     Group what {
+       what:product = "SATCH";
+       what:quantity = "REFL";
+       what:dataset_name = "Channel 3a reflectance";
+       what:units = "%";
+       what:gain = 0.01f; // float
+       what:offset = 0.0f; // float
+       what:missingdata = -32001; // int
+       what:nodata = -32001; // int
+       what:starttime = "180011";
+       what:endtime = "195510";
+       what:startdate = "20061006";
+       what:enddate = "20061006";
+     }
+
+     image6:channel = "3a";
+     image6:description = "AVHRR ch3a";
+   }
+
+   Group what {
+     what:object = "SATP";
+     what:sets = 6; // int
+     what:version = "H5rad ?.?";
+     what:date = "20061006";
+     what:time = "180011";
+   }
+
+   Group where {
+
+     Group lat {
+       variables:
+         int data(13686, 409);
+           :_lastModified = "2014-10-29T13:55:05Z";
+
+       Group what {
+         what:dataset_name = "Latitude";
+         what:units = "Deg";
+         what:gain = 0.001f; // float
+         what:offset = 0.0f; // float
+         what:missingdata = -32001; // int
+         what:nodata = -32001; // int
+         what:starttime = "180011";
+         what:endtime = "195510";
+         what:startdate = "20061006";
+         what:enddate = "20061006";
+       }
+     }
+
+     Group lon {
+       variables:
+         int data(13686, 409);
+           :_lastModified = "2014-10-29T13:55:05Z";
+
+       Group what {
+         what:dataset_name = "Longitude";
+         what:units = "Deg";
+         what:gain = 0.001f; // float
+         what:offset = 0.0f; // float
+         what:missingdata = -32001; // int
+         what:nodata = -32001; // int
+         what:starttime = "180011";
+         what:endtime = "195510";
+         what:startdate = "20061006";
+         what:enddate = "20061006";
+       }
+     }
+
+     where:num_of_pixels = 409; // int
+     where:num_of_lines = 13686; // int
+     where:xscale = 0.0f; // float
+     where:yscale = 0.0f; // float
+   }
+  }
 
 
 
@@ -399,157 +399,34 @@ Supplement B: Structure of an output file containing Sun and satellite positions
    :members:
    :undoc-members:
 
-Input: L1b file: NSS.GHRR.NN.D06279.S1800.E1955.B0711012.GC
+Input: L1b file: ``NSS.GHRR.NN.D06279.S1800.E1955.B0711012.GC``
 
-Output: 
+Output::
 
-Group how {
-   how:yaw_error = 0.0; // double
-   how:roll_error = 0.0; // double
-   how:pich_error = 0.0; // double
-   how:startepochs = 1160157611L; // long
-   how:endepochs = 1160164510L; // long
-   how:platform = "noaa18";
-   how:instrument = "avhrr";
-   how:orbit_number = 99999; // int
-   how:software = "pyGAC";
-   how:version = "1.0";
- }
-
- Group image1 {
-   variables:
-     short data(13686, 409);
-       :_lastModified = "2014-10-29T13:55:06Z";
-
-   Group what {
-     what:product = "SUNZ";
-     what:quantity = "DEG";
-     what:dataset_name = "Solar zenith angle";
-     what:units = "Deg";
-     what:gain = 0.01f; // float
-     what:offset = 0.0f; // float
-     what:missingdata = -32001; // int
-     what:nodata = -32001; // int
-     what:starttime = "180011";
-     what:endtime = "195510";
-     what:startdate = "20061006";
-     what:enddate = "20061006";
+  Group how {
+     how:yaw_error = 0.0; // double
+     how:roll_error = 0.0; // double
+     how:pich_error = 0.0; // double
+     how:startepochs = 1160157611L; // long
+     how:endepochs = 1160164510L; // long
+     how:platform = "noaa18";
+     how:instrument = "avhrr";
+     how:orbit_number = 99999; // int
+     how:software = "pyGAC";
+     how:version = "1.0";
    }
 
-   image1:description = "Solar zenith angle";
- }
-
- Group image2 {
-   variables:
-     short data(13686, 409);
-       :_lastModified = "2014-10-29T13:55:06Z";
-
-   Group what {
-     what:product = "SATZ";
-     what:quantity = "DEG";
-     what:dataset_name = "Satellite zenith angle";
-     what:units = "Deg";
-     what:gain = 0.01f; // float
-     what:offset = 0.0f; // float
-     what:missingdata = -32001; // int
-     what:nodata = -32001; // int
-     what:starttime = "180011";
-     what:endtime = "195510";
-     what:startdate = "20061006";
-     what:enddate = "20061006";
-   }
-
-   image2:description = "Satellite zenith angle";
- }
-
- Group image3 {
-   variables:
-     short data(13686, 409);
-       :_lastModified = "2014-10-29T13:55:06Z";
-
-   Group what {
-     what:product = "SSAZD";
-     what:quantity = "DEG";
-     what:dataset_name = "Relative satellite-sun azimuth angle";
-     what:units = "Deg";
-     what:gain = 0.01f; // float
-     what:offset = 0.0f; // float
-     what:missingdata = -32001; // int
-     what:nodata = -32001; // int
-     what:starttime = "180011";
-     what:endtime = "195510";
-     what:startdate = "20061006";
-     what:enddate = "20061006";
-   }
-
-   image3:description = "Relative satellite-sun azimuth angle";
- }
-
- Group image4 {
-   variables:
-     short data(13686, 409);
-       :_lastModified = "2014-10-29T13:55:06Z";
-
-   Group what {
-     what:product = "SUNA";
-     what:quantity = "DEG";
-     what:dataset_name = "Solar azimuth angle";
-     what:units = "Deg";
-     what:gain = 0.01f; // float
-     what:offset = 180.0f; // float
-     what:missingdata = -32001; // int
-     what:nodata = -32001; // int
-     what:starttime = "180011";
-     what:endtime = "195510";
-     what:startdate = "20061006";
-     what:enddate = "20061006";
-   }
-
-   image4:description = "Solar azimuth angle";
- }
-
- Group image5 {
-   variables:
-     short data(13686, 409);
-       :_lastModified = "2014-10-29T13:55:06Z";
-
-   Group what {
-     what:product = "SATA";
-     what:quantity = "DEG";
-     what:dataset_name = "Satellite azimuth angle";
-     what:units = "Deg";
-     what:gain = 0.01f; // float
-     what:offset = 180.0f; // float
-     what:missingdata = -32001; // int
-     what:nodata = -32001; // int
-     what:starttime = "180011";
-     what:endtime = "195510";
-     what:startdate = "20061006";
-     what:enddate = "20061006";
-   }
-
-   image5:description = "Satellite azimuth angle";
- }
-
- Group what {
-   what:object = "SATP";
-   what:sets = 5; // int
-   what:version = "H5rad ?.?";
-   what:date = "20061006";
-   what:time = "180011";
- }
-
- Group where {
-
-   Group lat {
+   Group image1 {
      variables:
-       int data(13686, 409);
+       short data(13686, 409);
          :_lastModified = "2014-10-29T13:55:06Z";
 
      Group what {
-       what:dataset_name = "Latitude";
+       what:product = "SUNZ";
+       what:quantity = "DEG";
+       what:dataset_name = "Solar zenith angle";
        what:units = "Deg";
-       what:gain = 0.001f; // float
+       what:gain = 0.01f; // float
        what:offset = 0.0f; // float
        what:missingdata = -32001; // int
        what:nodata = -32001; // int
@@ -558,17 +435,21 @@ Group how {
        what:startdate = "20061006";
        what:enddate = "20061006";
      }
+
+     image1:description = "Solar zenith angle";
    }
 
-   Group lon {
+   Group image2 {
      variables:
-       int data(13686, 409);
+       short data(13686, 409);
          :_lastModified = "2014-10-29T13:55:06Z";
 
      Group what {
-       what:dataset_name = "Longitude";
+       what:product = "SATZ";
+       what:quantity = "DEG";
+       what:dataset_name = "Satellite zenith angle";
        what:units = "Deg";
-       what:gain = 0.001f; // float
+       what:gain = 0.01f; // float
        what:offset = 0.0f; // float
        what:missingdata = -32001; // int
        what:nodata = -32001; // int
@@ -577,14 +458,133 @@ Group how {
        what:startdate = "20061006";
        what:enddate = "20061006";
      }
+
+     image2:description = "Satellite zenith angle";
    }
 
-   where:num_of_pixels = 409; // int
-   where:num_of_lines = 13686; // int
-   where:xscale = 0.0f; // float
-   where:yscale = 0.0f; // float
- }
-}
+   Group image3 {
+     variables:
+       short data(13686, 409);
+         :_lastModified = "2014-10-29T13:55:06Z";
+
+     Group what {
+       what:product = "SSAZD";
+       what:quantity = "DEG";
+       what:dataset_name = "Relative satellite-sun azimuth angle";
+       what:units = "Deg";
+       what:gain = 0.01f; // float
+       what:offset = 0.0f; // float
+       what:missingdata = -32001; // int
+       what:nodata = -32001; // int
+       what:starttime = "180011";
+       what:endtime = "195510";
+       what:startdate = "20061006";
+       what:enddate = "20061006";
+     }
+
+     image3:description = "Relative satellite-sun azimuth angle";
+   }
+
+   Group image4 {
+     variables:
+       short data(13686, 409);
+         :_lastModified = "2014-10-29T13:55:06Z";
+
+     Group what {
+       what:product = "SUNA";
+       what:quantity = "DEG";
+       what:dataset_name = "Solar azimuth angle";
+       what:units = "Deg";
+       what:gain = 0.01f; // float
+       what:offset = 180.0f; // float
+       what:missingdata = -32001; // int
+       what:nodata = -32001; // int
+       what:starttime = "180011";
+       what:endtime = "195510";
+       what:startdate = "20061006";
+       what:enddate = "20061006";
+     }
+
+     image4:description = "Solar azimuth angle";
+   }
+
+   Group image5 {
+     variables:
+       short data(13686, 409);
+         :_lastModified = "2014-10-29T13:55:06Z";
+
+     Group what {
+       what:product = "SATA";
+       what:quantity = "DEG";
+       what:dataset_name = "Satellite azimuth angle";
+       what:units = "Deg";
+       what:gain = 0.01f; // float
+       what:offset = 180.0f; // float
+       what:missingdata = -32001; // int
+       what:nodata = -32001; // int
+       what:starttime = "180011";
+       what:endtime = "195510";
+       what:startdate = "20061006";
+       what:enddate = "20061006";
+     }
+
+     image5:description = "Satellite azimuth angle";
+   }
+
+   Group what {
+     what:object = "SATP";
+     what:sets = 5; // int
+     what:version = "H5rad ?.?";
+     what:date = "20061006";
+     what:time = "180011";
+   }
+
+   Group where {
+
+     Group lat {
+       variables:
+         int data(13686, 409);
+           :_lastModified = "2014-10-29T13:55:06Z";
+
+       Group what {
+         what:dataset_name = "Latitude";
+         what:units = "Deg";
+         what:gain = 0.001f; // float
+         what:offset = 0.0f; // float
+         what:missingdata = -32001; // int
+         what:nodata = -32001; // int
+         what:starttime = "180011";
+         what:endtime = "195510";
+         what:startdate = "20061006";
+         what:enddate = "20061006";
+       }
+     }
+
+     Group lon {
+       variables:
+         int data(13686, 409);
+           :_lastModified = "2014-10-29T13:55:06Z";
+
+       Group what {
+         what:dataset_name = "Longitude";
+         what:units = "Deg";
+         what:gain = 0.001f; // float
+         what:offset = 0.0f; // float
+         what:missingdata = -32001; // int
+         what:nodata = -32001; // int
+         what:starttime = "180011";
+         what:endtime = "195510";
+         what:startdate = "20061006";
+         what:enddate = "20061006";
+       }
+     }
+
+     where:num_of_pixels = 409; // int
+     where:num_of_lines = 13686; // int
+     where:xscale = 0.0f; // float
+     where:yscale = 0.0f; // float
+   }
+  }
 
 
 Supplement C: Structure of an output file containing quality flags
@@ -596,15 +596,17 @@ Supplement C: Structure of an output file containing quality flags
 
 The file that contains quality flags has following information.
 
-1) There is a variable called "qual_flags/data". It will have a dimension of (X,7), where X is the number of data records in the GAC orbit.
+1) There is a variable called ``qual_flags/data``. It will have a dimension of (X,7), where X is the number of data records in the GAC orbit.
 
 The 7 columns contain the following information.
 
-Col 1: Scan line number
-Col 2: Fatal error flag (scan line should not be used for analysis).
-Col 3: Insufficient data for calibration (scan line should not be used for analysis).
-Col 4: Insufficient data for navigation (scan line should not be used for analysis).
-Col 5-7: whether solar contamination of blackbody occurred in in channels 3, 4, and 5 respectively.
+=======  ==========================================================================================
+Col 1    Scan line number
+Col 2    Fatal error flag (scan line should not be used for analysis).
+Col 3    Insufficient data for calibration (scan line should not be used for analysis).
+Col 4    Insufficient data for navigation (scan line should not be used for analysis).
+Col 5-7  whether solar contamination of blackbody occurred in in channels 3, 4, and 5 respectively.
+=======  ==========================================================================================
 
 If the values for these flags are greater than zero, then the data should not be used. If everything is normal, then all values should be zero.
 
