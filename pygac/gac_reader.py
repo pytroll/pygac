@@ -664,6 +664,19 @@ class GACReader(object):
                             'first occurence as midnight scanline.')
             return jump_pos[0]
 
+    def get_miss_lines(self):
+        """Find missing scanlines, i.e. scanlines which were dropped for some
+        reason or were never recorded.
+
+        Returns:
+            Indices of missing scanlines
+        """
+        # Compare scanline number against the ideal case (1, 2, 3, ...) and
+        # find the missing line numbers.
+        ideal = set(range(1, self.scans['scan_line_number'][-1] + 1))
+        missing = sorted(ideal.difference(set(self.scans['scan_line_number'])))
+        return np.array(missing)
+
 
 def inherit_doc(cls):
     """Make a class method inherit its docstring from the parent class.

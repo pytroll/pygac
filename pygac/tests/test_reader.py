@@ -72,6 +72,15 @@ class TestGacReader(unittest.TestCase):
             self.assertEqual(reader.get_midnight_scanline(), scanline,
                              msg='Incorrect midnight scanline')
 
+    def test_miss_lines(self):
+        reader = GACReaderDummy()
+        lines = [2, 4, 5, 6, 10, 11, 12]
+        miss_lines_ref = [1, 3, 7, 8, 9]
+        reader.scans = np.zeros(len(lines), dtype=[('scan_line_number', 'i2')])
+        reader.scans['scan_line_number'] = lines
+        self.assertTrue((reader.get_miss_lines() == miss_lines_ref).all(),
+                        msg='Missing scanlines not detected correctly')
+
 
 def suite():
     """The suite for test_reader"""
