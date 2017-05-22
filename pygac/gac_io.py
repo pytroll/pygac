@@ -429,7 +429,6 @@ def avhrrGAC_io(satellite_name, startdate, enddate, starttime, endtime,
     g10.attrs["instrument"] = np.string_("avhrr")
     g10.attrs["orbit_number"] = np.int32(99999)
     g10.attrs["gac_file"] = np.string_(gac_file)
-    g10.attrs["midnight_scanline"] = np.string_(midnight_scanline)
     g10.attrs["software"] = np.string_("pyGAC")
     g10.attrs["version"] = np.string_("1.0")
 
@@ -592,7 +591,6 @@ def avhrrGAC_io(satellite_name, startdate, enddate, starttime, endtime,
     g9.attrs["instrument"] = np.string_("avhrr")
     g9.attrs["orbit_number"] = np.int32(99999)
     g9.attrs["gac_file"] = np.string_(gac_file)
-    g9.attrs["midnight_scanline"] = np.string_(midnight_scanline)
     g9.attrs["software"] = np.string_("pyGAC")
     g9.attrs["version"] = np.string_("1.0")
 
@@ -626,8 +624,10 @@ def avhrrGAC_io(satellite_name, startdate, enddate, starttime, endtime,
     g1.attrs["endtime"] = np.string_(endtime[0:6])
     g1.attrs["startdate"] = np.string_(startdate)
     g1.attrs["enddate"] = np.string_(enddate)
+    g1.attrs["gac_file"] = np.string_(gac_file)
     g1.attrs["total_number_of_data_records"] = total_number_of_scan_lines
-    g1.attrs["last_scan_line_number"] = last_scan_line_number 
+    g1.attrs["last_scan_line_number"] = last_scan_line_number
+    g1.attrs["midnight_scanline"] = np.string_(midnight_scanline)
 
     fout.close()
 
