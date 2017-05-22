@@ -597,6 +597,7 @@ def main(filename, start_line, end_line):
                     reader.is_tsm_affected(),
                     reader.filename,
                     reader.get_midnight_scanline(),
+                    reader.get_miss_lines(),
                     reader.get_ch3_switch())
     LOG.info("pygac took: %s", str(datetime.datetime.now() - tic))
 

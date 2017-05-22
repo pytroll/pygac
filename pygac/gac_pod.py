@@ -420,7 +420,8 @@ def main(filename, start_line, end_line):
                     mask, qual_flags, start_line, end_line,
                     reader.is_tsm_affected(),
                     reader.filename,
-                    reader.get_midnight_scanline())
+                    reader.get_midnight_scanline(),
+                    reader.get_miss_lines())
     LOG.info("pygac took: %s", str(datetime.datetime.now() - tic))
 
 
