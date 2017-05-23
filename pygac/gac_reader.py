@@ -647,6 +647,36 @@ class GACReader(object):
             # Platform is not affected at all
             return False
 
+    def get_midnight_scanline(self):
+        """Find the scanline where the UTC date switches (if any).
+
+        Returns:
+            int: The midnight scanline if it exists. None, else.
+        """
+        self.get_times()
+        days = (self.utcs.astype('datetime64[D]') - self.utcs.astype('datetime64[M]') + 1).astype(int)
+        jump_pos = np.where(np.diff(days) == 1)[0]
+        if len(jump_pos) == 0:
+            return None
+        else:
+            if len(jump_pos) > 1:
+                LOG.warning('UTC date switches more than once. Choosing the '
+                            'first occurence as midnight scanline.')
+            return jump_pos[0]
+
+    def get_miss_lines(self):
+        """Find missing scanlines, i.e. scanlines which were dropped for some
+        reason or were never recorded.
+
+        Returns:
+            Indices of missing scanlines
+        """
+        # Compare scanline number against the ideal case (1, 2, 3, ...) and
+        # find the missing line numbers.
+        ideal = set(range(1, self.scans['scan_line_number'][-1] + 1))
+        missing = sorted(ideal.difference(set(self.scans['scan_line_number'])))
+        return np.array(missing)
+
 
 def inherit_doc(cls):
     """Make a class method inherit its docstring from the parent class.
