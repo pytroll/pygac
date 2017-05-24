@@ -103,7 +103,7 @@ if __name__ == '__main__':
                             'scipy'],
           extras_require={'geolocation interpolation': ['python-geotiepoints'],
                           },
-          scripts=[],
+          scripts=[os.path.join('bin', item) for item in os.listdir('bin')],
           data_files=[('etc', ['etc/pygac.cfg.template']),
                       ('gapfilled_tles', ['gapfilled_tles/TLE_noaa16.txt'])],
           test_suite="pygac.tests.suite",
