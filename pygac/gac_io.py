@@ -143,7 +143,6 @@ def save_gac(satellite_name,
     qual_flags = qual_flags[temp_start_line:temp_end_line+1,:].copy()
     xutcs = xutcs[temp_start_line:temp_end_line+1].copy()
 
-
     # Reading time from the body of the gac file
     start = xutcs[start_line].astype(datetime.datetime)
     if end_line == 0:
@@ -181,7 +180,7 @@ def save_gac(satellite_name,
        lats = lats[start_line:end_line+1,:].copy()
        lons = lons[start_line:end_line+1,:].copy()
        qual_flags = qual_flags[start_line:end_line+1,:].copy()
-
+       xutcs = xutcs[start_line:end_line+1].copy()
 
     for array in [ref1, ref2, ref3, bt3, bt4, bt5]:
         array[np.isnan(array)] = MISSING_DATA
@@ -204,7 +203,7 @@ def save_gac(satellite_name,
                                                             fillv=MISSING_DATA)
         LOG.debug('TSM correction took: %s', str(datetime.datetime.now() - tic))
 
-    avhrrGAC_io(satellite_name, startdate, enddate, starttime, endtime,
+    avhrrGAC_io(satellite_name, xutcs, startdate, enddate, starttime, endtime,
                 lats, lons, ref1, ref2, ref3, bt3, bt4, bt5,
                 sun_zen, sat_zen, sun_azi, sat_azi, rel_azi, qual_flags,
                 start_line, end_line, total_number_of_scan_lines,
@@ -212,7 +211,7 @@ def save_gac(satellite_name,
                 miss_lines)
 
 
-def avhrrGAC_io(satellite_name, startdate, enddate, starttime, endtime,
+def avhrrGAC_io(satellite_name, xutcs, startdate, enddate, starttime, endtime,
                 arrLat_full, arrLon_full, ref1, ref2, ref3, bt3, bt4, bt5,
                 arrSZA, arrSTZ, arrSAA, arrSTA, arrRAA, qual_flags,
                 start_line, end_line, total_number_of_scan_lines,
@@ -414,7 +413,7 @@ def avhrrGAC_io(satellite_name, startdate, enddate, starttime, endtime,
 
     # SHq: Is the sun_earth_distance correction applied?
     g1.attrs["sun_earth_distance_correction_applied"] = np.string_("TRUE")
-    g1.attrs["sun_earth_distance_correction_factor"] = corr 
+    g1.attrs["sun_earth_distance_correction_factor"] = corr
     g2.attrs["sun_earth_distance_correction_applied"] = np.string_("TRUE")
     g2.attrs["sun_earth_distance_correction_factor"] = corr
     # No attributes on 'how' for image3,4,5
@@ -610,11 +609,8 @@ def avhrrGAC_io(satellite_name, startdate, enddate, starttime, endtime,
     LOG.info('Filename: ' + str(os.path.basename(ofn)))
     fout = h5py.File(ofn, "w")
 
-    dset1 = fout.create_dataset("/qual_flags/data", dtype='int16', data=qual_flags)
-    fout.create_dataset("/qual_flags/missing_scanlines", dtype='int16',
-                        data=miss_lines)
-
     g1 = fout.require_group("/qual_flags")
+    dset1 = g1.create_dataset("data", dtype='int16', data=qual_flags)
 
     g1.attrs["product"] = np.string_("QFLAG")
     g1.attrs["quantity"] = np.string_("INT")
@@ -631,7 +627,15 @@ def avhrrGAC_io(satellite_name, startdate, enddate, starttime, endtime,
     g1.attrs["gac_file"] = np.string_(gac_file)
     g1.attrs["total_number_of_data_records"] = total_number_of_scan_lines
     g1.attrs["last_scan_line_number"] = last_scan_line_number
-    g1.attrs["midnight_scanline"] = np.string_(midnight_scanline)
+
+    g2 = fout.require_group("/ancillary")
+    dset2 = g2.create_dataset("missing_scanlines", dtype='int16',
+                              data=miss_lines)
+    dset3 = g2.create_dataset("scanline_timestamps", dtype='int64',
+                              data=xutcs.astype('int64'))
+    dset3.attrs['units'] = 'Milliseconds since 1970-01-01 00:00:00 UTC'
+    dset3.attrs['calendar'] = 'standard'
+    g2.attrs["midnight_scanline"] = np.string_(midnight_scanline)
 
     fout.close()
 
