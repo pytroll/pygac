@@ -68,6 +68,18 @@ MISSING_DATA = -32001
 MISSING_DATA_LATLON =  -999999
 
 
+def update_start_end_line(start_line, end_line, temp_start_line, temp_end_line):
+    """Update user start/end lines after data has been sliced using temporary
+    start/end lines.
+
+    Returns:
+        Updated start_line, updated end_line
+    """
+    new_start_line = max(0, start_line - temp_start_line)
+    new_end_line = min(end_line, temp_end_line) - temp_start_line
+    return new_start_line, new_end_line
+
+
 def save_gac(satellite_name,
              xutcs,
              lats, lons,
@@ -77,10 +89,17 @@ def save_gac(satellite_name,
              mask, qual_flags, start_line, end_line, tsmcorr,
              gac_file, midnight_scanline, miss_lines, switch=None):
 
- 
+    along_track = lats.shape[0]
+    last_scan_line_number = qual_flags[-1, 0]
+
+    # Determine scanline range requested by user
     start_line = int(start_line)
     end_line = int(end_line)
+    if end_line == 0:
+        # If the user specifies 0 as the last scanline, process all scanlines
+        end_line = along_track
 
+    # Mask invalid data
     bt3 = np.where(np.logical_or(bt3<170.0, bt3>350.0), MISSING_DATA, bt3-273.15) 
     bt4 = np.where(np.logical_or(bt4<170.0, bt4>350.0), MISSING_DATA, bt4-273.15) 
     bt5 = np.where(np.logical_or(bt5<170.0, bt5>350.0), MISSING_DATA, bt5-273.15) 
@@ -112,21 +131,19 @@ def save_gac(satellite_name,
         ref3[switch == 2] = MISSING_DATA
         bt3[switch == 2] = MISSING_DATA
 
+    for array in [ref1, ref2, ref3, bt3, bt4, bt5]:
+        array[np.isnan(array)] = MISSING_DATA
 
+    # Choose new temporary start/end lines if lat/lon info is invalid
     no_wrong_lat = np.where(lats!=MISSING_DATA_LATLON)	
     temp_start_line = min(no_wrong_lat[0]) 
     temp_end_line = max(no_wrong_lat[0])
-
-
-    if temp_start_line>0 or temp_start_line>start_line:
+    if temp_start_line > start_line:
        LOG.info('New start_line chosen (due to invalid lat/lon info) = ' + str(temp_start_line))
-    if temp_end_line < lats.shape[0] or (end_line == 0 and temp_end_line < lats.shape[0]):
-       LOG.info('New temporary end_line chosen (due to invalid lat/lon info) = ' + str(temp_end_line))
-    if end_line>temp_end_line:
-       end_line = temp_end_line
+    if end_line > temp_end_line:
        LOG.info('New end_line chosen (due to invalid lat/lon info) = ' + str(temp_end_line))
 
-  
+    # Slice data using temporary start/end lines
     ref1 = ref1[temp_start_line:temp_end_line+1,:].copy()
     ref2 = ref2[temp_start_line:temp_end_line+1,:].copy()
     ref3 = ref3[temp_start_line:temp_end_line+1,:].copy()
@@ -140,17 +157,24 @@ def save_gac(satellite_name,
     rel_azi = rel_azi[temp_start_line:temp_end_line+1,:].copy()
     lats = lats[temp_start_line:temp_end_line+1,:].copy()
     lons = lons[temp_start_line:temp_end_line+1,:].copy()
+    miss_lines = np.array(
+        qual_flags[0:temp_start_line, 0].tolist() +
+        miss_lines.tolist() +
+        qual_flags[temp_end_line+1:, 0].tolist()
+    )
     qual_flags = qual_flags[temp_start_line:temp_end_line+1,:].copy()
     xutcs = xutcs[temp_start_line:temp_end_line+1].copy()
 
+    # Update user start/end lines to the new slice
+    start_line, end_line = update_start_end_line(
+        start_line=start_line,
+        end_line=end_line,
+        temp_start_line=temp_start_line,
+        temp_end_line=temp_end_line)
+
     # Reading time from the body of the gac file
     start = xutcs[start_line].astype(datetime.datetime)
-    if end_line == 0:
-        end = xutcs[-1].astype(datetime.datetime)
-    else:
-        end = xutcs[end_line].astype(datetime.datetime)
-
-
+    end = xutcs[end_line].astype(datetime.datetime)
     startdate = start.strftime("%Y%m%d")
     starttime = start.strftime("%H%M%S%f")[:-5]
     enddate = end.strftime("%Y%m%d")
@@ -160,30 +184,28 @@ def save_gac(satellite_name,
     # Earth-Sun distance correction factor
     corr = 1.0 - 0.0334 * np.cos(2.0 * np.pi * (jday - 2) / 365.25)
 
-   
-    total_number_of_scan_lines = end_line - start_line + 1 
-    last_scan_line_number = qual_flags[-1,0]
+    # Slice scanline range requested by user
+    ref1 = ref1[start_line:end_line+1,:].copy()
+    ref2 = ref2[start_line:end_line+1,:].copy()
+    ref3 = ref3[start_line:end_line+1,:].copy()
+    bt3 = bt3[start_line:end_line+1,:].copy()
+    bt4 = bt4[start_line:end_line+1,:].copy()
+    bt5 = bt5[start_line:end_line+1,:].copy()
+    sun_zen = sun_zen[start_line:end_line+1,:].copy()
+    sun_azi = sun_azi[start_line:end_line+1,:].copy()
+    sat_zen = sat_zen[start_line:end_line+1,:].copy()
+    sat_azi = sat_azi[start_line:end_line+1,:].copy()
+    rel_azi = rel_azi[start_line:end_line+1,:].copy()
+    lats = lats[start_line:end_line+1,:].copy()
+    lons = lons[start_line:end_line+1,:].copy()
+    qual_flags = qual_flags[start_line:end_line+1,:].copy()
 
+    # Update midnight scanline to the final scanline range
+    if midnight_scanline is not None:
+        midnight_scanline -= (temp_start_line + start_line)
 
-    if end_line>0:
-       ref1 = ref1[start_line:end_line+1,:].copy()
-       ref2 = ref2[start_line:end_line+1,:].copy()
-       ref3 = ref3[start_line:end_line+1,:].copy()
-       bt3 = bt3[start_line:end_line+1,:].copy()
-       bt4 = bt4[start_line:end_line+1,:].copy()
-       bt5 = bt5[start_line:end_line+1,:].copy()
-       sun_zen = sun_zen[start_line:end_line+1,:].copy()
-       sun_azi = sun_azi[start_line:end_line+1,:].copy()
-       sat_zen = sat_zen[start_line:end_line+1,:].copy()
-       sat_azi = sat_azi[start_line:end_line+1,:].copy()
-       rel_azi = rel_azi[start_line:end_line+1,:].copy()
-       lats = lats[start_line:end_line+1,:].copy()
-       lons = lons[start_line:end_line+1,:].copy()
-       qual_flags = qual_flags[start_line:end_line+1,:].copy()
-       xutcs = xutcs[start_line:end_line+1].copy()
-
-    for array in [ref1, ref2, ref3, bt3, bt4, bt5]:
-        array[np.isnan(array)] = MISSING_DATA
+    # Compute total number of scanlines
+    total_number_of_scan_lines = end_line - start_line + 1
 
     # Correct for temporary scan motor issue.
     #
