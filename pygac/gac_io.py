@@ -157,11 +157,11 @@ def save_gac(satellite_name,
     rel_azi = rel_azi[temp_start_line:temp_end_line+1,:].copy()
     lats = lats[temp_start_line:temp_end_line+1,:].copy()
     lons = lons[temp_start_line:temp_end_line+1,:].copy()
-    miss_lines = np.array(
+    miss_lines = np.sort(np.array(
         qual_flags[0:temp_start_line, 0].tolist() +
         miss_lines.tolist() +
         qual_flags[temp_end_line+1:, 0].tolist()
-    )
+    ))
     qual_flags = qual_flags[temp_start_line:temp_end_line+1,:].copy()
     xutcs = xutcs[temp_start_line:temp_end_line+1].copy()
 
