@@ -203,6 +203,9 @@ def save_gac(satellite_name,
     # Update midnight scanline to the final scanline range
     if midnight_scanline is not None:
         midnight_scanline -= (temp_start_line + start_line)
+    if midnight_scanline < 0:
+        # Midnight scanline Has been removed
+        midnight_scanline = None
 
     # Compute total number of scanlines
     total_number_of_scan_lines = end_line - start_line + 1
