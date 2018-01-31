@@ -23,3 +23,14 @@ or, if you want to hack the package::
 
 
 .. _github: http://github.com/pytroll/pygac
+
+TLE files
+---------
+The pygac package requires Two-Line Element files stored per-satellite
+in files with names such as TLE_noaa19.txt. The name format and directory can be
+configured in the config file (see the Usage section). The contents should be the
+historical TLEs, i.e. a concatenation of just lines 1 and 2 without the satellite
+name. These can be downloaded from space-track.org. Once logged in use URL such as
+(replace CCCCC with the five-digit NORAD catalogue ID):
+
+https://www.space-track.org/basicspacedata/query/class/tle/EPOCH/1990-01-01--2029-01-01/NORAD_CAT_ID/CCCCC/orderby/EPOCH ASC/format/tle
