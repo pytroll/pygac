@@ -188,7 +188,6 @@ scanline = np.dtype([("scan_line_number", ">u2"),
                      ("zero_fill9", ">i4", (112, ))])
 
 
-@inherit_doc
 class GACKLMReader(GACReader, KLMReader):
 
     def __init__(self):

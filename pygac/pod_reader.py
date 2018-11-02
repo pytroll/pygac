@@ -315,9 +315,15 @@ class PODReader(Reader):
         toc = datetime.datetime.now()
         LOG.debug("clock drift adjustment took %s", str(toc - tic))
 
-    def get_lonlat(self):
-        arr_lon, arr_lat = self.compute_lonlat(
-            utcs=None, clock_drift_adjust=True)
+    def get_lonlat(self, clock_drift_adjust=True):
+        arr_lat = self.scans["earth_location"][:, 0::2] / 128.0
+        arr_lon = self.scans["earth_location"][:, 1::2] / 128.0
+        if clock_drift_adjust:
+            try:
+                self.adjust_clock_drift()
+            except Exception as err:
+                LOG.warning("Couldn't adjust for clock drift: %s", str(err))
+
         self.lons, self.lats = gtp.geo_interpolator(
             arr_lon, arr_lat, self.scan_width, self.scan_points)
         return self.lons, self.lats
