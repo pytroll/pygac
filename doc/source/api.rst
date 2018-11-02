@@ -3,7 +3,7 @@ The :mod:`pygac` API
 
 *pygac* interface consists of a number of python modules. The following schematic shows a general structure and the processing flow of *pygac*.   
 
-It must be noted that *pygac* expects Level 1b file to contain normal GAC header and data records, the format of which are mentioned in the official NOAA POD and KLM Data User Guides. The user should not prepend any other header (e.g. when downloading GAC data from CLASS archive etc) to the L1b file. In the first pre-processing step, *pygac* determines whether the GAC data comes from the second (i.e. NOAA-14 and before) or the third generation (NOAA-15 and onwards) AVHRR instrument by "gac_run.py".
+It must be noted that *pygac* expects Level 1b file to contain normal GAC header and data records, the format of which are mentioned in the official NOAA POD and KLM Data User Guides. The user should not prepend any other header (e.g. when downloading GAC data from CLASS archive etc) to the L1b file. In the first pre-processing step, *pygac* determines whether the GAC data comes from the second (i.e. NOAA-14 and before) or the third generation (NOAA-15 and onwards) AVHRR instrument by "pygac-run".
 This is done by reading the first three bytes of the data set. If they contain the any of the following values, ["CMS", "NSS", "UKM", "DSS"], then the KLM reader from "gac_klm.py" file is invoked, otherwise the POD reader is invoked (gac_pod.py).
 
 
