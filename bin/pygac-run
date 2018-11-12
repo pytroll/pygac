@@ -84,8 +84,9 @@ def str2scanline(string):
 
 
 def validate_args(args):
-    if args.start_line > args.end_line:
+    if args.end_line > 0 and args.start_line > args.end_line:
         raise ValueError('Start Scanline > End Scanline')
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
