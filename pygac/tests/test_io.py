@@ -19,8 +19,20 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import unittest
+import mock
 import numpy as np
 from pygac.gac_io import update_start_end_line
+
+
+class CalledWithAdapter(object):
+    def __init__(self, array):
+        self.array = array
+
+    def __repr__(self):
+        return repr(self.array)
+
+    def __eq__(self, other):
+        return np.all(self.array == other)
 
 
 class TestIO(unittest.TestCase):
@@ -71,89 +83,48 @@ class TestIO(unittest.TestCase):
                                 msg='Incorrect slice for ' + where)
 
     def test_save_gac(self):
+        """Test selection of user defined scanlines
+
+        Scanline Nr:  1  2  3  4  5  6  7  8  9 10 11 12 13 14
+        Missing:      X           X                 X        X
+        Inv. lat/lon:    X  X  X                 X     X  X
+
+        => All missing lines: [1, 2, 3, 4, 5, 10, 11, 12, 13, 14
+        """
         import pygac.gac_io
 
         # Define test data
         fv = pygac.gac_io.MISSING_DATA_LATLON
         along = 10
         across = 3
+        miss_lines = np.array([1, 5, 11, 14])  # never recorded
+        qualflags = np.array(
+            [[2, 3, 4, 6, 7, 8, 9, 10, 12, 13]]).transpose()  # scanline number
         lats = np.arange(along*across).reshape((along, across))
         lats[:2+1, :] = fv  # Make first 3 lines invalid
         lats[7:, :] = fv  # Make last 3 lines invalid
         lons = lats.copy()
         xutcs = np.arange(along).astype('datetime64[ms]')
-        qualflags = np.array(
-            [[2, 3, 4, 6, 7, 8, 9, 10, 12, 13]]).transpose()  # scanline number
-        miss_lines = np.array([1, 5, 11, 14])
         midnight_scanline = 5
         dummydata = np.ones(lats.shape)
+        start_end_lines = [(0, 0), (4, 5), (0, 4), (6, 9)]
 
-        for start_line in (0, 1, 4):
-            for end_line in (9, 8, 5):
-                where = 'with start/end line {0}/{1}'.format(start_line,
-                                                             end_line)
+        # Define reference data for each pair of start/end lines. Lines with
+        # invalid lat/lon info (here 0, 1, 2, 7, 8, 9) must be ignored
+        new_start_lines = [3, 4, 3, 6]
+        new_end_lines = [6, 5, 4, 6]
+        midnight_scanlines_ref = [2, 1, None, None]
+        all_miss_lines_ref = np.array([1, 2, 3, 4, 5, 10, 11, 12, 13, 14])
 
-                # Define reference data: Ignore lines with invalid lat/lon info
-                # (here 0, 1, 2, 7, 8, 9)
-                new_start_line = max(3, start_line)
-                new_end_line = min(6, end_line)
-                lats_ref = lats[new_start_line:new_end_line + 1, :]
-                qualflags_ref = qualflags[new_start_line:new_end_line+1]
-                qualflags_pre = qualflags
-                xutcs_ref = xutcs[new_start_line:new_end_line + 1]
+        for itest, (start_line, end_line) in enumerate(start_end_lines):
+            new_start_line = new_start_lines[itest]
+            new_end_line = new_end_lines[itest]
+            lats_ref = lats[new_start_line:new_end_line + 1, :]
+            qualflags_ref = qualflags[new_start_line:new_end_line+1]
+            xutcs_ref = xutcs[new_start_line:new_end_line + 1]
+            midnight_scanline_ref = midnight_scanlines_ref[itest]
 
-                # Midnight scanline has to be updated to new slice
-                midnight_scanline_ref = midnight_scanline - new_start_line
-
-                # Define Tester
-                def test(satellite_name, xutcs, startdate, enddate, starttime,
-                         endtime, lats, lons, ref1, ref2, ref3, bt3, bt4, bt5,
-                         sun_zen, sat_zen, sun_azi, sat_azi, rel_azi,
-                         qual_flags, start_line, end_line,
-                         total_number_of_scan_lines, last_scan_line_number,
-                         corr, gac_file, midnight_scanline, miss_lines):
-                    """Check whether scanlines with invalid lat/lon info have
-                     been excluded correctly"""
-
-                    # Rescale lats
-                    lats[np.where(lats != fv)] /= 1000
-
-                    # Test whether the arrays have been sliced correctly
-                    self.assertTrue(
-                        np.all(lats == lats_ref),
-                        msg='Latitude has not been sliced correctly ' + where
-                    )
-                    self.assertTrue(
-                        np.all(qual_flags == qualflags_ref),
-                        msg='Qualflags have not been sliced correctly ' + where
-                    )
-                    self.assertTrue(
-                        np.all(xutcs == xutcs_ref),
-                        msg='UTC times have not been sliced correctly ' + where
-                    )
-
-                    # If missing lines are tracked correctly, the union of
-                    # pre-slicing scanline numbers and post-slicing missing
-                    # lines should include all scanlines
-                    self.assertEqual(
-                        set(qualflags_pre[:, 0]).union(set(miss_lines)),
-                        set(range(1, 14+1)),
-                        msg='Missing scanlines have not been tracked '
-                            'correctly ' + where
-                    )
-
-                    # Check whether midnigt scanline has been updated correctly
-                    self.assertEqual(
-                        midnight_scanline, midnight_scanline_ref,
-                        msg='Midnight scanline has not been updated '
-                            'correctly ' + where
-                    )
-
-                # Patch gac_io.avhrrGAC_io using the above tester
-                pygac.gac_io.avhrrGAC_io = test
-
-                # Call save_gac which then calls the tester instead of
-                # gac_io.avhrrGAC_io
+            with mock.patch('pygac.gac_io.avhrrGAC_io') as io_mock:
                 pygac.gac_io.save_gac(
                     satellite_name='dummy',
                     xutcs=xutcs,
@@ -180,10 +151,37 @@ class TestIO(unittest.TestCase):
                     miss_lines=miss_lines,
                     switch=np.zeros(lats.shape, dtype='bool')
                 )
-
-        # Delete the module as we don't want the patched methods to affect
-        # other tests
-        del pygac.gac_io
+                expected_args = [
+                    mock.ANY,
+                    CalledWithAdapter(xutcs_ref),
+                    mock.ANY,
+                    mock.ANY,
+                    mock.ANY,
+                    mock.ANY,
+                    CalledWithAdapter(lats_ref*1000.0),
+                    mock.ANY,
+                    mock.ANY,
+                    mock.ANY,
+                    mock.ANY,
+                    mock.ANY,
+                    mock.ANY,
+                    mock.ANY,
+                    mock.ANY,
+                    mock.ANY,
+                    mock.ANY,
+                    mock.ANY,
+                    mock.ANY,
+                    CalledWithAdapter(qualflags_ref),
+                    mock.ANY,
+                    mock.ANY,
+                    mock.ANY,
+                    mock.ANY,
+                    mock.ANY,
+                    mock.ANY,
+                    midnight_scanline_ref,
+                    CalledWithAdapter(all_miss_lines_ref)
+                ]
+                io_mock.assert_called_with(*expected_args)
 
 
 def suite():
