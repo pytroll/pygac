@@ -199,6 +199,7 @@ def save_gac(satellite_name,
     lats = lats[start_line:end_line+1,:].copy()
     lons = lons[start_line:end_line+1,:].copy()
     qual_flags = qual_flags[start_line:end_line+1,:].copy()
+    xutcs = xutcs[start_line:end_line+1].copy()
 
     # Update midnight scanline to the final scanline range
     if midnight_scanline is not None:

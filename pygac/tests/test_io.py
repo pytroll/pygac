@@ -100,13 +100,14 @@ class TestIO(unittest.TestCase):
                 lats_ref = lats[new_start_line:new_end_line + 1, :]
                 qualflags_ref = qualflags[new_start_line:new_end_line+1]
                 qualflags_pre = qualflags
+                xutcs_ref = xutcs[new_start_line:new_end_line + 1]
 
                 # Midnight scanline has to be updated to new slice
                 midnight_scanline_ref = midnight_scanline - new_start_line
 
                 # Define Tester
-                def test(satellite_name, startdate, enddate, starttime, endtime,
-                         lats, lons, ref1, ref2, ref3, bt3, bt4, bt5,
+                def test(satellite_name, xutcs, startdate, enddate, starttime,
+                         endtime, lats, lons, ref1, ref2, ref3, bt3, bt4, bt5,
                          sun_zen, sat_zen, sun_azi, sat_azi, rel_azi,
                          qual_flags, start_line, end_line,
                          total_number_of_scan_lines, last_scan_line_number,
@@ -126,6 +127,10 @@ class TestIO(unittest.TestCase):
                         np.all(qual_flags == qualflags_ref),
                         msg='Qualflags have not been sliced correctly ' + where
                     )
+                    self.assertTrue(
+                        np.all(xutcs == xutcs_ref),
+                        msg='UTC times have not been sliced correctly ' + where
+                    )
 
                     # If missing lines are tracked correctly, the union of
                     # pre-slicing scanline numbers and post-slicing missing
@@ -143,8 +148,6 @@ class TestIO(unittest.TestCase):
                         msg='Midnight scanline has not been updated '
                             'correctly ' + where
                     )
-
-                    # TODO: Check UTCs once they are available (feature-time).
 
                 # Patch gac_io.avhrrGAC_io using the above tester
                 pygac.gac_io.avhrrGAC_io = test
