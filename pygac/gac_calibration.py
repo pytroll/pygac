@@ -23,6 +23,7 @@
 
 """Calibration coefficients and generic calibration functions
 """
+from __future__ import division
 import numpy as np
 
 coeffs = {
@@ -525,13 +526,13 @@ def calibrate_thermal(counts, prt, ict, space, line_numbers, channel, spacecraft
     space_convolved = np.convolve(space, weighting_function, 'same')
 
     # take care of the beginning and end
-    tprt_convolved[0:(wlength - 1) / 2] = tprt_convolved[(wlength - 1) / 2]
-    ict_convolved[0:(wlength - 1) / 2] = ict_convolved[(wlength - 1) / 2]
-    space_convolved[0:(wlength - 1) / 2] = space_convolved[(wlength - 1) / 2]
-    tprt_convolved[-(wlength - 1) / 2:] = tprt_convolved[-((wlength + 1) / 2)]
-    ict_convolved[-(wlength - 1) / 2:] = ict_convolved[-((wlength + 1) / 2)]
-    space_convolved[-(wlength - 1) / 2:] = \
-        space_convolved[-((wlength + 1) / 2)]
+    tprt_convolved[0:(wlength - 1) // 2] = tprt_convolved[(wlength - 1) // 2]
+    ict_convolved[0:(wlength - 1) // 2] = ict_convolved[(wlength - 1) // 2]
+    space_convolved[0:(wlength - 1) // 2] = space_convolved[(wlength - 1) // 2]
+    tprt_convolved[-(wlength - 1) // 2:] = tprt_convolved[-((wlength + 1) // 2)]
+    ict_convolved[-(wlength - 1) // 2:] = ict_convolved[-((wlength + 1) // 2)]
+    space_convolved[-(wlength - 1) // 2:] = \
+        space_convolved[-((wlength + 1) // 2)]
 
     new_tprt = np.transpose(np.tile(tprt_convolved, (columns, 1)))
     new_ict = np.transpose(np.tile(ict_convolved, (columns, 1)))

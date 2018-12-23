@@ -27,6 +27,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
+from __future__ import print_function, division
 import numpy as np
 
 MISSING_DATA = -32001
@@ -232,11 +233,11 @@ def calibrate_solar_pod(counts, year, jday, spacecraft_id, channel3_switch, corr
         Ldate = 1994.9699
 
     else:
-        print "wrong satellite id - exit"
+        print("wrong satellite id - exit")
 
         sys.exit(0)
 
-    print 'year, jday, spacecraft-id, launch date - ', year, jday, spacecraft_id, Ldate
+    print('year, jday, spacecraft-id, launch date - ', year, jday, spacecraft_id, Ldate)
 
     t = (year + jday / 365.0) - Ldate
     # channel 1
@@ -516,7 +517,7 @@ def calibrate_thermal_pod(raw_counts, prt, ict, space, number_of_data_records, s
             b2 = 0.0001742
             b0 = 2.00
     else:
-        print "wrong satellite id - exit"
+        print("wrong satellite id - exit")
         sys.exit(0)
 
     columns = raw_counts.shape[1]
@@ -570,15 +571,15 @@ def calibrate_thermal_pod(raw_counts, prt, ict, space, number_of_data_records, s
     tprt_convolved = np.convolve(tprt, weighting_function, 'same')
     ict_convolved = np.convolve(ict, weighting_function, 'same')
     space_convolved = np.convolve(space, weighting_function, 'same')
-    print tprt
-    print tprt_convolved
-    tprt_convolved[0:(window - 1) / 2] = tprt_convolved[(window - 1) / 2]
-    ict_convolved[0:(window - 1) / 2] = ict_convolved[(window - 1) / 2]
-    space_convolved[0:(window - 1) / 2] = space_convolved[(window - 1) / 2]
-    tprt_convolved[-(window - 1) / 2:] = tprt_convolved[-((window + 1) / 2)]
-    ict_convolved[-(window - 1) / 2:] = ict_convolved[-((window + 1) / 2)]
-    space_convolved[-(window - 1) / 2:] = space_convolved[-((window + 1) / 2)]
-    print tprt_convolved
+    print(tprt)
+    print(tprt_convolved)
+    tprt_convolved[0:(window - 1) // 2] = tprt_convolved[(window - 1) // 2]
+    ict_convolved[0:(window - 1) // 2] = ict_convolved[(window - 1) // 2]
+    space_convolved[0:(window - 1) // 2] = space_convolved[(window - 1) // 2]
+    tprt_convolved[-(window - 1) // 2:] = tprt_convolved[-((window + 1) // 2)]
+    ict_convolved[-(window - 1) // 2:] = ict_convolved[-((window + 1) // 2)]
+    space_convolved[-(window - 1) // 2:] = space_convolved[-((window + 1) // 2)]
+    print(tprt_convolved)
     new_tprt = np.transpose(np.tile(tprt_convolved, (columns, 1)))
     new_ict = np.transpose(np.tile(ict_convolved, (columns, 1)))
     new_space = np.transpose(np.tile(space_convolved, (columns, 1)))

@@ -29,7 +29,7 @@ import numpy as np
 import datetime
 
 
-TEST_TIMESTAMP = datetime.datetime(2016, 8, 16, 16, 07, 36)
+TEST_TIMESTAMP = datetime.datetime(2016, 8, 16, 16, 7, 36)
 TEST_SPACECRAFT_ID = 1
 
 

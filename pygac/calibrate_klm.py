@@ -22,6 +22,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
+from __future__ import print_function, division
 import numpy as np
 import sys
 MISSING_DATA = -32001
@@ -199,10 +200,10 @@ def calibrate_solar(counts, year, jday, spacecraft_id, channel3_switch, corr, nu
         # metop-01 is missing here. But as this code is never called, I do
         # not add it for now. /Sara Hornquist 2015-01-07
     else:
-        print "wrong satellite id - exit"
+        print("wrong satellite id - exit")
         sys.exit(0)
 
-    print 'year, jday, spacecraft-id, launch date - ', year, jday, spacecraft_id, Ldate
+    print('year, jday, spacecraft-id, launch date - ', year, jday, spacecraft_id, Ldate)
 
     t = (year + jday / 365.0) - Ldate
 
@@ -549,7 +550,7 @@ def calibrate_thermal(raw_counts, prt, ict, space, number_of_data_records, space
             b2 = 0.00025239
 
     else:
-        print "wrong satellite id - exit"
+        print("wrong satellite id - exit")
         sys.exit(0)
 
     # adjustment and preparation for calculating four PRT temperatures
@@ -569,7 +570,7 @@ def calibrate_thermal(raw_counts, prt, ict, space, number_of_data_records, space
 
     iprt = (line_numbers - 1 - offset) % 5
 
-    tprt = np.zeros((float(number_of_data_records)))
+    tprt = np.zeros(number_of_data_records, dtype=np.float)
     iones = np.where(iprt == 1)
     itwos = np.where(iprt == 2)
     ithrees = np.where(iprt == 3)
@@ -610,12 +611,12 @@ def calibrate_thermal(raw_counts, prt, ict, space, number_of_data_records, space
     tprt_convolved = np.convolve(tprt, weighting_function, 'same')
     ict_convolved = np.convolve(ict, weighting_function, 'same')
     space_convolved = np.convolve(space, weighting_function, 'same')
-    tprt_convolved[0:(window - 1) / 2] = tprt_convolved[(window - 1) / 2]
-    ict_convolved[0:(window - 1) / 2] = ict_convolved[(window - 1) / 2]
-    space_convolved[0:(window - 1) / 2] = space_convolved[(window - 1) / 2]
-    tprt_convolved[-(window - 1) / 2:] = tprt_convolved[-((window + 1) / 2)]
-    ict_convolved[-(window - 1) / 2:] = ict_convolved[-((window + 1) / 2)]
-    space_convolved[-(window - 1) / 2:] = space_convolved[-((window + 1) / 2)]
+    tprt_convolved[0:(window - 1) // 2] = tprt_convolved[(window - 1) // 2]
+    ict_convolved[0:(window - 1) // 2] = ict_convolved[(window - 1) // 2]
+    space_convolved[0:(window - 1) // 2] = space_convolved[(window - 1) // 2]
+    tprt_convolved[-(window - 1) // 2:] = tprt_convolved[-((window + 1) // 2)]
+    ict_convolved[-(window - 1) // 2:] = ict_convolved[-((window + 1) // 2)]
+    space_convolved[-(window - 1) // 2:] = space_convolved[-((window + 1) // 2)]
 
     new_tprt = np.transpose(np.tile(tprt_convolved, (raw_counts.shape[1], 1)))
     new_ict = np.transpose(np.tile(ict_convolved, (raw_counts.shape[1], 1)))

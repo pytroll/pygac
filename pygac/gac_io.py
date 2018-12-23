@@ -33,7 +33,11 @@ import datetime
 import logging
 LOG = logging.getLogger(__name__)
 
-import ConfigParser
+try:
+    import ConfigParser
+except ImportError:
+    import configparser as ConfigParser
+
 import os
 from .correct_tsm_issue import flag_pixels as flag_tsm_pixels
 
