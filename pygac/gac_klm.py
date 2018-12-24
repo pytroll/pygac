@@ -29,6 +29,8 @@ http://www.ncdc.noaa.gov/oa/pod-guide/ncdc/docs/klm/html/c8/sec83142-1.htm
 
 """
 
+from __future__ import print_function
+
 import numpy as np
 from .correct_tsm_issue import TSM_AFFECTED_INTERVALS_KLM
 from pygac.gac_reader import GACReader, inherit_doc
@@ -581,7 +583,7 @@ def main(filename, start_line, end_line):
   
     mask, qual_flags = reader.get_corrupt_mask()
     if (np.all(mask)):
-        print "ERROR: All data is masked out. Stop processing"
+        print("ERROR: All data is masked out. Stop processing")
         raise ValueError("All data is masked out.")
     
     gac_io.save_gac(reader.spacecraft_name,
