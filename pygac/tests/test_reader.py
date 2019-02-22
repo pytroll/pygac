@@ -25,21 +25,6 @@ import numpy as np
 from pygac.gac_reader import GACReader
 
 
-class GACReaderDummy(GACReader):
-    def _get_times(self):
-        pass
-
-    def get_header_timestamp(self):
-        pass
-
-    def read(self, filename):
-        pass
-
-    @property
-    def tsm_affected_intervals(self):
-        pass
-
-
 class TestGacReader(unittest.TestCase):
     """Test the common GAC Reader"""
 
@@ -53,9 +38,10 @@ class TestGacReader(unittest.TestCase):
                          msg='Conversion from (year, jday, msec) to datetime64 '
                              'is not correct')
 
-    def test_midnight_scanline(self):
+    @mock.patch.multiple('pygac.gac_reader.GACReader', __abstractmethods__=set())
+    def test_midnight_scanline(self, *mocks):
         """Test midnight scanline computation"""
-        reader = GACReaderDummy()
+        reader = GACReader()
 
         # Define test cases...
         # ... midnight scanline exists
@@ -73,9 +59,10 @@ class TestGacReader(unittest.TestCase):
             self.assertEqual(reader.get_midnight_scanline(), scanline,
                              msg='Incorrect midnight scanline')
 
-    def test_miss_lines(self):
+    @mock.patch.multiple('pygac.gac_reader.GACReader', __abstractmethods__=set())
+    def test_miss_lines(self, *mocks):
         """Test detection of missing scanlines"""
-        reader = GACReaderDummy()
+        reader = GACReader()
         lines = [2, 4, 5, 6, 10, 11, 12]
         miss_lines_ref = [1, 3, 7, 8, 9]
         reader.scans = np.zeros(len(lines), dtype=[('scan_line_number', 'i2')])
