@@ -255,6 +255,26 @@ class GACReader(object):
                 self.spacecraft_name)
         return channels
 
+    @staticmethod
+    def tle2datetime64(times):
+        """Convert TLE timestamps to numpy.datetime64
+
+        Args:
+           times (float): TLE timestamps as %y%j.1234, e.g. 18001.25
+        """
+        # Convert %y%j.12345 to %Y%j.12345 (valid for 1950-2049)
+        times = np.where(times > 50000, times + 1900000, times + 2000000)
+
+        # Convert float to datetime64
+        doys = (times % 1000).astype('int') - 1
+        years = (times // 1000).astype('int')
+        msecs = np.rint(24 * 3600 * 1000 * (times % 1))
+        times64 = (years - 1970).astype('datetime64[Y]').astype('datetime64[ms]')
+        times64 += doys.astype('timedelta64[D]')
+        times64 += msecs.astype('timedelta64[ms]')
+
+        return times64
+
     def get_tle_file(self):
         conf = ConfigParser.ConfigParser()
         try:
@@ -282,16 +302,11 @@ class GACReader(object):
         """
         if self.tle_lines is not None:
             return self.tle_lines
-        tle_data = self.get_tle_file()
-        tm = self.times[0]
-        sdate = (int(tm.strftime("%Y%j")) +
-                 (tm.hour +
-                  (tm.minute +
-                   (tm.second +
-                    tm.microsecond / 1000000.0) / 60.0) / 60.0) / 24.0)
 
-        dates = np.array([float(line[18:32]) for line in tle_data[::2]])
-        dates = np.where(dates > 50000, dates + 1900000, dates + 2000000)
+        tle_data = self.get_tle_file()
+        sdate = np.datetime64(self.times[0], '[ms]')
+        dates = self.tle2datetime64(
+            np.array([float(line[18:32]) for line in tle_data[::2]]))
 
         # Find index "iindex" such that dates[iindex-1] < sdate <= dates[iindex]
         # Notes:
@@ -308,17 +323,18 @@ class GACReader(object):
             iindex -= 1
 
         # Make sure the TLE we found is within the threshold
-        if abs(sdate - dates[iindex]) > threshold:
+        delta_days = abs(sdate - dates[iindex]) / np.timedelta64(1, 'D')
+        if delta_days > threshold:
             raise IndexError(
                 "Can't find tle data for %s within +/- %d days around %s" %
-                (self.spacecraft_name, threshold, tm.isoformat()))
+                (self.spacecraft_name, threshold, sdate))
 
-        if abs(sdate - dates[iindex]) > 3:
-            LOG.warning("Found TLE data for %f that is %f days appart",
-                        sdate, abs(sdate - dates[iindex]))
+        if delta_days > 3:
+            LOG.warning("Found TLE data for %s that is %f days appart",
+                        sdate, delta_days)
         else:
-            LOG.debug("Found TLE data for %f that is %f days appart",
-                      sdate, abs(sdate - dates[iindex]))
+            LOG.debug("Found TLE data for %s that is %f days appart",
+                      sdate, delta_days)
 
         # Select TLE data
         tle1 = tle_data[iindex * 2]
