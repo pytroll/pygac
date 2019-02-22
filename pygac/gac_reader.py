@@ -45,7 +45,8 @@ class GACReader(object):
     scan_freq = 2.0/1000.0
     """Scanning frequency (scanlines per millisecond)"""
 
-    def __init__(self):
+    def __init__(self, tle_thresh=7):
+        self.tle_thresh = tle_thresh
         self.head = None
         self.scans = None
         self.spacecraft_name = None
@@ -174,7 +175,7 @@ class GACReader(object):
         return (scan_line_number - 1) / self.scan_freq
 
     def compute_lonlat(self, utcs=None, clock_drift_adjust=True):
-        tle1, tle2 = self.get_tle_lines()
+        tle1, tle2 = self.get_tle_lines(threshold=self.tle_thresh)
 
         scan_points = np.arange(3.5, 2048, 5)
 
@@ -273,7 +274,12 @@ class GACReader(object):
         with open(tle_filename, 'r') as fp_:
             return fp_.readlines()
 
-    def get_tle_lines(self):
+    def get_tle_lines(self, threshold):
+        """Find closest two line elements (TLEs) for the current orbit
+
+        Raises:
+            IndexError, if the closest TLE is more than <threshold> days apart
+        """
         if self.tle_lines is not None:
             return self.tle_lines
         tle_data = self.get_tle_file()
@@ -287,16 +293,25 @@ class GACReader(object):
         dates = np.array([float(line[18:32]) for line in tle_data[::2]])
         dates = np.where(dates > 50000, dates + 1900000, dates + 2000000)
 
+        # Find index "iindex" such that dates[iindex-1] < sdate <= dates[iindex]
+        # Notes:
+        #     1. If sdate < dates[0] then iindex = 0
+        #     2. If sdate > dates[-1] then iindex = len(dates), beyond the right boundary!
         iindex = np.searchsorted(dates, sdate)
 
-        if ((iindex == 0 and abs(sdate - dates[0]) > 7) or
-                (iindex == len(dates) - 1 and abs(sdate - dates[-1]) > 7)):
-            raise IndexError(
-                "Can't find tle data for %s on the %s" %
-                (self.spacecraft_name, tm.isoformat()))
-
-        if abs(sdate - dates[iindex - 1]) < abs(sdate - dates[iindex]):
+        if iindex in (0, len(dates)):
+            if iindex == len(dates):
+                # Reset index if beyond the right boundary (see note 2. above)
+                iindex -= 1
+        elif abs(sdate - dates[iindex - 1]) < abs(sdate - dates[iindex]):
+            # Choose the closest of the two surrounding dates
             iindex -= 1
+
+        # Make sure the TLE we found is within the threshold
+        if abs(sdate - dates[iindex]) > threshold:
+            raise IndexError(
+                "Can't find tle data for %s within +/- %d days around %s" %
+                (self.spacecraft_name, threshold, tm.isoformat()))
 
         if abs(sdate - dates[iindex]) > 3:
             LOG.warning("Found TLE data for %f that is %f days appart",
@@ -305,13 +320,14 @@ class GACReader(object):
             LOG.debug("Found TLE data for %f that is %f days appart",
                       sdate, abs(sdate - dates[iindex]))
 
+        # Select TLE data
         tle1 = tle_data[iindex * 2]
         tle2 = tle_data[iindex * 2 + 1]
         self.tle_lines = tle1, tle2
         return tle1, tle2
 
     def get_angles(self):
-        tle1, tle2 = self.get_tle_lines()
+        tle1, tle2 = self.get_tle_lines(threshold=self.tle_thresh)
         orb = Orbital(self.spacecrafts_orbital[self.spacecraft_id],
                       line1=tle1, line2=tle2)
 
