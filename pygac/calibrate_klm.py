@@ -569,7 +569,7 @@ def calibrate_thermal(raw_counts, prt, ict, space, number_of_data_records, space
 
     iprt = (line_numbers - 1 - offset) % 5
 
-    tprt = np.zeros((float(number_of_data_records)))
+    tprt = np.zeros(number_of_data_records, dtype=np.float)
     iones = np.where(iprt == 1)
     itwos = np.where(iprt == 2)
     ithrees = np.where(iprt == 3)
