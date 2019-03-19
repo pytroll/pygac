@@ -24,6 +24,8 @@
 """Interpolation of geographical tiepoints.
 """
 
+from __future__ import print_function
+
 import numpy as np
 from numpy import arccos, sign, rad2deg, sqrt, arcsin
 from scipy.interpolate import RectBivariateSpline, splrep, splev
@@ -599,7 +601,7 @@ class TestMODIS(unittest.TestCase):
             gdata = SD(gfilename)
             data = SD(filename)
         except HDF4Error:
-            print "Failed reading both eos-hdf files %s and %s" % (gfilename, filename)
+            print("Failed reading both eos-hdf files %s and %s" % (gfilename, filename))
             return
         
         glats = gdata.select("Latitude")[:]
@@ -632,7 +634,7 @@ class TestMODIS(unittest.TestCase):
         try:
             gdata = SD(gfilename)
         except HDF4Error:
-            print "Failed reading eos-hdf file %s" % gfilename
+            print("Failed reading eos-hdf file %s" % gfilename)
             return
         
         lats = gdata.select("Latitude")[0:50, :]

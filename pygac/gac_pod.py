@@ -35,6 +35,8 @@ http://www.ncdc.noaa.gov/oa/pod-guide/ncdc/docs/podug/html/c3/sec3-1.htm
 
 """
 
+from __future__ import print_function
+
 import numpy as np
 from pygac.gac_reader import GACReader, inherit_doc
 import pygac.geotiepoints as gtp
@@ -404,7 +406,7 @@ def main(filename, start_line, end_line):
 
     mask, qual_flags = reader.get_corrupt_mask()
     if (np.all(mask)):
-        print "ERROR: All data is masked out. Stop processing"
+        print("ERROR: All data is masked out. Stop processing")
         raise ValueError("All data is masked out.")
 
 

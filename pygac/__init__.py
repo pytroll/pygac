@@ -23,12 +23,11 @@
 """
 """
 
+#from __future__ import absolute_import
 import logging
 import os
 
-import version
-
-__version__ = version.__version__
+from pygac.version import __version__
 
 LOG = logging.getLogger(__name__)
 try:

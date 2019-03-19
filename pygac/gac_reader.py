@@ -25,7 +25,11 @@ specific read functions.
 """
 import numpy as np
 from pygac import CONFIG_FILE
-import ConfigParser
+try:
+    import ConfigParser
+except ImportError:
+    import configparser as ConfigParser
+
 import os
 import logging
 from pyorbital.orbital import Orbital
