@@ -470,7 +470,7 @@ scanline = np.dtype([("scan_line_number", ">u2"),
 
 
 @inherit_doc
-class KLMReader(GACReader):
+class GACKLMReader(GACReader):
 
     spacecraft_names = {4: 'noaa15',
                         2: 'noaa16',
@@ -492,7 +492,7 @@ class KLMReader(GACReader):
     tsm_affected_intervals = TSM_AFFECTED_INTERVALS_KLM
 
     def read(self, filename):
-        super(KLMReader, self).read(filename=filename)
+        super(GACKLMReader, self).read(filename=filename)
 
         with open(filename) as fd_:
             self.head = np.fromfile(fd_, dtype=header, count=1)[0]
@@ -573,7 +573,7 @@ class KLMReader(GACReader):
 
 def main(filename, start_line, end_line):
     tic = datetime.datetime.now()
-    reader = KLMReader()
+    reader = GACKLMReader()
     reader.read(filename)
     reader.get_lonlat()
     channels = reader.get_calibrated_channels()

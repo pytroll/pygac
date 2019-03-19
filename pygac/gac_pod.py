@@ -161,7 +161,7 @@ scanline = np.dtype([("scan_line_number", ">i2"),
 
 
 @inherit_doc
-class PODReader(GACReader):
+class GACPODReader(GACReader):
 
     spacecrafts_orbital = {25: 'tiros n',
                            2: 'noaa 6',
@@ -188,7 +188,7 @@ class PODReader(GACReader):
 
     def correct_scan_line_numbers(self, plot=False):
         # Perform common corrections first.
-        super(PODReader, self).correct_scan_line_numbers(plot=plot)
+        super(GACPODReader, self).correct_scan_line_numbers(plot=plot)
 
         # cleaning up the data
         min_scanline_number = np.amin(np.absolute(self.scans["scan_line_number"][:]))
@@ -202,7 +202,7 @@ class PODReader(GACReader):
         self.scans = self.scans[self.scans["scan_line_number"] != 0]
 
     def read(self, filename):
-        super(PODReader, self).read(filename=filename)
+        super(GACPODReader, self).read(filename=filename)
 
         # choose the right header depending on the date
         with open(filename) as fd_:
@@ -396,7 +396,7 @@ class PODReader(GACReader):
 
 def main(filename, start_line, end_line):
     tic = datetime.datetime.now()
-    reader = PODReader()
+    reader = GACPODReader()
     reader.read(filename)
     reader.get_lonlat()
     reader.adjust_clock_drift()
