@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2014, 2015 Martin Raspaud, Abhay Devasthale
+# Copyright (c) 2014-2015, 2019 Pytroll Developers
 
 # Author(s):
 
@@ -430,8 +430,7 @@ class Calibrator(object):
 
 
 def calibrate_solar(counts, chan, year, jday, spacecraft, corr=1):
-    """Do the solar calibration and return reflectance (between 0 and 100).
-    """
+    """Do the solar calibration and return reflectance (between 0 and 100)."""
     cal = Calibrator(spacecraft)
 
     t = (year + jday / 365.0) - cal.l_date
@@ -449,9 +448,7 @@ def calibrate_solar(counts, chan, year, jday, spacecraft, corr=1):
 
 
 def calibrate_thermal(counts, prt, ict, space, line_numbers, channel, spacecraft):
-    """Do the thermal calibration and return brightness temperatures (K).
-    """
-
+    """Do the thermal calibration and return brightness temperatures (K)."""
     cal = Calibrator(spacecraft)
 
     chan = channel - 3
