@@ -44,7 +44,7 @@ my_sunsat = "/tmp/ECC_GAC_sunsatangles_noaa16_99999_20020706T1904020Z_20020706T2
 class TestKLM(unittest.TestCase):
 
     def test_global(self):
-        gac_klm.main(test_file)
+        gac_klm.main(test_file, 0, 0)
         
         child = sp.Popen(["h5diff", ref_sunsat, my_sunsat],
                          stdout=sp.PIPE)
