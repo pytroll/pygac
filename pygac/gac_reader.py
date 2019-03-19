@@ -49,7 +49,8 @@ class GACReader(object):
     scan_freq = 2.0/1000.0
     """Scanning frequency (scanlines per millisecond)"""
 
-    def __init__(self):
+    def __init__(self, tle_thresh=7):
+        self.tle_thresh = tle_thresh
         self.head = None
         self.scans = None
         self.spacecraft_name = None
@@ -178,7 +179,7 @@ class GACReader(object):
         return (scan_line_number - 1) / self.scan_freq
 
     def compute_lonlat(self, utcs=None, clock_drift_adjust=True):
-        tle1, tle2 = self.get_tle_lines()
+        tle1, tle2 = self.get_tle_lines(threshold=self.tle_thresh)
 
         scan_points = np.arange(3.5, 2048, 5)
 
@@ -258,6 +259,26 @@ class GACReader(object):
                 self.spacecraft_name)
         return channels
 
+    @staticmethod
+    def tle2datetime64(times):
+        """Convert TLE timestamps to numpy.datetime64
+
+        Args:
+           times (float): TLE timestamps as %y%j.1234, e.g. 18001.25
+        """
+        # Convert %y%j.12345 to %Y%j.12345 (valid for 1950-2049)
+        times = np.where(times > 50000, times + 1900000, times + 2000000)
+
+        # Convert float to datetime64
+        doys = (times % 1000).astype('int') - 1
+        years = (times // 1000).astype('int')
+        msecs = np.rint(24 * 3600 * 1000 * (times % 1))
+        times64 = (years - 1970).astype('datetime64[Y]').astype('datetime64[ms]')
+        times64 += doys.astype('timedelta64[D]')
+        times64 += msecs.astype('timedelta64[ms]')
+
+        return times64
+
     def get_tle_file(self):
         conf = ConfigParser.ConfigParser()
         try:
@@ -277,45 +298,56 @@ class GACReader(object):
         with open(tle_filename, 'r') as fp_:
             return fp_.readlines()
 
-    def get_tle_lines(self):
+    def get_tle_lines(self, threshold):
+        """Find closest two line elements (TLEs) for the current orbit
+
+        Raises:
+            IndexError, if the closest TLE is more than <threshold> days apart
+        """
         if self.tle_lines is not None:
             return self.tle_lines
+
         tle_data = self.get_tle_file()
-        tm = self.times[0]
-        sdate = (int(tm.strftime("%Y%j")) +
-                 (tm.hour +
-                  (tm.minute +
-                   (tm.second +
-                    tm.microsecond / 1000000.0) / 60.0) / 60.0) / 24.0)
+        sdate = np.datetime64(self.times[0], '[ms]')
+        dates = self.tle2datetime64(
+            np.array([float(line[18:32]) for line in tle_data[::2]]))
 
-        dates = np.array([float(line[18:32]) for line in tle_data[::2]])
-        dates = np.where(dates > 50000, dates + 1900000, dates + 2000000)
-
+        # Find index "iindex" such that dates[iindex-1] < sdate <= dates[iindex]
+        # Notes:
+        #     1. If sdate < dates[0] then iindex = 0
+        #     2. If sdate > dates[-1] then iindex = len(dates), beyond the right boundary!
         iindex = np.searchsorted(dates, sdate)
 
-        if ((iindex == 0 and abs(sdate - dates[0]) > 7) or
-                (iindex == len(dates) - 1 and abs(sdate - dates[-1]) > 7)):
-            raise IndexError(
-                "Can't find tle data for %s on the %s" %
-                (self.spacecraft_name, tm.isoformat()))
-
-        if abs(sdate - dates[iindex - 1]) < abs(sdate - dates[iindex]):
+        if iindex in (0, len(dates)):
+            if iindex == len(dates):
+                # Reset index if beyond the right boundary (see note 2. above)
+                iindex -= 1
+        elif abs(sdate - dates[iindex - 1]) < abs(sdate - dates[iindex]):
+            # Choose the closest of the two surrounding dates
             iindex -= 1
 
-        if abs(sdate - dates[iindex]) > 3:
-            LOG.warning("Found TLE data for %f that is %f days appart",
-                        sdate, abs(sdate - dates[iindex]))
-        else:
-            LOG.debug("Found TLE data for %f that is %f days appart",
-                      sdate, abs(sdate - dates[iindex]))
+        # Make sure the TLE we found is within the threshold
+        delta_days = abs(sdate - dates[iindex]) / np.timedelta64(1, 'D')
+        if delta_days > threshold:
+            raise IndexError(
+                "Can't find tle data for %s within +/- %d days around %s" %
+                (self.spacecraft_name, threshold, sdate))
 
+        if delta_days > 3:
+            LOG.warning("Found TLE data for %s that is %f days appart",
+                        sdate, delta_days)
+        else:
+            LOG.debug("Found TLE data for %s that is %f days appart",
+                      sdate, delta_days)
+
+        # Select TLE data
         tle1 = tle_data[iindex * 2]
         tle2 = tle_data[iindex * 2 + 1]
         self.tle_lines = tle1, tle2
         return tle1, tle2
 
     def get_angles(self):
-        tle1, tle2 = self.get_tle_lines()
+        tle1, tle2 = self.get_tle_lines(threshold=self.tle_thresh)
         orb = Orbital(self.spacecrafts_orbital[self.spacecraft_id],
                       line1=tle1, line2=tle2)
 
