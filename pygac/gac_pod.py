@@ -54,7 +54,6 @@ header0 = np.dtype([("noaa_spacecraft_identification_code", ">u1"),
                     ("number_of_scans", ">u2"),
                     ("end_time", ">u2", (3, ))])
 
-
 # until 8 september 1992
 header1 = np.dtype([("noaa_spacecraft_identification_code", ">u1"),
                     ("data_type_code", ">u1"),
@@ -210,7 +209,7 @@ class PODReader(GACReader):
             head = np.fromfile(fd_, dtype=header0, count=1)[0]
             year, jday, _ = self.decode_timestamps(head["start_time"])
 
-            start_date = (datetime.date(year,1,1) + datetime.timedelta(days=jday - 1))
+            start_date = (datetime.date(year, 1, 1) + datetime.timedelta(days=jday - 1))
 
             if start_date < datetime.date(1992, 9, 8):
                 header = header1
@@ -409,11 +408,10 @@ def main(filename, start_line, end_line):
         print("ERROR: All data is masked out. Stop processing")
         raise ValueError("All data is masked out.")
 
-
     gac_io.save_gac(reader.spacecraft_name,
                     reader.utcs,
                     reader.lats, reader.lons,
-                    channels[:, :, 0], channels[:,:, 1],
+                    channels[:, :, 0], channels[:, :, 1],
                     np.ones_like(channels[:, :, 0]) * -1,
                     channels[:, :, 2],
                     channels[:, :, 3],

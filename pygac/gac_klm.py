@@ -41,8 +41,6 @@ import logging
 
 LOG = logging.getLogger(__name__)
 
-#np.set_printoptions(threshold=np.nan)
-
 # GAC header object
 
 header = np.dtype([("data_set_creation_site_id", "S3"),
@@ -558,17 +556,17 @@ class KLMReader(GACReader):
 
         mask = ((self.scans["quality_indicator_bit_field"] >> 31) |
                 ((self.scans["quality_indicator_bit_field"] << 3) >> 31) |
-                ((self.scans["quality_indicator_bit_field"] << 4) >> 31)) 
-        
+                ((self.scans["quality_indicator_bit_field"] << 4) >> 31))
+
         number_of_scans = self.scans["telemetry"].shape[0]
-        qual_flags = np.zeros((int(number_of_scans),7))
-        qual_flags[:,0]=self.scans["scan_line_number"] 
-        qual_flags[:,1]=(self.scans["quality_indicator_bit_field"] >> 31)
-        qual_flags[:,2]=((self.scans["quality_indicator_bit_field"] << 3) >> 31)
-        qual_flags[:,3]=((self.scans["quality_indicator_bit_field"] << 4) >> 31)
-        qual_flags[:,4]=((self.scans["quality_indicator_bit_field"] << 24) >> 30)
-        qual_flags[:,5]=((self.scans["quality_indicator_bit_field"] << 26) >> 30)
-        qual_flags[:,6]=((self.scans["quality_indicator_bit_field"] << 28) >> 30)
+        qual_flags = np.zeros((int(number_of_scans), 7))
+        qual_flags[:, 0] = self.scans["scan_line_number"]
+        qual_flags[:, 1] = (self.scans["quality_indicator_bit_field"] >> 31)
+        qual_flags[:, 2] = ((self.scans["quality_indicator_bit_field"] << 3) >> 31)
+        qual_flags[:, 3] = ((self.scans["quality_indicator_bit_field"] << 4) >> 31)
+        qual_flags[:, 4] = ((self.scans["quality_indicator_bit_field"] << 24) >> 30)
+        qual_flags[:, 5] = ((self.scans["quality_indicator_bit_field"] << 26) >> 30)
+        qual_flags[:, 6] = ((self.scans["quality_indicator_bit_field"] << 28) >> 30)
 
         return mask.astype(bool), qual_flags
 
@@ -580,12 +578,12 @@ def main(filename, start_line, end_line):
     reader.get_lonlat()
     channels = reader.get_calibrated_channels()
     sat_azi, sat_zen, sun_azi, sun_zen, rel_azi = reader.get_angles()
-  
+
     mask, qual_flags = reader.get_corrupt_mask()
     if (np.all(mask)):
         print("ERROR: All data is masked out. Stop processing")
         raise ValueError("All data is masked out.")
-    
+
     gac_io.save_gac(reader.spacecraft_name,
                     reader.utcs,
                     reader.lats, reader.lons,

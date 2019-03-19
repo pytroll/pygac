@@ -389,25 +389,26 @@ class GACReader(object):
         # offset, e.g. the first scanline has timestamp 1970-01-01 00:00
         msec_lineno = self.lineno2msec(self.scans["scan_line_number"])
 
-        jday = np.where(np.logical_or(jday<1, jday>366),np.median(jday),jday)
+        jday = np.where(np.logical_or(jday < 1, jday > 366),np.median(jday), jday)
         if_wrong_jday = np.ediff1d(jday, to_begin=0)
-        jday = np.where(if_wrong_jday<0, max(jday), jday)
+        jday = np.where(if_wrong_jday < 0, max(jday), jday)
 
-        if_wrong_msec = np.where(msec<1)
+        if_wrong_msec = np.where(msec < 1)
         if_wrong_msec = if_wrong_msec[0]
         if len(if_wrong_msec) > 0:
-            if if_wrong_msec[0] !=0:
+            if if_wrong_msec[0] != 0:
                 msec = msec[0] + msec_lineno
             else:
                 msec0 = np.median(msec - msec_lineno)
                 msec = msec0 + msec_lineno
 
         if_wrong_msec = np.ediff1d(msec, to_begin=0)
-        msec = np.where(np.logical_and(np.logical_or(if_wrong_msec<-1000, if_wrong_msec>1000),if_wrong_jday!=1), msec[0] + msec_lineno, msec)
+        msec = np.where(np.logical_and(np.logical_or(if_wrong_msec < -1000, if_wrong_msec > 1000), if_wrong_jday != 1),
+                        msec[0] + msec_lineno, msec)
 
         # checking if year value is out of valid range
         if_wrong_year = np.where(
-            np.logical_or(year<1978, year>datetime.datetime.now().year))
+            np.logical_or(year < 1978, year > datetime.datetime.now().year))
         if_wrong_year = if_wrong_year[0]
         if len(if_wrong_year) > 0:
             # if the first scanline has valid time stamp

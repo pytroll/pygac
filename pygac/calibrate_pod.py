@@ -29,19 +29,19 @@
 
 from __future__ import print_function, division
 import numpy as np
+import sys
 
 MISSING_DATA = -32001
 
 
-# calibrates solar channels of AVHRR
-
-
-def calibrate_solar_pod(counts, year, jday, spacecraft_id, channel3_switch, corr, number_of_data_records):
+def calibrate_solar_pod(counts, year, jday, spacecraft_id, channel3_switch,
+                        corr, number_of_data_records):
+    """Calibrate solar channels of AVHRR."""
 
     # setting up calibration coefficients
 
     if spacecraft_id == 4:
-        #/*noaa-7*/
+        # /*noaa-7*/
         Cdark1 = 36.0
         Cdark2 = 37.0
         Cdark3 = 39.0
@@ -73,7 +73,7 @@ def calibrate_solar_pod(counts, year, jday, spacecraft_id, channel3_switch, corr
         Ldate = 1981.4764
 
     elif spacecraft_id == 7:
-        #/*noaa-9*/
+        # /*noaa-9*/
         Cdark1 = 38.0
         Cdark2 = 40.0
         Cdark3 = 38.0
@@ -105,7 +105,7 @@ def calibrate_solar_pod(counts, year, jday, spacecraft_id, channel3_switch, corr
         Ldate = 1984.9480
 
     elif spacecraft_id == 8:
-        #/*noaa-10*/
+        # /*noaa-10*/
         Cdark1 = 39.44
         Cdark2 = 39.40
         Cdark3 = 37.51
@@ -137,7 +137,7 @@ def calibrate_solar_pod(counts, year, jday, spacecraft_id, channel3_switch, corr
         Ldate = 1986.712
 
     elif spacecraft_id == 1:
-        #/*noaa-11*/
+        # /*noaa-11*/
         Cdark1 = 40.0
         Cdark2 = 40.0
         Cdark3 = 40.0
@@ -234,8 +234,9 @@ def calibrate_solar_pod(counts, year, jday, spacecraft_id, channel3_switch, corr
 
     else:
         print("wrong satellite id - exit")
-
         sys.exit(0)
+
+    del Cdark3, ah1, bh1, ch1, ah2, bh2, ch2, al3, bl3, cl3, ah3, bh3, ch3
 
     print('year, jday, spacecraft-id, launch date - ', year, jday, spacecraft_id, Ldate)
 
@@ -246,7 +247,7 @@ def calibrate_solar_pod(counts, year, jday, spacecraft_id, channel3_switch, corr
     cindex = 0
     raw_counts = 0
 
-    #r1=np.zeros((number_of_data_records, 409))
+    # r1=np.zeros((number_of_data_records, 409))
 
     raw_counts = counts[:, 0::5]
 
@@ -262,8 +263,8 @@ def calibrate_solar_pod(counts, year, jday, spacecraft_id, channel3_switch, corr
     sth = 0.0
     cindex = 0
     raw_counts = 0
-
-    #r2=np.zeros((number_of_data_records, 409));
+    del sth, cindex
+    # r2=np.zeros((number_of_data_records, 409));
     raw_counts = counts[:, 1::5]
     stl = (al2 * (100.0 + bl2 * t + cl2 * t * t)) / 100.0
     # sth=(ah2*(100.0+bh2*t+ch2*t*t))/100.0;
@@ -278,11 +279,10 @@ def calibrate_solar_pod(counts, year, jday, spacecraft_id, channel3_switch, corr
 
     return r1, r2, r3
 
- # calibrates thermal channels of AVHRR
 
-
-def calibrate_thermal_pod(raw_counts, prt, ict, space, number_of_data_records, spacecraft_id, channel, line_numbers):
-
+def calibrate_thermal_pod(raw_counts, prt, ict, space, number_of_data_records,
+                          spacecraft_id, channel, line_numbers):
+    """Calibrate thermal channels of AVHRR."""
     if spacecraft_id == 4:
         # /*noaa-7*/
         d10 = 277.099
@@ -323,7 +323,7 @@ def calibrate_thermal_pod(raw_counts, prt, ict, space, number_of_data_records, s
             b0 = 3.93
 
     elif spacecraft_id == 7:
-             # /*noaa-9*/
+        # /*noaa-9*/
         d10 = 277.018000
         d11 = 0.051280
         d12 = 0.000000E-00
@@ -362,7 +362,7 @@ def calibrate_thermal_pod(raw_counts, prt, ict, space, number_of_data_records, s
             b0 = 2.42
 
     elif spacecraft_id == 8:
-             # /*noaa-10*/
+        # /*noaa-10*/
         d10 = 276.659
         d11 = 0.051275
         d12 = 1.363e-06
@@ -401,7 +401,7 @@ def calibrate_thermal_pod(raw_counts, prt, ict, space, number_of_data_records, s
             b0 = 0.0
 
     elif spacecraft_id == 1:
-             # /*noaa-11*/
+        # /*noaa-11*/
         d10 = 276.597
         d11 = 0.051275
         d12 = 1.363e-06
@@ -440,7 +440,7 @@ def calibrate_thermal_pod(raw_counts, prt, ict, space, number_of_data_records, s
             b0 = 2.92
 
     elif spacecraft_id == 5:
-             # /*noaa-12*/
+        # /*noaa-12*/
         d10 = 276.597
         d11 = 0.051275
         d12 = 1.363e-06
@@ -479,7 +479,7 @@ def calibrate_thermal_pod(raw_counts, prt, ict, space, number_of_data_records, s
             b0 = 1.91
 
     elif spacecraft_id == 3:
-             # /*noaa-14*/
+        # /*noaa-14*/
         d10 = 276.597
         d11 = 0.051275
         d12 = 1.363e-06

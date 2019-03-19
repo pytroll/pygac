@@ -31,12 +31,13 @@ MISSING_DATA = -32001
 # calibrates solar channels of AVHRR
 
 
-def calibrate_solar(counts, year, jday, spacecraft_id, channel3_switch, corr, number_of_data_records):
+def calibrate_solar(counts, year, jday, spacecraft_id, channel3_switch, corr,
+                    number_of_data_records):
 
     # setting up calibration coefficients
 
     if spacecraft_id == 4:
-                     # /*noaa-15*/
+        # /*noaa-15*/
         Cs1 = 500.0
         Cs2 = 500.0
         Cs3 = 500.0
@@ -203,7 +204,8 @@ def calibrate_solar(counts, year, jday, spacecraft_id, channel3_switch, corr, nu
         print("wrong satellite id - exit")
         sys.exit(0)
 
-    print('year, jday, spacecraft-id, launch date - ', year, jday, spacecraft_id, Ldate)
+    print('year, jday, spacecraft-id, launch date - ',
+          year, jday, spacecraft_id, Ldate)
 
     t = (year + jday / 365.0) - Ldate
 
@@ -265,10 +267,11 @@ def calibrate_solar(counts, year, jday, spacecraft_id, channel3_switch, corr, nu
 # calibrates thermal channels of AVHRR
 
 
-def calibrate_thermal(raw_counts, prt, ict, space, number_of_data_records, spacecraft_id, channel, line_numbers):
+def calibrate_thermal(raw_counts, prt, ict, space, number_of_data_records,
+                      spacecraft_id, channel, line_numbers):
 
     if spacecraft_id == 4:
-                     # /*noaa-15*/
+        # /*noaa-15*/
         d10 = 276.60157
         d11 = 0.051045
         d12 = 1.36328E-06
@@ -315,7 +318,7 @@ def calibrate_thermal(raw_counts, prt, ict, space, number_of_data_records, space
             b2 = 0.0002811
 
     elif spacecraft_id == 2:
-                     # /*noaa-16*/
+        # /*noaa-16*/
         d10 = 276.355
         d11 = 5.562E-02
         d12 = -1.590E-05
@@ -362,7 +365,7 @@ def calibrate_thermal(raw_counts, prt, ict, space, number_of_data_records, space
             b2 = 0.00014854
 
     elif spacecraft_id == 6:
-                     # /*noaa-17*/
+        # /*noaa-17*/
         d10 = 276.628
         d11 = 0.05098
         d12 = 1.371E-06
@@ -409,7 +412,7 @@ def calibrate_thermal(raw_counts, prt, ict, space, number_of_data_records, space
             b2 = 0.00030976
 
     elif spacecraft_id == 7:
-                     # /*noaa-18*/
+        # /*noaa-18*/
         d10 = 276.601
         d11 = 0.05090
         d12 = 1.657E-06
@@ -456,7 +459,7 @@ def calibrate_thermal(raw_counts, prt, ict, space, number_of_data_records, space
             b2 = 0.00017715
 
     elif spacecraft_id == 8:
-                     # /*noaa-19*/
+        # /*noaa-19*/
         d10 = 276.6067
         d11 = 0.051111
         d12 = 1.405783E-06
@@ -503,7 +506,7 @@ def calibrate_thermal(raw_counts, prt, ict, space, number_of_data_records, space
             b2 = 0.00024985
 
     elif spacecraft_id == 12:
-                     # /*metop-02*/
+        # /*metop-02*/
         d10 = 276.6194
         d11 = 0.050919
         d12 = 1.471e-06
@@ -570,7 +573,6 @@ def calibrate_thermal(raw_counts, prt, ict, space, number_of_data_records, space
 
     iprt = (line_numbers - 1 - offset) % 5
 
-
     tprt = np.zeros(number_of_data_records, dtype=np.float64)
 
     iones = np.where(iprt == 1)
@@ -592,7 +594,6 @@ def calibrate_thermal(raw_counts, prt, ict, space, number_of_data_records, space
         prt[ifours] * prt[ifours] + d44 * prt[ifours] * \
         prt[ifours] * prt[ifours] * prt[ifours]
 
-    utprt = tprt
     izeros = np.where(iprt == 0)
     izeros = izeros[0]
 
