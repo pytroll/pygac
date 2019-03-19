@@ -684,21 +684,23 @@ class GACReader(object):
             return False
 
     def get_midnight_scanline(self):
-        """Find the scanline where the UTC date switches (if any).
+        """Find the scanline where the UTC date increases by one day.
 
         Returns:
-            int: The midnight scanline if it exists. None, else.
+            int: The midnight scanline if it exists and is unique.
+                 None, else.
         """
         self.get_times()
-        days = (self.utcs.astype('datetime64[D]') - self.utcs.astype('datetime64[M]') + 1).astype(int)
-        jump_pos = np.where(np.diff(days) == 1)[0]
-        if len(jump_pos) == 0:
+        d0 = np.datetime64(datetime.date(1970, 1, 1), 'D')
+        days = (self.utcs.astype('datetime64[D]') - d0).astype(int)
+        incr = np.where(np.diff(days) == 1)[0]
+        if len(incr) != 1:
+            if len(incr) > 1:
+                LOG.warning('Unable to determine midnight scanline: '
+                            'UTC date increases more than once. ')
             return None
         else:
-            if len(jump_pos) > 1:
-                LOG.warning('UTC date switches more than once. Choosing the '
-                            'first occurence as midnight scanline.')
-            return jump_pos[0]
+            return incr[0]
 
     def get_miss_lines(self):
         """Find missing scanlines, i.e. scanlines which were dropped for some

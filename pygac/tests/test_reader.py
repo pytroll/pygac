@@ -45,8 +45,7 @@ class TestGacReader(unittest.TestCase):
 
         # Define test cases...
         # ... midnight scanline exists
-        utcs1 = (24 * 3600 * 1000 + np.array([-3, -2, -1, 0, 1, 2, 3])).astype(
-            'datetime64[ms]')
+        utcs1 = np.array([-3, -2, -1, 0, 1, 2, 3]).astype('datetime64[ms]')
         scanline1 = 2
 
         # ... midnight scanline does not exist
