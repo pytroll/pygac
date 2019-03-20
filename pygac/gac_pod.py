@@ -54,7 +54,6 @@ header0 = np.dtype([("noaa_spacecraft_identification_code", ">u1"),
                     ("number_of_scans", ">u2"),
                     ("end_time", ">u2", (3, ))])
 
-
 # until 8 september 1992
 header1 = np.dtype([("noaa_spacecraft_identification_code", ">u1"),
                     ("data_type_code", ">u1"),
@@ -162,7 +161,7 @@ scanline = np.dtype([("scan_line_number", ">i2"),
 
 
 @inherit_doc
-class PODReader(GACReader):
+class GACPODReader(GACReader):
 
     spacecrafts_orbital = {25: 'tiros n',
                            2: 'noaa 6',
@@ -189,7 +188,7 @@ class PODReader(GACReader):
 
     def correct_scan_line_numbers(self, plot=False):
         # Perform common corrections first.
-        super(PODReader, self).correct_scan_line_numbers(plot=plot)
+        super(GACPODReader, self).correct_scan_line_numbers(plot=plot)
 
         # cleaning up the data
         min_scanline_number = np.amin(np.absolute(self.scans["scan_line_number"][:]))
@@ -203,14 +202,14 @@ class PODReader(GACReader):
         self.scans = self.scans[self.scans["scan_line_number"] != 0]
 
     def read(self, filename):
-        super(PODReader, self).read(filename=filename)
+        super(GACPODReader, self).read(filename=filename)
 
         # choose the right header depending on the date
         with open(filename) as fd_:
             head = np.fromfile(fd_, dtype=header0, count=1)[0]
             year, jday, _ = self.decode_timestamps(head["start_time"])
 
-            start_date = (datetime.date(year,1,1) + datetime.timedelta(days=jday - 1))
+            start_date = (datetime.date(year, 1, 1) + datetime.timedelta(days=jday - 1))
 
             if start_date < datetime.date(1992, 9, 8):
                 header = header1
@@ -397,7 +396,7 @@ class PODReader(GACReader):
 
 def main(filename, start_line, end_line):
     tic = datetime.datetime.now()
-    reader = PODReader()
+    reader = GACPODReader()
     reader.read(filename)
     reader.get_lonlat()
     reader.adjust_clock_drift()
@@ -409,11 +408,10 @@ def main(filename, start_line, end_line):
         print("ERROR: All data is masked out. Stop processing")
         raise ValueError("All data is masked out.")
 
-
     gac_io.save_gac(reader.spacecraft_name,
                     reader.utcs,
                     reader.lats, reader.lons,
-                    channels[:, :, 0], channels[:,:, 1],
+                    channels[:, :, 0], channels[:, :, 1],
                     np.ones_like(channels[:, :, 0]) * -1,
                     channels[:, :, 2],
                     channels[:, :, 3],

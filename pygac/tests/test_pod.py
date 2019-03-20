@@ -20,7 +20,7 @@
 
 import unittest
 import numpy as np
-from pygac.gac_pod import PODReader
+from pygac.gac_pod import GACPODReader
 
 
 class TestPOD(unittest.TestCase):
@@ -39,9 +39,9 @@ class TestPOD(unittest.TestCase):
         t1900_enc = np.array([42832, 534, 61983])
 
         # Test whether PODReader decodes them correctly
-        self.assertEqual(PODReader.decode_timestamps(t2000_enc), t2000_ref,
+        self.assertEqual(GACPODReader.decode_timestamps(t2000_enc), t2000_ref,
                          msg='Timestamp after 2000 was decoded incorrectly')
-        self.assertEqual(PODReader.decode_timestamps(t1900_enc), t1900_ref,
+        self.assertEqual(GACPODReader.decode_timestamps(t1900_enc), t1900_ref,
                          msg='Timestamp before 2000 was decoded incorrectly')
 
 

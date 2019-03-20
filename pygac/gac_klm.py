@@ -41,8 +41,6 @@ import logging
 
 LOG = logging.getLogger(__name__)
 
-#np.set_printoptions(threshold=np.nan)
-
 # GAC header object
 
 header = np.dtype([("data_set_creation_site_id", "S3"),
@@ -472,7 +470,7 @@ scanline = np.dtype([("scan_line_number", ">u2"),
 
 
 @inherit_doc
-class KLMReader(GACReader):
+class GACKLMReader(GACReader):
 
     spacecraft_names = {4: 'noaa15',
                         2: 'noaa16',
@@ -494,7 +492,7 @@ class KLMReader(GACReader):
     tsm_affected_intervals = TSM_AFFECTED_INTERVALS_KLM
 
     def read(self, filename):
-        super(KLMReader, self).read(filename=filename)
+        super(GACKLMReader, self).read(filename=filename)
 
         with open(filename) as fd_:
             self.head = np.fromfile(fd_, dtype=header, count=1)[0]
@@ -558,34 +556,34 @@ class KLMReader(GACReader):
 
         mask = ((self.scans["quality_indicator_bit_field"] >> 31) |
                 ((self.scans["quality_indicator_bit_field"] << 3) >> 31) |
-                ((self.scans["quality_indicator_bit_field"] << 4) >> 31)) 
-        
+                ((self.scans["quality_indicator_bit_field"] << 4) >> 31))
+
         number_of_scans = self.scans["telemetry"].shape[0]
-        qual_flags = np.zeros((int(number_of_scans),7))
-        qual_flags[:,0]=self.scans["scan_line_number"] 
-        qual_flags[:,1]=(self.scans["quality_indicator_bit_field"] >> 31)
-        qual_flags[:,2]=((self.scans["quality_indicator_bit_field"] << 3) >> 31)
-        qual_flags[:,3]=((self.scans["quality_indicator_bit_field"] << 4) >> 31)
-        qual_flags[:,4]=((self.scans["quality_indicator_bit_field"] << 24) >> 30)
-        qual_flags[:,5]=((self.scans["quality_indicator_bit_field"] << 26) >> 30)
-        qual_flags[:,6]=((self.scans["quality_indicator_bit_field"] << 28) >> 30)
+        qual_flags = np.zeros((int(number_of_scans), 7))
+        qual_flags[:, 0] = self.scans["scan_line_number"]
+        qual_flags[:, 1] = (self.scans["quality_indicator_bit_field"] >> 31)
+        qual_flags[:, 2] = ((self.scans["quality_indicator_bit_field"] << 3) >> 31)
+        qual_flags[:, 3] = ((self.scans["quality_indicator_bit_field"] << 4) >> 31)
+        qual_flags[:, 4] = ((self.scans["quality_indicator_bit_field"] << 24) >> 30)
+        qual_flags[:, 5] = ((self.scans["quality_indicator_bit_field"] << 26) >> 30)
+        qual_flags[:, 6] = ((self.scans["quality_indicator_bit_field"] << 28) >> 30)
 
         return mask.astype(bool), qual_flags
 
 
 def main(filename, start_line, end_line):
     tic = datetime.datetime.now()
-    reader = KLMReader()
+    reader = GACKLMReader()
     reader.read(filename)
     reader.get_lonlat()
     channels = reader.get_calibrated_channels()
     sat_azi, sat_zen, sun_azi, sun_zen, rel_azi = reader.get_angles()
-  
+
     mask, qual_flags = reader.get_corrupt_mask()
     if (np.all(mask)):
         print("ERROR: All data is masked out. Stop processing")
         raise ValueError("All data is masked out.")
-    
+
     gac_io.save_gac(reader.spacecraft_name,
                     reader.utcs,
                     reader.lats, reader.lons,
