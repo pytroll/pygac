@@ -29,7 +29,7 @@ import argparse
 import logging
 from datetime import datetime
 
-logger = logging.getLogger("")
+logger = logging.getLogger("pygac")
 logger.setLevel(logging.DEBUG)
 ch = logging.StreamHandler()
 ch.setLevel(logging.DEBUG)
