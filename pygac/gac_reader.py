@@ -35,7 +35,7 @@ import logging
 from pyorbital.orbital import Orbital
 from pyorbital import astronomy
 import datetime
-from pygac.gac_calibration import calibrate_solar, calibrate_thermal
+from pygac.calibration import calibrate_solar, calibrate_thermal
 from abc import ABCMeta, abstractmethod, abstractproperty
 import types
 
@@ -389,7 +389,7 @@ class GACReader(object):
         # offset, e.g. the first scanline has timestamp 1970-01-01 00:00
         msec_lineno = self.lineno2msec(self.scans["scan_line_number"])
 
-        jday = np.where(np.logical_or(jday < 1, jday > 366),np.median(jday), jday)
+        jday = np.where(np.logical_or(jday < 1, jday > 366), np.median(jday), jday)
         if_wrong_jday = np.ediff1d(jday, to_begin=0)
         jday = np.where(if_wrong_jday < 0, max(jday), jday)
 

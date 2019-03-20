@@ -28,7 +28,7 @@ import unittest
 
 import numpy as np
 
-from pygac.gac_calibration import calibrate_solar, calibrate_thermal
+from pygac.calibration import calibrate_solar, calibrate_thermal
 
 
 class TestGenericCalibration(unittest.TestCase):
