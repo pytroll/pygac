@@ -29,7 +29,7 @@ import argparse
 import logging
 from datetime import datetime
 
-logger = logging.getLogger("")
+logger = logging.getLogger("pygac")
 logger.setLevel(logging.DEBUG)
 ch = logging.StreamHandler()
 ch.setLevel(logging.DEBUG)
@@ -55,8 +55,11 @@ logger.addHandler(ch)
 
 def check_file_version(filename):
     try:
-        with open(filename) as fdes:
-            data = fdes.read(3)
+        with open(filename, mode='rb') as fdes:
+            try:
+                data = fdes.read(3).decode()
+            except UnicodeDecodeError:
+                data = None
     except IOError as err:
         raise IOError('Failed to read GAC file: {0}'.format(err))
     if data in ["CMS", "NSS", "UKM", "DSS"]:

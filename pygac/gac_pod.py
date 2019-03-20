@@ -209,7 +209,7 @@ class GACPODReader(GACReader):
             head = np.fromfile(fd_, dtype=header0, count=1)[0]
             year, jday, _ = self.decode_timestamps(head["start_time"])
 
-            start_date = (datetime.date(year, 1, 1) + datetime.timedelta(days=jday - 1))
+            start_date = (datetime.date(year, 1, 1) + datetime.timedelta(days=int(jday) - 1))
 
             if start_date < datetime.date(1992, 9, 8):
                 header = header1
