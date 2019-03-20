@@ -63,16 +63,16 @@ class TestGenericCalibration(unittest.TestCase):
         ref3 = calibrate_solar(data, channel, year, jday,
                                spacecraft_id, corr)
 
-        expected = (np.array([[-5.34552109, 61.40830325, 128.03174904],
-                              [0., 14.21126339, 85.91947313]]),
-                    np.array([[-6.49776462, 74.64505206, 155.62938667],
-                              [0., 17.27454496, 104.43968005]]),
+        expected = (np.array([[-5.300497, 60.891074, 126.953364],
+                              [0., 14.091565, 85.195791]]),
+                    np.array([[-6.353052, 72.98262, 152.16334],
+                              [0., 16.889821, 102.113687]]),
                     np.array([[-32001., -32001., -32001.],
                               [-32001., -32001., -32001.]]))
 
-        self.assertTrue(np.allclose(ref1, expected[0]))
-        self.assertTrue(np.allclose(ref2, expected[1]))
-        self.assertTrue(np.allclose(ref3.filled(-32001), expected[2]))
+        np.testing.assert_allclose(ref1, expected[0])
+        np.testing.assert_allclose(ref2, expected[1])
+        np.testing.assert_allclose(ref3.filled(-32001), expected[2])
 
     def test_calibration_ir(self):
         counts = np.array([[0, 0, 612, 0, 0,
@@ -105,7 +105,7 @@ class TestGenericCalibration(unittest.TestCase):
                                  [296.87900835, 306.41526012, 294.41059746],
                                  [295.39720547, 305.02120845, 305.75051609]])
 
-        self.assertTrue(np.allclose(expected_ch3, ch3))
+        np.testing.assert_allclose(expected_ch3, ch3)
 
         ch4 = calibrate_thermal(counts[:, 3::5],
                                 prt_counts,
@@ -115,11 +115,11 @@ class TestGenericCalibration(unittest.TestCase):
                                 channel=4,
                                 spacecraft=spacecraft_id)
 
-        expected_ch4 = np.array([[325.82572316, 275.41391816, 196.21443457],
-                                 [322.35731456, 312.78320066, 249.38013251],
-                                 [304.32522137, 293.48953883, 264.14732182]])
+        expected_ch4 = np.array([[325.828192, 275.414762, 196.214464],
+                                 [322.359634, 312.785138, 249.380531],
+                                 [304.326858, 293.490837, 264.147945]])
 
-        self.assertTrue(np.allclose(expected_ch4, ch4))
+        np.testing.assert_allclose(expected_ch4, ch4)
 
         ch5 = calibrate_thermal(counts[:, 4::5],
                                 prt_counts,
@@ -133,7 +133,7 @@ class TestGenericCalibration(unittest.TestCase):
                                  [322.72885806,  312.39588991,  244.22910864],
                                  [303.27173737,  291.59183911,  260.0459766]])
 
-        self.assertTrue(np.allclose(expected_ch5, ch5))
+        np.testing.assert_allclose(expected_ch5, ch5)
 
 
 def suite():
