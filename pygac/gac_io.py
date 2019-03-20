@@ -213,15 +213,15 @@ def save_gac(satellite_name,
     qual_flags = qual_flags[start_line:end_line+1, :].copy()
     xutcs = xutcs[start_line:end_line+1].copy()
 
-    # Update midnight scanline to the final scanline range
     if midnight_scanline is not None:
+        # Update midnight scanline to the final scanline range
         midnight_scanline -= (temp_start_line + start_line)
 
-    # Set midnight scanline to None if it has been removed due to invalid
-    # lat/lon info (< 0) or lies outside the user defined scanline range
-    if midnight_scanline < 0 or (midnight_scanline > end_line or
-                                 midnight_scanline < start_line):
-        midnight_scanline = None
+        # Set midnight scanline to None if it has been removed due to invalid
+        # lat/lon info (< 0) or lies outside the user defined scanline range
+        if midnight_scanline < 0 or (midnight_scanline > end_line or
+                                     midnight_scanline < start_line):
+            midnight_scanline = None
 
     # Compute total number of scanlines
     total_number_of_scan_lines = end_line - start_line + 1
