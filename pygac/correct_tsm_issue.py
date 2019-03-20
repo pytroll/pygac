@@ -322,8 +322,8 @@ def flag_pixels(channel1, channel2, channel3b,
     idx = get_tsm_idx(ch1, ch2, ch4, ch5)
     # apply correction index using fill_value and fill masked elements
     for array in [ch1, ch2, ch3b, ch4, ch5, ch3a]:
-        if isinstance(array.mask, np.bool_): 
-            array.mask = np.zeros(array.shape, dtype='bool') 
+        if isinstance(array.mask, np.bool_):
+            array.mask = np.zeros(array.shape, dtype='bool')
         array.mask[idx] = True
         array[:, :] = np.ma.filled(array, fillv)
 
@@ -340,4 +340,3 @@ def flag_pixels(channel1, channel2, channel3b,
             array[array != fillv] = (array[array != fillv] - bt_offs) / bt_gain
 
     return ch1, ch2, ch3b, ch4, ch5, ch3a
-

@@ -4,7 +4,7 @@
 # Copyright (c) 2010-2012.
 
 # Author(s):
- 
+
 #   Adam Dybbroe <adam.dybbroe@smhise>
 #   Martin Raspaud <martin.raspaud@smhi.se>
 
@@ -24,17 +24,19 @@
 """Interpolation of geographical tiepoints.
 """
 
-import numpy as np
-from numpy import arccos, sign, rad2deg, sqrt, arcsin
-from scipy.interpolate import RectBivariateSpline, splrep, splev
+from __future__ import print_function
 
+import unittest
+
+import numpy as np
+from numpy import arccos, arcsin, rad2deg, sign, sqrt
+from scipy.interpolate import RectBivariateSpline, splev, splrep
 
 EARTH_RADIUS = 6370997.0
 
 
 def metop20kmto1km(lons20km, lats20km):
-    """Getting 1km geolocation for metop avhrr from 20km tiepoints.
-    """
+    """Gett 1km geolocation for metop avhrr from 20km tiepoints."""
     cols20km = np.array([0] + range(4, 2048, 20) + [2047])
     cols1km = np.arange(2048)
     lines = lons20km.shape[0]
@@ -51,9 +53,9 @@ def metop20kmto1km(lons20km, lats20km):
                                    cross_track_order)
     return satint.interpolate()
 
+
 def modis5kmto1km(lons5km, lats5km):
-    """Getting 1km geolocation for modis from 5km tiepoints.
-    """
+    """Get 1km geolocation for modis from 5km tiepoints."""
     cols5km = np.arange(2, 1354, 5)
     cols1km = np.arange(1354)
     lines = lons5km.shape[0] * 5
@@ -73,9 +75,9 @@ def modis5kmto1km(lons5km, lats5km):
     lons1km, lats1km = satint.interpolate()
     return lons1km, lats1km
 
+
 def modis1kmto500m(lons1km, lats1km):
-    """Getting 500m geolocation for modis from 1km tiepoints.
-    """
+    """Get 500m geolocation for modis from 1km tiepoints."""
     cols1km = np.arange(0, 2708, 2)
     cols500m = np.arange(2708)
     lines = lons1km.shape[0] * 2
@@ -84,7 +86,7 @@ def modis1kmto500m(lons1km, lats1km):
 
     along_track_order = 1
     cross_track_order = 3
-    
+
     satint = SatelliteInterpolator((lons1km, lats1km),
                                    (rows1km, cols1km),
                                    (rows500m, cols500m),
@@ -95,9 +97,9 @@ def modis1kmto500m(lons1km, lats1km):
     lons500m, lats500m = satint.interpolate()
     return lons500m, lats500m
 
+
 def modis1kmto250m(lons1km, lats1km):
-    """Getting 250m geolocation for modis from 1km tiepoints.
-    """
+    """Get 250m geolocation for modis from 1km tiepoints."""
     cols1km = np.arange(0, 5416, 4)
     cols250m = np.arange(5416)
     lines = lons1km.shape[0] * 4
@@ -106,7 +108,7 @@ def modis1kmto250m(lons1km, lats1km):
 
     along_track_order = 1
     cross_track_order = 3
-    
+
     satint = SatelliteInterpolator((lons1km, lats1km),
                                    (rows1km, cols1km),
                                    (rows250m, cols250m),
@@ -118,12 +120,14 @@ def modis1kmto250m(lons1km, lats1km):
     return lons250m, lats250m
 
 
-def Gac_Lat_Lon_Interpolator(lons_subset,lats_subset):
-    """ interpolates lat-lon values in the AVHRR GAC data from every eigth pixel to all pixels 
-        Each GAC row has total 409 pixels. But lat-lon values are provided for every eigth pixel starting from pixel 5 and ending at pixel 405 """
-    
-    #cols_subset = np.arange(0, 404, 8)
-    #cols_full = np.arange(405)
+def Gac_Lat_Lon_Interpolator(lons_subset, lats_subset):
+    """Interpolate lat-lon values in the AVHRR GAC data from every eigth pixel to all pixels.
+
+    Each GAC row has total 409 pixels. But lat-lon values are provided for every eigth pixel
+    starting from pixel 5 and ending at pixel 405.
+    """
+    # cols_subset = np.arange(0, 404, 8)
+    # cols_full = np.arange(405)
     cols_subset = np.arange(4, 405, 8)
     cols_full = np.arange(409)
     lines = lats_subset.shape[0]
@@ -140,11 +144,11 @@ def Gac_Lat_Lon_Interpolator(lons_subset,lats_subset):
                                    cross_track_order)
 
     return satint.interpolate()
-    
+
 
 # NOTE: extrapolate on a sphere ?
 def _linear_extrapolate(pos, data, xev):
-    """
+    """Linear interpolator.
 
     >>> import numpy as np
     >>> pos = np.array([1, 2])
@@ -163,9 +167,11 @@ def _linear_extrapolate(pos, data, xev):
     return data[1] + ((xev - pos[1]) / (1.0 * (pos[0] - pos[1])) *
                       (data[0] - data[1]))
 
+
 class SatelliteInterpolator(object):
-    """
-    Handles interpolation of geolocation data from a grid of tie points.  It is
+    """Handle interpolation of geolocation data from a grid of tie points.
+
+    It is
     preferable to have tie-points out till the edges if the tiepoint grid, but
     a method is provided to extrapolate linearly the tiepoints to the borders
     of the grid.
@@ -214,16 +220,14 @@ class SatelliteInterpolator(object):
         self.newz = None
 
         self.kx_, self.ky_ = kx_, ky_
-        
+
     def set_tiepoints(self, lon, lat):
-        """Defines the lon,lat tie points.
-        """
+        """Define the lon,lat tie points."""
         self.lon_tiepoint = lon
         self.lat_tiepoint = lat
 
     def fill_borders(self, *args):
-        """Extrapolate tiepoint lons and lats to fill in the border of the
-        chunks.
+        """Extrapolate tiepoint lons and lats to fill in the border of the chunks.
 
         >>> import numpy as np
         >>> lons = np.arange(20).reshape((4, 5), order="F")
@@ -264,7 +268,6 @@ class SatelliteInterpolator(object):
         >>> satint.col_indices
         array([ 0,  2,  7, 12, 17, 22, 23])
         """
-        
         to_run = []
         cases = {"y": self._fill_row_borders,
                  "x": self._fill_col_borders}
@@ -277,10 +280,8 @@ class SatelliteInterpolator(object):
         for fun in to_run:
             fun()
 
-
     def _extrapolate_cols(self, data, first=True, last=True):
-        """Extrapolate the column of data, to get the first and last together
-        with the data.
+        """Extrapolate the column of data, to get the first and last together with the data.
 
         >>> import numpy as np
         >>> lons = np.arange(10).reshape((2, 5), order="F")
@@ -298,7 +299,6 @@ class SatelliteInterpolator(object):
                  6299445.69529922,  6261968.60390423,  6215087.60607344,
                  6205711.40650728]])
         """
-
         if first:
             pos = self.col_indices[:2]
             first_column = _linear_extrapolate(pos,
@@ -313,7 +313,7 @@ class SatelliteInterpolator(object):
         if first and last:
             return np.hstack((np.expand_dims(first_column, 1),
                               data,
-                              np.expand_dims(last_column, 1))) 
+                              np.expand_dims(last_column, 1)))
         elif first:
             return np.hstack((np.expand_dims(first_column, 1),
                               data))
@@ -322,7 +322,6 @@ class SatelliteInterpolator(object):
                               np.expand_dims(last_column, 1)))
         else:
             return data
-
 
     def _fill_col_borders(self):
         """Add the first and last column to the data by extrapolation.
@@ -346,18 +345,17 @@ class SatelliteInterpolator(object):
         >>> satint.col_indices
         array([ 0,  2,  7, 12, 17, 22, 23])
         """
-        
         first = True
         last = True
         if self.col_indices[0] == self.hcol_indices[0]:
             first = False
         if self.col_indices[-1] == self.hcol_indices[-1]:
-            last = False        
+            last = False
 
         self.x__ = self._extrapolate_cols(self.x__, first, last)
         self.y__ = self._extrapolate_cols(self.y__, first, last)
         self.z__ = self._extrapolate_cols(self.z__, first, last)
-  
+
         if first and last:
             self.col_indices = np.concatenate((np.array([self.hcol_indices[0]]),
                                                self.col_indices,
@@ -369,10 +367,8 @@ class SatelliteInterpolator(object):
             self.col_indices = np.concatenate((self.col_indices,
                                                np.array([self.hcol_indices[-1]])))
 
-
     def _extrapolate_rows(self, data):
-        """Extrapolate the rows of data, to get the first and last together
-        with the data.
+        """Extrapolate the rows of data, to get the first and last together with the data.
 
         >>> import numpy as np
         >>> lons = np.arange(10).reshape((2, 5), order="F")
@@ -392,7 +388,6 @@ class SatelliteInterpolator(object):
                [ 6335702.70833714,  6311919.17016336,  6278581.57890056,
                  6235791.00048604,  6183672.04823372]])
         """
-
         pos = self.row_indices[:2]
         first_row = _linear_extrapolate(pos,
                                         (data[0, :], data[1, :]),
@@ -404,7 +399,7 @@ class SatelliteInterpolator(object):
 
         return np.vstack((np.expand_dims(first_row, 0),
                           data,
-                          np.expand_dims(last_row, 0))) 
+                          np.expand_dims(last_row, 0)))
 
     def _fill_row_borders(self):
         """Add the first and last rows to the data by extrapolation.
@@ -479,13 +474,12 @@ class SatelliteInterpolator(object):
         self.z__ = np.vstack(z__)
 
         self.row_indices = np.concatenate(row_indices)
-    
+
     def _interp(self):
-        """Interpolate the cartesian coordinates.
-        """
+        """Interpolate the cartesian coordinates."""
         if np.all(self.hrow_indices == self.row_indices):
             return self._interp1d()
-        
+
         xpoints, ypoints = np.meshgrid(self.hrow_indices,
                                        self.hcol_indices)
         spl = RectBivariateSpline(self.row_indices,
@@ -519,8 +513,7 @@ class SatelliteInterpolator(object):
         self.newz = self.newz.reshape(xpoints.shape).T
 
     def _interp1d(self):
-        """Interpolate in one dimension.
-        """
+        """Interpolate in one dimension."""
         lines = len(self.hrow_indices)
 
         self.newx = np.empty((len(self.hrow_indices),
@@ -535,7 +528,6 @@ class SatelliteInterpolator(object):
                               len(self.hcol_indices)),
                              self.z__.dtype)
 
-
         for cnt in range(lines):
             tck = splrep(self.col_indices, self.x__[cnt, :], k=self.ky_, s=0)
             self.newx[cnt, :] = splev(self.hcol_indices, tck, der=0)
@@ -546,10 +538,8 @@ class SatelliteInterpolator(object):
             tck = splrep(self.col_indices, self.z__[cnt, :], k=self.ky_, s=0)
             self.newz[cnt, :] = splev(self.hcol_indices, tck, der=0)
 
-
     def interpolate(self):
-        """Do the interpolation, and return resulting longitudes and latitudes.
-        """
+        """Do the interpolation, and return resulting longitudes and latitudes."""
         self._interp()
 
         self.longitude = get_lons_from_cartesian(self.newx, self.newy)
@@ -558,19 +548,19 @@ class SatelliteInterpolator(object):
 
         return self.longitude, self.latitude
 
+
 def get_lons_from_cartesian(x__, y__):
-    """Get longitudes from cartesian coordinates.
-    """
+    """Get longitudes from cartesian coordinates."""
     return rad2deg(arccos(x__ / sqrt(x__ ** 2 + y__ ** 2))) * sign(y__)
-    
+
+
 def get_lats_from_cartesian(x__, y__, z__, thr=0.8):
-    """Get latitudes from cartesian coordinates.
-    """
+    """Get latitudes from cartesian coordinates."""
     # if we are at low latitudes - small z, then get the
     # latitudes only from z. If we are at high latitudes (close to the poles)
     # then derive the latitude using x and y:
 
-    lats = np.where(np.logical_and(np.less(z__, thr * EARTH_RADIUS), 
+    lats = np.where(np.logical_and(np.less(z__, thr * EARTH_RADIUS),
                                    np.greater(z__, -1. * thr * EARTH_RADIUS)),
                     90 - rad2deg(arccos(z__/EARTH_RADIUS)),
                     sign(z__) *
@@ -579,65 +569,55 @@ def get_lats_from_cartesian(x__, y__, z__, thr=0.8):
     return lats
 
 
-import unittest
-
 class TestMODIS(unittest.TestCase):
-    """Class for system testing the MODIS interpolation.
-    """
+    """Class for system testing the MODIS interpolation."""
 
     def test_5_to_1(self):
-        """test the 5km to 1km interpolation facility
-        """
-        gfilename = \
-              "/san1/test/data/modis/MOD03_A12097_174256_2012097175435.hdf"
-        filename = \
-              "/san1/test/data/modis/MOD021km_A12097_174256_2012097175435.hdf"
+        """Test the 5km to 1km interpolation facility."""
+        gfilename = "/san1/test/data/modis/MOD03_A12097_174256_2012097175435.hdf"
+        filename = "/san1/test/data/modis/MOD021km_A12097_174256_2012097175435.hdf"
         from pyhdf.SD import SD
         from pyhdf.error import HDF4Error
-        
+
         try:
             gdata = SD(gfilename)
             data = SD(filename)
         except HDF4Error:
-            print "Failed reading both eos-hdf files %s and %s" % (gfilename, filename)
+            print("Failed reading both eos-hdf files %s and %s" % (gfilename, filename))
             return
-        
+
         glats = gdata.select("Latitude")[:]
         glons = gdata.select("Longitude")[:]
-    
+
         lats = data.select("Latitude")[:]
         lons = data.select("Longitude")[:]
-        
+
         tlons, tlats = modis5kmto1km(lons, lats)
 
         self.assert_(np.allclose(tlons, glons, atol=0.05))
         self.assert_(np.allclose(tlats, glats, atol=0.05))
 
-
     def test_1000m_to_250m(self):
-        """test the 1 km to 250 meter interpolation facility
-        """
-        #gfilename = \
+        """Test the 1 km to 250 meter interpolation facility."""
+        # gfilename = \
         #      "/san1/test/data/modis/MOD03_A12278_113638_2012278145123.hdf"
-        gfilename = \
-              "/local_disk/src/python-geotiepoints/tests/MOD03_A12278_113638_2012278145123.hdf"
-        #result_filename = \
+        gfilename = "/local_disk/src/python-geotiepoints/tests/MOD03_A12278_113638_2012278145123.hdf"
+        # result_filename = \
         #      "/san1/test/data/modis/250m_lonlat_results.npz"
-        result_filename = \
-              "/local_disk/src/python-geotiepoints/tests/250m_lonlat_results.npz"
+        result_filename = "/local_disk/src/python-geotiepoints/tests/250m_lonlat_results.npz"
 
         from pyhdf.SD import SD
         from pyhdf.error import HDF4Error
-        
+
         try:
             gdata = SD(gfilename)
         except HDF4Error:
-            print "Failed reading eos-hdf file %s" % gfilename
+            print("Failed reading eos-hdf file %s" % gfilename)
             return
-        
+
         lats = gdata.select("Latitude")[0:50, :]
         lons = gdata.select("Longitude")[0:50, :]
-    
+
         verif = np.load(result_filename)
         vlons = verif['lons']
         vlats = verif['lats']
@@ -649,5 +629,3 @@ class TestMODIS(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-
-    

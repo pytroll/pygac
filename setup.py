@@ -37,6 +37,7 @@ from setuptools.command.build_ext import build_ext as _build_ext
 
 version = imp.load_source('pygac.version', 'pygac/version.py')
 
+
 def set_builtin(name, value):
     if isinstance(__builtins__, dict):
         __builtins__[name] = value
@@ -103,12 +104,11 @@ if __name__ == '__main__':
                             'scipy'],
           extras_require={'geolocation interpolation': ['python-geotiepoints'],
                           },
-          scripts=[],
+          scripts=[os.path.join('bin', item) for item in os.listdir('bin')],
           data_files=[('etc', ['etc/pygac.cfg.template']),
                       ('gapfilled_tles', ['gapfilled_tles/TLE_noaa16.txt'])],
           test_suite="pygac.tests.suite",
           tests_require=[],
-
+          python_requires='>=2.7,!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*',
           zip_safe=False
           )
-

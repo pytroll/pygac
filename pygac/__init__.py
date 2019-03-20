@@ -20,15 +20,10 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-"""
-"""
-
 import logging
 import os
 
-import version
-
-__version__ = version.__version__
+from pygac.version import __version__  # noqa
 
 LOG = logging.getLogger(__name__)
 try:
@@ -38,5 +33,5 @@ except KeyError:
     CONFIG_FILE = ''
 
 if not os.path.exists(CONFIG_FILE) or not os.path.isfile(CONFIG_FILE):
-    LOG.warning(str(CONFIG_FILE) + " pointed to by the environment " +
-                "variable PYGAC_CONFIG_FILE is not a file or does not exist!")
+    LOG.warning(str(CONFIG_FILE) + " pointed to by the environment "
+                + "variable PYGAC_CONFIG_FILE is not a file or does not exist!")

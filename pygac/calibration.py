@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2014, 2015 Martin Raspaud, Abhay Devasthale
+# Copyright (c) 2014-2015, 2019 Pytroll Developers
 
 # Author(s):
 
@@ -23,6 +23,7 @@
 
 """Calibration coefficients and generic calibration functions
 """
+from __future__ import division
 import numpy as np
 
 coeffs = {
@@ -429,15 +430,14 @@ class Calibrator(object):
 
 
 def calibrate_solar(counts, chan, year, jday, spacecraft, corr=1):
-    """Do the solar calibration and return reflectance (between 0 and 100).
-    """
+    """Do the solar calibration and return reflectance (between 0 and 100)."""
     cal = Calibrator(spacecraft)
 
     t = (year + jday / 365.0) - cal.l_date
-    stl = (cal.al[chan] * (100.0 + cal.bl[chan] * t +
-                           cal.cl[chan] * t * t)) / 100.0
-    sth = (cal.ah[chan] * (100.0 + cal.bh[chan] * t +
-                           cal.ch[chan] * t * t)) / 100.0
+    stl = (cal.al[chan] * (100.0 + cal.bl[chan] * t
+                           + cal.cl[chan] * t * t)) / 100.0
+    sth = (cal.ah[chan] * (100.0 + cal.bh[chan] * t
+                           + cal.ch[chan] * t * t)) / 100.0
     if cal.c_s is not None:
         return np.where(counts <= cal.c_s[chan],
                         (counts - cal.c_dark[chan]) * stl * corr,
@@ -448,9 +448,7 @@ def calibrate_solar(counts, chan, year, jday, spacecraft, corr=1):
 
 
 def calibrate_thermal(counts, prt, ict, space, line_numbers, channel, spacecraft):
-    """Do the thermal calibration and return brightness temperatures (K).
-    """
-
+    """Do the thermal calibration and return brightness temperatures (K)."""
     cal = Calibrator(spacecraft)
 
     chan = channel - 3
@@ -525,13 +523,13 @@ def calibrate_thermal(counts, prt, ict, space, line_numbers, channel, spacecraft
     space_convolved = np.convolve(space, weighting_function, 'same')
 
     # take care of the beginning and end
-    tprt_convolved[0:(wlength - 1) / 2] = tprt_convolved[(wlength - 1) / 2]
-    ict_convolved[0:(wlength - 1) / 2] = ict_convolved[(wlength - 1) / 2]
-    space_convolved[0:(wlength - 1) / 2] = space_convolved[(wlength - 1) / 2]
-    tprt_convolved[-(wlength - 1) / 2:] = tprt_convolved[-((wlength + 1) / 2)]
-    ict_convolved[-(wlength - 1) / 2:] = ict_convolved[-((wlength + 1) / 2)]
-    space_convolved[-(wlength - 1) / 2:] = \
-        space_convolved[-((wlength + 1) / 2)]
+    tprt_convolved[0:(wlength - 1) // 2] = tprt_convolved[(wlength - 1) // 2]
+    ict_convolved[0:(wlength - 1) // 2] = ict_convolved[(wlength - 1) // 2]
+    space_convolved[0:(wlength - 1) // 2] = space_convolved[(wlength - 1) // 2]
+    tprt_convolved[-(wlength - 1) // 2:] = tprt_convolved[-((wlength + 1) // 2)]
+    ict_convolved[-(wlength - 1) // 2:] = ict_convolved[-((wlength + 1) // 2)]
+    space_convolved[-(wlength - 1) // 2:] = \
+        space_convolved[-((wlength + 1) // 2)]
 
     new_tprt = np.transpose(np.tile(tprt_convolved, (columns, 1)))
     new_ict = np.transpose(np.tile(ict_convolved, (columns, 1)))

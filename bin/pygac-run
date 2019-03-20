@@ -1,4 +1,3 @@
-
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
@@ -38,6 +37,7 @@ ch.setLevel(logging.DEBUG)
 
 class MyFormatter(logging.Formatter):
     converter = datetime.fromtimestamp
+
     def formatTime(self, record, datefmt=None):
         ct = self.converter(record.created)
         if datefmt:
@@ -85,8 +85,9 @@ def str2scanline(string):
 
 
 def validate_args(args):
-    if args.start_line > args.end_line:
+    if args.end_line > 0 and args.start_line > args.end_line:
         raise ValueError('Start Scanline > End Scanline')
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(

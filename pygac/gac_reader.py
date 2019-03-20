@@ -25,13 +25,17 @@ specific read functions.
 """
 import numpy as np
 from pygac import CONFIG_FILE
-import ConfigParser
+try:
+    import ConfigParser
+except ImportError:
+    import configparser as ConfigParser
+
 import os
 import logging
 from pyorbital.orbital import Orbital
 from pyorbital import astronomy
 import datetime
-from pygac.gac_calibration import calibrate_solar, calibrate_thermal
+from pygac.calibration import calibrate_solar, calibrate_thermal
 from abc import ABCMeta, abstractmethod, abstractproperty
 import types
 
@@ -45,7 +49,8 @@ class GACReader(object):
     scan_freq = 2.0/1000.0
     """Scanning frequency (scanlines per millisecond)"""
 
-    def __init__(self):
+    def __init__(self, tle_thresh=7):
+        self.tle_thresh = tle_thresh
         self.head = None
         self.scans = None
         self.spacecraft_name = None
@@ -174,7 +179,7 @@ class GACReader(object):
         return (scan_line_number - 1) / self.scan_freq
 
     def compute_lonlat(self, utcs=None, clock_drift_adjust=True):
-        tle1, tle2 = self.get_tle_lines()
+        tle1, tle2 = self.get_tle_lines(threshold=self.tle_thresh)
 
         scan_points = np.arange(3.5, 2048, 5)
 
@@ -254,6 +259,26 @@ class GACReader(object):
                 self.spacecraft_name)
         return channels
 
+    @staticmethod
+    def tle2datetime64(times):
+        """Convert TLE timestamps to numpy.datetime64
+
+        Args:
+           times (float): TLE timestamps as %y%j.1234, e.g. 18001.25
+        """
+        # Convert %y%j.12345 to %Y%j.12345 (valid for 1950-2049)
+        times = np.where(times > 50000, times + 1900000, times + 2000000)
+
+        # Convert float to datetime64
+        doys = (times % 1000).astype('int') - 1
+        years = (times // 1000).astype('int')
+        msecs = np.rint(24 * 3600 * 1000 * (times % 1))
+        times64 = (years - 1970).astype('datetime64[Y]').astype('datetime64[ms]')
+        times64 += doys.astype('timedelta64[D]')
+        times64 += msecs.astype('timedelta64[ms]')
+
+        return times64
+
     def get_tle_file(self):
         conf = ConfigParser.ConfigParser()
         try:
@@ -273,45 +298,56 @@ class GACReader(object):
         with open(tle_filename, 'r') as fp_:
             return fp_.readlines()
 
-    def get_tle_lines(self):
+    def get_tle_lines(self, threshold):
+        """Find closest two line elements (TLEs) for the current orbit
+
+        Raises:
+            IndexError, if the closest TLE is more than <threshold> days apart
+        """
         if self.tle_lines is not None:
             return self.tle_lines
+
         tle_data = self.get_tle_file()
-        tm = self.times[0]
-        sdate = (int(tm.strftime("%Y%j")) +
-                 (tm.hour +
-                  (tm.minute +
-                   (tm.second +
-                    tm.microsecond / 1000000.0) / 60.0) / 60.0) / 24.0)
+        sdate = np.datetime64(self.times[0], '[ms]')
+        dates = self.tle2datetime64(
+            np.array([float(line[18:32]) for line in tle_data[::2]]))
 
-        dates = np.array([float(line[18:32]) for line in tle_data[::2]])
-        dates = np.where(dates > 50000, dates + 1900000, dates + 2000000)
-
+        # Find index "iindex" such that dates[iindex-1] < sdate <= dates[iindex]
+        # Notes:
+        #     1. If sdate < dates[0] then iindex = 0
+        #     2. If sdate > dates[-1] then iindex = len(dates), beyond the right boundary!
         iindex = np.searchsorted(dates, sdate)
 
-        if ((iindex == 0 and abs(sdate - dates[0]) > 7) or
-                (iindex == len(dates) - 1 and abs(sdate - dates[-1]) > 7)):
-            raise IndexError(
-                "Can't find tle data for %s on the %s" %
-                (self.spacecraft_name, tm.isoformat()))
-
-        if abs(sdate - dates[iindex - 1]) < abs(sdate - dates[iindex]):
+        if iindex in (0, len(dates)):
+            if iindex == len(dates):
+                # Reset index if beyond the right boundary (see note 2. above)
+                iindex -= 1
+        elif abs(sdate - dates[iindex - 1]) < abs(sdate - dates[iindex]):
+            # Choose the closest of the two surrounding dates
             iindex -= 1
 
-        if abs(sdate - dates[iindex]) > 3:
-            LOG.warning("Found TLE data for %f that is %f days appart",
-                        sdate, abs(sdate - dates[iindex]))
-        else:
-            LOG.debug("Found TLE data for %f that is %f days appart",
-                      sdate, abs(sdate - dates[iindex]))
+        # Make sure the TLE we found is within the threshold
+        delta_days = abs(sdate - dates[iindex]) / np.timedelta64(1, 'D')
+        if delta_days > threshold:
+            raise IndexError(
+                "Can't find tle data for %s within +/- %d days around %s" %
+                (self.spacecraft_name, threshold, sdate))
 
+        if delta_days > 3:
+            LOG.warning("Found TLE data for %s that is %f days appart",
+                        sdate, delta_days)
+        else:
+            LOG.debug("Found TLE data for %s that is %f days appart",
+                      sdate, delta_days)
+
+        # Select TLE data
         tle1 = tle_data[iindex * 2]
         tle2 = tle_data[iindex * 2 + 1]
         self.tle_lines = tle1, tle2
         return tle1, tle2
 
     def get_angles(self):
-        tle1, tle2 = self.get_tle_lines()
+        tle1, tle2 = self.get_tle_lines(threshold=self.tle_thresh)
         orb = Orbital(self.spacecrafts_orbital[self.spacecraft_id],
                       line1=tle1, line2=tle2)
 
@@ -353,25 +389,26 @@ class GACReader(object):
         # offset, e.g. the first scanline has timestamp 1970-01-01 00:00
         msec_lineno = self.lineno2msec(self.scans["scan_line_number"])
 
-        jday = np.where(np.logical_or(jday<1, jday>366),np.median(jday),jday)
+        jday = np.where(np.logical_or(jday < 1, jday > 366), np.median(jday), jday)
         if_wrong_jday = np.ediff1d(jday, to_begin=0)
-        jday = np.where(if_wrong_jday<0, max(jday), jday)
+        jday = np.where(if_wrong_jday < 0, max(jday), jday)
 
-        if_wrong_msec = np.where(msec<1)
+        if_wrong_msec = np.where(msec < 1)
         if_wrong_msec = if_wrong_msec[0]
         if len(if_wrong_msec) > 0:
-            if if_wrong_msec[0] !=0:
+            if if_wrong_msec[0] != 0:
                 msec = msec[0] + msec_lineno
             else:
                 msec0 = np.median(msec - msec_lineno)
                 msec = msec0 + msec_lineno
 
         if_wrong_msec = np.ediff1d(msec, to_begin=0)
-        msec = np.where(np.logical_and(np.logical_or(if_wrong_msec<-1000, if_wrong_msec>1000),if_wrong_jday!=1), msec[0] + msec_lineno, msec)
+        msec = np.where(np.logical_and(np.logical_or(if_wrong_msec < -1000, if_wrong_msec > 1000), if_wrong_jday != 1),
+                        msec[0] + msec_lineno, msec)
 
         # checking if year value is out of valid range
         if_wrong_year = np.where(
-            np.logical_or(year<1978, year>datetime.datetime.now().year))
+            np.logical_or(year < 1978, year > datetime.datetime.now().year))
         if_wrong_year = if_wrong_year[0]
         if len(if_wrong_year) > 0:
             # if the first scanline has valid time stamp
@@ -648,21 +685,23 @@ class GACReader(object):
             return False
 
     def get_midnight_scanline(self):
-        """Find the scanline where the UTC date switches (if any).
+        """Find the scanline where the UTC date increases by one day.
 
         Returns:
-            int: The midnight scanline if it exists. None, else.
+            int: The midnight scanline if it exists and is unique.
+                 None, else.
         """
         self.get_times()
-        days = (self.utcs.astype('datetime64[D]') - self.utcs.astype('datetime64[M]') + 1).astype(int)
-        jump_pos = np.where(np.diff(days) == 1)[0]
-        if len(jump_pos) == 0:
+        d0 = np.datetime64(datetime.date(1970, 1, 1), 'D')
+        days = (self.utcs.astype('datetime64[D]') - d0).astype(int)
+        incr = np.where(np.diff(days) == 1)[0]
+        if len(incr) != 1:
+            if len(incr) > 1:
+                LOG.warning('Unable to determine midnight scanline: '
+                            'UTC date increases more than once. ')
             return None
         else:
-            if len(jump_pos) > 1:
-                LOG.warning('UTC date switches more than once. Choosing the '
-                            'first occurence as midnight scanline.')
-            return jump_pos[0]
+            return incr[0]
 
     def get_miss_lines(self):
         """Find missing scanlines, i.e. scanlines which were dropped for some
