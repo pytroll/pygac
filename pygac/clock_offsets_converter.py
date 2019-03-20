@@ -22,7 +22,7 @@
 
 """Converts text to python
 """
-
+from datetime import datetime
 
 txt = {"noaa14":
        """95013 	223633 	-0.37 	95213 	233350 	0.59
@@ -243,10 +243,6 @@ txt = {"noaa14":
 95116 	021019 	0.89 	95150 	203430 	-0.57
 95151 	030113 	0.91 	95201 	193323 	-1.24
 95202 	020016 	0.74 	95214 	200458 	0.21"""}
-
-
-from datetime import datetime
-import pprint
 
 sat = None
 

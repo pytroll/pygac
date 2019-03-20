@@ -27,12 +27,12 @@ from pygac import gac_klm
 import unittest
 import subprocess as sp
 
-#test_file = "test_data/NSS.GHRR.NL.D01183.S1313.E1458.B0400708.GC"
-#ref_result = "test_data/ECC_avhrrGAC_noaa16_20010702Z131338_20010702Z145809.h5"
-#my_result = "ECC_avhrrGAC_noaa16_20010702Z131338_20010702Z145809.h5"
+# test_file = "test_data/NSS.GHRR.NL.D01183.S1313.E1458.B0400708.GC"
+# ref_result = "test_data/ECC_avhrrGAC_noaa16_20010702Z131338_20010702Z145809.h5"
+# my_result = "ECC_avhrrGAC_noaa16_20010702Z131338_20010702Z145809.h5"
 
-#ref_sunsat = "test_data/ECC_sunsatGAC_noaa16_20010702Z131338_20010702Z145809.h5.orig"
-#my_sunsat = "ECC_sunsatGAC_noaa16_20010702Z131338_20010702Z145809.h5"
+# ref_sunsat = "test_data/ECC_sunsatGAC_noaa16_20010702Z131338_20010702Z145809.h5.orig"
+# my_sunsat = "ECC_sunsatGAC_noaa16_20010702Z131338_20010702Z145809.h5"
 
 test_file = "test_data/NSS.GHRR.NL.D02187.S1904.E2058.B0921517.GC"
 ref_result = "test_data/ECC_GAC_sunsatangles_noaa16_99999_20020706T1904020Z_20020706T2058095Z.h5"
@@ -41,11 +41,12 @@ my_result = "/tmp/ECC_GAC_sunsatangles_noaa16_99999_20020706T1904020Z_20020706T2
 ref_sunsat = "test_data/ECC_GAC_sunsatangles_noaa16_99999_20020706T1904020Z_20020706T2058095Z.h5"
 my_sunsat = "/tmp/ECC_GAC_sunsatangles_noaa16_99999_20020706T1904020Z_20020706T2058095Z.h5"
 
+
 class TestKLM(unittest.TestCase):
 
     def test_global(self):
         gac_klm.main(test_file, 0, 0)
-        
+
         child = sp.Popen(["h5diff", ref_sunsat, my_sunsat],
                          stdout=sp.PIPE)
         streamdata = child.communicate()[0]

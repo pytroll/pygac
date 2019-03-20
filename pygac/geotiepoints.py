@@ -120,7 +120,7 @@ def modis1kmto250m(lons1km, lats1km):
     return lons250m, lats250m
 
 
-def Gac_Lat_Lon_Interpolator(lons_subset,lats_subset):
+def Gac_Lat_Lon_Interpolator(lons_subset, lats_subset):
     """Interpolate lat-lon values in the AVHRR GAC data from every eigth pixel to all pixels.
 
     Each GAC row has total 409 pixels. But lat-lon values are provided for every eigth pixel
@@ -574,10 +574,8 @@ class TestMODIS(unittest.TestCase):
 
     def test_5_to_1(self):
         """Test the 5km to 1km interpolation facility."""
-        gfilename = \
-              "/san1/test/data/modis/MOD03_A12097_174256_2012097175435.hdf"
-        filename = \
-              "/san1/test/data/modis/MOD021km_A12097_174256_2012097175435.hdf"
+        gfilename = "/san1/test/data/modis/MOD03_A12097_174256_2012097175435.hdf"
+        filename = "/san1/test/data/modis/MOD021km_A12097_174256_2012097175435.hdf"
         from pyhdf.SD import SD
         from pyhdf.error import HDF4Error
 
@@ -601,14 +599,12 @@ class TestMODIS(unittest.TestCase):
 
     def test_1000m_to_250m(self):
         """Test the 1 km to 250 meter interpolation facility."""
-        #gfilename = \
+        # gfilename = \
         #      "/san1/test/data/modis/MOD03_A12278_113638_2012278145123.hdf"
-        gfilename = \
-              "/local_disk/src/python-geotiepoints/tests/MOD03_A12278_113638_2012278145123.hdf"
-        #result_filename = \
+        gfilename = "/local_disk/src/python-geotiepoints/tests/MOD03_A12278_113638_2012278145123.hdf"
+        # result_filename = \
         #      "/san1/test/data/modis/250m_lonlat_results.npz"
-        result_filename = \
-              "/local_disk/src/python-geotiepoints/tests/250m_lonlat_results.npz"
+        result_filename = "/local_disk/src/python-geotiepoints/tests/250m_lonlat_results.npz"
 
         from pyhdf.SD import SD
         from pyhdf.error import HDF4Error

@@ -146,7 +146,7 @@ header3 = np.dtype([("noaa_spacecraft_identification_code", ">u1"),
 
 scanline = np.dtype([("scan_line_number", ">i2"),
                      ("time_code", ">u2", (3, )),
-                     #("time_code", ">u1", (6, )),
+                     # ("time_code", ">u1", (6, )),
                      ("quality_indicators", ">u4"),
                      ("calibration_coefficients", ">i4", (10, )),
                      ("number_of_meaningful_zenith_angles_and_earth_location_appended",

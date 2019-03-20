@@ -37,6 +37,7 @@ from setuptools.command.build_ext import build_ext as _build_ext
 
 version = imp.load_source('pygac.version', 'pygac/version.py')
 
+
 def set_builtin(name, value):
     if isinstance(__builtins__, dict):
         __builtins__[name] = value

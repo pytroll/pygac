@@ -601,6 +601,7 @@ def main(filename, start_line, end_line):
                     reader.get_ch3_switch())
     LOG.info("pygac took: %s", str(datetime.datetime.now() - tic))
 
+
 if __name__ == "__main__":
     import sys
     main(sys.argv[1], sys.argv[2], sys.argv[3])

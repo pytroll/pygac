@@ -147,28 +147,28 @@ def save_gac(satellite_name,
         array[np.isnan(array)] = MISSING_DATA
 
     # Choose new temporary start/end lines if lat/lon info is invalid
-    no_wrong_lat = np.where(lats!=MISSING_DATA_LATLON)
+    no_wrong_lat = np.where(lats != MISSING_DATA_LATLON)
     temp_start_line = min(no_wrong_lat[0])
     temp_end_line = max(no_wrong_lat[0])
     if temp_start_line > start_line:
-       LOG.info('New start_line chosen (due to invalid lat/lon info) = ' + str(temp_start_line))
+        LOG.info('New start_line chosen (due to invalid lat/lon info) = ' + str(temp_start_line))
     if end_line > temp_end_line:
-       LOG.info('New end_line chosen (due to invalid lat/lon info) = ' + str(temp_end_line))
+        LOG.info('New end_line chosen (due to invalid lat/lon info) = ' + str(temp_end_line))
 
     # Slice data using temporary start/end lines
-    ref1 = ref1[temp_start_line:temp_end_line+1, :].copy()
-    ref2 = ref2[temp_start_line:temp_end_line+1, :].copy()
-    ref3 = ref3[temp_start_line:temp_end_line+1, :].copy()
-    bt3 = bt3[temp_start_line:temp_end_line+1, :].copy()
-    bt4 = bt4[temp_start_line:temp_end_line+1, :].copy()
-    bt5 = bt5[temp_start_line:temp_end_line+1, :].copy()
-    sun_zen = sun_zen[temp_start_line:temp_end_line+1, :].copy()
-    sun_azi = sun_azi[temp_start_line:temp_end_line+1, :].copy()
-    sat_zen = sat_zen[temp_start_line:temp_end_line+1, :].copy()
-    sat_azi = sat_azi[temp_start_line:temp_end_line+1, :].copy()
-    rel_azi = rel_azi[temp_start_line:temp_end_line+1, :].copy()
-    lats = lats[temp_start_line:temp_end_line+1, :].copy()
-    lons = lons[temp_start_line:temp_end_line+1, :].copy()
+    ref1 = ref1[temp_start_line:temp_end_line + 1, :].copy()
+    ref2 = ref2[temp_start_line:temp_end_line + 1, :].copy()
+    ref3 = ref3[temp_start_line:temp_end_line + 1, :].copy()
+    bt3 = bt3[temp_start_line:temp_end_line + 1, :].copy()
+    bt4 = bt4[temp_start_line:temp_end_line + 1, :].copy()
+    bt5 = bt5[temp_start_line:temp_end_line + 1, :].copy()
+    sun_zen = sun_zen[temp_start_line:temp_end_line + 1, :].copy()
+    sun_azi = sun_azi[temp_start_line:temp_end_line + 1, :].copy()
+    sat_zen = sat_zen[temp_start_line:temp_end_line + 1, :].copy()
+    sat_azi = sat_azi[temp_start_line:temp_end_line + 1, :].copy()
+    rel_azi = rel_azi[temp_start_line:temp_end_line + 1, :].copy()
+    lats = lats[temp_start_line:temp_end_line + 1, :].copy()
+    lons = lons[temp_start_line:temp_end_line + 1, :].copy()
     miss_lines = np.sort(np.array(
         qual_flags[0:temp_start_line, 0].tolist() +
         miss_lines.tolist() +
@@ -287,7 +287,7 @@ def avhrrGAC_io(satellite_name, xutcs, startdate, enddate, starttime, endtime,
                                 data=arrLat_full)
     dset8 = fout.create_dataset("/where/lon/data", dtype='int32',
                                 data=arrLon_full)
-
+    del dset8
     channellist = []
     channellist.append("channel1")
     channellist.append("channel2")
@@ -297,7 +297,7 @@ def avhrrGAC_io(satellite_name, xutcs, startdate, enddate, starttime, endtime,
     channellist.append("channel3a")
     dset10 = fout.create_dataset("/how/channel_list",
                                  data=channellist)
-
+    del dset10
     # Attributes directly on highest level groups
     g1 = fout.require_group("/image1")
     g2 = fout.require_group("/image2")
