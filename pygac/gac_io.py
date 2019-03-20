@@ -289,12 +289,12 @@ def avhrrGAC_io(satellite_name, xutcs, startdate, enddate, starttime, endtime,
                                 data=arrLon_full)
     del dset8
     channellist = []
-    channellist.append("channel1")
-    channellist.append("channel2")
-    channellist.append("channel3b")
-    channellist.append("channel4")
-    channellist.append("channel5")
-    channellist.append("channel3a")
+    channellist.append("channel1".encode('utf8'))
+    channellist.append("channel2".encode('utf8'))
+    channellist.append("channel3b".encode('utf8'))
+    channellist.append("channel4".encode('utf8'))
+    channellist.append("channel5".encode('utf8'))
+    channellist.append("channel3a".encode('utf8'))
     dset10 = fout.create_dataset("/how/channel_list",
                                  data=channellist)
     del dset10
