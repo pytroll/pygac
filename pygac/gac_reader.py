@@ -347,6 +347,7 @@ class GACReader(object):
         return tle1, tle2
 
     def get_angles(self):
+        self.get_times()
         tle1, tle2 = self.get_tle_lines(threshold=self.tle_thresh)
         orb = Orbital(self.spacecrafts_orbital[self.spacecraft_id],
                       line1=tle1, line2=tle2)
