@@ -306,6 +306,7 @@ class GACReader(six.with_metaclass(ABCMeta)):
         if self.tle_lines is not None:
             return self.tle_lines
 
+        self.get_times()
         tle_data = self.get_tle_file()
         sdate = np.datetime64(self.times[0], '[ms]')
         dates = self.tle2datetime64(
