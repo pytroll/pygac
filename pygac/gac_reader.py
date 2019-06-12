@@ -37,14 +37,13 @@ from pyorbital import astronomy
 import datetime
 from pygac.calibration import calibrate_solar, calibrate_thermal
 from abc import ABCMeta, abstractmethod, abstractproperty
+import six
 import types
 
 LOG = logging.getLogger(__name__)
 
 
-class GACReader(object):
-
-    __metaclass__ = ABCMeta
+class GACReader(six.with_metaclass(ABCMeta)):
 
     scan_freq = 2.0/1000.0
     """Scanning frequency (scanlines per millisecond)"""
@@ -179,7 +178,7 @@ class GACReader(object):
         return (scan_line_number - 1) / self.scan_freq
 
     def compute_lonlat(self, utcs=None, clock_drift_adjust=True):
-        tle1, tle2 = self.get_tle_lines(threshold=self.tle_thresh)
+        tle1, tle2 = self.get_tle_lines()
 
         scan_points = np.arange(3.5, 2048, 5)
 
@@ -298,15 +297,16 @@ class GACReader(object):
         with open(tle_filename, 'r') as fp_:
             return fp_.readlines()
 
-    def get_tle_lines(self, threshold):
+    def get_tle_lines(self):
         """Find closest two line elements (TLEs) for the current orbit
 
         Raises:
-            IndexError, if the closest TLE is more than <threshold> days apart
+            IndexError, if the closest TLE is more than :meth:`pygac.GACReader.tle_thresh` days apart
         """
         if self.tle_lines is not None:
             return self.tle_lines
 
+        self.get_times()
         tle_data = self.get_tle_file()
         sdate = np.datetime64(self.times[0], '[ms]')
         dates = self.tle2datetime64(
@@ -328,10 +328,10 @@ class GACReader(object):
 
         # Make sure the TLE we found is within the threshold
         delta_days = abs(sdate - dates[iindex]) / np.timedelta64(1, 'D')
-        if delta_days > threshold:
+        if delta_days > self.tle_thresh:
             raise IndexError(
                 "Can't find tle data for %s within +/- %d days around %s" %
-                (self.spacecraft_name, threshold, sdate))
+                (self.spacecraft_name, self.tle_thresh, sdate))
 
         if delta_days > 3:
             LOG.warning("Found TLE data for %s that is %f days appart",
@@ -348,7 +348,7 @@ class GACReader(object):
 
     def get_angles(self):
         self.get_times()
-        tle1, tle2 = self.get_tle_lines(threshold=self.tle_thresh)
+        tle1, tle2 = self.get_tle_lines()
         orb = Orbital(self.spacecrafts_orbital[self.spacecraft_id],
                       line1=tle1, line2=tle2)
 
