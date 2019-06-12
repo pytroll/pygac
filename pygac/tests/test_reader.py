@@ -78,6 +78,7 @@ class TestGacReader(unittest.TestCase):
         self.assertTrue(np.all(dates64 == dates64_exp))
 
     @mock.patch.multiple('pygac.gac_reader.GACReader', __abstractmethods__=set())
+    @mock.patch('pygac.gac_reader.GACReader.get_times')
     @mock.patch('pygac.gac_reader.GACReader.get_tle_file')
     def test_get_tle_lines(self, get_tle_file, *mocks):
         """Test identification of closest TLE lines"""
@@ -100,14 +101,14 @@ class TestGacReader(unittest.TestCase):
         }
 
         get_tle_file.return_value = tle_data
-        reader = GACReader()
+        reader = GACReader(tle_thresh=7)
         for time, tle_idx in expected.items():
             reader.times = [time]
             reader.tle_lines = None
             if tle_idx is None:
-                self.assertRaises(IndexError, reader.get_tle_lines, threshold=7)
+                self.assertRaises(IndexError, reader.get_tle_lines)
             else:
-                tle1, tle2 = reader.get_tle_lines(threshold=7)
+                tle1, tle2 = reader.get_tle_lines()
                 self.assertEqual(tle1, tle_data[tle_idx])
                 self.assertEqual(tle2, tle_data[tle_idx + 1])
 
