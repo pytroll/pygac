@@ -20,7 +20,6 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-"""Just holding the version of the pygac module
-"""
+"""Just holding the version of the pygac module."""
 
-__version__ = '1.0.1'
+__version__ = '1.1.0'
