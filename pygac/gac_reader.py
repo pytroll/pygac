@@ -37,14 +37,13 @@ from pyorbital import astronomy
 import datetime
 from pygac.calibration import calibrate_solar, calibrate_thermal
 from abc import ABCMeta, abstractmethod, abstractproperty
+import six
 import types
 
 LOG = logging.getLogger(__name__)
 
 
-class GACReader(object):
-
-    __metaclass__ = ABCMeta
+class GACReader(six.with_metaclass(ABCMeta)):
 
     scan_freq = 2.0/1000.0
     """Scanning frequency (scanlines per millisecond)"""
