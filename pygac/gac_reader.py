@@ -364,8 +364,6 @@ class GACReader(six.with_metaclass(ABCMeta)):
                                             self.lons, self.lats)
         del alt
         sun_azi = np.rad2deg(sun_azi)
-        sun_azi = np.where(sun_azi < 0, sun_azi + 180, sun_azi - 180)
-
         rel_azi = abs(sat_azi - sun_azi)
         rel_azi = np.where(rel_azi > 180.0, 360.0 - rel_azi, rel_azi)
 
