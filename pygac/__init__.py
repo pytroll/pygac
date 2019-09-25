@@ -35,3 +35,12 @@ except KeyError:
 if not os.path.exists(CONFIG_FILE) or not os.path.isfile(CONFIG_FILE):
     LOG.warning(str(CONFIG_FILE) + " pointed to by the environment "
                 + "variable PYGAC_CONFIG_FILE is not a file or does not exist!")
+
+def get_absolute_azimuth_angle_diff(sat_azi, sun_azi):
+    """ Calculates absolute azimuth difference angle from
+    Satellite zenith angle and sun zenith angle """
+    rel_azi = abs(sat_azi - sun_azi)
+    #rel_azi = np.where(rel_azi > 180.0, 360.0 - rel_azi, rel_azi)
+    rel_azi = rel_azi % 360
+    rel_azi[rel_azi>180] = 360.0 -rel_azi[rel_azi>180]
+    return rel_azi

@@ -24,7 +24,7 @@
 specific read functions.
 """
 import numpy as np
-from pygac import CONFIG_FILE
+from pygac import CONFIG_FILE, get_absolute_azimuth_angle_diff
 try:
     import ConfigParser
 except ImportError:
@@ -346,6 +346,7 @@ class GACReader(six.with_metaclass(ABCMeta)):
         self.tle_lines = tle1, tle2
         return tle1, tle2
 
+
     def get_angles(self):
         self.get_times()
         tle1, tle2 = self.get_tle_lines()
@@ -364,9 +365,7 @@ class GACReader(six.with_metaclass(ABCMeta)):
                                             self.lons, self.lats)
         del alt
         sun_azi = np.rad2deg(sun_azi)
-        rel_azi = abs(sat_azi - sun_azi)
-        rel_azi = np.where(rel_azi > 180.0, 360.0 - rel_azi, rel_azi)
-
+        rel_azi = get_absolute_azimuth_angle_diff(sun_azi, sat_azi)
         return sat_azi, sat_zenith, sun_azi, sun_zenith, rel_azi
 
     def correct_times_median(self, year, jday, msec):
