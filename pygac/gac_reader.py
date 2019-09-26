@@ -346,7 +346,6 @@ class GACReader(six.with_metaclass(ABCMeta)):
         self.tle_lines = tle1, tle2
         return tle1, tle2
 
-
     def get_angles(self):
         self.get_times()
         tle1, tle2 = self.get_tle_lines()

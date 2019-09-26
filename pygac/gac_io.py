@@ -118,7 +118,6 @@ def save_gac(satellite_name,
     lons = np.where(np.logical_or(lons < -180.00, lons > 180.00),
                     MISSING_DATA_LATLON, lons)
 
-
     for array in [bt3, bt4, bt5]:
         array[array != MISSING_DATA] = 100 * array[array != MISSING_DATA]
         array[mask] = MISSING_DATA

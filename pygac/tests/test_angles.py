@@ -21,8 +21,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-"""Test function for the angle calculation.
-"""
+"""Test function for the angle calculation."""
 
 import unittest
 
@@ -32,27 +31,27 @@ from pygac import get_absolute_azimuth_angle_diff
 
 
 class TestAngles(unittest.TestCase):
-
+    """Test function for the angle calculation."""
     def test_azidiff_angle(self):
-
-
-        SAT_AZ = np.ma.array([[48.0,  56.0, 64.0,  72.0],
+        """Test function for the azidiff angle."""
+        sat_az = np.ma.array([[48.0,  56.0, 64.0,  72.0],
                               [80.0,  88.0, 96.0, 104.0],
                               [-80.0,  -88.0, -96.0, -104.0],
                               [-180.0,  -188.0, -196.0, -204.0]], mask=False)
-        SUN_AZ = np.ma.array([[148.0,  156.0, 164.0,  172.0],
+        sun_az = np.ma.array([[148.0,  156.0, 164.0,  172.0],
                               [180.0,  188.0, 196.0, 204.0],
                               [180.0,  188.0, 196.0, 204.0],
                               [185.0,  193.0, 201.0, 209.0]], mask=False)
 
-        RES = np.ma.array([[100., 100., 100., 100.],
+        res = np.ma.array([[100., 100., 100., 100.],
                            [100., 100., 100., 100.],
                            [100.,  84.,  68.,  52.],
                            [5.,  21.,  37.,  53.]],
                           mask=False)
-        rel_azi = get_absolute_azimuth_angle_diff(SAT_AZ, SUN_AZ)
+        rel_azi = get_absolute_azimuth_angle_diff(sat_az, sun_az)
 
-        np.testing.assert_equal(rel_azi, RES)
+        np.testing.assert_allclose(rel_azi, res)
+
 
 def suite():
     """The suite for test_slerp
