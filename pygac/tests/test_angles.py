@@ -32,6 +32,7 @@ from pygac import get_absolute_azimuth_angle_diff
 
 class TestAngles(unittest.TestCase):
     """Test function for the angle calculation."""
+
     def test_azidiff_angle(self):
         """Test function for the azidiff angle."""
         sat_az = np.ma.array([[48.0,  56.0, 64.0,  72.0],
