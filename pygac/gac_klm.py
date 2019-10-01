@@ -34,7 +34,6 @@ from __future__ import print_function
 import numpy as np
 from .correct_tsm_issue import TSM_AFFECTED_INTERVALS_KLM
 from pygac.gac_reader import GACReader, inherit_doc
-import pygac.geotiepoints as gtp
 import datetime
 from pygac import gac_io
 import logging
@@ -522,12 +521,10 @@ class GACKLMReader(GACReader):
 
         return prt_counts, ict_counts, space_counts
 
-    def get_lonlat(self):
-        arr_lat = self.scans["earth_location"][:, 0::2] / 1e4
-        arr_lon = self.scans["earth_location"][:, 1::2] / 1e4
-
-        self.lons, self.lats = gtp.Gac_Lat_Lon_Interpolator(arr_lon, arr_lat)
-        return self.lons, self.lats
+    def _get_lonlat(self):
+        lats = self.scans["earth_location"][:, 0::2] / 1e4
+        lons = self.scans["earth_location"][:, 1::2] / 1e4
+        return lons, lats
 
     def get_header_timestamp(self):
         year = self.head['start_of_data_set_year']
@@ -546,18 +543,23 @@ class GACKLMReader(GACReader):
         return year, jday, msec
 
     def get_ch3_switch(self):
-        """0 for 3b, 1 for 3a
+        """Channel 3 identification.
+        
+        0: Channel 3b (Brightness temperature
+        1: Channel 3a (Reflectance)
+        2: Transition (No data)
         """
         return self.scans["scan_line_bit_field"][:] & 3
 
-    def get_corrupt_mask(self):
-
-        # corrupt scanlines
-
+    def _get_corrupt_mask(self):
+        """Get mask for corrupt scanlines."""
         mask = ((self.scans["quality_indicator_bit_field"] >> 31) |
                 ((self.scans["quality_indicator_bit_field"] << 3) >> 31) |
                 ((self.scans["quality_indicator_bit_field"] << 4) >> 31))
+        return mask.astype(bool)
 
+    def get_qual_flags(self):
+        """Read quality flags."""
         number_of_scans = self.scans["telemetry"].shape[0]
         qual_flags = np.zeros((int(number_of_scans), 7))
         qual_flags[:, 0] = self.scans["scan_line_number"]
@@ -568,7 +570,22 @@ class GACKLMReader(GACReader):
         qual_flags[:, 5] = ((self.scans["quality_indicator_bit_field"] << 26) >> 30)
         qual_flags[:, 6] = ((self.scans["quality_indicator_bit_field"] << 28) >> 30)
 
-        return mask.astype(bool), qual_flags
+        return qual_flags
+
+    def postproc(self, channels):
+        """Apply KLM specific postprocessing.
+
+        Masking out 3a/3b/transition.
+        """
+        switch = self.get_ch3_switch()
+        channels[:, :, 2][switch == 0] = np.nan
+        channels[:, :, 3][switch == 1] = np.nan
+        channels[:, :, 2][switch == 2] = np.nan
+        channels[:, :, 3][switch == 2] = np.nan
+
+    def adjust_clock_drift(self):
+        """Clock drift correction is only applied to POD satellites."""
+        pass
 
 
 def main(filename, start_line, end_line):
@@ -578,9 +595,8 @@ def main(filename, start_line, end_line):
     reader.get_lonlat()
     channels = reader.get_calibrated_channels()
     sat_azi, sat_zen, sun_azi, sun_zen, rel_azi = reader.get_angles()
-
-    mask, qual_flags = reader.get_corrupt_mask()
-    if (np.all(mask)):
+    qual_flags = reader.get_qual_flags()
+    if np.all(reader.get_corrupt_mask()):
         print("ERROR: All data is masked out. Stop processing")
         raise ValueError("All data is masked out.")
 
@@ -593,12 +609,11 @@ def main(filename, start_line, end_line):
                     channels[:, :, 4],
                     channels[:, :, 5],
                     sun_zen, sat_zen, sun_azi, sat_azi, rel_azi,
-                    mask, qual_flags, start_line, end_line,
+                    qual_flags, start_line, end_line,
                     reader.is_tsm_affected(),
                     reader.filename,
                     reader.get_midnight_scanline(),
-                    reader.get_miss_lines(),
-                    reader.get_ch3_switch())
+                    reader.get_miss_lines())
     LOG.info("pygac took: %s", str(datetime.datetime.now() - tic))
 
 

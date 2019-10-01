@@ -439,12 +439,17 @@ def calibrate_solar(counts, chan, year, jday, spacecraft, corr=1):
     sth = (cal.ah[chan] * (100.0 + cal.bh[chan] * t
                            + cal.ch[chan] * t * t)) / 100.0
     if cal.c_s is not None:
-        return np.where(counts <= cal.c_s[chan],
+        refl = np.where(counts <= cal.c_s[chan],
                         (counts - cal.c_dark[chan]) * stl * corr,
                         ((cal.c_s[chan] - cal.c_dark[chan]) * stl
                          + (counts - cal.c_s[chan]) * sth) * corr)
     else:
-        return (counts - cal.c_dark[chan]) * stl * corr
+        refl = (counts - cal.c_dark[chan]) * stl * corr
+
+    # Mask negative reflectances
+    refl[refl < 0] = np.nan
+
+    return refl
 
 
 def calibrate_thermal(counts, prt, ict, space, line_numbers, channel, spacecraft):
@@ -554,5 +559,8 @@ def calibrate_thermal(counts, prt, ict, space, line_numbers, channel, spacecraft
 
     if chan == 0:
         bt = np.where((counts - new_space) >= 0, 0.0, bt)
+
+    # Mask values outside valid range
+    bt = np.where(np.logical_or(bt < 170.0, bt > 350.0), np.nan, bt)
 
     return bt

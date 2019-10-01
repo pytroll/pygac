@@ -23,22 +23,24 @@
 """Generic reader for GAC data. Can't be used as is, has to be subclassed to add
 specific read functions.
 """
+from abc import ABCMeta, abstractmethod, abstractproperty
+import logging
 import numpy as np
+import os
+import six
+import types
+
 from pygac import CONFIG_FILE, get_absolute_azimuth_angle_diff
 try:
     import ConfigParser
 except ImportError:
     import configparser as ConfigParser
 
-import os
-import logging
 from pyorbital.orbital import Orbital
 from pyorbital import astronomy
 import datetime
 from pygac.calibration import calibrate_solar, calibrate_thermal
-from abc import ABCMeta, abstractmethod, abstractproperty
-import six
-import types
+import pygac.geotiepoints as gtp
 
 LOG = logging.getLogger(__name__)
 
@@ -60,6 +62,7 @@ class GACReader(six.with_metaclass(ABCMeta)):
         self.times = None
         self.tle_lines = None
         self.filename = None
+        self.mask = None
 
     @abstractmethod
     def read(self, filename):
@@ -256,7 +259,66 @@ class GACReader(six.with_metaclass(ABCMeta)):
                 self.scans["scan_line_number"],
                 chan,
                 self.spacecraft_name)
+
+        # Mask out corrupt values
+        mask = self.get_corrupt_mask()
+        channels[mask] = np.nan
+
+        # Apply KLM/POD specific postprocessing
+        self.postproc(channels)
+
         return channels
+
+    def get_lonlat(self):
+        """Compute lat/lon coordinates.
+
+        TODO: Switch to faster interpolator?
+        """
+        if self.lons is None and self.lats is None:
+            lons, lats = self._get_lonlat()
+
+            # Interpolate from every eigth pixel to all pixels.
+            self.lons, self.lats = gtp.Gac_Lat_Lon_Interpolator(lons, lats)
+
+            # Adjust clock drift
+            self.adjust_clock_drift()
+
+            # Mask out corrupt scanlines
+            mask = self.get_corrupt_mask()
+            self.lons[mask] = np.nan
+            self.lats[mask] = np.nan
+
+            # Mask values outside the valid range
+            self.lats[np.fabs(self.lats) > 90.0] = np.nan
+            self.lons[np.fabs(self.lons) > 180.0] = np.nan
+
+        return self.lons, self.lats
+
+    @abstractmethod
+    def _get_lonlat(self):
+        """KLM/POD specific readout of lat/lon coordinates."""
+        raise NotImplementedError
+
+    def get_corrupt_mask(self):
+        """Get mask for corrupt scanlines."""
+        if self.mask is None:
+            self.mask = self._get_corrupt_mask()
+        return self.mask
+
+    @abstractmethod
+    def _get_corrupt_mask(self):
+        """KLM/POD specific readout of corrupt scanline mask."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def postproc(self, channels):
+        """Apply KLM/POD specific postprocessing."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def adjust_clock_drift(self):
+        """Adjust clock drift."""
+        raise NotImplementedError
 
     @staticmethod
     def tle2datetime64(times):
@@ -365,6 +427,12 @@ class GACReader(six.with_metaclass(ABCMeta)):
         del alt
         sun_azi = np.rad2deg(sun_azi)
         rel_azi = get_absolute_azimuth_angle_diff(sun_azi, sat_azi)
+
+        # Mask corrupt scanlines
+        mask = self.get_corrupt_mask()
+        for arr in (sat_azi, sat_zenith, sun_azi, sun_zenith, rel_azi):
+            arr[mask] = np.nan
+
         return sat_azi, sat_zenith, sun_azi, sun_zenith, rel_azi
 
     def correct_times_median(self, year, jday, msec):
