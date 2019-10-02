@@ -228,10 +228,7 @@ def mean_filter(data, fill_value, box_size):
         raise ValueError('Box size must be odd.')
 
     # Replace masked elements with fill_value
-    if isinstance(data, np.ma.core.MaskedArray):
-        filled = data.filled(fill_value)
-    else:
-        filled = data
+    filled = np.where(np.isnan(data), fill_value, data)
 
     # Convert data to double (this is what _mean_filter() is expecting) and
     # apply mean filter
@@ -239,7 +236,7 @@ def mean_filter(data, fill_value, box_size):
                             fill_value=fill_value)
 
     # Re-mask fill values
-    return np.ma.masked_equal(filtered, fill_value)
+    return np.where(filtered == fill_value, np.nan, filtered)
 
 
 def std_filter(data, box_size, fill_value):

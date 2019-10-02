@@ -33,8 +33,6 @@ import time
 import h5py
 import numpy as np
 
-from .correct_tsm_issue import flag_pixels as flag_tsm_pixels
-
 try:
     import ConfigParser
 except ImportError:
@@ -93,7 +91,7 @@ def save_gac(satellite_name,
              ref1, ref2, ref3,
              bt3, bt4, bt5,
              sun_zen, sat_zen, sun_azi, sat_azi, rel_azi,
-             qual_flags, start_line, end_line, tsmcorr,
+             qual_flags, start_line, end_line,
              gac_file, midnight_scanline, miss_lines):
 
     along_track = lats.shape[0]
@@ -202,24 +200,6 @@ def save_gac(satellite_name,
 
     # Compute total number of scanlines
     total_number_of_scan_lines = end_line - start_line + 1
-
-    # Correct for temporary scan motor issue.
-    #
-    # TODO: The thresholds in tsm.flag_pixels() were derived from the final
-    #       pygac output, that's why the correction is applied here. It would
-    #       certainly be more consistent to apply the correction in GACReader,
-    #       but that requires a new threshold analysis.
-    if tsmcorr:
-        LOG.info('Correcting for temporary scan motor issue')
-        tic = datetime.datetime.now()
-        (ref1, ref2, bt3, bt4, bt5, ref3) = flag_tsm_pixels(channel1=ref1,
-                                                            channel2=ref2,
-                                                            channel3b=bt3,
-                                                            channel4=bt4,
-                                                            channel5=bt5,
-                                                            channel3a=ref3,
-                                                            fillv=MISSING_DATA)
-        LOG.debug('TSM correction took: %s', str(datetime.datetime.now() - tic))
 
     avhrrGAC_io(satellite_name, xutcs, startdate, enddate, starttime, endtime,
                 lats, lons, ref1, ref2, ref3, bt3, bt4, bt5,
