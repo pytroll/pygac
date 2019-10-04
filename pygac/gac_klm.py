@@ -544,7 +544,7 @@ class GACKLMReader(GACReader):
 
     def get_ch3_switch(self):
         """Channel 3 identification.
-        
+
         0: Channel 3b (Brightness temperature
         1: Channel 3a (Reflectance)
         2: Transition (No data)
@@ -564,11 +564,16 @@ class GACKLMReader(GACReader):
         qual_flags = np.zeros((int(number_of_scans), 7))
         qual_flags[:, 0] = self.scans["scan_line_number"]
         qual_flags[:, 1] = (self.scans["quality_indicator_bit_field"] >> 31)
-        qual_flags[:, 2] = ((self.scans["quality_indicator_bit_field"] << 3) >> 31)
-        qual_flags[:, 3] = ((self.scans["quality_indicator_bit_field"] << 4) >> 31)
-        qual_flags[:, 4] = ((self.scans["quality_indicator_bit_field"] << 24) >> 30)
-        qual_flags[:, 5] = ((self.scans["quality_indicator_bit_field"] << 26) >> 30)
-        qual_flags[:, 6] = ((self.scans["quality_indicator_bit_field"] << 28) >> 30)
+        qual_flags[:, 2] = (
+            (self.scans["quality_indicator_bit_field"] << 3) >> 31)
+        qual_flags[:, 3] = (
+            (self.scans["quality_indicator_bit_field"] << 4) >> 31)
+        qual_flags[:, 4] = (
+            (self.scans["quality_indicator_bit_field"] << 24) >> 30)
+        qual_flags[:, 5] = (
+            (self.scans["quality_indicator_bit_field"] << 26) >> 30)
+        qual_flags[:, 6] = (
+            (self.scans["quality_indicator_bit_field"] << 28) >> 30)
 
         return qual_flags
 
