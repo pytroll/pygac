@@ -399,8 +399,8 @@ class GACPODReader(GACReader):
 
         Uses channels 1, 2, 4 and 5. Neither 3a, nor 3b.
         """
-        return get_tsm_idx(channels[:, :, 0], channels[:, :, 1], channels[:, :, 3],
-                           channels[:, :, 4])
+        return get_tsm_idx(channels[:, :, 0], channels[:, :, 1],
+                           channels[:, :, 3], channels[:, :, 4])
 
 
 def main(filename, start_line, end_line):
