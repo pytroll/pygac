@@ -262,7 +262,7 @@ def std_filter(data, box_size, fill_value):
                                          fill_value=fill_value))
     squared_mean = mean_filter(np.square(data), box_size=box_size,
                                fill_value=fill_value)
-    return np.ma.sqrt(squared_mean - mean_squared)
+    return np.sqrt(squared_mean - mean_squared)
 
 
 def get_tsm_idx(ch1, ch2, ch4, ch5):
@@ -282,58 +282,6 @@ def get_tsm_idx(ch1, ch2, ch4, ch5):
     # using ch1, ch2, ch4, ch5 in combination
     # all channels seems to be affected throughout the whole orbit,
     # independent of VIS and NIR or day and night
-    idx = np.where((std_d12 > 0.02) & (std_d45 > 2.00))
+    idx = np.where((std_d12 > 2.0) & (std_d45 > 2.0))
 
     return idx
-
-
-def flag_pixels(channel1, channel2, channel3b,
-                channel4, channel5, channel3a, fillv):
-    """Set TSM affected pixels to fill value.
-
-    Scale reflectances ranging from 0 to 1.5 and brightness temperatures
-    ranging from 170 to 350.
-    """
-    # ------------------------------------------------------------------------
-    # (1) Scaling measurements w.r.t. threshold values
-    # ------------------------------------------------------------------------
-    # ref between 0 and 1
-    ref_gain = 0.01*0.01
-    ref_offs = 0.0
-    # bt between 170 and 350
-    bt_gain = 0.01
-    bt_offs = 273.15
-    # original ref data
-    ch1 = ref_gain * np.ma.masked_equal(channel1, fillv) + ref_offs
-    ch2 = ref_gain * np.ma.masked_equal(channel2, fillv) + ref_offs
-    ch3a = ref_gain * np.ma.masked_equal(channel3a, fillv) + ref_offs
-    # original bt data
-    ch3b = bt_gain * np.ma.masked_equal(channel3b, fillv) + bt_offs
-    ch4 = bt_gain * np.ma.masked_equal(channel4, fillv) + bt_offs
-    ch5 = bt_gain * np.ma.masked_equal(channel5, fillv) + bt_offs
-
-    # ------------------------------------------------------------------------
-    # (2) TSM Correction
-    # ------------------------------------------------------------------------
-    # find indices of tsm issue affected pixels
-    idx = get_tsm_idx(ch1, ch2, ch4, ch5)
-    # apply correction index using fill_value and fill masked elements
-    for array in [ch1, ch2, ch3b, ch4, ch5, ch3a]:
-        if isinstance(array.mask, np.bool_):
-            array.mask = np.zeros(array.shape, dtype='bool')
-        array.mask[idx] = True
-        array[:, :] = np.ma.filled(array, fillv)
-
-    # ------------------------------------------------------------------------
-    # (3) Re-scaling measurments
-    # ------------------------------------------------------------------------
-    # re-scaling reflectance obs
-    for array in [ch1, ch2, ch3a]:
-        if np.ma.count(array[array != fillv]) > 0:
-            array[array != fillv] = (array[array != fillv] - ref_offs) / ref_gain
-    # re-scaling brightness temperature obs
-    for array in [ch3b, ch4, ch5]:
-        if np.ma.count(array[array != fillv]) > 0:
-            array[array != fillv] = (array[array != fillv] - bt_offs) / bt_gain
-
-    return ch1, ch2, ch3b, ch4, ch5, ch3a

@@ -39,7 +39,7 @@ from __future__ import print_function
 
 import numpy as np
 from pygac.gac_reader import GACReader, inherit_doc
-from .correct_tsm_issue import TSM_AFFECTED_INTERVALS_POD
+from pygac.correct_tsm_issue import TSM_AFFECTED_INTERVALS_POD, get_tsm_idx
 import datetime
 from pygac import gac_io
 
@@ -391,7 +391,16 @@ class GACPODReader(GACReader):
         return qual_flags
 
     def postproc(self, channels):
+        """No POD specific postprocessing to be done."""
         pass
+
+    def get_tsm_pixels(self, channels):
+        """Determine pixels affected by the scan motor issue.
+
+        Uses channels 1, 2, 4 and 5. Neither 3a, nor 3b.
+        """
+        return get_tsm_idx(channels[:, :, 0], channels[:, :, 1], channels[:, :, 3],
+                           channels[:, :, 4])
 
 
 def main(filename, start_line, end_line):

@@ -32,7 +32,7 @@ http://www.ncdc.noaa.gov/oa/pod-guide/ncdc/docs/klm/html/c8/sec83142-1.htm
 from __future__ import print_function
 
 import numpy as np
-from .correct_tsm_issue import TSM_AFFECTED_INTERVALS_KLM
+from pygac.correct_tsm_issue import TSM_AFFECTED_INTERVALS_KLM, get_tsm_idx
 from pygac.gac_reader import GACReader, inherit_doc
 import datetime
 from pygac import gac_io
@@ -586,6 +586,14 @@ class GACKLMReader(GACReader):
     def adjust_clock_drift(self):
         """Clock drift correction is only applied to POD satellites."""
         pass
+
+    def get_tsm_pixels(self, channels):
+        """Determine pixels affected by the scan motor issue.
+
+        Uses channels 1, 2, 4 and 5. Neither 3a, nor 3b.
+        """
+        return get_tsm_idx(channels[:, :, 0], channels[:, :, 1], channels[:, :, 4],
+                           channels[:, :, 5])
 
 
 def main(filename, start_line, end_line):

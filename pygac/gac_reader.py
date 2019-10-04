@@ -36,7 +36,6 @@ try:
 except ImportError:
     import configparser as ConfigParser
 
-from pygac.correct_tsm_issue import get_tsm_idx
 from pyorbital.orbital import Orbital
 from pyorbital import astronomy
 import datetime
@@ -789,9 +788,16 @@ class GACReader(six.with_metaclass(ABCMeta)):
 
     def mask_tsm_pixels(self, channels):
         """Mask pixels affected by the scan motor issue."""
-        idx = get_tsm_idx(channels[:, :, 0], channels[:, :, 1], channels[:, :, 3],
-                          channels[:, :, 4])
+        idx = self.get_tsm_pixels(channels)
         channels[idx] = np.nan
+
+    @abstractmethod
+    def get_tsm_pixels(self, channels):
+        """Determine pixels affected by the scan motor issue.
+
+        Channel selection is POD/KLM specific.
+        """
+        raise NotImplementedError
 
 
 def inherit_doc(cls):
