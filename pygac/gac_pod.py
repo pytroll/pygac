@@ -185,9 +185,9 @@ class GACPODReader(GACReader):
 
     tsm_affected_intervals = TSM_AFFECTED_INTERVALS_POD
 
-    def correct_scan_line_numbers(self, plot=False):
+    def correct_scan_line_numbers(self):
         # Perform common corrections first.
-        super(GACPODReader, self).correct_scan_line_numbers(plot=plot)
+        super(GACPODReader, self).correct_scan_line_numbers()
 
         # cleaning up the data
         min_scanline_number = np.amin(np.absolute(self.scans["scan_line_number"][:]))
