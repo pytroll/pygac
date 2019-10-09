@@ -24,7 +24,7 @@
 """
 
 from pygac.tests import (test_calibrate_pod, test_slerp, test_calibrate_klm,
-                         test_pod, test_corrections, test_reader, test_io,
+                         test_pod, test_tsm, test_reader, test_io,
                          test_angles)
 import unittest
 
@@ -34,7 +34,7 @@ def suite():
     """
     mysuite = unittest.TestSuite()
     tests = (test_slerp, test_calibrate_klm, test_calibrate_pod,
-             test_pod, test_corrections, test_reader, test_io, test_angles)
+             test_pod, test_tsm, test_reader, test_io, test_angles)
     for test in tests:
         mysuite.addTests(test.suite())
 

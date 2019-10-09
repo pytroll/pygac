@@ -22,17 +22,7 @@ import unittest
 import mock
 import numpy as np
 from pygac.gac_io import update_start_end_line
-
-
-class CalledWithAdapter(object):
-    def __init__(self, array):
-        self.array = array
-
-    def __repr__(self):
-        return repr(self.array)
-
-    def __eq__(self, other):
-        return np.all(self.array == other)
+from pygac.tests.utils import CalledWithArray
 
 
 class TestIO(unittest.TestCase):
@@ -94,15 +84,14 @@ class TestIO(unittest.TestCase):
         import pygac.gac_io
 
         # Define test data
-        fv = pygac.gac_io.MISSING_DATA_LATLON
         along = 10
         across = 3
         miss_lines = np.array([1, 5, 11, 14])  # never recorded
         qualflags = np.array(
             [[2, 3, 4, 6, 7, 8, 9, 10, 12, 13]]).transpose()  # scanline number
-        lats = np.arange(along*across).reshape((along, across))
-        lats[:2+1, :] = fv  # Make first 3 lines invalid
-        lats[7:, :] = fv  # Make last 3 lines invalid
+        lats = np.arange(along*across, dtype=float).reshape((along, across))
+        lats[:2+1, :] = np.nan  # Make first 3 lines invalid
+        lats[7:, :] = np.nan  # Make last 3 lines invalid
         lons = lats.copy()
         xutcs = np.arange(along).astype('datetime64[ms]')
         midnight_scanline = 5
@@ -119,7 +108,8 @@ class TestIO(unittest.TestCase):
         for itest, (start_line, end_line) in enumerate(start_end_lines):
             new_start_line = new_start_lines[itest]
             new_end_line = new_end_lines[itest]
-            lats_ref = lats[new_start_line:new_end_line + 1, :]
+            lats_ref = 1000.0 * lats[new_start_line:new_end_line + 1, :]
+            lats_ref[np.isnan(lats_ref)] = pygac.gac_io.MISSING_DATA_LATLON
             qualflags_ref = qualflags[new_start_line:new_end_line+1]
             xutcs_ref = xutcs[new_start_line:new_end_line + 1]
             midnight_scanline_ref = midnight_scanlines_ref[itest]
@@ -128,8 +118,8 @@ class TestIO(unittest.TestCase):
                 pygac.gac_io.save_gac(
                     satellite_name='dummy',
                     xutcs=xutcs,
-                    lats=lats,
-                    lons=lons,
+                    lats=lats.copy(),
+                    lons=lons.copy(),
                     ref1=dummydata,
                     ref2=dummydata,
                     ref3=dummydata,
@@ -141,29 +131,21 @@ class TestIO(unittest.TestCase):
                     sun_azi=dummydata,
                     sat_azi=dummydata,
                     rel_azi=dummydata,
-                    mask=np.zeros(lats.shape, dtype='bool'),
                     qual_flags=qualflags,
                     start_line=start_line,
                     end_line=end_line,
-                    tsmcorr=False,
                     gac_file='dummy',
                     midnight_scanline=midnight_scanline,
                     miss_lines=miss_lines,
-                    switch=np.zeros(lats.shape, dtype='bool')
                 )
                 expected_args = [
                     mock.ANY,
-                    CalledWithAdapter(xutcs_ref),
+                    CalledWithArray(xutcs_ref),
                     mock.ANY,
                     mock.ANY,
                     mock.ANY,
                     mock.ANY,
-                    CalledWithAdapter(lats_ref*1000.0),
-                    mock.ANY,
-                    mock.ANY,
-                    mock.ANY,
-                    mock.ANY,
-                    mock.ANY,
+                    CalledWithArray(lats_ref),
                     mock.ANY,
                     mock.ANY,
                     mock.ANY,
@@ -171,7 +153,12 @@ class TestIO(unittest.TestCase):
                     mock.ANY,
                     mock.ANY,
                     mock.ANY,
-                    CalledWithAdapter(qualflags_ref),
+                    mock.ANY,
+                    mock.ANY,
+                    mock.ANY,
+                    mock.ANY,
+                    mock.ANY,
+                    CalledWithArray(qualflags_ref),
                     mock.ANY,
                     mock.ANY,
                     mock.ANY,
@@ -179,7 +166,7 @@ class TestIO(unittest.TestCase):
                     mock.ANY,
                     mock.ANY,
                     midnight_scanline_ref,
-                    CalledWithAdapter(all_miss_lines_ref)
+                    CalledWithArray(all_miss_lines_ref)
                 ]
                 io_mock.assert_called_with(*expected_args)
 

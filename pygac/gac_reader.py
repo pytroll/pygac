@@ -495,7 +495,7 @@ class GACReader(six.with_metaclass(ABCMeta)):
 
         return year, jday, msec
 
-    def correct_scan_line_numbers(self, plot=False):
+    def correct_scan_line_numbers(self):
         """Remove scanlines with corrupted scanline numbers
 
         This includes:
@@ -508,17 +508,12 @@ class GACReader(six.with_metaclass(ABCMeta)):
             - NSS.GHRR.NJ.D96064.S0043.E0236.B0606162.WI
             - NSS.GHRR.NJ.D99286.S1818.E2001.B2466869.WI
 
-        Args:
-            plot (bool): If True, plot results.
+        Returns:
+            Intermediate and final results (for plotting purpose)
         """
         along_track = np.arange(1, len(self.scans["scan_line_number"])+1)
-
-        # Plot original scanline numbers
-        if plot:
-            import matplotlib.pyplot as plt
-            _, (ax0, ax1) = plt.subplots(nrows=2)
-            ax0.plot(along_track, self.scans["scan_line_number"], "b-",
-                     label="original")
+        results = {'along_track': along_track,
+                   'n_orig': self.scans['scan_line_number'].copy()}
 
         # Remove scanlines whose scanline number is outside the valid range
         within_range = np.logical_and(self.scans["scan_line_number"] < 15000,
@@ -564,30 +559,16 @@ class GACReader(six.with_metaclass(ABCMeta)):
         LOG.debug('Removed %s scanline(s) with corrupt scanline numbers',
                   str(len(along_track) - len(self.scans)))
 
-        # Plot corrected scanline numbers
-        if plot:
-            along_track = along_track[within_range]
-            along_track = along_track[diffs <= thresh]
-            ax0.plot(along_track, self.scans["scan_line_number"], "r--",
-                     label="corrected")
-            ax0.set_ylabel("Scanline Number")
-            ax0.set_xlabel("Along Track")
-            ax0.legend(loc="best")
-
-            ax1.plot(np.arange(len(nz_diffs)), nz_diffs)
-            ax1.axhline(thresh, color="r", label="thresh={0:.2f}"
-                        .format(thresh))
-            ax1.set_xlabel("Index")
-            ax1.set_ylabel("nonzero |n - n'|")
-            ax1.legend()
-
-            plt.tight_layout()
-            plt.savefig(self.filename + "_scanline_number_correction.png",
-                        bbox_inches='tight')
+        results.update({'n_corr': self.scans['scan_line_number'],
+                        'within_range': within_range,
+                        'diffs': diffs,
+                        'thresh': thresh,
+                        'nz_diffs': nz_diffs})
+        return results
 
     def correct_times_thresh(self, max_diff_from_t0_head=6*60*1000,
                              min_frac_near_t0_head=0.01,
-                             max_diff_from_ideal_t=10*1000, plot=False):
+                             max_diff_from_ideal_t=10*1000):
         """Correct corrupted timestamps using a threshold approach.
 
         The threshold approach is based on the scanline number and the header
@@ -624,20 +605,20 @@ class GACReader(six.with_metaclass(ABCMeta)):
                 If a scanline timestamp deviates more than max_diff_from_ideal_t
                 from the ideal timestamp, it is regarded as corrupt and will be
                 replaced with the ideal timestamp.
-            plot (bool): If True, plot results.
+        Returns:
+            Intermediate and final results (for plotting purpose)
         """
-        apply_corr = True
-        fail_reason = ""
+        results = {}
         dt64_msec = ">M8[ms]"
 
         # Check whether scanline number increases monotonically
         n = self.scans["scan_line_number"]
+        results.update({'t': self.utcs.copy(), 'n': n})
         if np.any(np.diff(n) < 0):
             LOG.error("Cannot perform timestamp correction. Scanline number "
                       "does not increase monotonically.")
-            apply_corr = False
-            fail_reason = "Scanline number jumps backwards"
-            # We could already return here, but continue for plotting purpose
+            results['fail_reason'] = "Scanline number jumps backwards"
+            return results
 
         # Convert time to milliseconds since 1970-01-01
         t = self.utcs.astype("i8")
@@ -667,60 +648,27 @@ class GACReader(six.with_metaclass(ABCMeta)):
         #    we do not have reliable information and cannot proceed.
         near_t0_head = np.where(
             np.fabs(offsets - t0_head) <= max_diff_from_t0_head)[0]
+        results.update({'offsets': offsets,
+                        't0_head': t0_head,
+                        'max_diff_from_t0_head': max_diff_from_t0_head})
         if near_t0_head.size / float(n.size) >= min_frac_near_t0_head:
             t0 = np.median(offsets[near_t0_head])
         else:
             LOG.error("Timestamp mismatch. Cannot perform correction.")
-            fail_reason = "Timestamp mismatch"
-            apply_corr = False
-            t0 = 0
+            results['fail_reason'] = "Timestamp mismatch"
+            return results
 
         # Add estimated offset to the ideal timestamps
         tn += t0
 
         # Replace timestamps deviating more than a certain threshold from the
         # ideal timestamp with the ideal timestamp.
-        if apply_corr:
-            corrupt_lines = np.where(np.fabs(t - tn) > max_diff_from_ideal_t)
-            self.utcs[corrupt_lines] = tn[corrupt_lines].astype(dt64_msec)
-            LOG.debug("Corrected %s timestamp(s)", str(len(corrupt_lines[0])))
+        corrupt_lines = np.where(np.fabs(t - tn) > max_diff_from_ideal_t)
+        self.utcs[corrupt_lines] = tn[corrupt_lines].astype(dt64_msec)
+        LOG.debug("Corrected %s timestamp(s)", str(len(corrupt_lines[0])))
 
-        # Plot results
-        if plot:
-            import matplotlib.pyplot as plt
-            along_track = np.arange(n.size)
-            _, (ax0, ax1, ax2) = plt.subplots(nrows=3, sharex=True,
-                                              figsize=(8, 10))
-
-            ax0.plot(along_track, t, "b-", label="original")
-            if apply_corr:
-                ax0.plot(along_track, self.utcs, color="red", linestyle="--",
-                         label="corrected")
-            else:
-                ax0.set_title(fail_reason)
-            ax0.set_ylabel("Time [ms since 1970]")
-            ax0.set_ylim((self.utcs.min()-np.timedelta64(30, "m")).astype("i8"),
-                         (self.utcs.max()+np.timedelta64(30, "m")).astype("i8"))
-            ax0.legend(loc="best")
-            ax2.plot(along_track, n)
-            ax2.set_ylabel("Scanline number")
-            ax2.set_xlabel("Along Track")
-
-            ax1.plot(along_track, offsets)
-            ax1.fill_between(
-                along_track,
-                t0_head - np.ones(along_track.size)*max_diff_from_t0_head,
-                t0_head + np.ones(along_track.size)*max_diff_from_t0_head,
-                facecolor="g", alpha=0.33)
-            ax1.axhline(y=t0_head, color="g", linestyle="--",
-                        label="Header timestamp")
-            ax1.set_ylim(t0_head-5*max_diff_from_t0_head,
-                         t0_head+5*max_diff_from_t0_head)
-            ax1.set_ylabel("Offset t-tn [ms]")
-            ax1.legend(loc="best")
-
-            plt.savefig(self.filename+"_timestamp_correction.png",
-                        bbox_inches="tight", dpi=100)
+        results.update({'tn': tn, 'tcorr': self.utcs, 't0': t0})
+        return results
 
     @abstractproperty
     def tsm_affected_intervals(self):
