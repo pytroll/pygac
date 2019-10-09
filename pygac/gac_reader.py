@@ -415,6 +415,7 @@ class GACReader(six.with_metaclass(ABCMeta)):
 
     def get_angles(self):
         self.get_times()
+        self.get_lonlat()
         tle1, tle2 = self.get_tle_lines()
         orb = Orbital(self.spacecrafts_orbital[self.spacecraft_id],
                       line1=tle1, line2=tle2)
