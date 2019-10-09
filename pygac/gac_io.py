@@ -73,16 +73,100 @@ MISSING_DATA = -32001
 MISSING_DATA_LATLON = -999999
 
 
-def update_start_end_line(start_line, end_line, temp_start_line, temp_end_line):
-    """Update user start/end lines after data has been sliced using temporary
-    start/end lines.
+def slice_channel(ch, start_line, end_line, lats=None,
+                  midnight_scanline=None, miss_lines=None,
+                  qual_flags=None):
+    """Slice channel data using user-defined start/end line.
+
+    This method is doing too much at once, but it ensures that the
+    same slicing method is being used by save_gac and the satpy reader.
+
+    Args:
+        ch: Channel data
+        start_line: User-defined start line
+        end_line: User-defined end line
+        lats: Latitude coordinates. If given, use them to strip invalid
+            coordinates
+        midnight_scanline: If given, update midnight scanline to the new
+            scanline range.
+        miss_lines: If given, update list of missing lines with the ones
+            that have been stripped due to invalid coordinates
+        qual_flags: Quality flags, needed to updated missing lines.
+    """
+    # Strip invalid coordinates
+    if lats is not None:
+        valid_lat_start, valid_lat_end = strip_invalid_lat(lats)
+    else:
+        valid_lat_start, valid_lat_end = 0, lats.shape[0]
+
+    # Update start/end lines
+    start_line, end_line = update_start_end_line(user_start=start_line,
+                                                 user_end=end_line,
+                                                 valid_lat_start=valid_lat_start,
+                                                 valid_lat_end=valid_lat_end)
+
+    # Slice data using new start/end lines
+    if len(ch.shape) == 1:
+        ch_slc = ch[start_line:end_line + 1].copy()
+    else:
+        ch_slc = ch[start_line:end_line + 1, :].copy()
+
+    if miss_lines is None and midnight_scanline is None:
+        return ch_slc
+    else:
+        # Update list of missing lines
+        if miss_lines is not None:
+            if qual_flags is None:
+                raise ValueError('Need qual_flags, too')
+            miss_lines = update_missing_scanlines(miss_lines=miss_lines,
+                                                  qual_flags=qual_flags,
+                                                  valid_lat_start=valid_lat_start,
+                                                  valid_lat_end=valid_lat_end)
+
+        # Update midnight scanline
+        if midnight_scanline is not None:
+            midnight_scanline = update_scanline(midnight_scanline,
+                                                new_start_line=start_line,
+                                                new_end_line=end_line)
+
+        return ch_slc, miss_lines, midnight_scanline
+
+
+def strip_invalid_lat(lats):
+    """Strip invalid latitudes at the end and beginning of the orbit."""
+    no_wrong_lat = np.where(np.logical_not(np.isnan(lats)))
+    return min(no_wrong_lat[0]), max(no_wrong_lat[0])
+
+
+def update_start_end_line(user_start, user_end, valid_lat_start, valid_lat_end):
+    """Update user start/end lines after stripping invalid latitudes.
 
     Returns:
         Updated start_line, updated end_line
     """
-    new_start_line = max(0, start_line - temp_start_line)
-    new_end_line = min(end_line, temp_end_line) - temp_start_line
+    new_start_line = max(user_start, valid_lat_start)
+    new_end_line = min(user_end, valid_lat_end)
     return new_start_line, new_end_line
+
+
+def update_scanline(scanline, new_start_line, new_end_line):
+    """Update the given scanline to the new range.
+
+    Set scanline to None if it lies outside the new range.
+    """
+    scanline -= new_start_line
+    num_lines = new_end_line - new_start_line + 1
+    if scanline < 0 or scanline >= num_lines:
+        scanline = None
+    return scanline
+
+
+def update_missing_scanlines(miss_lines, qual_flags, valid_lat_start, valid_lat_end):
+    return np.sort(np.array(
+        qual_flags[0:valid_lat_start, 0].tolist() +
+        miss_lines.tolist() +
+        qual_flags[valid_lat_end+1:, 0].tolist()
+    ))
 
 
 def save_gac(satellite_name,
@@ -104,6 +188,56 @@ def save_gac(satellite_name,
         # If the user specifies 0 as the last scanline, process all scanlines
         end_line = along_track
 
+    # Slice data using new start/end lines
+    _, miss_lines, midnight_scanline = slice_channel(
+        np.zeros(lats.shape), start_line=start_line, end_line=end_line,
+        lats=lats, qual_flags=qual_flags, miss_lines=miss_lines,
+        midnight_scanline=midnight_scanline)
+
+    ref1 = slice_channel(ref1, start_line=start_line, end_line=end_line,
+                         lats=lats)
+    ref2 = slice_channel(ref2, start_line=start_line, end_line=end_line,
+                         lats=lats)
+    ref3 = slice_channel(ref3, start_line=start_line, end_line=end_line,
+                         lats=lats)
+    bt3 = slice_channel(bt3, start_line=start_line, end_line=end_line,
+                        lats=lats)
+    bt4 = slice_channel(bt4, start_line=start_line, end_line=end_line,
+                        lats=lats)
+    bt5 = slice_channel(bt5, start_line=start_line, end_line=end_line,
+                        lats=lats)
+    sun_zen = slice_channel(sun_zen, start_line=start_line, end_line=end_line,
+                            lats=lats)
+    sun_azi = slice_channel(sun_azi, start_line=start_line, end_line=end_line,
+                            lats=lats)
+    sat_zen = slice_channel(sat_zen, start_line=start_line, end_line=end_line,
+                            lats=lats)
+    sat_azi = slice_channel(sat_azi, start_line=start_line, end_line=end_line,
+                            lats=lats)
+    rel_azi = slice_channel(rel_azi, start_line=start_line, end_line=end_line,
+                            lats=lats)
+    lons = slice_channel(lons, start_line=start_line, end_line=end_line,
+                         lats=lats)
+    qual_flags = slice_channel(qual_flags, start_line=start_line,
+                               end_line=end_line, lats=lats)
+    xutcs = slice_channel(xutcs, start_line=start_line, end_line=end_line,
+                          lats=lats)
+    lats = slice_channel(lats, start_line=start_line, end_line=end_line,
+                         lats=lats)  # must be sliced last
+    total_number_of_scan_lines = lats.shape[0]
+
+    # Reading time from the body of the gac file
+    start = xutcs[0].astype(datetime.datetime)
+    end = xutcs[-1].astype(datetime.datetime)
+    startdate = start.strftime("%Y%m%d")
+    starttime = start.strftime("%H%M%S%f")[:-5]
+    enddate = end.strftime("%Y%m%d")
+    endtime = end.strftime("%H%M%S%f")[:-5]
+    jday = int(start.strftime("%j"))
+
+    # Earth-Sun distance correction factor
+    corr = 1.0 - 0.0334 * np.cos(2.0 * np.pi * (jday - 2) / 365.25)
+
     # Apply scaling & offset
     bt3 -= 273.15
     bt4 -= 273.15
@@ -120,86 +254,6 @@ def save_gac(satellite_name,
         array[np.isnan(array)] = MISSING_DATA
     for array in [lats, lons]:
         array[np.isnan(array)] = MISSING_DATA_LATLON
-
-    # Choose new temporary start/end lines if lat/lon info is invalid
-    no_wrong_lat = np.where(lats != MISSING_DATA_LATLON)
-    temp_start_line = min(no_wrong_lat[0])
-    temp_end_line = max(no_wrong_lat[0])
-    if temp_start_line > start_line:
-        LOG.info('New start_line chosen (due to invalid lat/lon info) = ' + str(temp_start_line))
-    if end_line > temp_end_line:
-        LOG.info('New end_line chosen (due to invalid lat/lon info) = ' + str(temp_end_line))
-
-    # Slice data using temporary start/end lines
-    ref1 = ref1[temp_start_line:temp_end_line + 1, :].copy()
-    ref2 = ref2[temp_start_line:temp_end_line + 1, :].copy()
-    ref3 = ref3[temp_start_line:temp_end_line + 1, :].copy()
-    bt3 = bt3[temp_start_line:temp_end_line + 1, :].copy()
-    bt4 = bt4[temp_start_line:temp_end_line + 1, :].copy()
-    bt5 = bt5[temp_start_line:temp_end_line + 1, :].copy()
-    sun_zen = sun_zen[temp_start_line:temp_end_line + 1, :].copy()
-    sun_azi = sun_azi[temp_start_line:temp_end_line + 1, :].copy()
-    sat_zen = sat_zen[temp_start_line:temp_end_line + 1, :].copy()
-    sat_azi = sat_azi[temp_start_line:temp_end_line + 1, :].copy()
-    rel_azi = rel_azi[temp_start_line:temp_end_line + 1, :].copy()
-    lats = lats[temp_start_line:temp_end_line + 1, :].copy()
-    lons = lons[temp_start_line:temp_end_line + 1, :].copy()
-    miss_lines = np.sort(np.array(
-        qual_flags[0:temp_start_line, 0].tolist() +
-        miss_lines.tolist() +
-        qual_flags[temp_end_line+1:, 0].tolist()
-    ))
-    qual_flags = qual_flags[temp_start_line:temp_end_line+1, :].copy()
-    xutcs = xutcs[temp_start_line:temp_end_line+1].copy()
-
-    # Update user start/end lines to the new slice
-    start_line, end_line = update_start_end_line(
-        start_line=start_line,
-        end_line=end_line,
-        temp_start_line=temp_start_line,
-        temp_end_line=temp_end_line)
-
-    # Reading time from the body of the gac file
-    start = xutcs[start_line].astype(datetime.datetime)
-    end = xutcs[end_line].astype(datetime.datetime)
-    startdate = start.strftime("%Y%m%d")
-    starttime = start.strftime("%H%M%S%f")[:-5]
-    enddate = end.strftime("%Y%m%d")
-    endtime = end.strftime("%H%M%S%f")[:-5]
-    jday = int(start.strftime("%j"))
-
-    # Earth-Sun distance correction factor
-    corr = 1.0 - 0.0334 * np.cos(2.0 * np.pi * (jday - 2) / 365.25)
-
-    # Slice scanline range requested by user
-    ref1 = ref1[start_line:end_line+1, :].copy()
-    ref2 = ref2[start_line:end_line+1, :].copy()
-    ref3 = ref3[start_line:end_line+1, :].copy()
-    bt3 = bt3[start_line:end_line+1, :].copy()
-    bt4 = bt4[start_line:end_line+1, :].copy()
-    bt5 = bt5[start_line:end_line+1, :].copy()
-    sun_zen = sun_zen[start_line:end_line+1, :].copy()
-    sun_azi = sun_azi[start_line:end_line+1, :].copy()
-    sat_zen = sat_zen[start_line:end_line+1, :].copy()
-    sat_azi = sat_azi[start_line:end_line+1, :].copy()
-    rel_azi = rel_azi[start_line:end_line+1, :].copy()
-    lats = lats[start_line:end_line+1, :].copy()
-    lons = lons[start_line:end_line+1, :].copy()
-    qual_flags = qual_flags[start_line:end_line+1, :].copy()
-    xutcs = xutcs[start_line:end_line+1].copy()
-
-    if midnight_scanline is not None:
-        # Update midnight scanline to the final scanline range
-        midnight_scanline -= (temp_start_line + start_line)
-
-        # Set midnight scanline to None if it has been removed due to invalid
-        # lat/lon info (< 0) or lies outside the user defined scanline range
-        if midnight_scanline < 0 or (midnight_scanline > end_line or
-                                     midnight_scanline < start_line):
-            midnight_scanline = None
-
-    # Compute total number of scanlines
-    total_number_of_scan_lines = end_line - start_line + 1
 
     avhrrGAC_io(satellite_name, xutcs, startdate, enddate, starttime, endtime,
                 lats, lons, ref1, ref2, ref3, bt3, bt4, bt5,

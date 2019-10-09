@@ -21,7 +21,8 @@
 import unittest
 import mock
 import numpy as np
-from pygac.gac_io import update_start_end_line
+import numpy.testing
+import pygac.gac_io as gac_io
 from pygac.tests.utils import CalledWithArray
 
 
@@ -30,47 +31,56 @@ class TestIO(unittest.TestCase):
 
     longMessage = True
 
-    def test_update_start_end(self):
-        x = np.arange(0, 20)
-        start_line = 5
-        end_line = 15
+    def test_strip_invalid_lat(self):
+        lats = np.array([np.nan, 1, np.nan, 2, np.nan])
+        start, end = gac_io.strip_invalid_lat(lats)
+        self.assertEqual(start, 1)
+        self.assertEqual(end, 3)
 
-        for temp_start_line in (0, start_line, start_line + 1):
-            for temp_end_line in (x.size, end_line, end_line - 1):
-                where = 'temporary start/end lines {0}/{1}'.format(
-                    temp_start_line, temp_end_line)
+    def test_update_start_end_line(self):
+        test_data = [{'user_start': 100, 'user_end': 200,
+                      'valid_lat_start': 0, 'valid_lat_end': 300,
+                      'start_exp': 100, 'end_exp': 200},
+                     {'user_start': 100, 'user_end': 200,
+                      'valid_lat_start': 0, 'valid_lat_end': 175,
+                      'start_exp': 100, 'end_exp': 175},
+                     {'user_start': 100, 'user_end': 200,
+                      'valid_lat_start': 125, 'valid_lat_end': 300,
+                      'start_exp': 125, 'end_exp': 200},
+                     {'user_start': 100, 'user_end': 200,
+                      'valid_lat_start': 125, 'valid_lat_end': 175,
+                      'start_exp': 125, 'end_exp': 175}]
+        for t in test_data:
+            start_exp = t.pop('start_exp')
+            end_exp = t.pop('end_exp')
+            start, end = gac_io.update_start_end_line(**t)
+            self.assertEqual(start, start_exp)
+            self.assertEqual(end, end_exp)
 
-                # Define reference
-                if temp_start_line > start_line:
-                    ref_start = temp_start_line
-                else:
-                    ref_start = start_line
-                if temp_end_line < end_line:
-                    ref_end = temp_end_line
-                else:
-                    ref_end = end_line
-                ref = np.arange(ref_start, ref_end + 1)
+    def test_update_scanline(self):
+        test_data = [{'new_start_line': 100, 'new_end_line': 200,
+                      'scanline': 110, 'scanline_exp': 10},
+                     {'new_start_line': 100, 'new_end_line': 200,
+                      'scanline': 90, 'scanline_exp': None},
+                     {'new_start_line': 100, 'new_end_line': 200,
+                      'scanline': 210, 'scanline_exp': None}]
+        for t in test_data:
+            scanline_exp = t.pop('scanline_exp')
+            scanline = gac_io.update_scanline(**t)
+            self.assertEqual(scanline, scanline_exp)
 
-                # Compute new start & end line
-                new_start_line, new_end_line = update_start_end_line(
-                    start_line=start_line,
-                    end_line=end_line,
-                    temp_start_line=temp_start_line,
-                    temp_end_line=temp_end_line)
-
-                # Slice twice (as in gac_io)
-                slice1 = x[temp_start_line:temp_end_line + 1].copy()
-                self.assertGreaterEqual(
-                    new_start_line, 0,
-                    msg='Start line out of bounds for ' + where)
-                self.assertLessEqual(
-                    new_end_line, slice1.size,
-                    msg='End line out of bounds for ' + where)
-                slice2 = slice1[new_start_line:new_end_line + 1]
-
-                # Check results
-                self.assertTrue(np.all(ref == slice2),
-                                msg='Incorrect slice for ' + where)
+    def test_update_missing_scanlines(self):
+        qual_flags = np.array([[1, 2, 4, 5, 6, 8, 9, 11, 12]]).transpose()
+        miss_lines = np.array([3, 7, 10])
+        test_data = [{'valid_lat_start': 0, 'valid_lat_end': 8,
+                      'miss_lines_exp': [3, 7, 10]},
+                     {'valid_lat_start': 3, 'valid_lat_end': 6,
+                      'miss_lines_exp': [1, 2, 3, 4, 7, 10, 11, 12]}]
+        for t in test_data:
+            miss_lines_exp = t.pop('miss_lines_exp')
+            miss_lines = gac_io.update_missing_scanlines(
+                miss_lines=miss_lines, qual_flags=qual_flags, **t)
+            numpy.testing.assert_array_equal(miss_lines, miss_lines_exp)
 
     def test_save_gac(self):
         """Test selection of user defined scanlines
@@ -81,8 +91,6 @@ class TestIO(unittest.TestCase):
 
         => All missing lines: [1, 2, 3, 4, 5, 10, 11, 12, 13, 14
         """
-        import pygac.gac_io
-
         # Define test data
         along = 10
         across = 3
@@ -109,13 +117,13 @@ class TestIO(unittest.TestCase):
             new_start_line = new_start_lines[itest]
             new_end_line = new_end_lines[itest]
             lats_ref = 1000.0 * lats[new_start_line:new_end_line + 1, :]
-            lats_ref[np.isnan(lats_ref)] = pygac.gac_io.MISSING_DATA_LATLON
+            lats_ref[np.isnan(lats_ref)] = gac_io.MISSING_DATA_LATLON
             qualflags_ref = qualflags[new_start_line:new_end_line+1]
             xutcs_ref = xutcs[new_start_line:new_end_line + 1]
             midnight_scanline_ref = midnight_scanlines_ref[itest]
 
             with mock.patch('pygac.gac_io.avhrrGAC_io') as io_mock:
-                pygac.gac_io.save_gac(
+                gac_io.save_gac(
                     satellite_name='dummy',
                     xutcs=xutcs,
                     lats=lats.copy(),
