@@ -5,10 +5,13 @@ import numpy as np
 LOG = logging.getLogger(__name__)
 
 
-def slice_channel(ch, start_line, end_line, lats=None,
-                  midnight_scanline=None, miss_lines=None,
-                  qual_flags=None):
+def slice_channel(ch, start_line, end_line, valid_lat_start=None,
+                  valid_lat_end=None, midnight_scanline=None,
+                  miss_lines=None, qual_flags=None):
     """Slice channel data using user-defined start/end line.
+
+    If valid_lat_start/end are given, strip scanlines with invalid
+    coordinates at the beginning and end of the orbit.
 
     This method is doing too much at once, but it ensures that the
     same slicing method is being used by save_gac and the satpy reader.
@@ -17,8 +20,8 @@ def slice_channel(ch, start_line, end_line, lats=None,
         ch: Channel data
         start_line: User-defined start line
         end_line: User-defined end line
-        lats: Latitude coordinates. If given, use them to strip invalid
-            coordinates
+        valid_lat_start: First scanline with valid latitudes
+        valid_lat_end: Last scanline with valid latitudes.
         midnight_scanline: If given, update midnight scanline to the new
             scanline range.
         miss_lines: If given, update list of missing lines with the ones
@@ -26,15 +29,7 @@ def slice_channel(ch, start_line, end_line, lats=None,
         qual_flags: Quality flags, needed to updated missing lines.
     """
     # Strip invalid coordinates
-    if lats is not None:
-        valid_lat_start, valid_lat_end = strip_invalid_lat(lats)
-        if valid_lat_start > start_line:
-            LOG.info('New start_line chosen (due to invalid lat/lon '
-                     'info) = ' + str(valid_lat_start))
-        if end_line > valid_lat_end:
-            LOG.info('New end_line chosen (due to invalid lat/lon '
-                     'info) = ' + str(valid_lat_end))
-    else:
+    if valid_lat_start is None or valid_lat_end is None:
         valid_lat_start, valid_lat_end = 0, lats.shape[0]
 
     # Update start/end lines
@@ -52,7 +47,7 @@ def slice_channel(ch, start_line, end_line, lats=None,
     if miss_lines is None and midnight_scanline is None:
         return ch_slc
     else:
-        # Update list of missing lines
+        # Add stripped lines to list of missing scanlines
         if miss_lines is not None:
             if qual_flags is None:
                 raise ValueError('Need qual_flags, too')

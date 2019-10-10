@@ -38,11 +38,9 @@ try:
 except ImportError:
     import configparser as ConfigParser
 
-from pygac.utils import slice_channel
-
+from pygac.utils import slice_channel, strip_invalid_lat
 
 LOG = logging.getLogger(__name__)
-
 
 try:
     CONFIG_FILE = os.environ['PYGAC_CONFIG_FILE']
@@ -83,7 +81,6 @@ def save_gac(satellite_name,
              sun_zen, sat_zen, sun_azi, sat_azi, rel_azi,
              qual_flags, start_line, end_line,
              gac_file, midnight_scanline, miss_lines):
-
     along_track = lats.shape[0]
     last_scan_line_number = qual_flags[-1, 0]
 
@@ -94,42 +91,101 @@ def save_gac(satellite_name,
         # If the user specifies 0 as the last scanline, process all scanlines
         end_line = along_track
 
+    # Strip invalid coordinates
+    valid_lat_start, valid_lat_end = strip_invalid_lat(lats)
+    if valid_lat_start > start_line:
+        LOG.info('New start_line chosen (due to invalid lat/lon '
+                 'info) = ' + str(valid_lat_start))
+    if end_line > valid_lat_end:
+        LOG.info('New end_line chosen (due to invalid lat/lon '
+                 'info) = ' + str(valid_lat_end))
+
     # Slice data using new start/end lines
     _, miss_lines, midnight_scanline = slice_channel(
-        np.zeros(lats.shape), start_line=start_line, end_line=end_line,
-        lats=lats, qual_flags=qual_flags, miss_lines=miss_lines,
+        np.zeros(lats.shape),
+        start_line=start_line,
+        end_line=end_line,
+        valid_lat_start=valid_lat_start,
+        valid_lat_end=valid_lat_end,
+        qual_flags=qual_flags,
+        miss_lines=miss_lines,
         midnight_scanline=midnight_scanline)
 
-    ref1 = slice_channel(ref1, start_line=start_line, end_line=end_line,
-                         lats=lats)
-    ref2 = slice_channel(ref2, start_line=start_line, end_line=end_line,
-                         lats=lats)
-    ref3 = slice_channel(ref3, start_line=start_line, end_line=end_line,
-                         lats=lats)
-    bt3 = slice_channel(bt3, start_line=start_line, end_line=end_line,
-                        lats=lats)
-    bt4 = slice_channel(bt4, start_line=start_line, end_line=end_line,
-                        lats=lats)
-    bt5 = slice_channel(bt5, start_line=start_line, end_line=end_line,
-                        lats=lats)
-    sun_zen = slice_channel(sun_zen, start_line=start_line, end_line=end_line,
-                            lats=lats)
-    sun_azi = slice_channel(sun_azi, start_line=start_line, end_line=end_line,
-                            lats=lats)
-    sat_zen = slice_channel(sat_zen, start_line=start_line, end_line=end_line,
-                            lats=lats)
-    sat_azi = slice_channel(sat_azi, start_line=start_line, end_line=end_line,
-                            lats=lats)
-    rel_azi = slice_channel(rel_azi, start_line=start_line, end_line=end_line,
-                            lats=lats)
-    lons = slice_channel(lons, start_line=start_line, end_line=end_line,
-                         lats=lats)
-    qual_flags = slice_channel(qual_flags, start_line=start_line,
-                               end_line=end_line, lats=lats)
-    xutcs = slice_channel(xutcs, start_line=start_line, end_line=end_line,
-                          lats=lats)
-    lats = slice_channel(lats, start_line=start_line, end_line=end_line,
-                         lats=lats)  # must be sliced last
+    ref1 = slice_channel(ref1,
+                         start_line=start_line,
+                         end_line=end_line,
+                         valid_lat_start=valid_lat_start,
+                         valid_lat_end=valid_lat_end)
+    ref2 = slice_channel(ref2,
+                         start_line=start_line,
+                         end_line=end_line,
+                         valid_lat_start=valid_lat_start,
+                         valid_lat_end=valid_lat_end)
+    ref3 = slice_channel(ref3,
+                         start_line=start_line,
+                         end_line=end_line,
+                         valid_lat_start=valid_lat_start,
+                         valid_lat_end=valid_lat_end)
+    bt3 = slice_channel(bt3,
+                        start_line=start_line,
+                        end_line=end_line,
+                        valid_lat_start=valid_lat_start,
+                        valid_lat_end=valid_lat_end)
+    bt4 = slice_channel(bt4,
+                        start_line=start_line,
+                        end_line=end_line,
+                        valid_lat_start=valid_lat_start,
+                        valid_lat_end=valid_lat_end)
+    bt5 = slice_channel(bt5,
+                        start_line=start_line,
+                        end_line=end_line,
+                        valid_lat_start=valid_lat_start,
+                        valid_lat_end=valid_lat_end)
+    sun_zen = slice_channel(sun_zen,
+                            start_line=start_line,
+                            end_line=end_line,
+                            valid_lat_start=valid_lat_start,
+                            valid_lat_end=valid_lat_end)
+    sun_azi = slice_channel(sun_azi,
+                            start_line=start_line,
+                            end_line=end_line,
+                            valid_lat_start=valid_lat_start,
+                            valid_lat_end=valid_lat_end)
+    sat_zen = slice_channel(sat_zen,
+                            start_line=start_line,
+                            end_line=end_line,
+                            valid_lat_start=valid_lat_start,
+                            valid_lat_end=valid_lat_end)
+    sat_azi = slice_channel(sat_azi,
+                            start_line=start_line,
+                            end_line=end_line,
+                            valid_lat_start=valid_lat_start,
+                            valid_lat_end=valid_lat_end)
+    rel_azi = slice_channel(rel_azi,
+                            start_line=start_line,
+                            end_line=end_line,
+                            valid_lat_start=valid_lat_start,
+                            valid_lat_end=valid_lat_end)
+    lons = slice_channel(lons,
+                         start_line=start_line,
+                         end_line=end_line,
+                         valid_lat_start=valid_lat_start,
+                         valid_lat_end=valid_lat_end)
+    qual_flags = slice_channel(qual_flags,
+                               start_line=start_line,
+                               end_line=end_line,
+                               valid_lat_start=valid_lat_start,
+                               valid_lat_end=valid_lat_end)
+    xutcs = slice_channel(xutcs,
+                          start_line=start_line,
+                          end_line=end_line,
+                          valid_lat_start=valid_lat_start,
+                          valid_lat_end=valid_lat_end)
+    lats = slice_channel(lats,
+                         start_line=start_line,
+                         end_line=end_line,
+                         valid_lat_start=valid_lat_start,
+                         valid_lat_end=valid_lat_end)  # must be sliced last
     total_number_of_scan_lines = lats.shape[0]
 
     # Reading time from the body of the gac file
