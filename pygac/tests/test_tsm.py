@@ -42,8 +42,10 @@ class TSMTest(unittest.TestCase):
         mcols, mrows = np.meshgrid(cols, rows)
 
         # Create dummy reflectances in [0, 1] and BTs [170, 350]
-        refl = np.sin(mrows / float(rows.size)) * np.cos(mcols / float(cols.size))
-        bt = np.cos(mrows / float(rows.size)) * np.sin(mcols / float(cols.size))
+        refl = np.sin(mrows / float(rows.size)) * \
+            np.cos(mcols / float(cols.size))
+        bt = np.cos(mrows / float(rows.size)) * \
+            np.sin(mcols / float(cols.size))
         bt = 170 + (350 - 170) * bt
 
         ch1 = refl.copy()

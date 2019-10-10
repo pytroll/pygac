@@ -103,9 +103,11 @@ class TestKLM(unittest.TestCase):
 
     def test_get_ch3_switch(self):
         """Test channel 3 identification."""
-        self.reader.scans = {'scan_line_bit_field': np.array([1, 2, 3, 4, 5, 6])}
+        self.reader.scans = {
+            'scan_line_bit_field': np.array([1, 2, 3, 4, 5, 6])}
         switch_exp = np.array([1, 2, 3, 0, 1, 2])
-        numpy.testing.assert_array_equal(self.reader.get_ch3_switch(), switch_exp)
+        numpy.testing.assert_array_equal(
+            self.reader.get_ch3_switch(), switch_exp)
 
     @mock.patch('pygac.gac_klm.GACKLMReader.get_ch3_switch')
     def test_postproc(self, get_ch3_switch):

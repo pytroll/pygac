@@ -5,6 +5,7 @@ import numpy as np
 
 class CalledWithArray(object):
     """Adapter for arrays in mock.assert_called_with()."""
+
     def __init__(self, array):
         self.array = array
 

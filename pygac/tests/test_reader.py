@@ -62,7 +62,8 @@ class TestGacReader(unittest.TestCase):
         """Test common lon/lat computation."""
         interpolator.return_value = np.array([np.nan, 1, 2, 3, -180.1, 180.1]), \
             np.array([1, 2, 3, np.nan, -90.1, 90.1])
-        get_corrupt_mask.return_value = np.array([0, 0, 1, 0, 0, 0], dtype=bool)
+        get_corrupt_mask.return_value = np.array(
+            [0, 0, 1, 0, 0, 0], dtype=bool)
         get_lonlat.return_value = None, None
         lons_exp = np.array([np.nan, 1, np.nan, 3., np.nan, np.nan])
         lats_exp = np.array([1, 2, np.nan, np.nan, np.nan, np.nan])
@@ -73,7 +74,8 @@ class TestGacReader(unittest.TestCase):
         numpy.testing.assert_array_equal(lats, lats_exp)
 
         # Test caching
-        methods = [get_lonlat, interpolator, adjust_clockdrift, get_corrupt_mask]
+        methods = [get_lonlat, interpolator,
+                   adjust_clockdrift, get_corrupt_mask]
         for method in methods:
             method.reset_mock()
         self.reader.get_lonlat()
@@ -112,7 +114,8 @@ class TestGacReader(unittest.TestCase):
         """Test detection of missing scanlines."""
         lines = [2, 4, 5, 6, 10, 11, 12]
         miss_lines_ref = [1, 3, 7, 8, 9]
-        self.reader.scans = np.zeros(len(lines), dtype=[('scan_line_number', 'i2')])
+        self.reader.scans = np.zeros(
+            len(lines), dtype=[('scan_line_number', 'i2')])
         self.reader.scans['scan_line_number'] = lines
         self.assertTrue((self.reader.get_miss_lines() == miss_lines_ref).all(),
                         msg='Missing scanlines not detected correctly')

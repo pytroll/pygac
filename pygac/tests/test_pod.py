@@ -59,7 +59,8 @@ class TestPOD(unittest.TestCase):
     def test_get_header_timestamp(self, decode_timestamps):
         """Test readout of header timestamp."""
         self.reader.head = {'start_time': 123}
-        decode_timestamps.return_value = np.array([2019]), np.array([123]), np.array([123456])
+        decode_timestamps.return_value = np.array(
+            [2019]), np.array([123]), np.array([123456])
         time = self.reader.get_header_timestamp()
         decode_timestamps.assert_called_with(123)
         self.assertEqual(time, dt.datetime(2019, 5, 3, 0, 2, 3, 456000))
