@@ -23,6 +23,7 @@ import mock
 import numpy as np
 import numpy.testing
 import pygac.gac_io as gac_io
+import pygac.utils as utils
 from pygac.tests.utils import CalledWithArray
 
 
@@ -33,7 +34,7 @@ class TestIO(unittest.TestCase):
 
     def test_strip_invalid_lat(self):
         lats = np.array([np.nan, 1, np.nan, 2, np.nan])
-        start, end = gac_io.strip_invalid_lat(lats)
+        start, end = utils.strip_invalid_lat(lats)
         self.assertEqual(start, 1)
         self.assertEqual(end, 3)
 
@@ -53,7 +54,7 @@ class TestIO(unittest.TestCase):
         for t in test_data:
             start_exp = t.pop('start_exp')
             end_exp = t.pop('end_exp')
-            start, end = gac_io.update_start_end_line(**t)
+            start, end = utils.update_start_end_line(**t)
             self.assertEqual(start, start_exp)
             self.assertEqual(end, end_exp)
 
@@ -66,7 +67,7 @@ class TestIO(unittest.TestCase):
                       'scanline': 210, 'scanline_exp': None}]
         for t in test_data:
             scanline_exp = t.pop('scanline_exp')
-            scanline = gac_io.update_scanline(**t)
+            scanline = utils.update_scanline(**t)
             self.assertEqual(scanline, scanline_exp)
 
     def test_update_missing_scanlines(self):
@@ -78,7 +79,7 @@ class TestIO(unittest.TestCase):
                       'miss_lines_exp': [1, 2, 3, 4, 7, 10, 11, 12]}]
         for t in test_data:
             miss_lines_exp = t.pop('miss_lines_exp')
-            miss_lines = gac_io.update_missing_scanlines(
+            miss_lines = utils.update_missing_scanlines(
                 miss_lines=miss_lines, qual_flags=qual_flags, **t)
             numpy.testing.assert_array_equal(miss_lines, miss_lines_exp)
 
