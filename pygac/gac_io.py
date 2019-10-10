@@ -38,6 +38,8 @@ try:
 except ImportError:
     import configparser as ConfigParser
 
+from pygac.utils import slice_channel
+
 
 LOG = logging.getLogger(__name__)
 
@@ -71,102 +73,6 @@ AVHRR_DIR = os.environ.get('SM_AVHRR_DIR', OUTDIR)
 QUAL_DIR = os.environ.get('SM_AVHRR_DIR', OUTDIR)
 MISSING_DATA = -32001
 MISSING_DATA_LATLON = -999999
-
-
-def slice_channel(ch, start_line, end_line, lats=None,
-                  midnight_scanline=None, miss_lines=None,
-                  qual_flags=None):
-    """Slice channel data using user-defined start/end line.
-
-    This method is doing too much at once, but it ensures that the
-    same slicing method is being used by save_gac and the satpy reader.
-
-    Args:
-        ch: Channel data
-        start_line: User-defined start line
-        end_line: User-defined end line
-        lats: Latitude coordinates. If given, use them to strip invalid
-            coordinates
-        midnight_scanline: If given, update midnight scanline to the new
-            scanline range.
-        miss_lines: If given, update list of missing lines with the ones
-            that have been stripped due to invalid coordinates
-        qual_flags: Quality flags, needed to updated missing lines.
-    """
-    # Strip invalid coordinates
-    if lats is not None:
-        valid_lat_start, valid_lat_end = strip_invalid_lat(lats)
-    else:
-        valid_lat_start, valid_lat_end = 0, lats.shape[0]
-
-    # Update start/end lines
-    start_line, end_line = update_start_end_line(user_start=start_line,
-                                                 user_end=end_line,
-                                                 valid_lat_start=valid_lat_start,
-                                                 valid_lat_end=valid_lat_end)
-
-    # Slice data using new start/end lines
-    if len(ch.shape) == 1:
-        ch_slc = ch[start_line:end_line + 1].copy()
-    else:
-        ch_slc = ch[start_line:end_line + 1, :].copy()
-
-    if miss_lines is None and midnight_scanline is None:
-        return ch_slc
-    else:
-        # Update list of missing lines
-        if miss_lines is not None:
-            if qual_flags is None:
-                raise ValueError('Need qual_flags, too')
-            miss_lines = update_missing_scanlines(miss_lines=miss_lines,
-                                                  qual_flags=qual_flags,
-                                                  valid_lat_start=valid_lat_start,
-                                                  valid_lat_end=valid_lat_end)
-
-        # Update midnight scanline
-        if midnight_scanline is not None:
-            midnight_scanline = update_scanline(midnight_scanline,
-                                                new_start_line=start_line,
-                                                new_end_line=end_line)
-
-        return ch_slc, miss_lines, midnight_scanline
-
-
-def strip_invalid_lat(lats):
-    """Strip invalid latitudes at the end and beginning of the orbit."""
-    no_wrong_lat = np.where(np.logical_not(np.isnan(lats)))
-    return min(no_wrong_lat[0]), max(no_wrong_lat[0])
-
-
-def update_start_end_line(user_start, user_end, valid_lat_start, valid_lat_end):
-    """Update user start/end lines after stripping invalid latitudes.
-
-    Returns:
-        Updated start_line, updated end_line
-    """
-    new_start_line = max(user_start, valid_lat_start)
-    new_end_line = min(user_end, valid_lat_end)
-    return new_start_line, new_end_line
-
-
-def update_scanline(scanline, new_start_line, new_end_line):
-    """Update the given scanline to the new range.
-
-    Set scanline to None if it lies outside the new range.
-    """
-    scanline -= new_start_line
-    num_lines = new_end_line - new_start_line + 1
-    if scanline < 0 or scanline >= num_lines:
-        scanline = None
-    return scanline
-
-
-def update_missing_scanlines(miss_lines, qual_flags, valid_lat_start, valid_lat_end):
-    return np.sort(np.array(
-        qual_flags[0:valid_lat_start, 0].tolist() +
-        miss_lines.tolist() +
-        qual_flags[valid_lat_end+1:, 0].tolist()
-    ))
 
 
 def save_gac(satellite_name,
