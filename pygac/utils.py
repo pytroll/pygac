@@ -5,8 +5,14 @@ import numpy as np
 LOG = logging.getLogger(__name__)
 
 
-def slice_channel(ch, start_line, end_line, valid_lat_start=None,
-                  valid_lat_end=None, midnight_scanline=None,
+def strip_invalid_lat(lats):
+    """Strip invalid latitudes at the end and beginning of the orbit."""
+    no_wrong_lat = np.where(np.logical_not(np.isnan(lats)))
+    return min(no_wrong_lat[0]), max(no_wrong_lat[0])
+
+
+def slice_channel(ch, start_line, end_line, first_valid_lat=None,
+                  last_valid_lat=None, midnight_scanline=None,
                   miss_lines=None, qual_flags=None):
     """Slice channel data using user-defined start/end line.
 
@@ -18,74 +24,69 @@ def slice_channel(ch, start_line, end_line, valid_lat_start=None,
 
     Args:
         ch: Channel data
-        start_line: User-defined start line
-        end_line: User-defined end line
-        valid_lat_start: First scanline with valid latitudes
-        valid_lat_end: Last scanline with valid latitudes.
+        start_line: User-defined start line (afer stripping, if enabled)
+        end_line: User-defined end line (after stripping, if enabled)
+        first_valid_lat: First scanline with valid latitudes
+        last_valid_lat: Last scanline with valid latitudes.
         midnight_scanline: If given, update midnight scanline to the new
             scanline range.
         miss_lines: If given, update list of missing lines with the ones
             that have been stripped due to invalid coordinates
         qual_flags: Quality flags, needed to updated missing lines.
     """
-    # Strip invalid coordinates
-    if valid_lat_start is None or valid_lat_end is None:
-        valid_lat_start, valid_lat_end = 0, ch.shape[0] - 1
+    if first_valid_lat is not None and last_valid_lat is not None:
+        # Strip invalid coordinates and update midnight scanline as well as
+        # user-defined start/end lines
+        ch, updated = _slice(ch,
+                             start_line=first_valid_lat,
+                             end_line=last_valid_lat,
+                             update=[midnight_scanline])
+        midnight_scanline = updated[0]
 
-    # Update start/end lines
-    start_line, end_line = update_start_end_line(
-        user_start=start_line,
-        user_end=end_line,
-        valid_lat_start=valid_lat_start,
-        valid_lat_end=valid_lat_end)
+        # Reset user-defined end line, if it has been removed
+        end_line = min(end_line, ch.shape[0] - 1)
+        start_line = min(start_line, ch.shape[0] - 1)
 
+        # Update missing scanlines
+        if miss_lines is not None:
+            miss_lines = _update_missing_scanlines(
+                miss_lines=miss_lines,
+                qual_flags=qual_flags,
+                start_line=first_valid_lat,
+                end_line=last_valid_lat)
+
+    # Slice data using user-defined start/end lines
+    ch_slc, updated = _slice(ch, start_line=start_line, end_line=end_line,
+                             update=[midnight_scanline])
+    midnight_scanline = updated[0]
+
+    return ch_slc, miss_lines, midnight_scanline
+
+
+def _slice(ch, start_line, end_line, update=None):
+    """Slice the given channel.
+
+    Args:
+        start_line: New start line
+        end_line: New end line
+        update: List of scanlines to be updated to the new range
+    """
     # Slice data using new start/end lines
     if len(ch.shape) == 1:
         ch_slc = ch[start_line:end_line + 1].copy()
     else:
         ch_slc = ch[start_line:end_line + 1, :].copy()
 
-    if miss_lines is None and midnight_scanline is None:
-        return ch_slc
-    else:
-        # Add stripped lines to list of missing scanlines
-        if miss_lines is not None:
-            if qual_flags is None:
-                raise ValueError('Need qual_flags, too')
-            miss_lines = update_missing_scanlines(
-                miss_lines=miss_lines,
-                qual_flags=qual_flags,
-                valid_lat_start=valid_lat_start,
-                valid_lat_end=valid_lat_end)
+    if update:
+        updated = [_update_scanline(l, start_line, end_line)
+                   if l is not None else None
+                   for l in update]
+        return ch_slc, updated
 
-        # Update midnight scanline
-        if midnight_scanline is not None:
-            midnight_scanline = update_scanline(midnight_scanline,
-                                                new_start_line=start_line,
-                                                new_end_line=end_line)
-
-        return ch_slc, miss_lines, midnight_scanline
+    return ch_slc
 
 
-def strip_invalid_lat(lats):
-    """Strip invalid latitudes at the end and beginning of the orbit."""
-    no_wrong_lat = np.where(np.logical_not(np.isnan(lats)))
-    return min(no_wrong_lat[0]), max(no_wrong_lat[0])
-
-
-def update_start_end_line(user_start, user_end, valid_lat_start,
-                          valid_lat_end):
-    """Update user start/end lines after stripping invalid latitudes.
-
-    Returns:
-        Updated start_line, updated end_line
-    """
-    new_start_line = max(user_start, valid_lat_start)
-    new_end_line = min(user_end, valid_lat_end)
-    return new_start_line, new_end_line
-
-
-def update_scanline(scanline, new_start_line, new_end_line):
+def _update_scanline(scanline, new_start_line, new_end_line):
     """Update the given scanline to the new range.
 
     Set scanline to None if it lies outside the new range.
@@ -97,12 +98,19 @@ def update_scanline(scanline, new_start_line, new_end_line):
     return scanline
 
 
-def update_missing_scanlines(miss_lines, qual_flags, valid_lat_start,
-                             valid_lat_end):
+def _update_missing_scanlines(miss_lines, qual_flags, start_line, end_line):
+    """Add scanlines excluded by slicing to the list of missing scanlines.
+
+    Args:
+        miss_lines: List of missing scanlines
+        qual_flags: Quality flags
+        start_line: New start line of the slice
+        end_line: New end line of the slice
+    """
     return np.sort(np.array(
-        qual_flags[0:valid_lat_start, 0].tolist() +
+        qual_flags[0:start_line, 0].tolist() +
         miss_lines.tolist() +
-        qual_flags[valid_lat_end+1:, 0].tolist()
+        qual_flags[end_line + 1:, 0].tolist()
     ))
 
 
