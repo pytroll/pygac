@@ -24,7 +24,6 @@ import numpy as np
 import numpy.testing
 import pygac.gac_io as gac_io
 import pygac.utils as utils
-from pygac.tests.utils import CalledWithArray
 
 
 class TestIO(unittest.TestCase):
