@@ -88,9 +88,11 @@ class TestKLM(unittest.TestCase):
 
     def test_get_header_timestamp(self):
         """Test readout of header timestamp."""
-        self.reader.head = {'start_of_data_set_year': np.array([2019]),
-                            'start_of_data_set_day_of_year': np.array([123]),
-                            'start_of_data_set_utc_time_of_day': np.array([123456])}
+        self.reader.head = {
+            'start_of_data_set_year': np.array([2019]),
+            'start_of_data_set_day_of_year': np.array([123]),
+            'start_of_data_set_utc_time_of_day': np.array([123456])
+        }
         time = self.reader.get_header_timestamp()
         self.assertEqual(time, dt.datetime(2019, 5, 3, 0, 2, 3, 456000))
 
@@ -131,7 +133,7 @@ class TestKLM(unittest.TestCase):
 
     @mock.patch('pygac.gac_klm.get_tsm_idx')
     def test_get_tsm_pixels(self, get_tsm_idx):
-        """Test channel set used to identify pixels affected by the scan motor issue."""
+        """Test channel set used for TSM correction."""
         ones = np.ones((409, 100))
         zeros = np.zeros(ones.shape)
         ch1 = 1*ones

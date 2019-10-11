@@ -30,13 +30,14 @@ def slice_channel(ch, start_line, end_line, valid_lat_start=None,
     """
     # Strip invalid coordinates
     if valid_lat_start is None or valid_lat_end is None:
-        valid_lat_start, valid_lat_end = 0, lats.shape[0]
+        valid_lat_start, valid_lat_end = 0, ch.shape[0]
 
     # Update start/end lines
-    start_line, end_line = update_start_end_line(user_start=start_line,
-                                                 user_end=end_line,
-                                                 valid_lat_start=valid_lat_start,
-                                                 valid_lat_end=valid_lat_end)
+    start_line, end_line = update_start_end_line(
+        user_start=start_line,
+        user_end=end_line,
+        valid_lat_start=valid_lat_start,
+        valid_lat_end=valid_lat_end)
 
     # Slice data using new start/end lines
     if len(ch.shape) == 1:
@@ -51,10 +52,11 @@ def slice_channel(ch, start_line, end_line, valid_lat_start=None,
         if miss_lines is not None:
             if qual_flags is None:
                 raise ValueError('Need qual_flags, too')
-            miss_lines = update_missing_scanlines(miss_lines=miss_lines,
-                                                  qual_flags=qual_flags,
-                                                  valid_lat_start=valid_lat_start,
-                                                  valid_lat_end=valid_lat_end)
+            miss_lines = update_missing_scanlines(
+                miss_lines=miss_lines,
+                qual_flags=qual_flags,
+                valid_lat_start=valid_lat_start,
+                valid_lat_end=valid_lat_end)
 
         # Update midnight scanline
         if midnight_scanline is not None:
@@ -71,7 +73,8 @@ def strip_invalid_lat(lats):
     return min(no_wrong_lat[0]), max(no_wrong_lat[0])
 
 
-def update_start_end_line(user_start, user_end, valid_lat_start, valid_lat_end):
+def update_start_end_line(user_start, user_end, valid_lat_start,
+                          valid_lat_end):
     """Update user start/end lines after stripping invalid latitudes.
 
     Returns:
@@ -94,7 +97,8 @@ def update_scanline(scanline, new_start_line, new_end_line):
     return scanline
 
 
-def update_missing_scanlines(miss_lines, qual_flags, valid_lat_start, valid_lat_end):
+def update_missing_scanlines(miss_lines, qual_flags, valid_lat_start,
+                             valid_lat_end):
     return np.sort(np.array(
         qual_flags[0:valid_lat_start, 0].tolist() +
         miss_lines.tolist() +
@@ -112,6 +116,7 @@ def plot_correct_times_thresh(res, filename=None):
     offsets = res.get('offsets')
     t0_head = res.get('t0_head')
     max_diff_from_t0_head = res.get('max_diff_from_t0_head')
+    fail_reason = res.get('fail_reason', 'Failed for unknown reason')
 
     # Setup figure
     along_track = np.arange(t.size)

@@ -31,7 +31,8 @@ class TestGacReader(unittest.TestCase):
 
     longMessage = True
 
-    @mock.patch.multiple('pygac.gac_reader.GACReader', __abstractmethods__=set())
+    @mock.patch.multiple('pygac.gac_reader.GACReader',
+                         __abstractmethods__=set())
     def setUp(self, *mocks):
         self.reader = GACReader()
 
@@ -40,7 +41,7 @@ class TestGacReader(unittest.TestCase):
         t0 = GACReader.to_datetime64(year=np.array(1970), jday=np.array(1),
                                      msec=np.array(0))
         self.assertEqual(t0.astype('i8'), 0,
-                         msg='Conversion from (year, jday, msec) to datetime64 '
+                         msg='Conversion (year, jday, msec) to datetime64 '
                              'is not correct')
 
     def test_to_datetime(self):
@@ -60,11 +61,14 @@ class TestGacReader(unittest.TestCase):
     def test_get_lonlat(self, interpolator, adjust_clockdrift,
                         get_corrupt_mask, get_lonlat):
         """Test common lon/lat computation."""
-        interpolator.return_value = np.array([np.nan, 1, 2, 3, -180.1, 180.1]), \
-            np.array([1, 2, 3, np.nan, -90.1, 90.1])
+        lon_i = np.array([np.nan, 1, 2, 3, -180.1, 180.1])
+        lat_i = np.array([1, 2, 3, np.nan, -90.1, 90.1])
+        interpolator.return_value = lon_i, lat_i
+
         get_corrupt_mask.return_value = np.array(
             [0, 0, 1, 0, 0, 0], dtype=bool)
         get_lonlat.return_value = None, None
+
         lons_exp = np.array([np.nan, 1, np.nan, 3., np.nan, np.nan])
         lats_exp = np.array([1, 2, np.nan, np.nan, np.nan, np.nan])
         lons, lats = self.reader.get_lonlat()

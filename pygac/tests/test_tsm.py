@@ -24,10 +24,6 @@
 import unittest
 import pygac.correct_tsm_issue as tsm
 
-try:
-    from unittest import mock
-except ImportError:
-    import mock
 import numpy as np
 import numpy.testing
 

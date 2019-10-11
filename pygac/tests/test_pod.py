@@ -88,7 +88,7 @@ class TestPOD(unittest.TestCase):
 
     @mock.patch('pygac.gac_pod.get_tsm_idx')
     def test_get_tsm_pixels(self, get_tsm_idx):
-        """Test channel set used to identify pixels affected by the scan motor issue."""
+        """Test channel set used for TSM correction."""
         ones = np.ones((409, 100))
         zeros = np.zeros(ones.shape)
         ch1 = 1*ones
