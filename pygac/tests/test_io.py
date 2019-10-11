@@ -83,6 +83,65 @@ class TestIO(unittest.TestCase):
                 miss_lines=miss_lines, qual_flags=qual_flags, **t)
             numpy.testing.assert_array_equal(miss_lines, miss_lines_exp)
 
+    @mock.patch('pygac.utils.update_scanline')
+    @mock.patch('pygac.utils.update_missing_scanlines')
+    @mock.patch('pygac.utils.update_start_end_line')
+    def test_slice(self, update_start_end_line, update_missing_scanlines,
+                   update_scanline):
+        ch = np.array([[1, 2, 3, 4, 5]]).transpose()
+        start_line = 'start_line'
+        end_line = 'end_line'
+        valid_lat_start = 1
+        valid_lat_end = 3
+
+        update_start_end_line.return_value = 1, 3
+        update_missing_scanlines.return_value = 'miss_lines'
+        update_scanline.return_value = 'midnight'
+
+        sliced_exp = np.array([[2, 3, 4]]).transpose()
+
+        # Test slicing without lat stripping and other scanline updates
+        sliced = utils.slice_channel(ch,
+                                     start_line=start_line,
+                                     end_line=end_line)
+        numpy.testing.assert_array_equal(sliced, sliced_exp)
+        update_start_end_line.assert_called_with(
+            user_start=start_line,
+            user_end=end_line,
+            valid_lat_start=0,
+            valid_lat_end=4)
+        update_missing_scanlines.assert_not_called()
+        update_scanline.assert_not_called()
+
+        # Test slicing with lat stripping and other scanline updates
+        sliced, miss_lines, midnight_scanline = utils.slice_channel(
+            ch,
+            start_line=start_line,
+            end_line=end_line,
+            valid_lat_start=valid_lat_start,
+            valid_lat_end=valid_lat_end,
+            miss_lines='dummy',
+            midnight_scanline='dummy',
+            qual_flags='dummy')
+        numpy.testing.assert_array_equal(sliced, sliced_exp)
+        update_start_end_line.assert_called_with(
+            user_start=start_line,
+            user_end=end_line,
+            valid_lat_start=valid_lat_start,
+            valid_lat_end=valid_lat_end)
+        update_missing_scanlines.assert_called_with(
+            miss_lines='dummy',
+            qual_flags='dummy',
+            valid_lat_start=valid_lat_start,
+            valid_lat_end=valid_lat_end)
+        update_scanline.assert_called_with('dummy',
+                                           new_start_line=1,
+                                           new_end_line=3)
+
+        # Make sure slice is a copy
+        ch += 1
+        numpy.testing.assert_array_equal(sliced, sliced_exp)
+
     def test_save_gac(self):
         """Test selection of user defined scanlines
 

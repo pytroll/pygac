@@ -30,7 +30,7 @@ def slice_channel(ch, start_line, end_line, valid_lat_start=None,
     """
     # Strip invalid coordinates
     if valid_lat_start is None or valid_lat_end is None:
-        valid_lat_start, valid_lat_end = 0, ch.shape[0]
+        valid_lat_start, valid_lat_end = 0, ch.shape[0] - 1
 
     # Update start/end lines
     start_line, end_line = update_start_end_line(
