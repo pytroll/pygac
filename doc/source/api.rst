@@ -66,6 +66,15 @@ Each GAC row has total 409 pixels. But lat-lon values are provided for every eig
 
 If the GAC data belongs to POD family, then clock drift errors are used to adjust existing Lat-Lon information. Here, *pygac* makes use of PyOrbital package, which is a part of PyTroll suite of Python interface developed to process meteorological satellite data (further information here: http://www.pytroll.org/ and https://github.com/mraspaud/pyorbital). *pygac* interpolates the clock offset and adjusts the nominal scan times to the actual scan times. Since the geolocation was computed using the nominal scan times, *pygac* interpolates the latitudes and longitudes to the actual scan times using spherical linear interpolation, aka slerp. However, in the case of a clock drift error greater than the scan rate of the dataset, the latitude and longitude for each pixel of the scan lines that cannot have an interpolated geolocation (typically at the start or end of the dataset) are recomputed. This is done using pyorbital, which in turn uses TLEs to compute the position of the satellite at each scan time and the instrument geometry compute the longitude and latitude of each pixel of the dataset. Since this operation can be quite costly, the interpolation is prefered whenever possible.
 
+Computation of angles
+--------------
+
+.. automodule:: pygac.gac_reader
+   :members:
+   :undoc-members:
+
+The azimuth angles are calculated using get_alt_az and get_observer_look from pyorbital. In pyorbital documentation there is a link describing how calculations are done http://celestrak.com/columns/v02n02/. The azimuth described in the link is measured as clockwise from North instead of counter-clockwise from South. Counter clockwise from south would be the standard for a right-handed orthogonal coordinate system. Pygac was updated to use the same definition for angles as pyorbital (20190926, version 1.1.0). Previous versions used azimuth +/-180 degrees, which correspond to degrees clockwise from south. All angles are converted to degrees.
+
 
 GAC calibration/inter-calibration
 --------------
