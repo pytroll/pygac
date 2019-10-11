@@ -135,23 +135,37 @@ class TestIO(unittest.TestCase):
         self.assertEqual(midn_line_new, 0)
 
     def test_check_user_scanlines(self):
-        # All scanlines (with valid lats)
-        start, end = gac_io.check_user_scanlines(0, 0, 100, 200)
+        # All scanlines
+        start, end = utils.check_user_scanlines(0, 0, 100, 200)
         self.assertEqual(start, 0)
         self.assertEqual(end, 100)
 
+        start, end = utils.check_user_scanlines(0, 0, None, None, 100)
+        self.assertEqual(start, 0)
+        self.assertEqual(end, 99)
+
         # Valid scanlines
-        start, end = gac_io.check_user_scanlines(10, 20, 100, 200)
+        start, end = utils.check_user_scanlines(10, 20, 100, 200)
+        self.assertEqual(start, 10)
+        self.assertEqual(end, 20)
+
+        start, end = utils.check_user_scanlines(10, 20, None, None, 100)
         self.assertEqual(start, 10)
         self.assertEqual(end, 20)
 
         # Invalid scanlines
-        start, end = gac_io.check_user_scanlines(10, 110, 100, 200)
+        start, end = utils.check_user_scanlines(10, 110, 100, 200)
         self.assertEqual(start, 10)
         self.assertEqual(end, 100)
 
+        start, end = utils.check_user_scanlines(10, 110, None, None, 100)
+        self.assertEqual(start, 10)
+        self.assertEqual(end, 99)
+
         self.assertRaises(ValueError, gac_io.check_user_scanlines,
                           110, 120, 100, 200)
+        self.assertRaises(ValueError, gac_io.check_user_scanlines,
+                          110, 120, None, None, 100)
 
     @mock.patch('pygac.gac_io.strip_invalid_lat')
     @mock.patch('pygac.gac_io.avhrrGAC_io')

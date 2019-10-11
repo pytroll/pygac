@@ -5,6 +5,35 @@ import numpy as np
 LOG = logging.getLogger(__name__)
 
 
+def check_user_scanlines(start_line, end_line, first_valid_lat=None,
+                         last_valid_lat=None, along_track=None):
+    """Check user-defined scanlines.
+
+    Can be used by both pygac and satpy.
+    """
+    if first_valid_lat is not None and last_valid_lat is not None:
+        num_valid_lines = last_valid_lat - first_valid_lat + 1
+    else:
+        if along_track is None:
+            raise ValueError('Need along_track')
+        num_valid_lines = along_track
+
+    start_line = int(start_line)
+    end_line = int(end_line)
+    if end_line == 0:
+        # If the user specifies 0 as the last scanline, process all
+        # scanlines with valid coordinates
+        end_line = num_valid_lines - 1
+    elif end_line >= num_valid_lines:
+        end_line = num_valid_lines - 1
+        LOG.warning('Given end line exceeds scanline range, resetting '
+                    'to {}'.format(end_line))
+    if start_line > num_valid_lines:
+        raise ValueError('Given start line {} exceeds scanline range {}'
+                         .format(start_line, num_valid_lines))
+    return start_line, end_line
+
+
 def strip_invalid_lat(lats):
     """Strip invalid latitudes at the end and beginning of the orbit."""
     no_wrong_lat = np.where(np.logical_not(np.isnan(lats)))
@@ -19,8 +48,7 @@ def slice_channel(ch, start_line, end_line, first_valid_lat=None,
     If valid_lat_start/end are given, strip scanlines with invalid
     coordinates at the beginning and end of the orbit.
 
-    This method is doing too much at once, but it ensures that the
-    same slicing method is being used by save_gac and the satpy reader.
+    Can be used by both pygac and satpy.
 
     Args:
         ch: Channel data

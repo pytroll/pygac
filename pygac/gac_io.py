@@ -38,7 +38,7 @@ try:
 except ImportError:
     import configparser as ConfigParser
 
-from pygac.utils import slice_channel, strip_invalid_lat
+from pygac.utils import slice_channel, strip_invalid_lat, check_user_scanlines
 
 LOG = logging.getLogger(__name__)
 
@@ -73,28 +73,6 @@ MISSING_DATA = -32001
 MISSING_DATA_LATLON = -999999
 
 
-def check_user_scanlines(start_line, end_line, first_valid_lat,
-                         last_valid_lat):
-    """Check user-defined scanlines."""
-    num_lines_valid_lat = last_valid_lat - first_valid_lat + 1
-    start_line = int(start_line)
-    end_line = int(end_line)
-    if end_line == 0:
-        # If the user specifies 0 as the last scanline, process all
-        # scanlines with valid coordinates
-        end_line = num_lines_valid_lat - 1
-    elif end_line >= num_lines_valid_lat:
-        end_line = num_lines_valid_lat - 1
-        LOG.warning('Given end line exceeds scanline range with valid '
-                    'coordinates. Resetting end line to {}'
-                    .format(end_line))
-    if start_line > num_lines_valid_lat:
-        raise ValueError('Given start line ({}) exceeds scanline range with '
-                         'valid coordinates ({})'
-                         .format(start_line, num_lines_valid_lat))
-    return start_line, end_line
-
-
 def save_gac(satellite_name,
              xutcs,
              lats, lons,
@@ -103,7 +81,7 @@ def save_gac(satellite_name,
              sun_zen, sat_zen, sun_azi, sat_azi, rel_azi,
              qual_flags, start_line, end_line,
              gac_file, midnight_scanline, miss_lines):
-    
+
     last_scan_line_number = qual_flags[-1, 0]
 
     # Strip invalid coordinates
