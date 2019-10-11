@@ -103,7 +103,7 @@ def save_gac(satellite_name,
              sun_zen, sat_zen, sun_azi, sat_azi, rel_azi,
              qual_flags, start_line, end_line,
              gac_file, midnight_scanline, miss_lines):
-    
+
     last_scan_line_number = qual_flags[-1, 0]
 
     # Strip invalid coordinates
