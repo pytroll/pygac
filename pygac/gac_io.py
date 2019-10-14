@@ -28,7 +28,6 @@ import calendar
 import datetime
 import logging
 import os
-import io
 import time
 
 import h5py
@@ -37,36 +36,30 @@ import numpy as np
 from .correct_tsm_issue import flag_pixels as flag_tsm_pixels
 
 try:
-    from configparser import RawConfigParser
+    import ConfigParser
 except ImportError:
-    import configparser as RawConfigParser
+    import configparser as ConfigParser
 
 
 LOG = logging.getLogger(__name__)
 
-SAMPLE_CFG=(
-    """
-    [tle]
-    tledir = /path/to/gapfilled/tles
-    tlename = TLE_%(satname)s.txt
-
-    [output]
-    output_dir = /tmp
-    output_file_prefix = ECC_GAC
-    """
-)
-
-conf = RawConfigParser()
 
 try:
     CONFIG_FILE = os.environ['PYGAC_CONFIG_FILE']
+except KeyError:
+    LOG.exception('Environment variable PYGAC_CONFIG_FILE not set!')
+    raise
+
+if not os.path.exists(CONFIG_FILE) or not os.path.isfile(CONFIG_FILE):
+    raise IOError(str(CONFIG_FILE) + " pointed to by the environment " +
+                  "variable PYGAC_CONFIG_FILE is not a file or does not exist!")
+
+conf = ConfigParser.ConfigParser()
+try:
     conf.read(CONFIG_FILE)
-
-except:
-
-    LOG.warn('Environment variable PYGAC_CONFIG_FILE not set! >>> using sample Config <<< ')
-    CONFIG_FILE = io.StringIO(SAMPLE_CFG)
-    conf.read_file(CONFIG_FILE)
+except ConfigParser.NoSectionError:
+    LOG.exception('Failed reading configuration file: ' + str(CONFIG_FILE))
+    raise
 
 options = {}
 for option, value in conf.items('output', raw=True):

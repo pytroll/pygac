@@ -39,7 +39,7 @@ from __future__ import print_function
 
 import numpy as np
 from pygac.gac_reader import GACReader, inherit_doc
-import geotiepoints as gtp
+import pygac.geotiepoints as gtp
 from .correct_tsm_issue import TSM_AFFECTED_INTERVALS_POD
 import datetime
 from pygac import gac_io
@@ -344,19 +344,8 @@ class GACPODReader(GACReader):
         # interpolating lat-on points using PYTROLL geotiepoints
         arr_lat = self.scans["earth_location"][:, 0::2] / 128.0
         arr_lon = self.scans["earth_location"][:, 1::2] / 128.0
-        cols_subset = np.arange(4, 405, 8)
-        cols_full = np.arange(409)
-        lines = arr_lat.shape[0]
-        rows_subset = np.arange(lines)
-        rows_full = np.arange(lines)
-        along_track_order = 1
-        cross_track_order = 3
-        satint = gtp.SatelliteInterpolator((arr_lon,arr_lat),
-                                (rows_subset, cols_subset),
-                                (rows_full, cols_full),
-                                along_track_order,
-                                cross_track_order)
-        self.lons, self.lats = satint.interpolate()
+
+        self.lons, self.lats = gtp.Gac_Lat_Lon_Interpolator(arr_lon, arr_lat)
         return self.lons, self.lats
 
     def get_telemetry(self):
