@@ -310,9 +310,9 @@ class GACPODReader(GACReader):
                           max(self.scans["scan_line_number"] - min_idx)) + 1
             idx_len = max_idx - min_idx + 2
 
-            complete_lons = np.full((idx_len, self.lats.shape[1]), nan,
+            complete_lons = np.full((idx_len, self.lats.shape[1]), np.nan,
                                     dtype=np.float)
-            complete_lats = np.full((idx_len, self.lats.shape[1]), nan,
+            complete_lats = np.full((idx_len, self.lats.shape[1]), np.nan,
                                     dtype=np.float)
 
             complete_lons[self.scans["scan_line_number"] - min_idx] = self.lons
