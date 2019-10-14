@@ -419,7 +419,7 @@ def main(filename, start_line, end_line):
                     reader.utcs,
                     reader.lats, reader.lons,
                     channels[:, :, 0], channels[:, :, 1],
-                    np.ones_like(channels[:, :, 0]) * np.nan,
+                    np.full_like(channels[:, :, 0], np.nan),
                     channels[:, :, 2],
                     channels[:, :, 3],
                     channels[:, :, 4],

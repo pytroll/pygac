@@ -125,7 +125,7 @@ def save_gac(satellite_name,
                               end_line=end_line,
                               first_valid_lat=first_valid_lat,
                               last_valid_lat=last_valid_lat)
-    
+
     total_number_of_scan_lines = lats.shape[0]
 
     # Reading time from the body of the gac file
@@ -146,7 +146,7 @@ def save_gac(satellite_name,
     bt5 -= 273.15
     for array in [bt3, bt4, bt5, ref1, ref2, ref3, sun_zen, sat_zen, sun_azi,
                   sat_azi, rel_azi]:
-        array *= 100
+        array *= 100.0
     for array in [lats, lons]:
         array *= 1000.0
 
