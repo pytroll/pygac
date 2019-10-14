@@ -44,7 +44,7 @@ except ImportError:
 
 LOG = logging.getLogger(__name__)
 
-SAMPLE_CFG=(
+SAMPLE_CFG = (
     """
     [tle]
     tledir = /path/to/gapfilled/tles
@@ -64,7 +64,8 @@ try:
 
 except:
 
-    LOG.warn('Environment variable PYGAC_CONFIG_FILE not set! >>> using sample Config <<< ')
+    LOG.warn(
+        'Environment variable PYGAC_CONFIG_FILE not set! >>> using sample Config <<< ')
     CONFIG_FILE = io.StringIO(SAMPLE_CFG)
     conf.read_file(CONFIG_FILE)
 

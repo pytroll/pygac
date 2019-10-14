@@ -351,11 +351,11 @@ class GACPODReader(GACReader):
         rows_full = np.arange(lines)
         along_track_order = 1
         cross_track_order = 3
-        satint = gtp.SatelliteInterpolator((arr_lon,arr_lat),
-                                (rows_subset, cols_subset),
-                                (rows_full, cols_full),
-                                along_track_order,
-                                cross_track_order)
+        satint = gtp.SatelliteInterpolator((arr_lon, arr_lat),
+                                           (rows_subset, cols_subset),
+                                           (rows_full, cols_full),
+                                           along_track_order,
+                                           cross_track_order)
         self.lons, self.lats = satint.interpolate()
         return self.lons, self.lats
 
