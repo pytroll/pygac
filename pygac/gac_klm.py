@@ -609,7 +609,7 @@ def main(filename, start_line, end_line):
     channels = reader.get_calibrated_channels()
     sat_azi, sat_zen, sun_azi, sun_zen, rel_azi = reader.get_angles()
     qual_flags = reader.get_qual_flags()
-    if np.all(reader.get_corrupt_mask()):
+    if np.all(reader.mask):
         print("ERROR: All data is masked out. Stop processing")
         raise ValueError("All data is masked out.")
 

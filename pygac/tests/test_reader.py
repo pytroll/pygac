@@ -55,7 +55,7 @@ class TestGacReader(unittest.TestCase):
         self.assertEqual(self.reader.lineno2msec(12345), 6172000)
 
     @mock.patch('pygac.gac_reader.GACReader._get_lonlat')
-    @mock.patch('pygac.gac_reader.GACReader.get_corrupt_mask')
+    @mock.patch('pygac.gac_reader.GACReader._get_corrupt_mask')
     @mock.patch('pygac.gac_reader.GACReader.adjust_clock_drift')
     @mock.patch('pygac.gac_reader.gtp.Gac_Lat_Lon_Interpolator')
     def test_get_lonlat(self, interpolator, adjust_clockdrift,
@@ -90,11 +90,11 @@ class TestGacReader(unittest.TestCase):
     def test_get_corrupt_mask(self, get_corrupt_mask):
         """Test common computation of corrupt scanline mask."""
         get_corrupt_mask.return_value = [1, 2, 3]
-        self.assertEqual(self.reader.get_corrupt_mask(), [1, 2, 3])
+        self.assertEqual(self.reader.mask, [1, 2, 3])
 
         # Test caching
         get_corrupt_mask.reset_mock()
-        self.reader.get_corrupt_mask()
+        self.reader.mask
         get_corrupt_mask.assert_not_called()
 
     def test_midnight_scanline(self):

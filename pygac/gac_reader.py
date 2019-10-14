@@ -62,7 +62,7 @@ class GACReader(six.with_metaclass(ABCMeta)):
         self.times = None
         self.tle_lines = None
         self.filename = None
-        self.mask = None
+        self._mask = None
 
     @abstractmethod
     def read(self, filename):
@@ -261,8 +261,7 @@ class GACReader(six.with_metaclass(ABCMeta)):
                 self.spacecraft_name)
 
         # Mask out corrupt values
-        mask = self.get_corrupt_mask()
-        channels[mask] = np.nan
+        channels[self.mask] = np.nan
 
         # Apply KLM/POD specific postprocessing
         self.postproc(channels)
@@ -289,9 +288,8 @@ class GACReader(six.with_metaclass(ABCMeta)):
             self.adjust_clock_drift()
 
             # Mask out corrupt scanlines
-            mask = self.get_corrupt_mask()
-            self.lons[mask] = np.nan
-            self.lats[mask] = np.nan
+            self.lons[self.mask] = np.nan
+            self.lats[self.mask] = np.nan
 
             # Mask values outside the valid range
             self.lats[np.fabs(self.lats) > 90.0] = np.nan
@@ -304,11 +302,12 @@ class GACReader(six.with_metaclass(ABCMeta)):
         """KLM/POD specific readout of lat/lon coordinates."""
         raise NotImplementedError
 
-    def get_corrupt_mask(self):
-        """Get mask for corrupt scanlines."""
-        if self.mask is None:
-            self.mask = self._get_corrupt_mask()
-        return self.mask
+    @property
+    def mask(self):
+        """Mask for corrupt scanlines."""
+        if self._mask is None:
+            self._mask = self._get_corrupt_mask()
+        return self._mask
 
     @abstractmethod
     def _get_corrupt_mask(self):
@@ -435,9 +434,8 @@ class GACReader(six.with_metaclass(ABCMeta)):
         rel_azi = get_absolute_azimuth_angle_diff(sun_azi, sat_azi)
 
         # Mask corrupt scanlines
-        mask = self.get_corrupt_mask()
         for arr in (sat_azi, sat_zenith, sun_azi, sun_zenith, rel_azi):
-            arr[mask] = np.nan
+            arr[self.mask] = np.nan
 
         return sat_azi, sat_zenith, sun_azi, sun_zenith, rel_azi
 
