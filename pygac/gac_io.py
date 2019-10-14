@@ -38,39 +38,41 @@ try:
 except ImportError:
     import configparser as ConfigParser
 
+from pygac import CONFIG_FILE
 from pygac.utils import slice_channel, strip_invalid_lat, check_user_scanlines
 
 LOG = logging.getLogger(__name__)
 
-try:
-    CONFIG_FILE = os.environ['PYGAC_CONFIG_FILE']
-except KeyError:
-    LOG.exception('Environment variable PYGAC_CONFIG_FILE not set!')
-    raise
 
-if not os.path.exists(CONFIG_FILE) or not os.path.isfile(CONFIG_FILE):
-    raise IOError(str(CONFIG_FILE) + " pointed to by the environment " +
-                  "variable PYGAC_CONFIG_FILE is not a file or does not exist!")
-
-conf = ConfigParser.ConfigParser()
-try:
-    conf.read(CONFIG_FILE)
-except ConfigParser.NoSectionError:
-    LOG.exception('Failed reading configuration file: ' + str(CONFIG_FILE))
-    raise
-
-options = {}
-for option, value in conf.items('output', raw=True):
-    options[option] = value
-
-OUTDIR = options['output_dir']
-OUTPUT_FILE_PREFIX = options['output_file_prefix']
-
-SUNSATANGLES_DIR = os.environ.get('SM_SUNSATANGLES_DIR', OUTDIR)
-AVHRR_DIR = os.environ.get('SM_AVHRR_DIR', OUTDIR)
-QUAL_DIR = os.environ.get('SM_AVHRR_DIR', OUTDIR)
 MISSING_DATA = -32001
 MISSING_DATA_LATLON = -999999
+
+
+def read_config():
+    """Read output dir etc from config file."""
+    if not os.path.exists(CONFIG_FILE) or not os.path.isfile(CONFIG_FILE):
+        raise IOError(str(CONFIG_FILE) + " pointed to by the environment " +
+                      "variable PYGAC_CONFIG_FILE is not a file or does not exist!")
+
+    conf = ConfigParser.ConfigParser()
+    try:
+        conf.read(CONFIG_FILE)
+    except ConfigParser.NoSectionError:
+        LOG.exception('Failed reading configuration file: ' + str(CONFIG_FILE))
+        raise
+
+    options = {}
+    for option, value in conf.items('output', raw=True):
+        options[option] = value
+
+    OUTDIR = options['output_dir']
+    OUTPUT_FILE_PREFIX = options['output_file_prefix']
+
+    SUNSATANGLES_DIR = os.environ.get('SM_SUNSATANGLES_DIR', OUTDIR)
+    AVHRR_DIR = os.environ.get('SM_AVHRR_DIR', OUTDIR)
+    QUAL_DIR = os.environ.get('SM_AVHRR_DIR', OUTDIR)
+
+    return OUTPUT_FILE_PREFIX, SUNSATANGLES_DIR, AVHRR_DIR, QUAL_DIR
 
 
 def save_gac(satellite_name,
@@ -233,6 +235,9 @@ def avhrrGAC_io(satellite_name, xutcs, startdate, enddate, starttime, endtime,
                 last_scan_line_number, corr, gac_file, midnight_scanline,
                 miss_lines):
     import os
+
+    # Read output dir etc from config file
+    OUTPUT_FILE_PREFIX, SUNSATANGLES_DIR, AVHRR_DIR, QUAL_DIR = read_config()
 
     # Calculate start and end time in sec1970
     t_obj = time.strptime(startdate + starttime[0:6], "%Y%m%d%H%M%S")
