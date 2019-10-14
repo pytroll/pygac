@@ -52,6 +52,17 @@ class GACReader(six.with_metaclass(ABCMeta)):
 
     def __init__(self, interpolate_coords=True, adjust_clock_drift=True,
                  tle_dir=None, tle_name=None, tle_thresh=7):
+        """
+        Args:
+            interpolate_coords: Interpolate coordinates from every eighth pixel
+                to all pixels.
+            adjust_clock_drift: Adjust the geolocation to compensate for the
+                clock error (POD satellites only).
+            tle_dir: Directory holding TLE files
+            tle_name: Filename pattern of TLE files.
+            tle_thresh: Maximum number of days between observation and nearest
+                TLE
+        """
         self.interpolate_coords = interpolate_coords
         self.adjust_clock_drift = adjust_clock_drift
         self.tle_dir = tle_dir
@@ -293,7 +304,7 @@ class GACReader(six.with_metaclass(ABCMeta)):
         if self.lons is None and self.lats is None:
             self.lons, self.lats = self._get_lonlat()
 
-            # Interpolate from every eigth pixel to all pixels.
+            # Interpolate from every eighth pixel to all pixels.
             if self.interpolate_coords:
                 self.lons, self.lats = gtp.Gac_Lat_Lon_Interpolator(
                     self.lons, self.lats)
