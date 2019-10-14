@@ -56,26 +56,52 @@ class TestGacReader(unittest.TestCase):
 
     @mock.patch('pygac.gac_reader.GACReader._get_lonlat')
     @mock.patch('pygac.gac_reader.GACReader._get_corrupt_mask')
-    @mock.patch('pygac.gac_reader.GACReader.adjust_clock_drift')
+    @mock.patch('pygac.gac_reader.GACReader._adjust_clock_drift')
     @mock.patch('pygac.gac_reader.gtp.Gac_Lat_Lon_Interpolator')
     def test_get_lonlat(self, interpolator, adjust_clockdrift,
                         get_corrupt_mask, get_lonlat):
         """Test common lon/lat computation."""
         lon_i = np.array([np.nan, 1, 2, 3, -180.1, 180.1])
         lat_i = np.array([1, 2, 3, np.nan, -90.1, 90.1])
+        get_lonlat.return_value = lon_i, lat_i
         interpolator.return_value = lon_i, lat_i
 
         get_corrupt_mask.return_value = np.array(
             [0, 0, 1, 0, 0, 0], dtype=bool)
-        get_lonlat.return_value = None, None
 
         lons_exp = np.array([np.nan, 1, np.nan, 3., np.nan, np.nan])
         lats_exp = np.array([1, 2, np.nan, np.nan, np.nan, np.nan])
+
+        # Default
         lons, lats = self.reader.get_lonlat()
         get_lonlat.assert_called()
         adjust_clockdrift.assert_called()
         numpy.testing.assert_array_equal(lons, lons_exp)
         numpy.testing.assert_array_equal(lats, lats_exp)
+
+        # Interpolation disabled
+        interpolator.reset_mock()
+        adjust_clockdrift.reset_mock()
+        self.reader.interpolate_coords = False
+        self.reader.adjust_clock_drift = True
+        self.reader.lons = self.reader.lats = None
+        self.reader.get_lonlat()
+        numpy.testing.assert_array_equal(lons, lons_exp)
+        numpy.testing.assert_array_equal(lats, lats_exp)
+        interpolator.assert_not_called()
+        adjust_clockdrift.assert_called()
+
+        # Clock drift adjustment disabled
+        interpolator.reset_mock()
+        adjust_clockdrift.reset_mock()
+        self.reader.interpolate_coords = True
+        self.reader.adjust_clock_drift = False
+        self.reader.lons = self.reader.lats = None
+        self.reader.get_lonlat()
+        numpy.testing.assert_array_equal(lons, lons_exp)
+        numpy.testing.assert_array_equal(lats, lats_exp)
+        interpolator.assert_called()
+        adjust_clockdrift.assert_not_called()
 
         # Test caching
         methods = [get_lonlat, interpolator,

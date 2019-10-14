@@ -270,7 +270,7 @@ class GACPODReader(GACReader):
     def _get_times(self):
         return self.decode_timestamps(self.scans["time_code"])
 
-    def adjust_clock_drift(self):
+    def _adjust_clock_drift(self):
         """Adjust the geolocation to compensate for the clock error.
 
         TODO: bad things might happen when scanlines are skipped.
@@ -310,8 +310,10 @@ class GACPODReader(GACReader):
                           max(self.scans["scan_line_number"] - min_idx)) + 1
             idx_len = max_idx - min_idx + 2
 
-            complete_lons = np.zeros((idx_len, 409), dtype=np.float) * np.nan
-            complete_lats = np.zeros((idx_len, 409), dtype=np.float) * np.nan
+            complete_lons = np.full((idx_len, self.lats.shape[1]), nan,
+                                    dtype=np.float)
+            complete_lats = np.full((idx_len, self.lats.shape[1]), nan,
+                                    dtype=np.float)
 
             complete_lons[self.scans["scan_line_number"] - min_idx] = self.lons
             complete_lats[self.scans["scan_line_number"] - min_idx] = self.lats
@@ -319,7 +321,9 @@ class GACPODReader(GACReader):
             missed_utcs = ((np.array(missed) - 1) * np.timedelta64(500, "ms")
                            + self.utcs[0])
 
-            mlons, mlats = self.compute_lonlat(missed_utcs, True)
+            mlons, mlats = self.compute_lonlat(width=self.lats.shape[1],
+                                               utcs=missed_utcs,
+                                               clock_drift_adjust=True)
 
             complete_lons[missed - min_idx] = mlons
             complete_lats[missed - min_idx] = mlats

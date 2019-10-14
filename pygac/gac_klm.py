@@ -588,7 +588,7 @@ class GACKLMReader(GACReader):
         channels[:, :, 2][switch == 2] = np.nan
         channels[:, :, 3][switch == 2] = np.nan
 
-    def adjust_clock_drift(self):
+    def _adjust_clock_drift(self):
         """Clock drift correction is only applied to POD satellites."""
         pass
 

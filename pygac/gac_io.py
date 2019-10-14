@@ -136,7 +136,6 @@ def save_gac(satellite_name,
                               end_line=end_line,
                               first_valid_lat=first_valid_lat,
                               last_valid_lat=last_valid_lat)
-    
     bt5, _, _ = slice_channel(bt5,
                               start_line=start_line,
                               end_line=end_line,

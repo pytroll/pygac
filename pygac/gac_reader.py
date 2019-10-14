@@ -50,7 +50,10 @@ class GACReader(six.with_metaclass(ABCMeta)):
     scan_freq = 2.0/1000.0
     """Scanning frequency (scanlines per millisecond)"""
 
-    def __init__(self, tle_thresh=7):
+    def __init__(self, interpolate_coords=True, adjust_clock_drift=True,
+                 tle_thresh=7):
+        self.interpolate_coords = interpolate_coords
+        self.adjust_clock_drift = adjust_clock_drift
         self.tle_thresh = tle_thresh
         self.head = None
         self.scans = None
@@ -180,7 +183,14 @@ class GACReader(six.with_metaclass(ABCMeta)):
         """
         return (scan_line_number - 1) / self.scan_freq
 
-    def compute_lonlat(self, utcs=None, clock_drift_adjust=True):
+    def compute_lonlat(self, width, utcs=None, clock_drift_adjust=True):
+        """Compute lat/lon coordinates.
+
+        Args:
+            width: Number of coordinates per scanlines
+            utcs: Scanline timestamps
+            clock_drift_adjust: If True, adjust clock drift.
+        """
         tle1, tle2 = self.get_tle_lines()
 
         scan_points = np.arange(3.5, 2048, 5)
@@ -229,7 +239,7 @@ class GACReader(six.with_metaclass(ABCMeta)):
 
         lons, lats = pos_time[:2]
 
-        return lons.reshape(-1, 409), lats.reshape(-1, 409)
+        return lons.reshape(-1, width), lats.reshape(-1, width)
 
     def get_calibrated_channels(self):
         channels = self.get_counts()
@@ -279,13 +289,16 @@ class GACReader(six.with_metaclass(ABCMeta)):
         TODO: Switch to faster interpolator?
         """
         if self.lons is None and self.lats is None:
-            lons, lats = self._get_lonlat()
+            self.lons, self.lats = self._get_lonlat()
 
             # Interpolate from every eigth pixel to all pixels.
-            self.lons, self.lats = gtp.Gac_Lat_Lon_Interpolator(lons, lats)
+            if self.interpolate_coords:
+                self.lons, self.lats = gtp.Gac_Lat_Lon_Interpolator(
+                    self.lons, self.lats)
 
             # Adjust clock drift
-            self.adjust_clock_drift()
+            if self.adjust_clock_drift:
+                self._adjust_clock_drift()
 
             # Mask out corrupt scanlines
             self.lons[self.mask] = np.nan
@@ -320,7 +333,7 @@ class GACReader(six.with_metaclass(ABCMeta)):
         raise NotImplementedError
 
     @abstractmethod
-    def adjust_clock_drift(self):
+    def _adjust_clock_drift(self):
         """Adjust clock drift."""
         raise NotImplementedError
 
