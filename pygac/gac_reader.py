@@ -51,9 +51,11 @@ class GACReader(six.with_metaclass(ABCMeta)):
     """Scanning frequency (scanlines per millisecond)"""
 
     def __init__(self, interpolate_coords=True, adjust_clock_drift=True,
-                 tle_thresh=7):
+                 tle_dir=None, tle_name=None, tle_thresh=7):
         self.interpolate_coords = interpolate_coords
         self.adjust_clock_drift = adjust_clock_drift
+        self.tle_dir = tle_dir
+        self.tle_name = tle_name
         self.tle_thresh = tle_thresh
         self.head = None
         self.scans = None
@@ -358,21 +360,34 @@ class GACReader(six.with_metaclass(ABCMeta)):
         return times64
 
     def get_tle_file(self):
-        conf = ConfigParser.ConfigParser()
-        try:
-            conf.read(CONFIG_FILE)
-        except ConfigParser.NoSectionError:
-            LOG.exception('Failed reading configuration file: %s',
-                          str(CONFIG_FILE))
-            raise
+        """Find TLE file for the current satellite."""
+        tle_dir, tle_name = self.tle_dir, self.tle_name
+
+        # If user didn't specify TLE dir/name, try config file
+        if tle_dir is None or tle_name is None:
+            conf = ConfigParser.ConfigParser()
+            try:
+                conf.read(CONFIG_FILE)
+            except ConfigParser.NoSectionError:
+                LOG.exception('Failed reading configuration file: %s',
+                              str(CONFIG_FILE))
+                raise
+
+            options = {}
+            for option, value in conf.items('tle', raw=True):
+                options[option] = value
+
+            tle_dir = options['tledir']
+            tle_name = options['tlename']
 
         values = {"satname": self.spacecraft_name, }
-        options = {}
-        for option, value in conf.items('tle', raw=True):
-            options[option] = value
-        tle_filename = os.path.join(options['tledir'],
-                                    options["tlename"] % values)
+        tle_filename = os.path.join(tle_dir, tle_name % values)
         LOG.info('TLE filename = ' + str(tle_filename))
+
+        return tle_filename
+
+    def read_tle_file(self, tle_filename):
+        """Read TLE file."""
         with open(tle_filename, 'r') as fp_:
             return fp_.readlines()
 
@@ -386,7 +401,7 @@ class GACReader(six.with_metaclass(ABCMeta)):
             return self.tle_lines
 
         self.get_times()
-        tle_data = self.get_tle_file()
+        tle_data = self.read_tle_file(self.get_tle_file())
         sdate = np.datetime64(self.times[0], '[ms]')
         dates = self.tle2datetime64(
             np.array([float(line[18:32]) for line in tle_data[::2]]))

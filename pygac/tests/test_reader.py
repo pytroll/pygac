@@ -160,7 +160,8 @@ class TestGacReader(unittest.TestCase):
 
     @mock.patch('pygac.gac_reader.GACReader.get_times')
     @mock.patch('pygac.gac_reader.GACReader.get_tle_file')
-    def test_get_tle_lines(self, get_tle_file, *mocks):
+    @mock.patch('pygac.gac_reader.GACReader.read_tle_file')
+    def test_get_tle_lines(self, read_tle_file, *mocks):
         """Test identification of closest TLE lines."""
         tle_data = ['1 38771U 12049A   18363.63219793 -.00000013  00000-0  14176-4 0  9991\r\n',
                     '2 38771  98.7297  60.1350 0002062  95.9284  25.0713 14.21477560325906\r\n',
@@ -180,7 +181,7 @@ class TestGacReader(unittest.TestCase):
             datetime.datetime(2019, 1, 8, 12, 0): None
         }
 
-        get_tle_file.return_value = tle_data
+        read_tle_file.return_value = tle_data
         for time, tle_idx in expected.items():
             self.reader.times = [time]
             self.reader.tle_lines = None
@@ -190,6 +191,21 @@ class TestGacReader(unittest.TestCase):
                 tle1, tle2 = self.reader.get_tle_lines()
                 self.assertEqual(tle1, tle_data[tle_idx])
                 self.assertEqual(tle2, tle_data[tle_idx + 1])
+
+    @mock.patch('pygac.gac_reader.ConfigParser.ConfigParser.read')
+    @mock.patch('pygac.gac_reader.ConfigParser.ConfigParser.items')
+    def test_get_tle_file(self, items, *mocks):
+        # Use TLE name/dir from config file
+        items.return_value = [('tledir', 'a'), ('tlename', 'b')]
+        tle_file = self.reader.get_tle_file()
+        self.assertEqual(tle_file, 'a/b')
+
+        # Use TLE name/dir from reader instanciation
+        self.reader.tle_dir = '/tle/dir'
+        self.reader.tle_name = 'tle_%(satname)s.txt'
+        self.reader.spacecraft_name = 'ISS'
+        tle_file = self.reader.get_tle_file()
+        self.assertEqual(tle_file, '/tle/dir/tle_ISS.txt')
 
     @mock.patch('pygac.gac_reader.GACReader.get_tsm_pixels')
     def test_mask_tsm_pixels(self, get_tsm_pixels):
