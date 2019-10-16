@@ -39,8 +39,7 @@ from __future__ import print_function
 
 import numpy as np
 from pygac.gac_reader import GACReader, inherit_doc
-import pygac.geotiepoints as gtp
-from .correct_tsm_issue import TSM_AFFECTED_INTERVALS_POD
+from pygac.correct_tsm_issue import TSM_AFFECTED_INTERVALS_POD, get_tsm_idx
 import datetime
 from pygac import gac_io
 
@@ -186,9 +185,9 @@ class GACPODReader(GACReader):
 
     tsm_affected_intervals = TSM_AFFECTED_INTERVALS_POD
 
-    def correct_scan_line_numbers(self, plot=False):
+    def correct_scan_line_numbers(self):
         # Perform common corrections first.
-        super(GACPODReader, self).correct_scan_line_numbers(plot=plot)
+        super(GACPODReader, self).correct_scan_line_numbers()
 
         # cleaning up the data
         min_scanline_number = np.amin(np.absolute(self.scans["scan_line_number"][:]))
@@ -271,7 +270,7 @@ class GACPODReader(GACReader):
     def _get_times(self):
         return self.decode_timestamps(self.scans["time_code"])
 
-    def adjust_clock_drift(self):
+    def _adjust_clock_drift(self):
         """Adjust the geolocation to compensate for the clock error.
 
         TODO: bad things might happen when scanlines are skipped.
@@ -311,8 +310,10 @@ class GACPODReader(GACReader):
                           max(self.scans["scan_line_number"] - min_idx)) + 1
             idx_len = max_idx - min_idx + 2
 
-            complete_lons = np.zeros((idx_len, 409), dtype=np.float) * np.nan
-            complete_lats = np.zeros((idx_len, 409), dtype=np.float) * np.nan
+            complete_lons = np.full((idx_len, self.lats.shape[1]), np.nan,
+                                    dtype=np.float)
+            complete_lats = np.full((idx_len, self.lats.shape[1]), np.nan,
+                                    dtype=np.float)
 
             complete_lons[self.scans["scan_line_number"] - min_idx] = self.lons
             complete_lats[self.scans["scan_line_number"] - min_idx] = self.lats
@@ -320,7 +321,9 @@ class GACPODReader(GACReader):
             missed_utcs = ((np.array(missed) - 1) * np.timedelta64(500, "ms")
                            + self.utcs[0])
 
-            mlons, mlats = self.compute_lonlat(missed_utcs, True)
+            mlons, mlats = self.compute_lonlat(width=self.lats.shape[1],
+                                               utcs=missed_utcs,
+                                               clock_drift_adjust=True)
 
             complete_lons[missed - min_idx] = mlons
             complete_lats[missed - min_idx] = mlats
@@ -340,13 +343,10 @@ class GACPODReader(GACReader):
         toc = datetime.datetime.now()
         LOG.debug("clock drift adjustment took %s", str(toc - tic))
 
-    def get_lonlat(self):
-        # interpolating lat-on points using PYTROLL geotiepoints
-        arr_lat = self.scans["earth_location"][:, 0::2] / 128.0
-        arr_lon = self.scans["earth_location"][:, 1::2] / 128.0
-
-        self.lons, self.lats = gtp.Gac_Lat_Lon_Interpolator(arr_lon, arr_lat)
-        return self.lons, self.lats
+    def _get_lonlat(self):
+        lats = self.scans["earth_location"][:, 0::2] / 128.0
+        lons = self.scans["earth_location"][:, 1::2] / 128.0
+        return lons, lats
 
     def get_telemetry(self):
         number_of_scans = self.scans["telemetry"].shape[0]
@@ -373,14 +373,15 @@ class GACPODReader(GACReader):
 
         return prt_counts, ict_counts, space_counts
 
-    def get_corrupt_mask(self):
-
-        # corrupt scanlines
-
+    def _get_corrupt_mask(self):
+        """Get mask for corrupt scanlines."""
         mask = ((self.scans["quality_indicators"] >> 31) |
                 ((self.scans["quality_indicators"] << 4) >> 31) |
                 ((self.scans["quality_indicators"] << 5) >> 31))
+        return mask.astype(bool)
 
+    def get_qual_flags(self):
+        """Read quality flags."""
         number_of_scans = self.scans["telemetry"].shape[0]
         qual_flags = np.zeros((int(number_of_scans), 7))
         qual_flags[:, 0] = self.scans["scan_line_number"]
@@ -391,7 +392,19 @@ class GACPODReader(GACReader):
         qual_flags[:, 5] = ((self.scans["quality_indicators"] << 14) >> 31)
         qual_flags[:, 6] = ((self.scans["quality_indicators"] << 15) >> 31)
 
-        return mask.astype(bool), qual_flags
+        return qual_flags
+
+    def postproc(self, channels):
+        """No POD specific postprocessing to be done."""
+        pass
+
+    def get_tsm_pixels(self, channels):
+        """Determine pixels affected by the scan motor issue.
+
+        Uses channels 1, 2, 4 and 5. Neither 3a, nor 3b.
+        """
+        return get_tsm_idx(channels[:, :, 0], channels[:, :, 1],
+                           channels[:, :, 3], channels[:, :, 4])
 
 
 def main(filename, start_line, end_line):
@@ -399,12 +412,10 @@ def main(filename, start_line, end_line):
     reader = GACPODReader()
     reader.read(filename)
     reader.get_lonlat()
-    reader.adjust_clock_drift()
     channels = reader.get_calibrated_channels()
     sat_azi, sat_zen, sun_azi, sun_zen, rel_azi = reader.get_angles()
-
-    mask, qual_flags = reader.get_corrupt_mask()
-    if (np.all(mask)):
+    qual_flags = reader.get_qual_flags()
+    if np.all(reader.mask):
         print("ERROR: All data is masked out. Stop processing")
         raise ValueError("All data is masked out.")
 
@@ -412,13 +423,12 @@ def main(filename, start_line, end_line):
                     reader.utcs,
                     reader.lats, reader.lons,
                     channels[:, :, 0], channels[:, :, 1],
-                    np.ones_like(channels[:, :, 0]) * -1,
+                    np.full_like(channels[:, :, 0], np.nan),
                     channels[:, :, 2],
                     channels[:, :, 3],
                     channels[:, :, 4],
                     sun_zen, sat_zen, sun_azi, sat_azi, rel_azi,
-                    mask, qual_flags, start_line, end_line,
-                    reader.is_tsm_affected(),
+                    qual_flags, start_line, end_line,
                     reader.filename,
                     reader.get_midnight_scanline(),
                     reader.get_miss_lines())

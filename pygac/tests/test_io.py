@@ -21,18 +21,9 @@
 import unittest
 import mock
 import numpy as np
-from pygac.gac_io import update_start_end_line
-
-
-class CalledWithAdapter(object):
-    def __init__(self, array):
-        self.array = array
-
-    def __repr__(self):
-        return repr(self.array)
-
-    def __eq__(self, other):
-        return np.all(self.array == other)
+import numpy.testing
+import pygac.gac_io as gac_io
+import pygac.utils as utils
 
 
 class TestIO(unittest.TestCase):
@@ -40,148 +31,210 @@ class TestIO(unittest.TestCase):
 
     longMessage = True
 
-    def test_update_start_end(self):
-        x = np.arange(0, 20)
-        start_line = 5
-        end_line = 15
+    def test_strip_invalid_lat(self):
+        lats = np.array([np.nan, 1, np.nan, 2, np.nan])
+        start, end = utils.strip_invalid_lat(lats)
+        self.assertEqual(start, 1)
+        self.assertEqual(end, 3)
 
-        for temp_start_line in (0, start_line, start_line + 1):
-            for temp_end_line in (x.size, end_line, end_line - 1):
-                where = 'temporary start/end lines {0}/{1}'.format(
-                    temp_start_line, temp_end_line)
+    def test_update_scanline(self):
+        test_data = [{'new_start_line': 100, 'new_end_line': 200,
+                      'scanline': 110, 'scanline_exp': 10},
+                     {'new_start_line': 100, 'new_end_line': 200,
+                      'scanline': 90, 'scanline_exp': None},
+                     {'new_start_line': 100, 'new_end_line': 200,
+                      'scanline': 210, 'scanline_exp': None}]
+        for t in test_data:
+            scanline_exp = t.pop('scanline_exp')
+            scanline = utils._update_scanline(**t)
+            self.assertEqual(scanline, scanline_exp)
 
-                # Define reference
-                if temp_start_line > start_line:
-                    ref_start = temp_start_line
-                else:
-                    ref_start = start_line
-                if temp_end_line < end_line:
-                    ref_end = temp_end_line
-                else:
-                    ref_end = end_line
-                ref = np.arange(ref_start, ref_end + 1)
+    def test_update_missing_scanlines(self):
+        qual_flags = np.array([[1, 2, 4, 5, 6, 8, 9, 11, 12]]).transpose()
+        miss_lines = np.array([3, 7, 10])
+        test_data = [{'start_line': 0, 'end_line': 8,
+                      'miss_lines_exp': [3, 7, 10]},
+                     {'start_line': 3, 'end_line': 6,
+                      'miss_lines_exp': [1, 2, 3, 4, 7, 10, 11, 12]}]
+        for t in test_data:
+            miss_lines_exp = t.pop('miss_lines_exp')
+            miss_lines = utils._update_missing_scanlines(
+                miss_lines=miss_lines, qual_flags=qual_flags, **t)
+            numpy.testing.assert_array_equal(miss_lines, miss_lines_exp)
 
-                # Compute new start & end line
-                new_start_line, new_end_line = update_start_end_line(
-                    start_line=start_line,
-                    end_line=end_line,
-                    temp_start_line=temp_start_line,
-                    temp_end_line=temp_end_line)
+    def test_slice(self):
+        ch = np.array([[1, 2, 3, 4, 5]]).transpose()
+        sliced_exp = np.array([[2, 3, 4]]).transpose()
 
-                # Slice twice (as in gac_io)
-                slice1 = x[temp_start_line:temp_end_line + 1].copy()
-                self.assertGreaterEqual(
-                    new_start_line, 0,
-                    msg='Start line out of bounds for ' + where)
-                self.assertLessEqual(
-                    new_end_line, slice1.size,
-                    msg='End line out of bounds for ' + where)
-                slice2 = slice1[new_start_line:new_end_line + 1]
+        # Without update
+        sliced = utils._slice(ch, start_line=1, end_line=3)
+        numpy.testing.assert_array_equal(sliced, sliced_exp)
 
-                # Check results
-                self.assertTrue(np.all(ref == slice2),
-                                msg='Incorrect slice for ' + where)
+        # With update
+        sliced, updated = utils._slice(ch, start_line=1, end_line=3,
+                                       update=[0, 2, 4, None])
+        numpy.testing.assert_array_equal(sliced, sliced_exp)
+        numpy.testing.assert_array_equal(updated, [None, 1, None, None])
 
-    def test_save_gac(self):
-        """Test selection of user defined scanlines
+        # Make sure slice is a copy
+        ch += 1
+        numpy.testing.assert_array_equal(sliced, sliced_exp)
+
+    def test_slice_channel(self):
+        """Test selection of user defined scanlines.
 
         Scanline Nr:  1  2  3  4  5  6  7  8  9 10 11 12 13 14
-        Missing:      X           X                 X        X
-        Inv. lat/lon:    X  X  X                 X     X  X
+        Missing:      X        X                    X  X
+        Inv. lat/lon:    X  X                             X  X
 
-        => All missing lines: [1, 2, 3, 4, 5, 10, 11, 12, 13, 14
+        Before stripping of invalid lats
+        --------------------------------
+        idx:             0  1     2  3  4  5  6  7        8  9
+        data:            1  2     3  4  5  6  7  8        9 10
+
+        After stripping of invalid lats
+        -------------------------------
+        idx:                      0  1  2  3  4  5
+        data:                     3  4  5  6  7  8
+
+
+        => All missing lines: [1, 2, 3, 4, 11, 12, 13, 14]
         """
-        import pygac.gac_io
-
         # Define test data
-        fv = pygac.gac_io.MISSING_DATA_LATLON
-        along = 10
-        across = 3
-        miss_lines = np.array([1, 5, 11, 14])  # never recorded
+        ch = np.array([[1, 2, 3, 4, 5, 6, 7, 8, 9, 10]]).transpose()
+        miss_lines = np.array([1, 4, 11, 12])  # never recorded
         qualflags = np.array(
-            [[2, 3, 4, 6, 7, 8, 9, 10, 12, 13]]).transpose()  # scanline number
-        lats = np.arange(along*across).reshape((along, across))
-        lats[:2+1, :] = fv  # Make first 3 lines invalid
-        lats[7:, :] = fv  # Make last 3 lines invalid
-        lons = lats.copy()
-        xutcs = np.arange(along).astype('datetime64[ms]')
-        midnight_scanline = 5
-        dummydata = np.ones(lats.shape)
-        start_end_lines = [(0, 0), (4, 5), (0, 4), (6, 9)]
+            [[2, 3, 5, 6, 7, 8, 9, 10, 13, 14]]).transpose()  # scanline number
+        midn_line = 3
+        first_valid_lat = 2
+        last_valid_lat = 7
+        start_line = 1
+        end_line = 4
 
-        # Define reference data for each pair of start/end lines. Lines with
-        # invalid lat/lon info (here 0, 1, 2, 7, 8, 9) must be ignored
-        new_start_lines = [3, 4, 3, 6]
-        new_end_lines = [6, 5, 4, 6]
-        midnight_scanlines_ref = [2, 1, None, None]
-        all_miss_lines_ref = np.array([1, 2, 3, 4, 5, 10, 11, 12, 13, 14])
+        # Without lat stripping
+        sliced_ref = np.array([[2, 3, 4, 5]]).transpose()
+        sliced, miss_lines_new, midn_line_new = utils.slice_channel(
+            ch, start_line=start_line, end_line=end_line,
+            miss_lines=miss_lines, midnight_scanline=midn_line,
+            qual_flags=qualflags)
+        numpy.testing.assert_array_equal(sliced, sliced_ref)
+        numpy.testing.assert_array_equal(miss_lines_new, miss_lines)
+        self.assertEqual(midn_line_new, 2)
 
-        for itest, (start_line, end_line) in enumerate(start_end_lines):
-            new_start_line = new_start_lines[itest]
-            new_end_line = new_end_lines[itest]
-            lats_ref = lats[new_start_line:new_end_line + 1, :]
-            qualflags_ref = qualflags[new_start_line:new_end_line+1]
-            xutcs_ref = xutcs[new_start_line:new_end_line + 1]
-            midnight_scanline_ref = midnight_scanlines_ref[itest]
+        # With lat stripping
+        sliced_ref = np.array([[4, 5, 6, 7]]).transpose()
+        miss_lines_ref = np.array([1, 2, 3, 4, 11, 12, 13, 14])
+        sliced, miss_lines_new, midn_line_new = utils.slice_channel(
+            ch, start_line=start_line, end_line=end_line,
+            first_valid_lat=first_valid_lat, last_valid_lat=last_valid_lat,
+            miss_lines=miss_lines, midnight_scanline=midn_line,
+            qual_flags=qualflags)
+        numpy.testing.assert_array_equal(sliced, sliced_ref)
+        numpy.testing.assert_array_equal(miss_lines_new, miss_lines_ref)
+        self.assertEqual(midn_line_new, 0)
 
-            with mock.patch('pygac.gac_io.avhrrGAC_io') as io_mock:
-                pygac.gac_io.save_gac(
-                    satellite_name='dummy',
-                    xutcs=xutcs,
-                    lats=lats,
-                    lons=lons,
-                    ref1=dummydata,
-                    ref2=dummydata,
-                    ref3=dummydata,
-                    bt3=dummydata,
-                    bt4=dummydata,
-                    bt5=dummydata,
-                    sun_zen=dummydata,
-                    sat_zen=dummydata,
-                    sun_azi=dummydata,
-                    sat_azi=dummydata,
-                    rel_azi=dummydata,
-                    mask=np.zeros(lats.shape, dtype='bool'),
-                    qual_flags=qualflags,
-                    start_line=start_line,
-                    end_line=end_line,
-                    tsmcorr=False,
-                    gac_file='dummy',
-                    midnight_scanline=midnight_scanline,
-                    miss_lines=miss_lines,
-                    switch=np.zeros(lats.shape, dtype='bool')
-                )
-                expected_args = [
-                    mock.ANY,
-                    CalledWithAdapter(xutcs_ref),
-                    mock.ANY,
-                    mock.ANY,
-                    mock.ANY,
-                    mock.ANY,
-                    CalledWithAdapter(lats_ref*1000.0),
-                    mock.ANY,
-                    mock.ANY,
-                    mock.ANY,
-                    mock.ANY,
-                    mock.ANY,
-                    mock.ANY,
-                    mock.ANY,
-                    mock.ANY,
-                    mock.ANY,
-                    mock.ANY,
-                    mock.ANY,
-                    mock.ANY,
-                    CalledWithAdapter(qualflags_ref),
-                    mock.ANY,
-                    mock.ANY,
-                    mock.ANY,
-                    mock.ANY,
-                    mock.ANY,
-                    mock.ANY,
-                    midnight_scanline_ref,
-                    CalledWithAdapter(all_miss_lines_ref)
-                ]
-                io_mock.assert_called_with(*expected_args)
+    def test_check_user_scanlines(self):
+        # All scanlines
+        start, end = utils.check_user_scanlines(0, 0, 100, 200)
+        self.assertEqual(start, 0)
+        self.assertEqual(end, 100)
+
+        start, end = utils.check_user_scanlines(0, 0, None, None, 100)
+        self.assertEqual(start, 0)
+        self.assertEqual(end, 99)
+
+        # Valid scanlines
+        start, end = utils.check_user_scanlines(10, 20, 100, 200)
+        self.assertEqual(start, 10)
+        self.assertEqual(end, 20)
+
+        start, end = utils.check_user_scanlines(10, 20, None, None, 100)
+        self.assertEqual(start, 10)
+        self.assertEqual(end, 20)
+
+        # Invalid scanlines
+        start, end = utils.check_user_scanlines(10, 110, 100, 200)
+        self.assertEqual(start, 10)
+        self.assertEqual(end, 100)
+
+        start, end = utils.check_user_scanlines(10, 110, None, None, 100)
+        self.assertEqual(start, 10)
+        self.assertEqual(end, 99)
+
+        self.assertRaises(ValueError, gac_io.check_user_scanlines,
+                          110, 120, 100, 200)
+        self.assertRaises(ValueError, gac_io.check_user_scanlines,
+                          110, 120, None, None, 100)
+
+    @mock.patch('pygac.gac_io.strip_invalid_lat')
+    @mock.patch('pygac.gac_io.avhrrGAC_io')
+    @mock.patch('pygac.gac_io.slice_channel')
+    @mock.patch('pygac.gac_io.check_user_scanlines')
+    def test_save_gac(self, check_user_scanlines, slice_channel, avhrrGAC_io,
+                      strip_invalid_lat):
+        # Test scanline selection
+        mm = mock.MagicMock()
+        kwargs = dict(
+            satellite_name=mm,
+            xutcs=mm,
+            lats=mm,
+            lons=mm,
+            ref1=mm,
+            ref2=mm,
+            ref3=mm,
+            bt3=mm,
+            bt4=mm,
+            bt5=mm,
+            sun_zen=mm,
+            sat_zen=mm,
+            sun_azi=mm,
+            sat_azi=mm,
+            rel_azi=mm,
+            qual_flags=mm,
+            gac_file=mm,
+            midnight_scanline=mm,
+            miss_lines=mm
+        )
+        slice_channel.return_value = mm, 'miss', 'midnight'
+        strip_invalid_lat.return_value = 0, 0
+        check_user_scanlines.return_value = 'start', 'end'
+
+        gac_io.save_gac(start_line=0, end_line=0, **kwargs)
+        slice_channel.assert_called_with(mock.ANY,
+                                         start_line='start', end_line='end',
+                                         first_valid_lat=mock.ANY,
+                                         last_valid_lat=mock.ANY)
+        expected_args = [
+            mock.ANY,
+            mock.ANY,
+            mock.ANY,
+            mock.ANY,
+            mock.ANY,
+            mock.ANY,
+            mock.ANY,
+            mock.ANY,
+            mock.ANY,
+            mock.ANY,
+            mock.ANY,
+            mock.ANY,
+            mock.ANY,
+            mock.ANY,
+            mock.ANY,
+            mock.ANY,
+            mock.ANY,
+            mock.ANY,
+            mock.ANY,
+            mock.ANY,
+            mock.ANY,
+            mock.ANY,
+            mock.ANY,
+            mock.ANY,
+            mock.ANY,
+            mock.ANY,
+            'midnight',
+            'miss'
+        ]
+        avhrrGAC_io.assert_called_with(*expected_args)
 
 
 def suite():

@@ -1,11 +1,9 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2013, 2014 Martin Raspaud
-
 # Author(s):
 
-#   Martin Raspaud <martin.raspaud@smhi.se>
+#   Stephan Finkensieper <stephan.finkensieper@dwd.de>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,22 +18,19 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-"""The tests package.
-"""
+"""Test utilities."""
 
-from pygac.tests import (test_calibrate_pod, test_slerp, test_calibrate_klm,
-                         test_pod, test_tsm, test_reader, test_io,
-                         test_angles)
-import unittest
+import numpy as np
 
 
-def suite():
-    """The global test suite.
-    """
-    mysuite = unittest.TestSuite()
-    tests = (test_slerp, test_calibrate_klm, test_calibrate_pod,
-             test_pod, test_tsm, test_reader, test_io, test_angles)
-    for test in tests:
-        mysuite.addTests(test.suite())
+class CalledWithArray(object):
+    """Adapter for arrays in mock.assert_called_with()."""
 
-    return mysuite
+    def __init__(self, array):
+        self.array = array
+
+    def __repr__(self):
+        return repr(self.array)
+
+    def __eq__(self, other):
+        return np.all(self.array == other)

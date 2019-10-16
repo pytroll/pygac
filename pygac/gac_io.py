@@ -33,58 +33,47 @@ import time
 import h5py
 import numpy as np
 
-from .correct_tsm_issue import flag_pixels as flag_tsm_pixels
-
 try:
     import ConfigParser
 except ImportError:
     import configparser as ConfigParser
 
+from pygac import CONFIG_FILE
+from pygac.utils import slice_channel, strip_invalid_lat, check_user_scanlines
 
 LOG = logging.getLogger(__name__)
 
 
-try:
-    CONFIG_FILE = os.environ['PYGAC_CONFIG_FILE']
-except KeyError:
-    LOG.exception('Environment variable PYGAC_CONFIG_FILE not set!')
-    raise
-
-if not os.path.exists(CONFIG_FILE) or not os.path.isfile(CONFIG_FILE):
-    raise IOError(str(CONFIG_FILE) + " pointed to by the environment " +
-                  "variable PYGAC_CONFIG_FILE is not a file or does not exist!")
-
-conf = ConfigParser.ConfigParser()
-try:
-    conf.read(CONFIG_FILE)
-except ConfigParser.NoSectionError:
-    LOG.exception('Failed reading configuration file: ' + str(CONFIG_FILE))
-    raise
-
-options = {}
-for option, value in conf.items('output', raw=True):
-    options[option] = value
-
-OUTDIR = options['output_dir']
-OUTPUT_FILE_PREFIX = options['output_file_prefix']
-
-SUNSATANGLES_DIR = os.environ.get('SM_SUNSATANGLES_DIR', OUTDIR)
-AVHRR_DIR = os.environ.get('SM_AVHRR_DIR', OUTDIR)
-QUAL_DIR = os.environ.get('SM_AVHRR_DIR', OUTDIR)
 MISSING_DATA = -32001
 MISSING_DATA_LATLON = -999999
 
 
-def update_start_end_line(start_line, end_line, temp_start_line, temp_end_line):
-    """Update user start/end lines after data has been sliced using temporary
-    start/end lines.
+def read_config():
+    """Read output dir etc from config file."""
+    if not os.path.exists(CONFIG_FILE) or not os.path.isfile(CONFIG_FILE):
+        raise IOError('{} pointed to by the environment variable '
+                      'PYGAC_CONFIG_FILE is not a file or does not exist!'
+                      .format(str(CONFIG_FILE)))
 
-    Returns:
-        Updated start_line, updated end_line
-    """
-    new_start_line = max(0, start_line - temp_start_line)
-    new_end_line = min(end_line, temp_end_line) - temp_start_line
-    return new_start_line, new_end_line
+    conf = ConfigParser.ConfigParser()
+    try:
+        conf.read(CONFIG_FILE)
+    except ConfigParser.NoSectionError:
+        LOG.exception('Failed reading configuration file: ' + str(CONFIG_FILE))
+        raise
+
+    options = {}
+    for option, value in conf.items('output', raw=True):
+        options[option] = value
+
+    OUTDIR = options['output_dir']
+    OUTPUT_FILE_PREFIX = options['output_file_prefix']
+
+    SUNSATANGLES_DIR = os.environ.get('SM_SUNSATANGLES_DIR', OUTDIR)
+    AVHRR_DIR = os.environ.get('SM_AVHRR_DIR', OUTDIR)
+    QUAL_DIR = os.environ.get('SM_AVHRR_DIR', OUTDIR)
+
+    return OUTPUT_FILE_PREFIX, SUNSATANGLES_DIR, AVHRR_DIR, QUAL_DIR
 
 
 def save_gac(satellite_name,
@@ -93,96 +82,119 @@ def save_gac(satellite_name,
              ref1, ref2, ref3,
              bt3, bt4, bt5,
              sun_zen, sat_zen, sun_azi, sat_azi, rel_azi,
-             mask, qual_flags, start_line, end_line, tsmcorr,
-             gac_file, midnight_scanline, miss_lines, switch=None):
+             qual_flags, start_line, end_line,
+             gac_file, midnight_scanline, miss_lines):
 
-    along_track = lats.shape[0]
     last_scan_line_number = qual_flags[-1, 0]
 
-    # Determine scanline range requested by user
-    start_line = int(start_line)
-    end_line = int(end_line)
-    if end_line == 0:
-        # If the user specifies 0 as the last scanline, process all scanlines
-        end_line = along_track
+    # Strip invalid coordinates
+    first_valid_lat, last_valid_lat = strip_invalid_lat(lats)
+    if first_valid_lat > start_line:
+        LOG.info('New start_line chosen (due to invalid lat/lon '
+                 'info) = ' + str(first_valid_lat))
+    if end_line > last_valid_lat:
+        LOG.info('New end_line chosen (due to invalid lat/lon '
+                 'info) = ' + str(last_valid_lat))
 
-    bt3 = np.where(np.logical_or(bt3 < 170.0, bt3 > 350.0),
-                   MISSING_DATA, bt3 - 273.15)
-    bt4 = np.where(np.logical_or(bt4 < 170.0, bt4 > 350.0),
-                   MISSING_DATA, bt4 - 273.15)
-    bt5 = np.where(np.logical_or(bt5 < 170.0, bt5 > 350.0),
-                   MISSING_DATA, bt5 - 273.15)
-
-    lats = np.where(np.logical_or(lats < -90.00, lats > 90.00),
-                    MISSING_DATA_LATLON, lats)
-    lons = np.where(np.logical_or(lons < -180.00, lons > 180.00),
-                    MISSING_DATA_LATLON, lons)
-
-    for array in [bt3, bt4, bt5]:
-        array[array != MISSING_DATA] = 100 * array[array != MISSING_DATA]
-        array[mask] = MISSING_DATA
-    for array in [ref1, ref2, ref3,
-                  sun_zen, sat_zen, sun_azi, sat_azi, rel_azi]:
-        array *= 100
-        array[mask] = MISSING_DATA
-    for array in [lats, lons]:
-        array[array != MISSING_DATA_LATLON] = 1000.0 * \
-            array[array != MISSING_DATA_LATLON]
-        array[mask] = MISSING_DATA_LATLON
-
-    for ref in [ref1, ref2, ref3]:
-        ref[ref < 0] = MISSING_DATA
-
-    if switch is not None:
-        ref3[switch == 0] = MISSING_DATA
-        bt3[switch == 1] = MISSING_DATA
-        ref3[switch == 2] = MISSING_DATA
-        bt3[switch == 2] = MISSING_DATA
-
-    for array in [ref1, ref2, ref3, bt3, bt4, bt5]:
-        array[np.isnan(array)] = MISSING_DATA
-
-    # Choose new temporary start/end lines if lat/lon info is invalid
-    no_wrong_lat = np.where(lats != MISSING_DATA_LATLON)
-    temp_start_line = min(no_wrong_lat[0])
-    temp_end_line = max(no_wrong_lat[0])
-    if temp_start_line > start_line:
-        LOG.info('New start_line chosen (due to invalid lat/lon info) = ' + str(temp_start_line))
-    if end_line > temp_end_line:
-        LOG.info('New end_line chosen (due to invalid lat/lon info) = ' + str(temp_end_line))
-
-    # Slice data using temporary start/end lines
-    ref1 = ref1[temp_start_line:temp_end_line + 1, :].copy()
-    ref2 = ref2[temp_start_line:temp_end_line + 1, :].copy()
-    ref3 = ref3[temp_start_line:temp_end_line + 1, :].copy()
-    bt3 = bt3[temp_start_line:temp_end_line + 1, :].copy()
-    bt4 = bt4[temp_start_line:temp_end_line + 1, :].copy()
-    bt5 = bt5[temp_start_line:temp_end_line + 1, :].copy()
-    sun_zen = sun_zen[temp_start_line:temp_end_line + 1, :].copy()
-    sun_azi = sun_azi[temp_start_line:temp_end_line + 1, :].copy()
-    sat_zen = sat_zen[temp_start_line:temp_end_line + 1, :].copy()
-    sat_azi = sat_azi[temp_start_line:temp_end_line + 1, :].copy()
-    rel_azi = rel_azi[temp_start_line:temp_end_line + 1, :].copy()
-    lats = lats[temp_start_line:temp_end_line + 1, :].copy()
-    lons = lons[temp_start_line:temp_end_line + 1, :].copy()
-    miss_lines = np.sort(np.array(
-        qual_flags[0:temp_start_line, 0].tolist() +
-        miss_lines.tolist() +
-        qual_flags[temp_end_line+1:, 0].tolist()
-    ))
-    qual_flags = qual_flags[temp_start_line:temp_end_line+1, :].copy()
-    xutcs = xutcs[temp_start_line:temp_end_line+1].copy()
-
-    # Update user start/end lines to the new slice
-    start_line, end_line = update_start_end_line(
+    # Check user-defined scanlines
+    start_line, end_line = check_user_scanlines(
         start_line=start_line,
         end_line=end_line,
-        temp_start_line=temp_start_line,
-        temp_end_line=temp_end_line)
+        first_valid_lat=first_valid_lat,
+        last_valid_lat=last_valid_lat)
+
+    # Slice data using new start/end lines
+    _, miss_lines, midnight_scanline = slice_channel(
+        np.zeros(lats.shape),
+        start_line=start_line,
+        end_line=end_line,
+        first_valid_lat=first_valid_lat,
+        last_valid_lat=last_valid_lat,
+        qual_flags=qual_flags,
+        miss_lines=miss_lines,
+        midnight_scanline=midnight_scanline)
+
+    ref1, _, _ = slice_channel(ref1,
+                               start_line=start_line,
+                               end_line=end_line,
+                               first_valid_lat=first_valid_lat,
+                               last_valid_lat=last_valid_lat)
+    ref2, _, _ = slice_channel(ref2,
+                               start_line=start_line,
+                               end_line=end_line,
+                               first_valid_lat=first_valid_lat,
+                               last_valid_lat=last_valid_lat)
+    ref3, _, _ = slice_channel(ref3,
+                               start_line=start_line,
+                               end_line=end_line,
+                               first_valid_lat=first_valid_lat,
+                               last_valid_lat=last_valid_lat)
+    bt3, _, _ = slice_channel(bt3,
+                              start_line=start_line,
+                              end_line=end_line,
+                              first_valid_lat=first_valid_lat,
+                              last_valid_lat=last_valid_lat)
+    bt4, _, _ = slice_channel(bt4,
+                              start_line=start_line,
+                              end_line=end_line,
+                              first_valid_lat=first_valid_lat,
+                              last_valid_lat=last_valid_lat)
+    bt5, _, _ = slice_channel(bt5,
+                              start_line=start_line,
+                              end_line=end_line,
+                              first_valid_lat=first_valid_lat,
+                              last_valid_lat=last_valid_lat)
+    sun_zen, _, _ = slice_channel(sun_zen,
+                                  start_line=start_line,
+                                  end_line=end_line,
+                                  first_valid_lat=first_valid_lat,
+                                  last_valid_lat=last_valid_lat)
+    sun_azi, _, _ = slice_channel(sun_azi,
+                                  start_line=start_line,
+                                  end_line=end_line,
+                                  first_valid_lat=first_valid_lat,
+                                  last_valid_lat=last_valid_lat)
+    sat_zen, _, _ = slice_channel(sat_zen,
+                                  start_line=start_line,
+                                  end_line=end_line,
+                                  first_valid_lat=first_valid_lat,
+                                  last_valid_lat=last_valid_lat)
+    sat_azi, _, _ = slice_channel(sat_azi,
+                                  start_line=start_line,
+                                  end_line=end_line,
+                                  first_valid_lat=first_valid_lat,
+                                  last_valid_lat=last_valid_lat)
+    rel_azi, _, _ = slice_channel(rel_azi,
+                                  start_line=start_line,
+                                  end_line=end_line,
+                                  first_valid_lat=first_valid_lat,
+                                  last_valid_lat=last_valid_lat)
+    lons, _, _ = slice_channel(lons,
+                               start_line=start_line,
+                               end_line=end_line,
+                               first_valid_lat=first_valid_lat,
+                               last_valid_lat=last_valid_lat)
+    lats, _, _ = slice_channel(lats,
+                               start_line=start_line,
+                               end_line=end_line,
+                               first_valid_lat=first_valid_lat,
+                               last_valid_lat=last_valid_lat)
+    qual_flags, _, _ = slice_channel(qual_flags,
+                                     start_line=start_line,
+                                     end_line=end_line,
+                                     first_valid_lat=first_valid_lat,
+                                     last_valid_lat=last_valid_lat)
+    xutcs, _, _ = slice_channel(xutcs,
+                                start_line=start_line,
+                                end_line=end_line,
+                                first_valid_lat=first_valid_lat,
+                                last_valid_lat=last_valid_lat)
+
+    total_number_of_scan_lines = lats.shape[0]
 
     # Reading time from the body of the gac file
-    start = xutcs[start_line].astype(datetime.datetime)
-    end = xutcs[end_line].astype(datetime.datetime)
+    start = xutcs[0].astype(datetime.datetime)
+    end = xutcs[-1].astype(datetime.datetime)
     startdate = start.strftime("%Y%m%d")
     starttime = start.strftime("%H%M%S%f")[:-5]
     enddate = end.strftime("%Y%m%d")
@@ -192,53 +204,22 @@ def save_gac(satellite_name,
     # Earth-Sun distance correction factor
     corr = 1.0 - 0.0334 * np.cos(2.0 * np.pi * (jday - 2) / 365.25)
 
-    # Slice scanline range requested by user
-    ref1 = ref1[start_line:end_line+1, :].copy()
-    ref2 = ref2[start_line:end_line+1, :].copy()
-    ref3 = ref3[start_line:end_line+1, :].copy()
-    bt3 = bt3[start_line:end_line+1, :].copy()
-    bt4 = bt4[start_line:end_line+1, :].copy()
-    bt5 = bt5[start_line:end_line+1, :].copy()
-    sun_zen = sun_zen[start_line:end_line+1, :].copy()
-    sun_azi = sun_azi[start_line:end_line+1, :].copy()
-    sat_zen = sat_zen[start_line:end_line+1, :].copy()
-    sat_azi = sat_azi[start_line:end_line+1, :].copy()
-    rel_azi = rel_azi[start_line:end_line+1, :].copy()
-    lats = lats[start_line:end_line+1, :].copy()
-    lons = lons[start_line:end_line+1, :].copy()
-    qual_flags = qual_flags[start_line:end_line+1, :].copy()
-    xutcs = xutcs[start_line:end_line+1].copy()
+    # Apply scaling & offset
+    bt3 -= 273.15
+    bt4 -= 273.15
+    bt5 -= 273.15
+    for array in [bt3, bt4, bt5, ref1, ref2, ref3, sun_zen, sat_zen, sun_azi,
+                  sat_azi, rel_azi]:
+        array *= 100.0
+    for array in [lats, lons]:
+        array *= 1000.0
 
-    if midnight_scanline is not None:
-        # Update midnight scanline to the final scanline range
-        midnight_scanline -= (temp_start_line + start_line)
-
-        # Set midnight scanline to None if it has been removed due to invalid
-        # lat/lon info (< 0) or lies outside the user defined scanline range
-        if midnight_scanline < 0 or (midnight_scanline > end_line or
-                                     midnight_scanline < start_line):
-            midnight_scanline = None
-
-    # Compute total number of scanlines
-    total_number_of_scan_lines = end_line - start_line + 1
-
-    # Correct for temporary scan motor issue.
-    #
-    # TODO: The thresholds in tsm.flag_pixels() were derived from the final
-    #       pygac output, that's why the correction is applied here. It would
-    #       certainly be more consistent to apply the correction in GACReader,
-    #       but that requires a new threshold analysis.
-    if tsmcorr:
-        LOG.info('Correcting for temporary scan motor issue')
-        tic = datetime.datetime.now()
-        (ref1, ref2, bt3, bt4, bt5, ref3) = flag_tsm_pixels(channel1=ref1,
-                                                            channel2=ref2,
-                                                            channel3b=bt3,
-                                                            channel4=bt4,
-                                                            channel5=bt5,
-                                                            channel3a=ref3,
-                                                            fillv=MISSING_DATA)
-        LOG.debug('TSM correction took: %s', str(datetime.datetime.now() - tic))
+    # Replace NaN with fill values
+    for array in [ref1, ref2, ref3, bt3, bt4, bt5, sun_zen, sat_zen, sun_azi,
+                  sat_azi, rel_azi]:
+        array[np.isnan(array)] = MISSING_DATA
+    for array in [lats, lons]:
+        array[np.isnan(array)] = MISSING_DATA_LATLON
 
     avhrrGAC_io(satellite_name, xutcs, startdate, enddate, starttime, endtime,
                 lats, lons, ref1, ref2, ref3, bt3, bt4, bt5,
@@ -255,6 +236,9 @@ def avhrrGAC_io(satellite_name, xutcs, startdate, enddate, starttime, endtime,
                 last_scan_line_number, corr, gac_file, midnight_scanline,
                 miss_lines):
     import os
+
+    # Read output dir etc from config file
+    OUTPUT_FILE_PREFIX, SUNSATANGLES_DIR, AVHRR_DIR, QUAL_DIR = read_config()
 
     # Calculate start and end time in sec1970
     t_obj = time.strptime(startdate + starttime[0:6], "%Y%m%d%H%M%S")

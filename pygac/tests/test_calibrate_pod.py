@@ -63,9 +63,9 @@ class TestGenericCalibration(unittest.TestCase):
         ref3 = calibrate_solar(data, channel, year, jday,
                                spacecraft_id, corr)
 
-        expected = (np.array([[-5.300497, 60.891074, 126.953364],
+        expected = (np.array([[np.nan, 60.891074, 126.953364],
                               [0., 14.091565, 85.195791]]),
-                    np.array([[-6.353052, 72.98262, 152.16334],
+                    np.array([[np.nan, 72.98262, 152.16334],
                               [0., 16.889821, 102.113687]]),
                     np.array([[-32001., -32001., -32001.],
                               [-32001., -32001., -32001.]]))

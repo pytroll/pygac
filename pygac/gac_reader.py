@@ -23,22 +23,24 @@
 """Generic reader for GAC data. Can't be used as is, has to be subclassed to add
 specific read functions.
 """
+from abc import ABCMeta, abstractmethod, abstractproperty
+import logging
 import numpy as np
+import os
+import six
+import types
+
 from pygac import CONFIG_FILE, get_absolute_azimuth_angle_diff
 try:
     import ConfigParser
 except ImportError:
     import configparser as ConfigParser
 
-import os
-import logging
 from pyorbital.orbital import Orbital
 from pyorbital import astronomy
 import datetime
 from pygac.calibration import calibrate_solar, calibrate_thermal
-from abc import ABCMeta, abstractmethod, abstractproperty
-import six
-import types
+import pygac.geotiepoints as gtp
 
 LOG = logging.getLogger(__name__)
 
@@ -48,7 +50,23 @@ class GACReader(six.with_metaclass(ABCMeta)):
     scan_freq = 2.0/1000.0
     """Scanning frequency (scanlines per millisecond)"""
 
-    def __init__(self, tle_thresh=7):
+    def __init__(self, interpolate_coords=True, adjust_clock_drift=True,
+                 tle_dir=None, tle_name=None, tle_thresh=7):
+        """
+        Args:
+            interpolate_coords: Interpolate coordinates from every eighth pixel
+                to all pixels.
+            adjust_clock_drift: Adjust the geolocation to compensate for the
+                clock error (POD satellites only).
+            tle_dir: Directory holding TLE files
+            tle_name: Filename pattern of TLE files.
+            tle_thresh: Maximum number of days between observation and nearest
+                TLE
+        """
+        self.interpolate_coords = interpolate_coords
+        self.adjust_clock_drift = adjust_clock_drift
+        self.tle_dir = tle_dir
+        self.tle_name = tle_name
         self.tle_thresh = tle_thresh
         self.head = None
         self.scans = None
@@ -60,6 +78,7 @@ class GACReader(six.with_metaclass(ABCMeta)):
         self.times = None
         self.tle_lines = None
         self.filename = None
+        self._mask = None
 
     @abstractmethod
     def read(self, filename):
@@ -177,7 +196,14 @@ class GACReader(six.with_metaclass(ABCMeta)):
         """
         return (scan_line_number - 1) / self.scan_freq
 
-    def compute_lonlat(self, utcs=None, clock_drift_adjust=True):
+    def compute_lonlat(self, width, utcs=None, clock_drift_adjust=True):
+        """Compute lat/lon coordinates.
+
+        Args:
+            width: Number of coordinates per scanlines
+            utcs: Scanline timestamps
+            clock_drift_adjust: If True, adjust clock drift.
+        """
         tle1, tle2 = self.get_tle_lines()
 
         scan_points = np.arange(3.5, 2048, 5)
@@ -226,7 +252,7 @@ class GACReader(six.with_metaclass(ABCMeta)):
 
         lons, lats = pos_time[:2]
 
-        return lons.reshape(-1, 409), lats.reshape(-1, 409)
+        return lons.reshape(-1, width), lats.reshape(-1, width)
 
     def get_calibrated_channels(self):
         channels = self.get_counts()
@@ -256,7 +282,73 @@ class GACReader(six.with_metaclass(ABCMeta)):
                 self.scans["scan_line_number"],
                 chan,
                 self.spacecraft_name)
+
+        # Mask out corrupt values
+        channels[self.mask] = np.nan
+
+        # Apply KLM/POD specific postprocessing
+        self.postproc(channels)
+
+        # Mask pixels affected by scan motor issue
+        if self.is_tsm_affected():
+            LOG.info('Correcting for temporary scan motor issue')
+            self.mask_tsm_pixels(channels)
+
         return channels
+
+    def get_lonlat(self):
+        """Compute lat/lon coordinates.
+
+        TODO: Switch to faster interpolator?
+        """
+        if self.lons is None and self.lats is None:
+            self.lons, self.lats = self._get_lonlat()
+
+            # Interpolate from every eighth pixel to all pixels.
+            if self.interpolate_coords:
+                self.lons, self.lats = gtp.Gac_Lat_Lon_Interpolator(
+                    self.lons, self.lats)
+
+            # Adjust clock drift
+            if self.adjust_clock_drift:
+                self._adjust_clock_drift()
+
+            # Mask out corrupt scanlines
+            self.lons[self.mask] = np.nan
+            self.lats[self.mask] = np.nan
+
+            # Mask values outside the valid range
+            self.lats[np.fabs(self.lats) > 90.0] = np.nan
+            self.lons[np.fabs(self.lons) > 180.0] = np.nan
+
+        return self.lons, self.lats
+
+    @abstractmethod
+    def _get_lonlat(self):
+        """KLM/POD specific readout of lat/lon coordinates."""
+        raise NotImplementedError
+
+    @property
+    def mask(self):
+        """Mask for corrupt scanlines."""
+        if self._mask is None:
+            self._mask = self._get_corrupt_mask()
+        return self._mask
+
+    @abstractmethod
+    def _get_corrupt_mask(self):
+        """KLM/POD specific readout of corrupt scanline mask."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def postproc(self, channels):
+        """Apply KLM/POD specific postprocessing."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def _adjust_clock_drift(self):
+        """Adjust clock drift."""
+        raise NotImplementedError
 
     @staticmethod
     def tle2datetime64(times):
@@ -279,21 +371,34 @@ class GACReader(six.with_metaclass(ABCMeta)):
         return times64
 
     def get_tle_file(self):
-        conf = ConfigParser.ConfigParser()
-        try:
-            conf.read(CONFIG_FILE)
-        except ConfigParser.NoSectionError:
-            LOG.exception('Failed reading configuration file: %s',
-                          str(CONFIG_FILE))
-            raise
+        """Find TLE file for the current satellite."""
+        tle_dir, tle_name = self.tle_dir, self.tle_name
+
+        # If user didn't specify TLE dir/name, try config file
+        if tle_dir is None or tle_name is None:
+            conf = ConfigParser.ConfigParser()
+            try:
+                conf.read(CONFIG_FILE)
+            except ConfigParser.NoSectionError:
+                LOG.exception('Failed reading configuration file: %s',
+                              str(CONFIG_FILE))
+                raise
+
+            options = {}
+            for option, value in conf.items('tle', raw=True):
+                options[option] = value
+
+            tle_dir = options['tledir']
+            tle_name = options['tlename']
 
         values = {"satname": self.spacecraft_name, }
-        options = {}
-        for option, value in conf.items('tle', raw=True):
-            options[option] = value
-        tle_filename = os.path.join(options['tledir'],
-                                    options["tlename"] % values)
+        tle_filename = os.path.join(tle_dir, tle_name % values)
         LOG.info('TLE filename = ' + str(tle_filename))
+
+        return tle_filename
+
+    def read_tle_file(self, tle_filename):
+        """Read TLE file."""
         with open(tle_filename, 'r') as fp_:
             return fp_.readlines()
 
@@ -307,7 +412,7 @@ class GACReader(six.with_metaclass(ABCMeta)):
             return self.tle_lines
 
         self.get_times()
-        tle_data = self.get_tle_file()
+        tle_data = self.read_tle_file(self.get_tle_file())
         sdate = np.datetime64(self.times[0], '[ms]')
         dates = self.tle2datetime64(
             np.array([float(line[18:32]) for line in tle_data[::2]]))
@@ -348,6 +453,7 @@ class GACReader(six.with_metaclass(ABCMeta)):
 
     def get_angles(self):
         self.get_times()
+        self.get_lonlat()
         tle1, tle2 = self.get_tle_lines()
         orb = Orbital(self.spacecrafts_orbital[self.spacecraft_id],
                       line1=tle1, line2=tle2)
@@ -365,6 +471,11 @@ class GACReader(six.with_metaclass(ABCMeta)):
         del alt
         sun_azi = np.rad2deg(sun_azi)
         rel_azi = get_absolute_azimuth_angle_diff(sun_azi, sat_azi)
+
+        # Mask corrupt scanlines
+        for arr in (sat_azi, sat_zenith, sun_azi, sun_zenith, rel_azi):
+            arr[self.mask] = np.nan
+
         return sat_azi, sat_zenith, sun_azi, sun_zenith, rel_azi
 
     def correct_times_median(self, year, jday, msec):
@@ -422,7 +533,7 @@ class GACReader(six.with_metaclass(ABCMeta)):
 
         return year, jday, msec
 
-    def correct_scan_line_numbers(self, plot=False):
+    def correct_scan_line_numbers(self):
         """Remove scanlines with corrupted scanline numbers
 
         This includes:
@@ -435,17 +546,12 @@ class GACReader(six.with_metaclass(ABCMeta)):
             - NSS.GHRR.NJ.D96064.S0043.E0236.B0606162.WI
             - NSS.GHRR.NJ.D99286.S1818.E2001.B2466869.WI
 
-        Args:
-            plot (bool): If True, plot results.
+        Returns:
+            Intermediate and final results (for plotting purpose)
         """
         along_track = np.arange(1, len(self.scans["scan_line_number"])+1)
-
-        # Plot original scanline numbers
-        if plot:
-            import matplotlib.pyplot as plt
-            _, (ax0, ax1) = plt.subplots(nrows=2)
-            ax0.plot(along_track, self.scans["scan_line_number"], "b-",
-                     label="original")
+        results = {'along_track': along_track,
+                   'n_orig': self.scans['scan_line_number'].copy()}
 
         # Remove scanlines whose scanline number is outside the valid range
         within_range = np.logical_and(self.scans["scan_line_number"] < 15000,
@@ -491,30 +597,16 @@ class GACReader(six.with_metaclass(ABCMeta)):
         LOG.debug('Removed %s scanline(s) with corrupt scanline numbers',
                   str(len(along_track) - len(self.scans)))
 
-        # Plot corrected scanline numbers
-        if plot:
-            along_track = along_track[within_range]
-            along_track = along_track[diffs <= thresh]
-            ax0.plot(along_track, self.scans["scan_line_number"], "r--",
-                     label="corrected")
-            ax0.set_ylabel("Scanline Number")
-            ax0.set_xlabel("Along Track")
-            ax0.legend(loc="best")
-
-            ax1.plot(np.arange(len(nz_diffs)), nz_diffs)
-            ax1.axhline(thresh, color="r", label="thresh={0:.2f}"
-                        .format(thresh))
-            ax1.set_xlabel("Index")
-            ax1.set_ylabel("nonzero |n - n'|")
-            ax1.legend()
-
-            plt.tight_layout()
-            plt.savefig(self.filename + "_scanline_number_correction.png",
-                        bbox_inches='tight')
+        results.update({'n_corr': self.scans['scan_line_number'],
+                        'within_range': within_range,
+                        'diffs': diffs,
+                        'thresh': thresh,
+                        'nz_diffs': nz_diffs})
+        return results
 
     def correct_times_thresh(self, max_diff_from_t0_head=6*60*1000,
                              min_frac_near_t0_head=0.01,
-                             max_diff_from_ideal_t=10*1000, plot=False):
+                             max_diff_from_ideal_t=10*1000):
         """Correct corrupted timestamps using a threshold approach.
 
         The threshold approach is based on the scanline number and the header
@@ -551,20 +643,20 @@ class GACReader(six.with_metaclass(ABCMeta)):
                 If a scanline timestamp deviates more than max_diff_from_ideal_t
                 from the ideal timestamp, it is regarded as corrupt and will be
                 replaced with the ideal timestamp.
-            plot (bool): If True, plot results.
+        Returns:
+            Intermediate and final results (for plotting purpose)
         """
-        apply_corr = True
-        fail_reason = ""
+        results = {}
         dt64_msec = ">M8[ms]"
 
         # Check whether scanline number increases monotonically
         n = self.scans["scan_line_number"]
+        results.update({'t': self.utcs.copy(), 'n': n})
         if np.any(np.diff(n) < 0):
             LOG.error("Cannot perform timestamp correction. Scanline number "
                       "does not increase monotonically.")
-            apply_corr = False
-            fail_reason = "Scanline number jumps backwards"
-            # We could already return here, but continue for plotting purpose
+            results['fail_reason'] = "Scanline number jumps backwards"
+            return results
 
         # Convert time to milliseconds since 1970-01-01
         t = self.utcs.astype("i8")
@@ -594,60 +686,27 @@ class GACReader(six.with_metaclass(ABCMeta)):
         #    we do not have reliable information and cannot proceed.
         near_t0_head = np.where(
             np.fabs(offsets - t0_head) <= max_diff_from_t0_head)[0]
+        results.update({'offsets': offsets,
+                        't0_head': t0_head,
+                        'max_diff_from_t0_head': max_diff_from_t0_head})
         if near_t0_head.size / float(n.size) >= min_frac_near_t0_head:
             t0 = np.median(offsets[near_t0_head])
         else:
             LOG.error("Timestamp mismatch. Cannot perform correction.")
-            fail_reason = "Timestamp mismatch"
-            apply_corr = False
-            t0 = 0
+            results['fail_reason'] = "Timestamp mismatch"
+            return results
 
         # Add estimated offset to the ideal timestamps
         tn += t0
 
         # Replace timestamps deviating more than a certain threshold from the
         # ideal timestamp with the ideal timestamp.
-        if apply_corr:
-            corrupt_lines = np.where(np.fabs(t - tn) > max_diff_from_ideal_t)
-            self.utcs[corrupt_lines] = tn[corrupt_lines].astype(dt64_msec)
-            LOG.debug("Corrected %s timestamp(s)", str(len(corrupt_lines[0])))
+        corrupt_lines = np.where(np.fabs(t - tn) > max_diff_from_ideal_t)
+        self.utcs[corrupt_lines] = tn[corrupt_lines].astype(dt64_msec)
+        LOG.debug("Corrected %s timestamp(s)", str(len(corrupt_lines[0])))
 
-        # Plot results
-        if plot:
-            import matplotlib.pyplot as plt
-            along_track = np.arange(n.size)
-            _, (ax0, ax1, ax2) = plt.subplots(nrows=3, sharex=True,
-                                              figsize=(8, 10))
-
-            ax0.plot(along_track, t, "b-", label="original")
-            if apply_corr:
-                ax0.plot(along_track, self.utcs, color="red", linestyle="--",
-                         label="corrected")
-            else:
-                ax0.set_title(fail_reason)
-            ax0.set_ylabel("Time [ms since 1970]")
-            ax0.set_ylim((self.utcs.min()-np.timedelta64(30, "m")).astype("i8"),
-                         (self.utcs.max()+np.timedelta64(30, "m")).astype("i8"))
-            ax0.legend(loc="best")
-            ax2.plot(along_track, n)
-            ax2.set_ylabel("Scanline number")
-            ax2.set_xlabel("Along Track")
-
-            ax1.plot(along_track, offsets)
-            ax1.fill_between(
-                along_track,
-                t0_head - np.ones(along_track.size)*max_diff_from_t0_head,
-                t0_head + np.ones(along_track.size)*max_diff_from_t0_head,
-                facecolor="g", alpha=0.33)
-            ax1.axhline(y=t0_head, color="g", linestyle="--",
-                        label="Header timestamp")
-            ax1.set_ylim(t0_head-5*max_diff_from_t0_head,
-                         t0_head+5*max_diff_from_t0_head)
-            ax1.set_ylabel("Offset t-tn [ms]")
-            ax1.legend(loc="best")
-
-            plt.savefig(self.filename+"_timestamp_correction.png",
-                        bbox_inches="tight", dpi=100)
+        results.update({'tn': tn, 'tcorr': self.utcs, 't0': t0})
+        return results
 
     @abstractproperty
     def tsm_affected_intervals(self):
@@ -712,6 +771,19 @@ class GACReader(six.with_metaclass(ABCMeta)):
         ideal = set(range(1, self.scans['scan_line_number'][-1] + 1))
         missing = sorted(ideal.difference(set(self.scans['scan_line_number'])))
         return np.array(missing)
+
+    def mask_tsm_pixels(self, channels):
+        """Mask pixels affected by the scan motor issue."""
+        idx = self.get_tsm_pixels(channels)
+        channels[idx] = np.nan
+
+    @abstractmethod
+    def get_tsm_pixels(self, channels):
+        """Determine pixels affected by the scan motor issue.
+
+        Channel selection is POD/KLM specific.
+        """
+        raise NotImplementedError
 
 
 def inherit_doc(cls):
