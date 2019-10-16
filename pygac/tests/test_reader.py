@@ -210,7 +210,6 @@ class TestGacReader(unittest.TestCase):
             [315748035469, 315748359969,
              315751135469, 315754371969]).astype('datetime64[ms]')
         self.reader.spacecrafts_orbital = {25: 'tiros n'}
-        self.reader.spacecrafts_names = {25: 'tirosn'}
         self.reader.spacecraft_id = 25
         self.reader.times = self.reader.to_datetime(self.reader.utcs)
         expected_sat_azi = np.array(
@@ -226,11 +225,11 @@ class TestGacReader(unittest.TestCase):
 
         retv = self.reader.get_angles()
         (sat_azi, sat_zenith, sun_azi, sun_zenith, rel_azi) = retv
-        np.testing.assert_allclose(sat_azi, expected_sat_azi, rtol=0.05)
-        np.testing.assert_allclose(sun_azi, expected_sun_azi, rtol=0.05)
-        np.testing.assert_allclose(sat_zenith, expected_sat_zenith, rtol=0.05)
-        np.testing.assert_allclose(sun_zenith, expected_sun_zenith, rtol=0.05)
-        np.testing.assert_allclose(rel_azi, expected_rel_azi, rtol=0.05)
+        np.testing.assert_allclose(sat_azi, expected_sat_azi, atol=0.01)
+        np.testing.assert_allclose(sun_azi, expected_sun_azi, atol=0.01)
+        np.testing.assert_allclose(sat_zenith, expected_sat_zenith, atol=0.01)
+        np.testing.assert_allclose(sun_zenith, expected_sun_zenith, atol=0.01)
+        np.testing.assert_allclose(rel_azi, expected_rel_azi, atol=0.01)
 
     @mock.patch('pygac.gac_reader.ConfigParser.ConfigParser.read')
     @mock.patch('pygac.gac_reader.ConfigParser.ConfigParser.items')
