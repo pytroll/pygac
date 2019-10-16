@@ -472,6 +472,12 @@ class GACReader(six.with_metaclass(ABCMeta)):
         sun_azi = np.rad2deg(sun_azi)
         rel_azi = get_absolute_azimuth_angle_diff(sun_azi, sat_azi)
 
+        # Scale angles to ]-180, 180].
+        sun_azi = sun_azi % 360.0
+        sat_azi = sat_azi % 360.0
+        sun_azi[sun_azi > 180] = sun_azi[sun_azi > 180] - 360
+        sat_azi[sat_azi > 180] = sat_azi[sat_azi > 180] - 360
+
         # Mask corrupt scanlines
         for arr in (sat_azi, sat_zenith, sun_azi, sun_zenith, rel_azi):
             arr[self.mask] = np.nan
