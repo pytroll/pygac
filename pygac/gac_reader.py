@@ -459,15 +459,15 @@ class GACReader(six.with_metaclass(ABCMeta)):
         different units (degrees not radians for sun azimuth angles)
         and different ranges.
 
-        Angle definitions:
-        azimuth angles: degree clockwise from north in range ]-180, 180]
-        zenith angles: degree between zenith and sensor or sun in range [0, 90]
-        absolute azimuth angle difference between sun and sensor: in [0, 180]
-
         Returns:
-        azimuth angles for sun and satellite (sun_azi, sat_azi)
-        zenith angles for sun and satellite (sun_zenith, sat_zenith)
-        absolute azimuth angle difference (rel_azi)
+            sat_azi: satellite azimuth angle
+                degree clockwise from north in range ]-180, 180],
+            sat_zentih: satellite zenith angles in degrees in range [0,90],
+            sun_azi: sun azimuth angle
+                degree clockwise from north in range ]-180, 180],
+            sun_zentih: sun zenith angles in degrees in range [0,90],
+            rel_azi: absolute azimuth angle difference in degrees between sun
+                and sensor in range [0, 180]
 
         """
         self.get_times()
