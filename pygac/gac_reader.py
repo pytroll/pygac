@@ -30,7 +30,8 @@ import os
 import six
 import types
 
-from pygac import CONFIG_FILE, get_absolute_azimuth_angle_diff
+from pygac import (CONFIG_FILE, centered_modulus,
+                   get_absolute_azimuth_angle_diff)
 try:
     import ConfigParser
 except ImportError:
@@ -472,11 +473,9 @@ class GACReader(six.with_metaclass(ABCMeta)):
         sun_azi = np.rad2deg(sun_azi)
         rel_azi = get_absolute_azimuth_angle_diff(sun_azi, sat_azi)
 
-        # Scale angles to ]-180, 180].
-        sun_azi = sun_azi % 360.0
-        sat_azi = sat_azi % 360.0
-        sun_azi[sun_azi > 180] = sun_azi[sun_azi > 180] - 360
-        sat_azi[sat_azi > 180] = sat_azi[sat_azi > 180] - 360
+        # Scale angles range to half open interval ]-180, 180]
+        sat_azi = centered_modulus(sat_azi, 360.0)
+        sun_azi = centered_modulus(sun_azi, 360.0)
 
         # Mask corrupt scanlines
         for arr in (sat_azi, sat_zenith, sun_azi, sun_zenith, rel_azi):

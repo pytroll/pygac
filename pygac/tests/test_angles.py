@@ -27,7 +27,8 @@ import unittest
 
 import numpy as np
 
-from pygac import get_absolute_azimuth_angle_diff
+from pygac import (get_absolute_azimuth_angle_diff,
+                   centered_modulus)
 
 
 class TestAngles(unittest.TestCase):
@@ -53,10 +54,24 @@ class TestAngles(unittest.TestCase):
 
         np.testing.assert_allclose(rel_azi, res)
 
+    def test_centered_modulus(self):
+        """Test centered_modulus."""
+        angles = np.ma.array(
+            [[180.0,  -180.0, -179.9,  201.0],
+             [80.0,  360.0, -360.0, 604.0],
+             [-80.0,  -88.0, -796.0, -104.0],
+             [-3.0,  -188.0, -196.0, -204.0]], mask=False)
+        expected = np.ma.array(
+            [[180.0,  180.0, -179.9,  -159.0],
+             [80.0,  0.0, 0.0, -116.0],
+             [-80.0,  -88.0, -76.0, -104.0],
+             [-3.0,  172.0, 164.0, 156.0]], mask=False)
+        transformed = centered_modulus(angles, 360.0)
+        np.testing.assert_allclose(transformed, expected)
+
 
 def suite():
-    """The suite for test_slerp
-    """
+    """Test suite for test_angles."""
     loader = unittest.TestLoader()
     mysuite = unittest.TestSuite()
     mysuite.addTest(loader.loadTestsFromTestCase(TestAngles))
