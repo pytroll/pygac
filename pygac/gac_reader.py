@@ -453,6 +453,23 @@ class GACReader(six.with_metaclass(ABCMeta)):
         return tle1, tle2
 
     def get_angles(self):
+        """Get azimuth and zenith angles.
+
+        Azimuth angle definition is the same as in pyorbital, but with
+        different units (degrees not radians for sun azimuth angles)
+        and different ranges.
+
+        Angle definitions:
+        azimuth angles: degree clockwise from north in range ]-180, 180]
+        zenith angles: degree between zenith and sensor or sun in range [0, 90]
+        absolute azimuth angle difference between sun and sensor: in [0, 180]
+
+        Returns:
+        azimuth angles for sun and satellite (sun_azi, sat_azi)
+        zenith angles for sun and satellite (sun_zenith, sat_zenith)
+        absolute azimuth angle difference (rel_azi)
+
+        """
         self.get_times()
         self.get_lonlat()
         tle1, tle2 = self.get_tle_lines()
