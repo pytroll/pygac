@@ -2,9 +2,10 @@
 
 ### Issues Closed
 
+* [Issue 33](https://github.com/pytroll/pygac/issues/33) - Make use of pytroll geotiepoints instead of using a deprecated copy
 * [Issue 7](https://github.com/pytroll/pygac/issues/7) - Project URL points to wrong domain
 
-In this release 1 issue was closed.
+In this release 2 issues were closed.
 
 ### Pull Requests Merged
 
@@ -14,10 +15,12 @@ In this release 1 issue was closed.
 
 #### Features added
 
+* [PR 35](https://github.com/pytroll/pygac/pull/35) - Changed azimuth angle range to ]-180, 180]
 * [PR 34](https://github.com/pytroll/pygac/pull/34) - Use the geotiepoints library
+* [PR 32](https://github.com/pytroll/pygac/pull/32) - Updated documentation about azimuth angles
 * [PR 31](https://github.com/pytroll/pygac/pull/31) - Refactor I/O
 
-In this release 3 pull requests were closed.
+In this release 5 pull requests were closed.
 
 ## Version 1.1.0 (2019/06/12)
 
