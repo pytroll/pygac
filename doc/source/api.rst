@@ -73,7 +73,7 @@ Computation of angles
    :members:
    :undoc-members:
 
-The azimuth angles are calculated using get_alt_az and get_observer_look from pyorbital. In pyorbital documentation there is a link describing how calculations are done http://celestrak.com/columns/v02n02/. The azimuth described in the link is measured as clockwise from North instead of counter-clockwise from South. Counter clockwise from south would be the standard for a right-handed orthogonal coordinate system. Pygac was updated to use the same definition for angles as pyorbital (20190926, version 1.1.0). Previous versions used azimuth +/-180 degrees, which correspond to degrees clockwise from south. All angles are converted to degrees.
+The azimuth angles are calculated using get_alt_az and get_observer_look from pyorbital. In pyorbital documentation there is a link describing how calculations are done http://celestrak.com/columns/v02n02/. The azimuth described in the link is measured as clockwise from North instead of counter-clockwise from South. Counter clockwise from south would be the standard for a right-handed orthogonal coordinate system. Pygac was updated to use the same definition for angles as pyorbital (2019, September, version > 1.1.0). Previous versions used azimuth +/-180 degrees, which correspond to degrees clockwise from south. All angles are converted to degrees. All azimuth angles are converted to range ]-180, 180] (2019 October version > 1.1.0). Note that ]-180, 180] is an open interval.
 
 
 GAC calibration/inter-calibration

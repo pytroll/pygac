@@ -45,3 +45,10 @@ def get_absolute_azimuth_angle_diff(sat_azi, sun_azi):
     # Not using np.where to avoid copying array
     rel_azi[rel_azi > 180] = 360.0 - rel_azi[rel_azi > 180]
     return rel_azi
+
+
+def centered_modulus(array, divisor):
+    """Transform array to half open range ]-divisor/2, divisor/2]."""
+    arr = array % divisor
+    arr[arr > divisor / 2] -= divisor
+    return arr

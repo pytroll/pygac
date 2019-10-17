@@ -65,7 +65,6 @@ class TestGacReader(unittest.TestCase):
         lat_i = np.array([1, 2, 3, np.nan, -90.1, 90.1])
         get_lonlat.return_value = lon_i, lat_i
         interpolator.return_value = lon_i, lat_i
-
         get_corrupt_mask.return_value = np.array(
             [0, 0, 1, 0, 0, 0], dtype=bool)
 
@@ -192,9 +191,50 @@ class TestGacReader(unittest.TestCase):
                 self.assertEqual(tle1, tle_data[tle_idx])
                 self.assertEqual(tle2, tle_data[tle_idx + 1])
 
+    @mock.patch('pygac.gac_reader.GACReader._get_corrupt_mask')
+    def test_get_angles(self, get_corrupt_mask):
+        """Test get_angles function of the reader."""
+        # Line: 1, 649, 6198 and 12658 from Tiros-N file (1980-01-03 11:47)
+        lon_i = np.array(
+            [69.41555, 152.10587, 164.3131, 67.23855, np.nan])[:, np.newaxis]
+        lat_i = np.array(
+            [71.6283, 85.24265, -62.076958, 82.72296, np.nan])[:, np.newaxis]
+        get_corrupt_mask.return_value = np.isnan(lon_i)
+        self.reader.lons = lon_i
+        self.reader.lats = lat_i
+        self.reader.tle_lines = [
+            '1 11060U 78096A   80003.54792075  .00000937  00000-0  52481-3 0  2588\r\n',  # noqa
+            '2 11060  98.9783 332.1605 0012789  88.8047 271.4583 14.11682873 63073\r\n']  # noqa
+        self.reader.utcs = np.array(
+            [315748035469, 315748359969,
+             315751135469, 315754371969,
+             315754371969]).astype('datetime64[ms]')
+        self.reader.spacecrafts_orbital = {25: 'tiros n'}
+        self.reader.spacecraft_id = 25
+        self.reader.times = self.reader.to_datetime(self.reader.utcs)
+        expected_sat_azi = np.array(
+            [-76.90, 11.08, 145.33, -50.01, np.nan])[:, np.newaxis]
+        expected_sun_azi = np.array(
+            [-120.36, -31.94, -173.51, -93.67, np.nan])[:, np.newaxis]
+        expected_sat_zenith = np.array(
+            [69.05, 69.04, 69.55, 69.07, np.nan])[:, np.newaxis]
+        expected_sun_zenith = np.array(
+            [104.30, 116.94, 94.86, 112.60, np.nan])[:, np.newaxis]
+        expected_rel_azi = np.array(
+            [43.45, 43.01, 41.16, 43.65, np.nan])[:, np.newaxis]
+
+        retv = self.reader.get_angles()
+        (sat_azi, sat_zenith, sun_azi, sun_zenith, rel_azi) = retv
+        np.testing.assert_allclose(sat_azi, expected_sat_azi, atol=0.01)
+        np.testing.assert_allclose(sun_azi, expected_sun_azi, atol=0.01)
+        np.testing.assert_allclose(sat_zenith, expected_sat_zenith, atol=0.01)
+        np.testing.assert_allclose(sun_zenith, expected_sun_zenith, atol=0.01)
+        np.testing.assert_allclose(rel_azi, expected_rel_azi, atol=0.01)
+
     @mock.patch('pygac.gac_reader.ConfigParser.ConfigParser.read')
     @mock.patch('pygac.gac_reader.ConfigParser.ConfigParser.items')
     def test_get_tle_file(self, items, *mocks):
+        """Test get_tle_file."""
         # Use TLE name/dir from config file
         items.return_value = [('tledir', 'a'), ('tlename', 'b')]
         tle_file = self.reader.get_tle_file()
