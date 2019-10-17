@@ -1,3 +1,24 @@
+## Version 1.2.0 (2019/10/17)
+
+### Issues Closed
+
+* [Issue 7](https://github.com/pytroll/pygac/issues/7) - Project URL points to wrong domain
+
+In this release 1 issue was closed.
+
+### Pull Requests Merged
+
+#### Bugs fixed
+
+* [PR 30](https://github.com/pytroll/pygac/pull/30) - Feature update angles computation
+
+#### Features added
+
+* [PR 34](https://github.com/pytroll/pygac/pull/34) - Use the geotiepoints library
+* [PR 31](https://github.com/pytroll/pygac/pull/31) - Refactor I/O
+
+In this release 3 pull requests were closed.
+
 ## Version 1.1.0 (2019/06/12)
 
 ### Issues Closed
