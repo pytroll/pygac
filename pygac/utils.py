@@ -30,6 +30,14 @@ def check_user_scanlines(start_line, end_line, first_valid_lat=None,
     """Check user-defined scanlines.
 
     Can be used by both pygac and satpy.
+
+    Args:
+        start_line: User-defined start line (afer stripping, if enabled)
+        end_line: User-defined end line (afer stripping, if enabled)
+        first_valid_lat: First scanline with valid latitudes
+        last_valid_lat: Last scanline with valid latitudes
+        along_track: Number of scanlines (only needed if stripping
+            is disabled)
     """
     if first_valid_lat is not None and last_valid_lat is not None:
         num_valid_lines = last_valid_lat - first_valid_lat + 1
@@ -155,7 +163,7 @@ def _update_missing_scanlines(miss_lines, qual_flags, start_line, end_line):
         start_line: New start line of the slice
         end_line: New end line of the slice
     """
-    return np.sort(np.array(
+    return np.sort(np.unique(
         qual_flags[0:start_line, 0].tolist() +
         miss_lines.tolist() +
         qual_flags[end_line + 1:, 0].tolist()
