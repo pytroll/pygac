@@ -62,6 +62,16 @@ class TestIO(unittest.TestCase):
                 miss_lines=miss_lines, qual_flags=qual_flags, **t)
             numpy.testing.assert_array_equal(miss_lines, miss_lines_exp)
 
+        # If intersection of miss_lines and qual_flags is not empty
+        # (here: extra "1" in miss_lines), make sure that items are
+        # not added twice.
+        miss_lines = utils._update_missing_scanlines(
+            miss_lines=np.array([1, 3, 7, 10]),
+            qual_flags=qual_flags,
+            start_line=3, end_line=6)
+        numpy.testing.assert_array_equal(miss_lines,
+                                         [1, 2, 3, 4, 7, 10, 11, 12])
+
     def test_slice(self):
         ch = np.array([[1, 2, 3, 4, 5]]).transpose()
         sliced_exp = np.array([[2, 3, 4]]).transpose()

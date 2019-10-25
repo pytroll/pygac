@@ -792,7 +792,7 @@ class GACReader(six.with_metaclass(ABCMeta)):
         # find the missing line numbers.
         ideal = set(range(1, self.scans['scan_line_number'][-1] + 1))
         missing = sorted(ideal.difference(set(self.scans['scan_line_number'])))
-        return np.array(missing)
+        return np.array(missing, dtype=int)
 
     def mask_tsm_pixels(self, channels):
         """Mask pixels affected by the scan motor issue."""

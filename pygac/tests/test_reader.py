@@ -146,8 +146,10 @@ class TestGacReader(unittest.TestCase):
         self.reader.scans = np.zeros(
             len(lines), dtype=[('scan_line_number', 'i2')])
         self.reader.scans['scan_line_number'] = lines
-        self.assertTrue((self.reader.get_miss_lines() == miss_lines_ref).all(),
+        miss_lines = self.reader.get_miss_lines()
+        self.assertTrue((miss_lines == miss_lines_ref).all(),
                         msg='Missing scanlines not detected correctly')
+        self.assertEqual(miss_lines.dtype, int)
 
     def test_tle2datetime64(self, *mocks):
         """Test conversion from TLE timestamps to datetime64."""
