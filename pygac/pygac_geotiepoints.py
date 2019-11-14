@@ -49,9 +49,9 @@ def Gac_Lat_Lon_Interpolator(lons_subset, lats_subset):
     cross_track_order = 3
 
     satint = gtp.SatelliteInterpolator((lons_subset, lats_subset),
-                                       (rows_subset, cols_subset),
-                                       (rows_full, cols_full),
-                                       along_track_order,
-                                       cross_track_order)
+                                   (rows_subset, cols_subset),
+                                   (rows_full, cols_full),
+                                   along_track_order,
+                                   cross_track_order)
 
     return satint.interpolate()
