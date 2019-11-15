@@ -17,9 +17,13 @@
 
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+"""Test the I/O."""
 
 import unittest
-import mock
+try:
+    import mock
+except ImportError:
+    from unittest import mock
 import numpy as np
 import numpy.testing
 import pygac.gac_io as gac_io
@@ -27,17 +31,19 @@ import pygac.utils as utils
 
 
 class TestIO(unittest.TestCase):
-    """Test the gac_io module"""
+    """Test the gac_io module."""
 
     longMessage = True
 
     def test_strip_invalid_lat(self):
+        """Test stripping the invalid lats."""
         lats = np.array([np.nan, 1, np.nan, 2, np.nan])
         start, end = utils.strip_invalid_lat(lats)
         self.assertEqual(start, 1)
         self.assertEqual(end, 3)
 
     def test_update_scanline(self):
+        """Test updating the scanlines."""
         test_data = [{'new_start_line': 100, 'new_end_line': 200,
                       'scanline': 110, 'scanline_exp': 10},
                      {'new_start_line': 100, 'new_end_line': 200,
@@ -50,6 +56,7 @@ class TestIO(unittest.TestCase):
             self.assertEqual(scanline, scanline_exp)
 
     def test_update_missing_scanlines(self):
+        """Test updating the missing scanlines."""
         qual_flags = np.array([[1, 2, 4, 5, 6, 8, 9, 11, 12]]).transpose()
         miss_lines = np.array([3, 7, 10])
         test_data = [{'start_line': 0, 'end_line': 8,
@@ -73,6 +80,7 @@ class TestIO(unittest.TestCase):
                                          [1, 2, 3, 4, 7, 10, 11, 12])
 
     def test_slice(self):
+        """Test slices."""
         ch = np.array([[1, 2, 3, 4, 5]]).transpose()
         sliced_exp = np.array([[2, 3, 4]]).transpose()
 
@@ -144,6 +152,7 @@ class TestIO(unittest.TestCase):
         self.assertEqual(midn_line_new, 0)
 
     def test_check_user_scanlines(self):
+        """Check the scanlines."""
         # All scanlines
         start, end = utils.check_user_scanlines(0, 0, 100, 200)
         self.assertEqual(start, 0)
@@ -180,8 +189,9 @@ class TestIO(unittest.TestCase):
     @mock.patch('pygac.gac_io.avhrrGAC_io')
     @mock.patch('pygac.gac_io.slice_channel')
     @mock.patch('pygac.gac_io.check_user_scanlines')
-    def test_save_gac(self, check_user_scanlines, slice_channel, avhrrGAC_io,
+    def test_save_gac(self, check_user_scanlines, slice_channel, avhrr_gac_io,
                       strip_invalid_lat):
+        """Test saving."""
         # Test scanline selection
         mm = mock.MagicMock()
         kwargs = dict(
@@ -244,11 +254,11 @@ class TestIO(unittest.TestCase):
             'midnight',
             'miss'
         ]
-        avhrrGAC_io.assert_called_with(*expected_args)
+        avhrr_gac_io.assert_called_with(*expected_args)
 
 
 def suite():
-    """The suite for test_io"""
+    """Test suite for test_io."""
     loader = unittest.TestLoader()
     mysuite = unittest.TestSuite()
     mysuite.addTest(loader.loadTestsFromTestCase(TestIO))
