@@ -1,3 +1,18 @@
+## Version 1.2.1 (2019/11/15)
+
+### Pull Requests Merged
+
+#### Bugs fixed
+
+* [PR 37](https://github.com/pytroll/pygac/pull/37) - Fixing geotiepoints attribute error for python2.7
+* [PR 36](https://github.com/pytroll/pygac/pull/36) - Fix update of missing scanlines
+
+#### Features added
+
+* [PR 38](https://github.com/pytroll/pygac/pull/38) - Fix tests for python 3
+
+In this release 3 pull requests were closed.
+
 ## Version 1.2.0 (2019/10/17)
 
 ### Issues Closed
