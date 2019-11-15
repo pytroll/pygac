@@ -32,10 +32,9 @@ import numpy as np
 def Gac_Lat_Lon_Interpolator(lons_subset, lats_subset):
     """Interpolate lat-lon values in the AVHRR GAC data.
 
-    Each GAC row has total 409 pixels.
-    But lat-lon values are provided for every eigth pixel.
-    They start at from pixel 5 and at pixel 405.
-    Interpolate to full resolution.
+    Each GAC row has 409 pixels.
+    But lat-lon values are provided for every eigth pixel,
+    ranging from 5 to 405. Interpolate to full resolution.
 
     """
     # cols_subset = np.arange(0, 404, 8)
