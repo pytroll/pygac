@@ -21,8 +21,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-"""Interpolation of geographical tiepoints.
-"""
+"""Interpolation of geographical tiepoints."""
 
 
 import geotiepoints as gtp
@@ -30,12 +29,13 @@ import geotiepoints as gtp
 import numpy as np
 
 
-
 def Gac_Lat_Lon_Interpolator(lons_subset, lats_subset):
-    """Interpolate lat-lon values in the AVHRR GAC data from every eigth pixel to all pixels.
+    """Interpolate lat-lon values in the AVHRR GAC data.
 
-    Each GAC row has total 409 pixels. But lat-lon values are provided for every eigth pixel
-    starting from pixel 5 and ending at pixel 405.
+    Each GAC row has 409 pixels.
+    But lat-lon values are provided for every eigth pixel,
+    ranging from 5 to 405. Interpolate to full resolution.
+
     """
     # cols_subset = np.arange(0, 404, 8)
     # cols_full = np.arange(405)

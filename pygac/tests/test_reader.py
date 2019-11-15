@@ -112,6 +112,21 @@ class TestGacReader(unittest.TestCase):
             method.asser_not_called()
 
     @mock.patch('pygac.gac_reader.GACReader._get_corrupt_mask')
+    @mock.patch('pygac.gac_reader.GACReader._adjust_clock_drift')
+    @mock.patch('pygac.gac_reader.GACReader._get_lonlat')
+    def test_interpolate(self, _get_lonlat, _adjust_clock_drift,
+                         _get_corrupt_mask):
+        """Test interpolate method in get_lonlat."""
+        self.lons = None
+        self.lats = None
+        lons = 90 * np.random.rand(17, 51)
+        lats = 90 * np.random.rand(17, 51)
+        _get_lonlat.return_value = lons, lats
+        self.interpolate_coors = True
+        lons, lats = self.reader.get_lonlat()
+        self.assertEqual(lons.shape[1], 409)
+
+    @mock.patch('pygac.gac_reader.GACReader._get_corrupt_mask')
     def test_get_corrupt_mask(self, get_corrupt_mask):
         """Test common computation of corrupt scanline mask."""
         get_corrupt_mask.return_value = [1, 2, 3]

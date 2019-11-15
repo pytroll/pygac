@@ -41,7 +41,7 @@ from pyorbital.orbital import Orbital
 from pyorbital import astronomy
 import datetime
 from pygac.calibration import calibrate_solar, calibrate_thermal
-import pygac.geotiepoints as gtp
+import pygac.pygac_geotiepoints as gtp
 
 LOG = logging.getLogger(__name__)
 
