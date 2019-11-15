@@ -17,10 +17,14 @@
 
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+"""Test the readers."""
 
 import datetime
 import unittest
-import mock
+try:
+    import mock
+except ImportError:
+    from unittest import mock
 import numpy as np
 import numpy.testing
 from pygac.gac_reader import GACReader
@@ -34,6 +38,7 @@ class TestGacReader(unittest.TestCase):
     @mock.patch.multiple('pygac.gac_reader.GACReader',
                          __abstractmethods__=set())
     def setUp(self, *mocks):
+        """Set up the tests."""
         self.reader = GACReader()
 
     def test_to_datetime64(self):
@@ -284,6 +289,7 @@ class TestGacReader(unittest.TestCase):
 
         Returns:
             Corrupted and corrected scanline numbers.
+
         """
         along_track = 12000
         scans = np.zeros(12000, dtype=[("scan_line_number", ">u2")])
@@ -337,7 +343,7 @@ class TestGacReader(unittest.TestCase):
 
 
 def suite():
-    """The suite for test_reader"""
+    """Test suite for test_reader."""
     loader = unittest.TestLoader()
     mysuite = unittest.TestSuite()
     mysuite.addTest(loader.loadTestsFromTestCase(TestGacReader))
