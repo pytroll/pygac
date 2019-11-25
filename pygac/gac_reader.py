@@ -64,6 +64,7 @@ class GACReader(six.with_metaclass(ABCMeta)):
             tle_thresh: Maximum number of days between observation and nearest
                 TLE
         """
+        self.meta_data = {}
         self.interpolate_coords = interpolate_coords
         self.adjust_clock_drift = adjust_clock_drift
         self.tle_dir = tle_dir
@@ -264,6 +265,9 @@ class GACReader(six.with_metaclass(ABCMeta)):
 
         # Earth-Sun distance correction factor
         corr = 1.0 - 0.0334 * np.cos(2.0 * np.pi * (jday - 2) / 365.25)
+
+        # Save the factor
+        self.meta_data['sun_earth_distance_correction_factor'] = corr
 
         # how many reflective channels are there ?
         tot_ref = channels.shape[2] - 3

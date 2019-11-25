@@ -625,7 +625,8 @@ def main(filename, start_line, end_line):
                     qual_flags, start_line, end_line,
                     reader.filename,
                     reader.get_midnight_scanline(),
-                    reader.get_miss_lines())
+                    reader.get_miss_lines(),
+                    reader.meta_data)
     LOG.info("pygac took: %s", str(datetime.datetime.now() - tic))
 
 
