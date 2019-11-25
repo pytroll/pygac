@@ -31,6 +31,7 @@ import six
 import types
 
 from pygac import (CONFIG_FILE, centered_modulus,
+                   calculate_sun_earth_distance_correction,
                    get_absolute_azimuth_angle_diff)
 try:
     import ConfigParser
@@ -257,6 +258,7 @@ class GACReader(six.with_metaclass(ABCMeta)):
         return lons.reshape(-1, width), lats.reshape(-1, width)
 
     def get_calibrated_channels(self):
+        """Calibrate the solar channels."""
         channels = self.get_counts()
         self.get_times()
         year = self.times[0].year
@@ -264,7 +266,7 @@ class GACReader(six.with_metaclass(ABCMeta)):
         jday = delta.days + 1
 
         # Earth-Sun distance correction factor
-        corr = 1.0 - 0.0334 * np.cos(2.0 * np.pi * (jday - 2) / 365.25)
+        corr = calculate_sun_earth_distance_correction(jday)
 
         # Save the factor
         self.meta_data['sun_earth_distance_correction_factor'] = corr

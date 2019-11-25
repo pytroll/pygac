@@ -341,6 +341,12 @@ class TestGacReader(unittest.TestCase):
         self.reader.correct_times_thresh()
         numpy.testing.assert_array_equal(self.reader.utcs, utcs_expected)
 
+    def test_calculate_sun_earth_distance_correction(self):
+        """Test the calculate sun earth distance correction method."""
+        from pygac import calculate_sun_earth_distance_correction
+        corr = calculate_sun_earth_distance_correction(3)
+        numpy.testing.assert_almost_equal(corr, 0.96660494, decimal=7)
+
 
 def suite():
     """Test suite for test_reader."""
