@@ -37,8 +37,9 @@ class TestInit(unittest.TestCase):
         corr = calculate_sun_earth_distance_correction(3)
         np.testing.assert_almost_equal(corr, 0.96660494, decimal=7)
 
+
 def suite():
-    """Testing functions from pygac init files."""
+    """Test non angle functions in pygac init file."""
     loader = unittest.TestLoader()
     mysuite = unittest.TestSuite()
     mysuite.addTest(loader.loadTestsFromTestCase(TestInit))
