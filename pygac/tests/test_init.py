@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2013, 2014 Martin Raspaud
+# Copyright (c) 2014-2019 Pytroll Developers
 
 # Author(s):
 
-#   Martin Raspaud <martin.raspaud@smhi.se>
+#   Nina Hakansson <nina.hakansson@smhi.se>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,23 +20,31 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-"""The tests package.
-"""
+"""Test function for the angle calculation."""
 
-from pygac.tests import (test_calibrate_pod, test_slerp, test_calibrate_klm,
-                         test_pod, test_tsm, test_reader, test_io,
-                         test_angles, test_init)
 import unittest
 
+import numpy as np
+
+from pygac import calculate_sun_earth_distance_correction
+
+
+class TestInit(unittest.TestCase):
+    """Test function for the angle calculation."""
+
+    def test_calculate_sun_earth_distance_correction(self):
+        """Test function for the sun distance corretction."""
+        corr = calculate_sun_earth_distance_correction(3)
+        np.testing.assert_almost_equal(corr, 0.96660494, decimal=7)
 
 def suite():
-    """The global test suite.
-    """
+    """Testing functions from pygac init files."""
+    loader = unittest.TestLoader()
     mysuite = unittest.TestSuite()
-    tests = (test_slerp, test_calibrate_klm, test_calibrate_pod,
-             test_pod, test_tsm, test_reader, test_io, test_angles,
-             test_init)
-    for test in tests:
-        mysuite.addTests(test.suite())
+    mysuite.addTest(loader.loadTestsFromTestCase(TestInit))
 
     return mysuite
+
+
+if __name__ == '__main__':
+    unittest.main()
