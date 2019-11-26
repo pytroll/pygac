@@ -86,7 +86,7 @@ def save_gac(satellite_name,
              gac_file, meta_data):
 
     midnight_scanline = meta_data['midnight_scanline']
-    miss_lines = meta_data['miss_lines']
+    miss_lines = meta_data['missing_scanlines']
     corr = meta_data['sun_earth_distance_correction_factor']
 
     last_scan_line_number = qual_flags[-1, 0]

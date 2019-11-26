@@ -272,8 +272,9 @@ class GACReader(six.with_metaclass(ABCMeta)):
                 self.get_sun_earth_distance_correction())
         if 'midnight_scanline' not in self.meta_data.keys():
             self.meta_data['midnight_scanline'] = self.get_midnight_scanline()
-        if 'miss_lines' not in self.meta_data.keys():
-            self.meta_data['miss_lines'] = self.get_miss_lines()
+        if 'missing_scanlines' not in self.meta_data.keys():
+            self.meta_data['missing_scanlines'] = (
+                self.get_miss_lines()).astype(int)
 
     def get_calibrated_channels(self):
         """Calibrate the solar channels."""
