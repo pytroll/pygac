@@ -343,8 +343,11 @@ class TestGacReader(unittest.TestCase):
 
     def test_calculate_sun_earth_distance_correction(self):
         """Test the calculate sun earth distance correction method."""
-        from pygac import calculate_sun_earth_distance_correction
-        corr = calculate_sun_earth_distance_correction(3)
+        self.reader.utcs = np.array([315748035469, 315748359969,
+                                     315751135469, 315754371969,
+                                     315754371969]).astype('datetime64[ms]')
+        self.reader.times = self.reader.to_datetime(self.reader.utcs)
+        corr = self.reader.get_sun_earth_distance_correction()
         numpy.testing.assert_almost_equal(corr, 0.96660494, decimal=7)
 
 

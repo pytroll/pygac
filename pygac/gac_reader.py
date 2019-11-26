@@ -257,19 +257,34 @@ class GACReader(six.with_metaclass(ABCMeta)):
 
         return lons.reshape(-1, width), lats.reshape(-1, width)
 
-    def get_calibrated_channels(self):
-        """Calibrate the solar channels."""
-        channels = self.get_counts()
+    def get_sun_earth_distance_correction(self):
+        """Get the julian day and the sun-earth distance correction."""
         self.get_times()
         year = self.times[0].year
         delta = self.times[0].date() - datetime.date(year, 1, 1)
         jday = delta.days + 1
+        return calculate_sun_earth_distance_correction(jday)
 
-        # Earth-Sun distance correction factor
-        corr = calculate_sun_earth_distance_correction(jday)
+    def update_meta_data(self):
+        """Add some metd data to the meta_data dicitonary."""
+        if 'sun_earth_distance_correction_factor' not in self.meta_data.keys():
+            self.meta_data['sun_earth_distance_correction_factor'] = (
+                self.get_sun_earth_distance_correction())
+        if 'midnight_scanline' not in self.meta_data.keys():
+            self.meta_data['midnight_scanline'] = self.get_midnight_scanline()
+        if 'miss_lines' not in self.meta_data.keys():
+            self.meta_data['miss_lines'] = self.get_miss_lines()
 
-        # Save the factor
-        self.meta_data['sun_earth_distance_correction_factor'] = corr
+    def get_calibrated_channels(self):
+        """Calibrate the solar channels."""
+        channels = self.get_counts()
+        self.get_times()
+        self.update_meta_data()
+        year = self.times[0].year
+        delta = self.times[0].date() - datetime.date(year, 1, 1)
+        jday = delta.days + 1
+
+        corr = self.meta_data['sun_earth_distance_correction_factor']
 
         # how many reflective channels are there ?
         tot_ref = channels.shape[2] - 3
