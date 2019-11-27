@@ -462,8 +462,8 @@ class GACReader(six.with_metaclass(ABCMeta)):
         Returns:
             Tuple containing:
 
-                sat_azi: Satellite azimuth angle (in degrees clockwise from north,
-                range ]-180, 180]).
+                sat_azi: Satellite azimuth angle (in degrees clockwise from
+                north, range ]-180, 180]).
 
                 sat_zenith: Satellite zenith angle (in degrees, range [0,90]).
 
@@ -472,8 +472,8 @@ class GACReader(six.with_metaclass(ABCMeta)):
 
                 sun_zenith: Sun zenith angle (in degrees, range [0,90]).
 
-                rel_azi: Absolute azimuth angle difference between sun and sensor
-                (in degrees, range [0, 180]).
+                rel_azi: Absolute azimuth angle difference between sun and
+                sensor (in degrees, range [0, 180]).
 
         """
         self.get_times()
