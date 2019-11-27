@@ -9,10 +9,6 @@ This is done by reading the first three bytes of the data set. If they contain t
 
 GAC POD reader
 --------------
-
-.. automodule:: pygac.gac_pod
-   :members:
-   :undoc-members:
    
 As the format of GAC POD header is changed twice (once in 1992 and again in 1994), there are currently three readers integrated in the *pygac* to read POD header.
 
@@ -45,6 +41,9 @@ It is evident that year, month values are jumping and have non-sense values.
 
 Whenever possible, *pygac* uses RPY corrections along with other orbital parameters to compute accurate satellite location (e.g. instead of assuming constant altitude). However, RPY corrections are not available for all NOAA satellites. In case of the majority of the POD family satellites, these corrections are set to zero.
 
+.. automodule:: pygac.gac_pod
+   :members:
+   :undoc-members:
 
 GAC KLM reader
 --------------
@@ -53,35 +52,21 @@ GAC KLM reader
    :members:
    :undoc-members:
 
-
 Computation of geolocation
---------------
-
-.. automodule:: pygac.gac_klm
-   :members:
-   :undoc-members:
-
+--------------------------
 
 Each GAC row has total 409 pixels. But lat-lon values are provided for every eigth pixel starting from pixel 5 and ending at pixel 405. Using Numpy, Scipy and Pyresample packages, inter- and extrapolation is carried out to obtain geolocation for each pixel along the scanline.
 
 If the GAC data belongs to POD family, then clock drift errors are used to adjust existing Lat-Lon information. Here, *pygac* makes use of PyOrbital package, which is a part of PyTroll suite of Python interface developed to process meteorological satellite data (further information here: http://www.pytroll.org/ and https://github.com/mraspaud/pyorbital). *pygac* interpolates the clock offset and adjusts the nominal scan times to the actual scan times. Since the geolocation was computed using the nominal scan times, *pygac* interpolates the latitudes and longitudes to the actual scan times using spherical linear interpolation, aka slerp. However, in the case of a clock drift error greater than the scan rate of the dataset, the latitude and longitude for each pixel of the scan lines that cannot have an interpolated geolocation (typically at the start or end of the dataset) are recomputed. This is done using pyorbital, which in turn uses TLEs to compute the position of the satellite at each scan time and the instrument geometry compute the longitude and latitude of each pixel of the dataset. Since this operation can be quite costly, the interpolation is prefered whenever possible.
 
 Computation of angles
---------------
-
-.. automodule:: pygac.gac_reader
-   :members:
-   :undoc-members:
+---------------------
 
 The azimuth angles are calculated using get_alt_az and get_observer_look from pyorbital. In pyorbital documentation there is a link describing how calculations are done http://celestrak.com/columns/v02n02/. The azimuth described in the link is measured as clockwise from North instead of counter-clockwise from South. Counter clockwise from south would be the standard for a right-handed orthogonal coordinate system. Pygac was updated to use the same definition for angles as pyorbital (2019, September, version > 1.1.0). Previous versions used azimuth +/-180 degrees, which correspond to degrees clockwise from south. All angles are converted to degrees. All azimuth angles are converted to range ]-180, 180] (2019 October version > 1.1.0). Note that ]-180, 180] is an open interval.
 
 
 GAC calibration/inter-calibration
---------------
-
-.. automodule:: pygac.gac_klm
-   :members:
-   :undoc-members:
+---------------------------------
 
 *pygac* currently supports calibration of all GAC data from AVHRRs onboard
  NOAA-7 and onwards, including Metop satellites.
@@ -102,10 +87,6 @@ In some cases it was found that, apart from the reset values, even the readings 
 
 GAC I/O module
 --------------
-
-.. automodule:: pygac.gac_pod
-   :members:
-   :undoc-members:
 
 The I/O module generates three HDF5 files, one containing reflectances, brightness temperatures, and lat/lon information. The other output file contains solar and satellite zenith and azimuth angles. And the third file contains quality flags.
 
@@ -147,13 +128,13 @@ In some orbits, the latitude and longitude information contains corrupt values f
 
 For extremely warm and cold temperatures, the channel 3b is saturating producing irrelevant brightness temperatures. Such saturation is often not flagged in quality information. *pygac* currently uses a simple if_else construct to constrain valid range of Bts (170.0K<BT<350.0K). Such condition is also applied to split-window channels.
 
-
-Supplement A: Structure of an output file containing reflectances and brightness temperatures
---------------
-
-.. automodule:: pygac.gac_klm
+.. automodule:: pygac.gac_io
    :members:
    :undoc-members:
+
+
+Supplement A: Structure of an output file containing reflectances and brightness temperatures
+---------------------------------------------------------------------------------------------
    
 Input: L1b file: ``NSS.GHRR.NN.D06279.S1800.E1955.B0711012.GC``
 
@@ -402,11 +383,7 @@ Output::
 
 
 Supplement B: Structure of an output file containing Sun and satellite positions
---------------
-
-.. automodule:: pygac.gac_klm
-   :members:
-   :undoc-members:
+--------------------------------------------------------------------------------
 
 Input: L1b file: ``NSS.GHRR.NN.D06279.S1800.E1955.B0711012.GC``
 
@@ -597,11 +574,8 @@ Output::
 
 
 Supplement C: Structure of an output file containing quality flags
---------------
+------------------------------------------------------------------
 
-.. automodule:: pygac.gac_klm
-   :members:
-   :undoc-members:
 
 The file that contains quality flags has following information.
 
