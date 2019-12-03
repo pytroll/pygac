@@ -37,8 +37,10 @@ class TestGacReader(unittest.TestCase):
 
     @mock.patch.multiple('pygac.gac_reader.GACReader',
                          __abstractmethods__=set())
-    def setUp(self, *mocks):
+    @mock.patch('pygac.gac_reader.gtp.gac_lat_lon_interpolator')
+    def setUp(self, interpolator, *mocks):
         """Set up the tests."""
+        self.interpolator = interpolator
         self.reader = GACReader()
 
     def test_to_datetime64(self):
@@ -62,14 +64,13 @@ class TestGacReader(unittest.TestCase):
     @mock.patch('pygac.gac_reader.GACReader._get_lonlat')
     @mock.patch('pygac.gac_reader.GACReader._get_corrupt_mask')
     @mock.patch('pygac.gac_reader.GACReader._adjust_clock_drift')
-    @mock.patch('pygac.gac_reader.gtp.gac_lat_lon_interpolator')
-    def test_get_lonlat(self, interpolator, adjust_clockdrift,
+    def test_get_lonlat(self, adjust_clockdrift,
                         get_corrupt_mask, get_lonlat):
         """Test common lon/lat computation."""
         lon_i = np.array([np.nan, 1, 2, 3, -180.1, 180.1])
         lat_i = np.array([1, 2, 3, np.nan, -90.1, 90.1])
         get_lonlat.return_value = lon_i, lat_i
-        interpolator.return_value = lon_i, lat_i
+        self.interpolator.return_value = lon_i, lat_i
         get_corrupt_mask.return_value = np.array(
             [0, 0, 1, 0, 0, 0], dtype=bool)
 
@@ -84,7 +85,7 @@ class TestGacReader(unittest.TestCase):
         numpy.testing.assert_array_equal(lats, lats_exp)
 
         # Interpolation disabled
-        interpolator.reset_mock()
+        self.interpolator.reset_mock()
         adjust_clockdrift.reset_mock()
         self.reader.interpolate_coords = False
         self.reader.adjust_clock_drift = True
@@ -92,11 +93,11 @@ class TestGacReader(unittest.TestCase):
         self.reader.get_lonlat()
         numpy.testing.assert_array_equal(lons, lons_exp)
         numpy.testing.assert_array_equal(lats, lats_exp)
-        interpolator.assert_not_called()
+        self.interpolator.assert_not_called()
         adjust_clockdrift.assert_called()
 
         # Clock drift adjustment disabled
-        interpolator.reset_mock()
+        self.interpolator.reset_mock()
         adjust_clockdrift.reset_mock()
         self.reader.interpolate_coords = True
         self.reader.adjust_clock_drift = False
@@ -104,11 +105,11 @@ class TestGacReader(unittest.TestCase):
         self.reader.get_lonlat()
         numpy.testing.assert_array_equal(lons, lons_exp)
         numpy.testing.assert_array_equal(lats, lats_exp)
-        interpolator.assert_called()
+        self.interpolator.assert_called()
         adjust_clockdrift.assert_not_called()
 
         # Test caching
-        methods = [get_lonlat, interpolator,
+        methods = [get_lonlat, self.interpolator,
                    adjust_clockdrift, get_corrupt_mask]
         for method in methods:
             method.reset_mock()
@@ -124,12 +125,16 @@ class TestGacReader(unittest.TestCase):
         """Test interpolate method in get_lonlat."""
         self.lons = None
         self.lats = None
-        lons = 90 * np.random.rand(17, 51)
-        lats = 90 * np.random.rand(17, 51)
-        _get_lonlat.return_value = lons, lats
+        lr_lons = 90 * np.random.rand(17, 51)
+        lr_lats = 90 * np.random.rand(17, 51)
+        _get_lonlat.return_value = lr_lons, lr_lats
         self.interpolate_coors = True
+        self.interpolator.reset_mock()
+        self.interpolator.return_value = (90 * np.random.rand(17, 409),
+                                          90 * np.random.rand(17, 409))
         lons, lats = self.reader.get_lonlat()
         self.assertEqual(lons.shape[1], 409)
+        self.interpolator.assert_called_once_with(lr_lons, lr_lats)
 
     @mock.patch('pygac.gac_reader.GACReader._get_corrupt_mask')
     def test_get_corrupt_mask(self, get_corrupt_mask):
