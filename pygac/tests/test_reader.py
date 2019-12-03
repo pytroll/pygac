@@ -62,7 +62,7 @@ class TestGacReader(unittest.TestCase):
     @mock.patch('pygac.gac_reader.GACReader._get_lonlat')
     @mock.patch('pygac.gac_reader.GACReader._get_corrupt_mask')
     @mock.patch('pygac.gac_reader.GACReader._adjust_clock_drift')
-    @mock.patch('pygac.gac_reader.gtp.Gac_Lat_Lon_Interpolator')
+    @mock.patch('pygac.gac_reader.gtp.gac_lat_lon_interpolator')
     def test_get_lonlat(self, interpolator, adjust_clockdrift,
                         get_corrupt_mask, get_lonlat):
         """Test common lon/lat computation."""
@@ -253,8 +253,8 @@ class TestGacReader(unittest.TestCase):
         np.testing.assert_allclose(sun_zenith, expected_sun_zenith, atol=0.01)
         np.testing.assert_allclose(rel_azi, expected_rel_azi, atol=0.01)
 
-    @mock.patch('pygac.gac_reader.ConfigParser.ConfigParser.read')
-    @mock.patch('pygac.gac_reader.ConfigParser.ConfigParser.items')
+    @mock.patch('pygac.reader.ConfigParser.ConfigParser.read')
+    @mock.patch('pygac.reader.ConfigParser.ConfigParser.items')
     def test_get_tle_file(self, items, *mocks):
         """Test get_tle_file."""
         # Use TLE name/dir from config file

@@ -29,7 +29,7 @@ import geotiepoints as gtp
 import numpy as np
 
 
-def Gac_Lat_Lon_Interpolator(lons_subset, lats_subset):
+def gac_lat_lon_interpolator(lons_subset, lats_subset):
     """Interpolate lat-lon values in the AVHRR GAC data.
 
     Each GAC row has 409 pixels.
@@ -37,10 +37,20 @@ def Gac_Lat_Lon_Interpolator(lons_subset, lats_subset):
     ranging from 5 to 405. Interpolate to full resolution.
 
     """
-    # cols_subset = np.arange(0, 404, 8)
-    # cols_full = np.arange(405)
     cols_subset = np.arange(4, 405, 8)
     cols_full = np.arange(409)
+    return lat_lon_interpolator(lons_subset, lats_subset, cols_subset, cols_full)
+
+
+def lac_lat_lon_interpolator(lons_subset, lats_subset):
+    """Interpolate lat-lon values in the AVHRR LAC data."""
+    cols_subset = np.arange(24, 2048, 40)
+    cols_full = np.arange(2048)
+    return lat_lon_interpolator(lons_subset, lats_subset, cols_subset, cols_full)
+
+
+def lat_lon_interpolator(lons_subset, lats_subset, cols_subset, cols_full):
+    """Interpolate lat-lon values in the AVHRR data."""
     lines = lats_subset.shape[0]
     rows_subset = np.arange(lines)
     rows_full = np.arange(lines)

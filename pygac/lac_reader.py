@@ -1,10 +1,12 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-
-# Copyright (c) 2014, 2015 Martin Raspaud
+#!/usr/bin/python
+# Copyright (c) 2014-2019.
+#
 
 # Author(s):
 
+#   Abhay Devasthale <abhay.devasthale@smhi.se>
+#   Adam Dybbroe <adam.dybbroe@smhi.se>
+#   Sajid Pareeth <sajid.pareeth@fmach.it>
 #   Martin Raspaud <martin.raspaud@smhi.se>
 
 # This program is free software: you can redistribute it and/or modify
@@ -19,24 +21,20 @@
 
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-"""Generic reader for GAC data.
-
-Can't be used as is, has to be subclassed to add specific read functions.
-"""
+"""The LAC reader."""
 
 from pygac.reader import Reader
 import pygac.pygac_geotiepoints as gtp
 
 
-class GACReader(Reader):
-    """Reader for GAC data."""
+class LACReader(Reader):
+    """Reader for LAC data."""
 
     # Scanning frequency (scanlines per millisecond)
-    scan_freq = 2.0 / 1000.0
+    scan_freq = 6.0 / 1000.0
 
     def __init__(self, *args, **kwargs):
-        """Init the GAC reader."""
-        super(GACReader, self).__init__(*args, **kwargs)
-        self.scan_width = 409
-        self.lonlat_interpolator = gtp.gac_lat_lon_interpolator
+        """Init the LAC reader."""
+        super(LACReader, self).__init__(*args, **kwargs)
+        self.scan_width = 2048
+        self.lonlat_interpolator = gtp.lac_lat_lon_interpolator

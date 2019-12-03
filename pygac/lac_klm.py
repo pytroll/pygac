@@ -1,11 +1,11 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-
-# Copyright (c) 2014 Abhay Devasthale and Martin Raspaud
+#!/usr/bin/python
+# Copyright (c) 2014-2019
+#
 
 # Author(s):
 
 #   Abhay Devasthale <abhay.devasthale@smhi.se>
+#   Sajid Pareeth <sajid.pareeth@fmach.it>
 #   Martin Raspaud <martin.raspaud@smhi.se>
 #   Adam Dybbroe <adam.dybbroe@smhi.se>
 
@@ -22,24 +22,18 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-"""Read a gac file.
+"""Reader for LAC KLM data."""
 
-Reads L1b GAC data from KLM series of satellites (NOAA-15 and later) and does most of the computations.
-Format specification can be found here:
-http://www.ncdc.noaa.gov/oa/pod-guide/ncdc/docs/klm/html/c8/sec83142-1.htm
-
-"""
-
-from __future__ import print_function
-
+import datetime
 import logging
 
 import numpy as np
 
-from pygac.gac_reader import GACReader
 from pygac.klm_reader import KLMReader
+from pygac.lac_reader import LACReader
 
 LOG = logging.getLogger(__name__)
+
 
 # video data object
 
@@ -132,9 +126,9 @@ scanline = np.dtype([("scan_line_number", ">u2"),
                      ("tip_euler_angles", ">i2", (3, )),
                      ("spacecraft_altitude_above_reference_ellipsoid", ">u2"),
                      ("angular_relationships", ">i2", (153, )),
-                     ("zero_fill3", ">i2", (3, )),
+                     ("zero_fill2", ">i2", (3, )),
                      ("earth_location", ">i4", (102, )),
-                     ("zero_fill4", ">i4", (2, )),
+                     ("zero_fill3", ">i4", (2, )),
                      # HRPT MINOR FRAME TELEMETRY
                      ("frame_sync", ">u2", (6, )),
                      ("id", ">u2", (2, )),
@@ -146,16 +140,16 @@ scanline = np.dtype([("scan_line_number", ">u2"),
                      ("back_scan", ">u2", (30, )),
                      ("space_data", ">u2", (50, )),
                      ("sync_delta", ">u2"),
-                     ("zero_fill5", ">i2"),
-                     # AVHRR SENSOR DATA
-                     ("sensor_data", ">u4", (682, )),
-                     ("zero_fill6", ">i4", (2, )),
-                     # DIGITAL B TELEMETRY
-                     ("invalid_word_bit_flags1", ">u2"),
+                     ("zero_fill4", ">i2"),
+                     # EARTH OBSERVATIONS
+                     ("sensor_data", ">u4", (3414,)),
+                     ("zero_fill5", ">i4", (2,)),
+                     # DIGITAL B HOUSEKEEPING TELEMETRY
+                     ("digital_b_telemetry_update_flags", ">u2"),
                      ("avhrr_digital_b_data", ">u2"),
-                     ("zero_fill7", ">i4", (3, )),
+                     ("zero_fill6", ">i4", (3,)),
                      # ANALOG HOUSEKEEPING DATA (TIP)
-                     ("invalid_word_bit_flags2", ">u4"),
+                     ("analog_telemetry_update_flags", ">u4"),
                      ("patch_temperature_range", ">u1"),
                      ("patch_temperature_extended", ">u1"),
                      ("patch_power", ">u1"),
@@ -178,20 +172,56 @@ scanline = np.dtype([("scan_line_number", ">u2"),
                      ("blackbody_temperature_channel4", ">u1"),
                      ("blackbody_temperature_channel5", ">u1"),
                      ("reference_voltage", ">u1"),
-                     ("zero_fill8", ">i2", (3, )),
+                     ("zero_fill7", ">i2", (3,)),
                      # CLOUDS FROM AVHRR (CLAVR)
-                     ("reserved0", ">u4"),
-                     ("reserved1", ">u4"),
-                     ("reserved2", ">u2", (52, )),
+                     ("reserved_clavr_status_bit_field", ">u4"),
+                     ("reserved_clavr", ">u4"),
+                     ("reserved_clavr_ccm", ">u2", (256,)),
                      # FILLER
-                     ("zero_fill9", ">i4", (112, ))])
+                     ("zero_fill8", ">i4", (94,))])
 
 
-class GACKLMReader(GACReader, KLMReader):
-    """The GAC KLM reader class."""
+class LACKLMReader(LACReader, KLMReader):
+    """The LAC KLM reader."""
 
     def __init__(self, *args, **kwargs):
-        """Init the GAC KLM reader."""
-        GACReader.__init__(self, *args, **kwargs)
+        """Init the LAC KLM reader."""
+        LACReader.__init__(self, *args, **kwargs)
         self.scanline_type = scanline
-        self.offset = 4608
+        self.offset = 15872
+        # packed: 15872
+        # self.offset = 22528
+        # unpacked: 22528
+
+
+def main(filename, start_line, end_line):
+    """Generate a l1c file."""
+    from pygac import gac_io
+    tic = datetime.datetime.now()
+    reader = LACKLMReader()
+    reader.read(filename)
+    reader.get_lonlat()
+    channels = reader.get_calibrated_channels()
+    sat_azi, sat_zen, sun_azi, sun_zen, rel_azi = reader.get_angles()
+
+    mask, qual_flags = reader.get_corrupt_mask()
+    if (np.all(mask)):
+        print("ERROR: All data is masked out. Stop processing")
+        raise ValueError("All data is masked out.")
+
+    gac_io.save_gac(reader.spacecraft_name,
+                    reader.utcs,
+                    reader.lats, reader.lons,
+                    channels[:, :, 0], channels[:, :, 1],
+                    channels[:, :, 2],
+                    channels[:, :, 3],
+                    channels[:, :, 4],
+                    channels[:, :, 5],
+                    sun_zen, sat_zen, sun_azi, sat_azi, rel_azi,
+                    mask, qual_flags, start_line, end_line, reader.get_ch3_switch())
+    LOG.info("pygac took: %s", str(datetime.datetime.now() - tic))
+
+
+if __name__ == "__main__":
+    import sys
+    main(sys.argv[1], sys.argv[2], sys.argv[3])

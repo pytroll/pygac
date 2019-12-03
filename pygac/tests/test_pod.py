@@ -17,6 +17,7 @@
 
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+"""Test module for the pod reading."""
 
 import datetime as dt
 import unittest
@@ -32,15 +33,16 @@ from pygac.tests.utils import CalledWithArray
 
 
 class TestPOD(unittest.TestCase):
-    """Test the POD GAC reader"""
+    """Test the POD GAC reader."""
 
     longMessage = True
 
     def setUp(self):
+        """Set up the test."""
         self.reader = GACPODReader()
 
     def test_decode_timestamps(self):
-        """Test POD timestamp decoding"""
+        """Test POD timestamp decoding."""
         # Reference timestamps, one before 2000 one after 2000
         t2000_ref = (2001, 335, 53644260)
         t1900_ref = (1983, 336, 35058207)
@@ -67,6 +69,7 @@ class TestPOD(unittest.TestCase):
 
     @mock.patch('pygac.gac_pod.GACPODReader.decode_timestamps')
     def test_get_times(self, decode_timestamps):
+        """Test getting times."""
         self.reader.scans = {'time_code': 123}
         self.reader._get_times()
         decode_timestamps.assert_called_with(123)
@@ -86,7 +89,7 @@ class TestPOD(unittest.TestCase):
         numpy.testing.assert_array_equal(lons, lons_exp)
         numpy.testing.assert_array_equal(lats, lats_exp)
 
-    @mock.patch('pygac.gac_pod.get_tsm_idx')
+    @mock.patch('pygac.pod_reader.get_tsm_idx')
     def test_get_tsm_pixels(self, get_tsm_idx):
         """Test channel set used for TSM correction."""
         ones = np.ones((409, 100))
@@ -104,7 +107,7 @@ class TestPOD(unittest.TestCase):
 
 
 def suite():
-    """The suite for test_pod"""
+    """Test suite for test_pod."""
     loader = unittest.TestLoader()
     mysuite = unittest.TestSuite()
     mysuite.addTest(loader.loadTestsFromTestCase(TestPOD))
