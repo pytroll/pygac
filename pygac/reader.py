@@ -218,7 +218,7 @@ class Reader(six.with_metaclass(ABCMeta)):
 
         """
         return (((year - 1970).astype('datetime64[Y]')
-                + (jday - 1).astype('timedelta64[D]')).astype('datetime64[ms]')
+                 + (jday - 1).astype('timedelta64[D]')).astype('datetime64[ms]')
                 + msec.astype('timedelta64[ms]'))
 
     @staticmethod
@@ -299,7 +299,8 @@ class Reader(six.with_metaclass(ABCMeta)):
         from pyorbital.geoloc_instrument_definitions import avhrr_gac
         from pyorbital.geoloc import compute_pixels, get_lonlatalt
         # TODO: Are we sure all satellites have this scan width in degrees ?
-        sgeom = avhrr_gac(utcs.astype(datetime.datetime), self.scan_points, 55.385)
+        sgeom = avhrr_gac(utcs.astype(datetime.datetime),
+                          self.scan_points, 55.385)
         s_times = sgeom.times(t)
         tle1, tle2 = self.get_tle_lines()
 
@@ -425,7 +426,8 @@ class Reader(six.with_metaclass(ABCMeta)):
         doys = (times % 1000).astype('int') - 1
         years = (times // 1000).astype('int')
         msecs = np.rint(24 * 3600 * 1000 * (times % 1))
-        times64 = (years - 1970).astype('datetime64[Y]').astype('datetime64[ms]')
+        times64 = (
+            years - 1970).astype('datetime64[Y]').astype('datetime64[ms]')
         times64 += doys.astype('timedelta64[D]')
         times64 += msecs.astype('timedelta64[ms]')
 
@@ -580,7 +582,8 @@ class Reader(six.with_metaclass(ABCMeta)):
         # offset, e.g. the first scanline has timestamp 1970-01-01 00:00
         msec_lineno = self.lineno2msec(self.scans["scan_line_number"])
 
-        jday = np.where(np.logical_or(jday < 1, jday > 366), np.median(jday), jday)
+        jday = np.where(np.logical_or(jday < 1, jday > 366),
+                        np.median(jday), jday)
         if_wrong_jday = np.ediff1d(jday, to_begin=0)
         jday = np.where(if_wrong_jday < 0, max(jday), jday)
 
