@@ -60,6 +60,8 @@ class GACPODReader(GACReader, PODReader):
 
     The `scan_points` attributes provides the position of the longitude and latitude points to
     compute relative to the full swath width.
+
+    The offset attribute tells where in the file the scanline data starts.
     """
 
     def __init__(self, *args, **kwargs):

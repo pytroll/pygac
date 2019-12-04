@@ -181,7 +181,10 @@ scanline = np.dtype([("scan_line_number", ">u2"),
 
 
 class LACKLMReader(LACReader, KLMReader):
-    """The LAC KLM reader."""
+    """The LAC KLM reader.
+
+    The offset attribute tells where in the file the scanline data starts.
+    """
 
     def __init__(self, *args, **kwargs):
         """Init the LAC KLM reader."""
@@ -194,6 +197,7 @@ class LACKLMReader(LACReader, KLMReader):
 
 
 def main(filename, start_line, end_line):
+    """Generate a l1c file."""
     return main_klm(LACKLMReader, filename, start_line, end_line)
 
 

@@ -32,7 +32,6 @@ http://www.ncdc.noaa.gov/oa/pod-guide/ncdc/docs/klm/html/c8/sec83142-1.htm
 
 from __future__ import print_function
 
-import datetime
 import logging
 
 import numpy as np
@@ -189,7 +188,10 @@ scanline = np.dtype([("scan_line_number", ">u2"),
 
 
 class GACKLMReader(GACReader, KLMReader):
-    """The GAC KLM reader class."""
+    """The GAC KLM reader class.
+
+    The offset attribute tells where in the file the scanline data starts.
+    """
 
     def __init__(self, *args, **kwargs):
         """Init the GAC KLM reader."""
@@ -199,6 +201,7 @@ class GACKLMReader(GACReader, KLMReader):
 
 
 def main(filename, start_line, end_line):
+    """Generate a l1c file."""
     return main_klm(GACKLMReader, filename, start_line, end_line)
 
 
