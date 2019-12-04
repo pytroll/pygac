@@ -131,7 +131,7 @@ class TestKLM(unittest.TestCase):
         self.reader.postproc(channels)  # masks in-place
         numpy.testing.assert_array_equal(channels, masked_exp)
 
-    @mock.patch('pygac.gac_klm.get_tsm_idx')
+    @mock.patch('pygac.klm_reader.get_tsm_idx')
     def test_get_tsm_pixels(self, get_tsm_idx):
         """Test channel set used for TSM correction."""
         ones = np.ones((409, 100))
