@@ -49,7 +49,11 @@ scanline = np.dtype([("scan_line_number", ">i2"),
 
 
 class LACPODReader(LACReader, PODReader):
-    """The LAC POD reader."""
+    """The LAC POD reader.
+
+    The `scan_points` attributes provides the position of the longitude and latitude points to
+    compute relative to the full swath width.
+    """
 
     def __init__(self, *args, **kwargs):
         """Init the LAC POD reader."""
@@ -60,6 +64,7 @@ class LACPODReader(LACReader, PODReader):
 
 
 def main(filename, start_line, end_line):
+    """Generate a l1c file."""
     return main_pod(LACPODReader, filename, start_line, end_line)
 
 
