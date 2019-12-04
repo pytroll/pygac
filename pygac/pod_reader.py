@@ -457,38 +457,3 @@ class PODReader(Reader):
         """
         return get_tsm_idx(channels[:, :, 0], channels[:, :, 1],
                            channels[:, :, 3], channels[:, :, 4])
-
-
-def main(filename, start_line, end_line):
-    """Generate a l1c file."""
-    from pygac import gac_io
-    tic = datetime.datetime.now()
-    reader = PODReader()
-    reader.read(filename)
-    reader.get_lonlat()
-    channels = reader.get_calibrated_channels()
-    sat_azi, sat_zen, sun_azi, sun_zen, rel_azi = reader.get_angles()
-    qual_flags = reader.get_qual_flags()
-    if np.all(reader.mask):
-        print("ERROR: All data is masked out. Stop processing")
-        raise ValueError("All data is masked out.")
-
-    gac_io.save_gac(reader.spacecraft_name,
-                    reader.utcs,
-                    reader.lats, reader.lons,
-                    channels[:, :, 0], channels[:, :, 1],
-                    np.full_like(channels[:, :, 0], np.nan),
-                    channels[:, :, 2],
-                    channels[:, :, 3],
-                    channels[:, :, 4],
-                    sun_zen, sat_zen, sun_azi, sat_azi, rel_azi,
-                    qual_flags, start_line, end_line,
-                    reader.filename,
-                    reader.get_midnight_scanline(),
-                    reader.get_miss_lines())
-    LOG.info("pygac took: %s", str(datetime.datetime.now() - tic))
-
-
-if __name__ == "__main__":
-    import sys
-    main(sys.argv[1], sys.argv[2], sys.argv[3])

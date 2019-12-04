@@ -203,9 +203,8 @@ def main(filename, start_line, end_line):
     reader.get_lonlat()
     channels = reader.get_calibrated_channels()
     sat_azi, sat_zen, sun_azi, sun_zen, rel_azi = reader.get_angles()
-
-    mask, qual_flags = reader.get_corrupt_mask()
-    if (np.all(mask)):
+    qual_flags = reader.get_qual_flags()
+    if (np.all(reader.mask)):
         print("ERROR: All data is masked out. Stop processing")
         raise ValueError("All data is masked out.")
 
@@ -218,7 +217,10 @@ def main(filename, start_line, end_line):
                     channels[:, :, 4],
                     channels[:, :, 5],
                     sun_zen, sat_zen, sun_azi, sat_azi, rel_azi,
-                    mask, qual_flags, start_line, end_line, reader.get_ch3_switch())
+                    qual_flags, start_line, end_line,
+                    reader.filename,
+                    reader.get_midnight_scanline(),
+                    reader.get_miss_lines())
     LOG.info("pygac took: %s", str(datetime.datetime.now() - tic))
 
 
