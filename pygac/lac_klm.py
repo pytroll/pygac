@@ -24,12 +24,11 @@
 
 """Reader for LAC KLM data."""
 
-import datetime
 import logging
 
 import numpy as np
 
-from pygac.klm_reader import KLMReader
+from pygac.klm_reader import KLMReader, main_klm
 from pygac.lac_reader import LACReader
 
 LOG = logging.getLogger(__name__)

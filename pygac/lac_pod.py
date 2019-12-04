@@ -24,12 +24,10 @@
 
 """The LAC POD reader routines."""
 
-import datetime
 import logging
 
 import numpy as np
 
-from pygac import gac_io
 from pygac.pod_reader import PODReader, main_pod
 from pygac.lac_reader import LACReader
 

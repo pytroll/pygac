@@ -30,6 +30,7 @@ Format specification can be found here:
 http://www.ncdc.noaa.gov/oa/pod-guide/ncdc/docs/klm/html/c8/sec83142-1.htm
 """
 
+import datetime
 import logging
 
 import numpy as np
