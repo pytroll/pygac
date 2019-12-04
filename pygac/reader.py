@@ -287,11 +287,13 @@ class Reader(six.with_metaclass(ABCMeta)):
                               self.head["constant_yaw_attitude_error"] / 1e3])
         else:
             try:
-                rpy_spacecraft = rpy_coeffs[self.spacecraft_name]
-                rpy = [rpy_spacecraft['roll'],
-                       rpy_spacecraft['pitch'],
-                       rpy_spacecraft['yaw']]
-                LOG.debug("Using static attitude correction")
+                # This needs to be checked thoroughly first
+                # rpy_spacecraft = rpy_coeffs[self.spacecraft_name]
+                # rpy = [rpy_spacecraft['roll'],
+                #        rpy_spacecraft['pitch'],
+                #        rpy_spacecraft['yaw']]
+                # LOG.debug("Using static attitude correction")
+                raise KeyError
             except KeyError:
                 LOG.debug("Not applying attitude correction")
                 rpy = [0, 0, 0]
