@@ -1,6 +1,9 @@
 Usage
 -----
 
+Standalone
+~~~~~~~~~~
+
 Copy the template file ``etc/pygac.cfg.template`` to ``pygac.cfg`` and place
 it in a directory as you please. Set the environment variable PYGAC_CONFIG_FILE
 pointing to the file. E.g.::
@@ -26,3 +29,7 @@ portion of the GAC orbit that user wants to process.  The first scanline number
 starts at 0. If zeroes are specified at both locations, then the entire orbit
 will be processed.
 
+In Satpy
+~~~~~~~~
+It is also possible to use pygac as a library in Satpy, see this `example notebook
+<https://github.com/pytroll/pytroll-examples/blob/master/satpy/avhrr_l1b_gaclac.ipynb>`_.

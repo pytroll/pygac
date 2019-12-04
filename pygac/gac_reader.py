@@ -478,14 +478,20 @@ class GACReader(six.with_metaclass(ABCMeta)):
         and different ranges.
 
         Returns:
-            sat_azi: satellite azimuth angle
-                degree clockwise from north in range ]-180, 180],
-            sat_zentih: satellite zenith angles in degrees in range [0,90],
-            sun_azi: sun azimuth angle
-                degree clockwise from north in range ]-180, 180],
-            sun_zentih: sun zenith angles in degrees in range [0,90],
-            rel_azi: absolute azimuth angle difference in degrees between sun
-                and sensor in range [0, 180]
+            Tuple containing:
+
+                sat_azi: Satellite azimuth angle (in degrees clockwise from
+                north, range ]-180, 180]).
+
+                sat_zenith: Satellite zenith angle (in degrees, range [0,90]).
+
+                sun_azi: Sun azimuth angle (in degrees clockwise from north,
+                range ]-180, 180]).
+
+                sun_zenith: Sun zenith angle (in degrees, range [0,90]).
+
+                rel_azi: Absolute azimuth angle difference between sun and
+                sensor (in degrees, range [0, 180]).
 
         """
         self.get_times()
@@ -577,14 +583,16 @@ class GACReader(six.with_metaclass(ABCMeta)):
         """Remove scanlines with corrupted scanline numbers
 
         This includes:
-            - Scanline numbers outside the valide range
-            - Scanline numbers deviating more than a certain threshold from the
-            ideal case (1,2,3,...N)
+
+        - Scanline numbers outside the valide range
+        - Scanline numbers deviating more than a certain threshold from the
+          ideal case (1,2,3,...N)
 
         Example files having corrupt scanline numbers:
-            - NSS.GHRR.NJ.D96144.S2000.E2148.B0720102.GC
-            - NSS.GHRR.NJ.D96064.S0043.E0236.B0606162.WI
-            - NSS.GHRR.NJ.D99286.S1818.E2001.B2466869.WI
+
+        - NSS.GHRR.NJ.D96144.S2000.E2148.B0720102.GC
+        - NSS.GHRR.NJ.D96064.S0043.E0236.B0606162.WI
+        - NSS.GHRR.NJ.D99286.S1818.E2001.B2466869.WI
 
         Returns:
             Intermediate and final results (for plotting purpose)
