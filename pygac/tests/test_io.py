@@ -212,8 +212,7 @@ class TestIO(unittest.TestCase):
             rel_azi=mm,
             qual_flags=mm,
             gac_file=mm,
-            midnight_scanline=mm,
-            miss_lines=mm
+            meta_data=mm
         )
         slice_channel.return_value = mm, 'miss', 'midnight'
         strip_invalid_lat.return_value = 0, 0

@@ -22,6 +22,7 @@
 
 import logging
 import os
+import numpy as np
 
 from pygac.version import __version__  # noqa
 
@@ -52,3 +53,18 @@ def centered_modulus(array, divisor):
     arr = array % divisor
     arr[arr > divisor / 2] -= divisor
     return arr
+
+
+def calculate_sun_earth_distance_correction(jday):
+    """Calculate the sun earth distance correction.
+
+    In 2008 3-4 different equations of ESD were considered.
+    This one was chosen as it at the time gave reflectances most closely
+    matching the PATMOS-x data provided then by Andy Heidinger.
+
+    Formula might need to be reconsidered if jday is updated to a float.
+
+    """
+    # Earth-Sun distance correction factor
+    corr = 1.0 - 0.0334 * np.cos(2.0 * np.pi * (jday - 2) / 365.25)
+    return corr

@@ -346,6 +346,15 @@ class TestGacReader(unittest.TestCase):
         self.reader.correct_times_thresh()
         numpy.testing.assert_array_equal(self.reader.utcs, utcs_expected)
 
+    def test_calculate_sun_earth_distance_correction(self):
+        """Test the calculate sun earth distance correction method."""
+        self.reader.utcs = np.array([315748035469, 315748359969,
+                                     315751135469, 315754371969,
+                                     315754371969]).astype('datetime64[ms]')
+        self.reader.times = self.reader.to_datetime(self.reader.utcs)
+        corr = self.reader.get_sun_earth_distance_correction()
+        numpy.testing.assert_almost_equal(corr, 0.96660494, decimal=7)
+
 
 def suite():
     """Test suite for test_reader."""
