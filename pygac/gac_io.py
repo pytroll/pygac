@@ -83,7 +83,11 @@ def save_gac(satellite_name,
              bt3, bt4, bt5,
              sun_zen, sat_zen, sun_azi, sat_azi, rel_azi,
              qual_flags, start_line, end_line,
-             gac_file, midnight_scanline, miss_lines):
+             gac_file, meta_data):
+
+    midnight_scanline = meta_data['midnight_scanline']
+    miss_lines = meta_data['missing_scanlines']
+    corr = meta_data['sun_earth_distance_correction_factor']
 
     last_scan_line_number = qual_flags[-1, 0]
 
@@ -199,10 +203,6 @@ def save_gac(satellite_name,
     starttime = start.strftime("%H%M%S%f")[:-5]
     enddate = end.strftime("%Y%m%d")
     endtime = end.strftime("%H%M%S%f")[:-5]
-    jday = int(start.strftime("%j"))
-
-    # Earth-Sun distance correction factor
-    corr = 1.0 - 0.0334 * np.cos(2.0 * np.pi * (jday - 2) / 365.25)
 
     # Apply scaling & offset
     bt3 -= 273.15
