@@ -19,7 +19,7 @@
 
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
+"""The setup module."""
 
 try:
     with open("./README", "r") as fd:
@@ -39,19 +39,22 @@ version = imp.load_source('pygac.version', 'pygac/version.py')
 
 
 def set_builtin(name, value):
+    """Set builtin."""
     if isinstance(__builtins__, dict):
         __builtins__[name] = value
     else:
         setattr(__builtins__, name, value)
 
 
-class build_ext(_build_ext):
+class build_ext(_build_ext):  # noqa
     """Work around to bootstrap numpy includes in to extensions.
+
     Copied from:
         http://stackoverflow.com/questions/19919905/how-to-bootstrap-numpy-installation-in-setup-py
     """
 
     def finalize_options(self):
+        """Finalize options."""
         _build_ext.finalize_options(self)
         # Prevent numpy from thinking it is still in its setup process:
         set_builtin('__NUMPY_SETUP__', False)
@@ -77,9 +80,9 @@ if __name__ == '__main__':
 
     setup(name='pygac',
           version=version.__version__,
-          description='NOAA AVHRR GAC reader and calibration',
-          author='Abhay Devasthale',
-          author_email='adam.dybbroe@smhi.se',
+          description='NOAA AVHRR GAC/LAC reader and calibration',
+          author='Abhay Devasthale, Martin Raspaud',
+          author_email='martin.raspaud@smhi.se',
           classifiers=["Development Status :: 4 - Beta",
                        "Intended Audience :: Science/Research",
                        "License :: OSI Approved :: GNU General Public License v3 " +
