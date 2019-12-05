@@ -1,3 +1,17 @@
+## Version 1.3.0 (2019/12/05)
+
+
+### Pull Requests Merged
+
+#### Features added
+
+* [PR 45](https://github.com/pytroll/pygac/pull/45) - Add LAC support ([5](https://github.com/pytroll/pygac/issues/5))
+* [PR 42](https://github.com/pytroll/pygac/pull/42) - Update documentation
+* [PR 41](https://github.com/pytroll/pygac/pull/41) - Add meta_data dictionary to reader class.
+
+In this release 3 pull requests were closed.
+
+
 ## Version 1.2.1 (2019/11/15)
 
 ### Pull Requests Merged
