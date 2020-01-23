@@ -405,6 +405,9 @@ coeffs = {
                'b1': np.array([1 - 0.0, 1 - 0.11187, 1 - 0.05991]),
                'b2': np.array([0.0, 0.00054668, 0.00024985])}}
 
+"""Source Patmos-X Coeffs: Version Tag 'y2017r1_sbaf'
+https://cimss.ssec.wisc.edu/patmosx/avhrr_cal.html"""
+	
 
 class Calibrator(object):
 
