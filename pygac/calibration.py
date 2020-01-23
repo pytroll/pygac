@@ -407,7 +407,7 @@ coeffs = {
 
 """Source Patmos-X Coeffs: Version Tag 'y2017r1_sbaf'
 https://cimss.ssec.wisc.edu/patmosx/avhrr_cal.html"""
-	
+
 
 class Calibrator(object):
 
