@@ -29,8 +29,8 @@ import numpy as np
 coeffs = {
     'metopb': {'ah': np.array([0.166, 0.183, 0.201]),
                'al': np.array([0.055, 0.061, 0.029]),
-               'bh': np.array([2.019, 1.476, 1.478]),
-               'bl': np.array([2.019, 1.476, 1.478]),
+               'bh': np.array([2.019, 1.476, 1.748]),
+               'bl': np.array([2.019, 1.476, 1.748]),
                'ch': np.array([-0.201, -0.137, -0.033]),
                'cl': np.array([-0.201, -0.137, -0.033]),
                'c_dark': np.array([39.70, 40.00, 40.30]),
@@ -404,6 +404,9 @@ coeffs = {
                'b0': np.array([0.0, 5.70, 3.58]),
                'b1': np.array([1 - 0.0, 1 - 0.11187, 1 - 0.05991]),
                'b2': np.array([0.0, 0.00054668, 0.00024985])}}
+
+"""Source Patmos-X Coeffs: Version Tag 'y2017r1_sbaf'
+https://cimss.ssec.wisc.edu/patmosx/avhrr_cal.html"""
 
 
 class Calibrator(object):
