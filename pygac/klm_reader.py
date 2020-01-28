@@ -590,7 +590,7 @@ class KLMReader(Reader):
         super(KLMReader, self).read(filename=filename)
         with open(filename) as fd_:
             self.ars_head = np.fromfile(fd_, dtype=ars_header, count=1)[0]
-            if not self.ars_head['data_set_name'].startswith(self.creation_site):
+            if not self.ars_head['data_format'].startswith(b'NOAA Level 1b'):
                 fd_.seek(0)
                 self.ars_head = None
                 ars_offset = 0
