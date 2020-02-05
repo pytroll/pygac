@@ -216,11 +216,12 @@ class PODReader(Reader):
                 The scanlines
 
         """
-        super(PODReader, self).read(filename=filename)
         # choose the right header depending on the date
-        with open(filename) as fd_:
+        with self._open(filename) as fd_:
             # read archive header
-            self.tbm_head = np.fromfile(fd_, dtype=tbm_header, count=1)[0]
+            self.tbm_head, = np.frombuffer(
+                fd_.read(tbm_header.itemsize), 
+                dtype=tbm_header, count=1)
             if ((not self.tbm_head['data_set_name'].startswith(self.creation_site + b'.')) and
                     (self.tbm_head['data_set_name'] != b'\x00' * 42 + b'  ')):
                 fd_.seek(0)
@@ -229,7 +230,9 @@ class PODReader(Reader):
             else:
                 tbm_offset = tbm_header.itemsize
 
-            head = np.fromfile(fd_, dtype=header0, count=1)[0]
+            head, = np.frombuffer(
+                fd_.read(header0.itemsize),
+                dtype=header0, count=1)
             year, jday, _ = self.decode_timestamps(head["start_time"])
 
             start_date = (datetime.date(year, 1, 1) +
@@ -243,11 +246,14 @@ class PODReader(Reader):
                 header = header3
 
             fd_.seek(tbm_offset, 0)
-            self.head = np.fromfile(fd_, dtype=header, count=1)[0]
+            self.head, = np.frombuffer(
+                fd_.read(header.itemsize), 
+                dtype=header, count=1)
             fd_.seek(self.offset + tbm_offset, 0)
-            self.scans = np.fromfile(fd_,
-                                     dtype=self.scanline_type,
-                                     count=self.head["number_of_scans"])
+            self.scans = np.frombuffer(
+                fd_.read(),
+                dtype=self.scanline_type,
+                count=self.head["number_of_scans"])
 
         self.correct_scan_line_numbers()
         self.spacecraft_id = self.head["noaa_spacecraft_identification_code"]

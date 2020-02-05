@@ -587,29 +587,40 @@ class KLMReader(Reader):
                 The scanlines
 
         """
-        super(KLMReader, self).read(filename=filename)
-        with open(filename) as fd_:
-            self.ars_head = np.fromfile(fd_, dtype=ars_header, count=1)[0]
+        with self._open(filename) as fd_:
+            # Note that np.fromfile does not work with gzip.GzipFile 
+            # objects (numpy version 1.16.4), because it restricts the 
+            # file objects to (io.FileIO, io.BufferedReader, io.BufferedWriter)
+            # see: numpy.compat.py3k.isfileobj
+            self.ars_head, = np.frombuffer(
+                fd_.read(ars_header.itemsize),
+                dtype=ars_header, count=1)
             if not self.ars_head['data_format'].startswith(b'NOAA Level 1b'):
                 fd_.seek(0)
                 self.ars_head = None
                 ars_offset = 0
             else:
                 ars_offset = ars_header.itemsize
-            self.head = np.fromfile(fd_, dtype=header, count=1)[0]
+            self.head, = np.frombuffer(
+                fd_.read(header.itemsize),
+                dtype=header, count=1)
             self.header_version = self.head[
                 "noaa_level_1b_format_version_number"]
             if self.header_version >= 5:
-                self.analog_telemetry = np.fromfile(
-                    fd_, dtype=analog_telemetry_v5, count=1)[0]
+                self.analog_telemetry, = np.frombuffer(
+                    fd_.read(analog_telemetry_v5.itemsize), 
+                    dtype=analog_telemetry_v5, count=1)
             else:
-                self.analog_telemetry = np.fromfile(
-                    fd_, dtype=analog_telemetry_v2, count=1)[0]
+                self.analog_telemetry, = np.frombuffer(
+                    fd_.read(analog_telemetry_v2.itemsize), 
+                    dtype=analog_telemetry_v2, count=1)
             # LAC: 1, GAC: 2, ...
             self.data_type = self.head['data_type_code']
             fd_.seek(self.offset + ars_offset, 0)
-            self.scans = np.fromfile(fd_, dtype=self.scanline_type,
-                                     count=self.head["count_of_data_records"])
+            self.scans = np.frombuffer(
+                fd_.read(), 
+                dtype=self.scanline_type,
+                count=self.head["count_of_data_records"])
 
         self.correct_scan_line_numbers()
         self.spacecraft_id = self.head["noaa_spacecraft_identification_code"]

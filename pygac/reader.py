@@ -30,6 +30,8 @@ import numpy as np
 import os
 import six
 import types
+import gzip
+from contextlib import contextmanager
 
 from pygac import (CONFIG_FILE, centered_modulus,
                    calculate_sun_earth_distance_correction,
@@ -120,8 +122,31 @@ class Reader(six.with_metaclass(ABCMeta)):
         Args:
             filename (str): Specifies the GAC/LAC file to be read.
         """
-        self.filename = os.path.basename(filename)
+        raise NotImplementedError
+        
+    @contextmanager
+    def _open(self, filename):
+        """Open the GAC/LAC data file and yield the filehandle.
+        
+        Args:
+            filename (str): Path to GAC/LAC file to open
+            
+        Note:
+            This method should be called inside the Reader.read implementation
+        """
+        basename = os.path.basename(filename)
+        root, ext = os.path.splitext(basename)
+        if ext == ".gz":
+            self.filename = root
+            file_object = gzip.open(filename, mode='rb')
+        else:
+            self.filename = basename
+            file_object = open(filename, mode='rb')
         LOG.info('Reading %s', self.filename)
+        try:
+            yield file_object
+        finally:
+            file_object.close()
 
     @abstractmethod
     def get_header_timestamp(self):
