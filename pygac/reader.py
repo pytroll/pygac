@@ -123,14 +123,14 @@ class Reader(six.with_metaclass(ABCMeta)):
             filename (str): Specifies the GAC/LAC file to be read.
         """
         raise NotImplementedError
-        
+
     @contextmanager
     def _open(self, filename):
         """Open the GAC/LAC data file and yield the filehandle.
-        
+
         Args:
             filename (str): Path to GAC/LAC file to open
-            
+
         Note:
             This method should be called inside the Reader.read implementation
         """

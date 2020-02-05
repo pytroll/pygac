@@ -588,8 +588,8 @@ class KLMReader(Reader):
 
         """
         with self._open(filename) as fd_:
-            # Note that np.fromfile does not work with gzip.GzipFile 
-            # objects (numpy version 1.16.4), because it restricts the 
+            # Note that np.fromfile does not work with gzip.GzipFile
+            # objects (numpy version 1.16.4), because it restricts the
             # file objects to (io.FileIO, io.BufferedReader, io.BufferedWriter)
             # see: numpy.compat.py3k.isfileobj
             self.ars_head, = np.frombuffer(
@@ -608,17 +608,17 @@ class KLMReader(Reader):
                 "noaa_level_1b_format_version_number"]
             if self.header_version >= 5:
                 self.analog_telemetry, = np.frombuffer(
-                    fd_.read(analog_telemetry_v5.itemsize), 
+                    fd_.read(analog_telemetry_v5.itemsize),
                     dtype=analog_telemetry_v5, count=1)
             else:
                 self.analog_telemetry, = np.frombuffer(
-                    fd_.read(analog_telemetry_v2.itemsize), 
+                    fd_.read(analog_telemetry_v2.itemsize),
                     dtype=analog_telemetry_v2, count=1)
             # LAC: 1, GAC: 2, ...
             self.data_type = self.head['data_type_code']
             fd_.seek(self.offset + ars_offset, 0)
             self.scans = np.frombuffer(
-                fd_.read(), 
+                fd_.read(),
                 dtype=self.scanline_type,
                 count=self.head["count_of_data_records"])
 

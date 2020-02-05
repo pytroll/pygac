@@ -220,7 +220,7 @@ class PODReader(Reader):
         with self._open(filename) as fd_:
             # read archive header
             self.tbm_head, = np.frombuffer(
-                fd_.read(tbm_header.itemsize), 
+                fd_.read(tbm_header.itemsize),
                 dtype=tbm_header, count=1)
             if ((not self.tbm_head['data_set_name'].startswith(self.creation_site + b'.')) and
                     (self.tbm_head['data_set_name'] != b'\x00' * 42 + b'  ')):
@@ -247,7 +247,7 @@ class PODReader(Reader):
 
             fd_.seek(tbm_offset, 0)
             self.head, = np.frombuffer(
-                fd_.read(header.itemsize), 
+                fd_.read(header.itemsize),
                 dtype=header, count=1)
             fd_.seek(self.offset + tbm_offset, 0)
             self.scans = np.frombuffer(
