@@ -4,6 +4,7 @@
 # Author(s):
 
 #   Stephan Finkensieper <stephan.finkensieper@dwd.de>
+#   Carlos Horn <carlos.horn@external.eumetsat.int>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -42,6 +43,17 @@ class TestGacReader(unittest.TestCase):
         """Set up the tests."""
         self.interpolator = interpolator
         self.reader = GACReader()
+
+    @mock.patch('pygac.reader.open', mock.mock_open(read_data='normal'))
+    @mock.patch('pygac.reader.gzip.open', mock.mock_open(read_data='gzip'))
+    def test__open(self):
+        """Test if proper opener is used."""
+        with self.reader._open("test_file") as f:
+            content_normal = f.read()
+        self.assertEqual(content_normal, 'normal')
+        with self.reader._open("test_file.gz") as f:
+            content_gzip = f.read()
+        self.assertEqual(content_gzip, 'gzip')
 
     def test_to_datetime64(self):
         """Test conversion from (year, jday, msec) to datetime64."""

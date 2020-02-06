@@ -8,6 +8,7 @@
 #   Adam Dybbroe <adam.dybbroe@smhi.se>
 #   Sajid Pareeth <sajid.pareeth@fmach.it>
 #   Martin Raspaud <martin.raspaud@smhi.se>
+#   Carlos Horn <carlos.horn@external.eumetsat.int>
 
 # This work was done in the framework of ESA-CCI-Clouds phase I
 
