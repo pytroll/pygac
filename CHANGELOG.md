@@ -1,3 +1,27 @@
+## Version v1.3.1 (2020/02/07)
+
+### Issues Closed
+
+* [Issue 52](https://github.com/pytroll/pygac/issues/52) - Allow gzip input files ([PR 53](https://github.com/pytroll/pygac/pull/53))
+* [Issue 49](https://github.com/pytroll/pygac/issues/49) - Calibration Coeffs Patmos-X 2017 ([PR 50](https://github.com/pytroll/pygac/pull/50))
+
+In this release 2 issues were closed.
+
+### Pull Requests Merged
+
+#### Bugs fixed
+
+* [PR 50](https://github.com/pytroll/pygac/pull/50) - Fix typo in MetOp-B calibration ([49](https://github.com/pytroll/pygac/issues/49))
+* [PR 48](https://github.com/pytroll/pygac/pull/48) - Update metadata when reading lonlat also
+
+#### Features added
+
+* [PR 53](https://github.com/pytroll/pygac/pull/53) - Allow gzip compressed files as input for klm and pod readers read method ([52](https://github.com/pytroll/pygac/issues/52))
+* [PR 51](https://github.com/pytroll/pygac/pull/51) - Use the data format name to id ARS headered files
+
+In this release 4 pull requests were closed.
+
+
 ## Version 1.3.0 (2019/12/05)
 
 
