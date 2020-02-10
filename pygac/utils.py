@@ -18,12 +18,71 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+import gzip
 import logging
 import numpy as np
-
+from contextlib import contextmanager
 
 LOG = logging.getLogger(__name__)
 
+
+def is_file_object(filename):
+    """Check if the input is a file object.
+
+    Args:
+        filename - object to check
+
+    Note:
+        This method only check if the object implements the
+        interface of a file object to allow duck types like
+        gzip.GzipFile instances.
+    """
+    has_close = hasattr(filename, 'close')
+    has_read = hasattr(filename, 'read')
+    if hasattr(filename, 'seekable'):
+        is_seekable = filename.seekable()
+    else:
+        is_seekable = False
+    return has_close and has_read and is_seekable
+
+def is_gzip(filename):
+    """Check if the input corresponds to a gzip file.
+
+    Args:
+        filename - path to file or file object
+    """
+    # Use the gzip magic number to identify if a file object
+    # is gzip compressed.
+    magic_number = bytearray.fromhex('1f8b')
+    if is_file_object(filename):
+        result = filename.read(2) == magic_number
+        filename.seek(0)
+    elif str(filename).endswith('.gz'):
+        result = True
+    else:
+        result = False
+    return result
+
+@contextmanager
+def file_opener(file):
+    """Open a file depending on the input.
+
+    Args:
+        file - path to file or file object
+    """
+    close = True
+    if is_gzip(file):
+        file_object = gzip.open(file, mode='rb')
+    elif is_file_object(file):
+        file_object = file
+        close = False
+    else:
+        file_object = open(file, mode='rb')
+    try:
+        yield file_object
+    finally:
+        if close:
+            file_object.close()
 
 def check_user_scanlines(start_line, end_line, first_valid_lat=None,
                          last_valid_lat=None, along_track=None):

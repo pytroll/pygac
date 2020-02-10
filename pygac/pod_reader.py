@@ -203,12 +203,11 @@ class PODReader(Reader):
 
         self.scans = self.scans[self.scans["scan_line_number"] != 0]
 
-    def read(self, filename):
+    def read(self, fileobj):
         """Read the data.
 
         Args:
-            filename: string
-                The filename to read from.
+            fileobj: An open file object to read from.
 
         Returns:
             header: numpy record array
@@ -218,43 +217,42 @@ class PODReader(Reader):
 
         """
         # choose the right header depending on the date
-        with self._open(filename) as fd_:
-            # read archive header
-            self.tbm_head, = np.frombuffer(
-                fd_.read(tbm_header.itemsize),
-                dtype=tbm_header, count=1)
-            if ((not self.tbm_head['data_set_name'].startswith(self.creation_site + b'.')) and
-                    (self.tbm_head['data_set_name'] != b'\x00' * 42 + b'  ')):
-                fd_.seek(0)
-                self.tbm_head = None
-                tbm_offset = 0
-            else:
-                tbm_offset = tbm_header.itemsize
+        # read archive header
+        self.tbm_head, = np.frombuffer(
+            fileobj.read(tbm_header.itemsize),
+            dtype=tbm_header, count=1)
+        if ((not self.tbm_head['data_set_name'].startswith(self.creation_site + b'.')) and
+                (self.tbm_head['data_set_name'] != b'\x00' * 42 + b'  ')):
+            fileobj.seek(0)
+            self.tbm_head = None
+            tbm_offset = 0
+        else:
+            tbm_offset = tbm_header.itemsize
 
-            head, = np.frombuffer(
-                fd_.read(header0.itemsize),
-                dtype=header0, count=1)
-            year, jday, _ = self.decode_timestamps(head["start_time"])
+        head, = np.frombuffer(
+            fileobj.read(header0.itemsize),
+            dtype=header0, count=1)
+        year, jday, _ = self.decode_timestamps(head["start_time"])
 
-            start_date = (datetime.date(year, 1, 1) +
-                          datetime.timedelta(days=int(jday) - 1))
+        start_date = (datetime.date(year, 1, 1) +
+                      datetime.timedelta(days=int(jday) - 1))
 
-            if start_date < datetime.date(1992, 9, 8):
-                header = header1
-            elif start_date <= datetime.date(1994, 11, 15):
-                header = header2
-            else:
-                header = header3
+        if start_date < datetime.date(1992, 9, 8):
+            header = header1
+        elif start_date <= datetime.date(1994, 11, 15):
+            header = header2
+        else:
+            header = header3
 
-            fd_.seek(tbm_offset, 0)
-            self.head, = np.frombuffer(
-                fd_.read(header.itemsize),
-                dtype=header, count=1)
-            fd_.seek(self.offset + tbm_offset, 0)
-            self.scans = np.frombuffer(
-                fd_.read(),
-                dtype=self.scanline_type,
-                count=self.head["number_of_scans"])
+        fileobj.seek(tbm_offset, 0)
+        self.head, = np.frombuffer(
+            fileobj.read(header.itemsize),
+            dtype=header, count=1)
+        fileobj.seek(self.offset + tbm_offset, 0)
+        self.scans = np.frombuffer(
+            fileobj.read(),
+            dtype=self.scanline_type,
+            count=self.head["number_of_scans"])
 
         self.correct_scan_line_numbers()
         self.spacecraft_id = self.head["noaa_spacecraft_identification_code"]
@@ -470,8 +468,7 @@ def main_pod(reader_cls, filename, start_line, end_line):
     """Generate a l1c file."""
     from pygac import gac_io
     tic = datetime.datetime.now()
-    reader = reader_cls()
-    reader.read(filename)
+    reader = reader_cls.fromfile(filename)
     reader.get_lonlat()
     channels = reader.get_calibrated_channels()
     sat_azi, sat_zen, sun_azi, sun_zen, rel_azi = reader.get_angles()

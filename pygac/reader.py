@@ -31,8 +31,6 @@ import numpy as np
 import os
 import six
 import types
-import gzip
-from contextlib import contextmanager
 
 from pygac import (CONFIG_FILE, centered_modulus,
                    calculate_sun_earth_distance_correction,
@@ -46,6 +44,7 @@ from pyorbital.orbital import Orbital
 from pyorbital import astronomy
 import datetime
 from pygac.calibration import calibrate_solar, calibrate_thermal
+from pygac.utils import file_opener
 
 LOG = logging.getLogger(__name__)
 
@@ -82,7 +81,8 @@ class Reader(six.with_metaclass(ABCMeta)):
     """Reader for Gac and Lac, POD and KLM data."""
 
     def __init__(self, interpolate_coords=True, adjust_clock_drift=True,
-                 tle_dir=None, tle_name=None, tle_thresh=7, creation_site=None):
+                 tle_dir=None, tle_name=None, tle_thresh=7, creation_site=None,
+                 filename=None):
         """Init the reader.
 
         Args:
@@ -95,6 +95,7 @@ class Reader(six.with_metaclass(ABCMeta)):
             tle_thresh: Maximum number of days between observation and nearest
                 TLE
             creation_site: The three-letter identifier of the creation site (eg 'NSS')
+            filename: GAC/LAC filename
 
         """
         self.meta_data = {}
@@ -104,6 +105,7 @@ class Reader(six.with_metaclass(ABCMeta)):
         self.tle_name = tle_name
         self.tle_thresh = tle_thresh
         self.creation_site = (creation_site or 'NSS').encode('utf-8')
+        self.filename = filename
         self.head = None
         self.scans = None
         self.spacecraft_name = None
@@ -113,41 +115,59 @@ class Reader(six.with_metaclass(ABCMeta)):
         self.lons = None
         self.times = None
         self.tle_lines = None
-        self.filename = None
         self._mask = None
 
+    @property
+    def filename(self):
+        """Get the property 'filename'."""
+        return self.__filename
+
+    @filename.setter
+    def filename(self, filepath):
+        """Set the property 'filename'."""
+        if filepath is None:
+            self.__filename = None
+        else:
+            basename = os.path.basename(filepath)
+            root, ext = os.path.splitext(filepath)
+            if ext == ".gz":
+                self.__filename = root
+            else:
+                self.__filename = basename
+
     @abstractmethod
-    def read(self, filename):
+    def read(self, fileobj):
         """Read the GAC/LAC data.
 
         Args:
-            filename (str): Specifies the GAC/LAC file to be read.
+            fileobj: Open GAC/LAC file object to read from.
         """
         raise NotImplementedError
 
-    @contextmanager
-    def _open(self, filename):
-        """Open the GAC/LAC data file and yield the filehandle.
+    @classmethod
+    def fromfile(cls, filename, fileobj=None):
+        """Create Reader from file (alternative constructor)
 
         Args:
-            filename (str): Path to GAC/LAC file to open
+            filename (str): Path to GAC/LAC file
+
+        Kwargs:
+            fileobj (file object): Open file object to read from
 
         Note:
-            This method should be called inside the Reader.read implementation
+            The fileobj is useful when dealing with tar archives, 
+            where the filename is given by the tarinfo object, but
+            the extracted file object's property 'name' is set to
+            the filename of the archive.
         """
-        basename = os.path.basename(filename)
-        root, ext = os.path.splitext(basename)
-        if ext == ".gz":
-            self.filename = root
-            file_object = gzip.open(filename, mode='rb')
+        instance = cls(filename=filename)
+        if fileobj is None:
+            open_file = file_opener(filename)
         else:
-            self.filename = basename
-            file_object = open(filename, mode='rb')
-        LOG.info('Reading %s', self.filename)
-        try:
-            yield file_object
-        finally:
-            file_object.close()
+            open_file = file_opener(fileobj)
+        with open_file as f:
+            instance.read(f)
+        return instance
 
     @abstractmethod
     def get_header_timestamp(self):
