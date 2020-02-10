@@ -30,6 +30,8 @@ import logging
 import os
 from datetime import datetime
 
+from pygac.l1c_factory import L1cFactory
+
 logger = logging.getLogger("pygac")
 logger.setLevel(logging.DEBUG)
 ch = logging.StreamHandler()
@@ -52,24 +54,6 @@ class MyFormatter(logging.Formatter):
 formatter = MyFormatter('[ %(levelname)s %(name)s %(asctime)s] %(message)s')
 ch.setFormatter(formatter)
 logger.addHandler(ch)
-
-
-def check_file_version(filename):
-    try:
-        with open(filename, mode='rb') as fdes:
-            try:
-                data = fdes.read(3).decode()
-            except UnicodeDecodeError:
-                data = None
-    except IOError as err:
-        raise IOError('Failed to read GAC file: {0}'.format(err))
-    if data in ["CMS", "NSS", "UKM", "DSS"]:
-        from pygac.gac_klm import main
-        return main
-    else:
-        from pygac.gac_pod import main
-        return main
-
 
 def str2scanline(string):
     """Convert string to scanline.
@@ -112,5 +96,5 @@ if __name__ == "__main__":
     validate_args(args)
     if args.config:
         os.environ['PYGAC_CONFIG_FILE'] = args.config
-    reader = check_file_version(args.filename)
-    reader(args.filename, args.start_line, args.end_line)
+    l1c_factory = L1cFactory()
+    l1c_factory(args.filename, args.start_line, args.end_line)
