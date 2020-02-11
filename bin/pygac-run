@@ -28,6 +28,7 @@
 import argparse
 import logging
 import os
+import tarfile
 from datetime import datetime
 
 from pygac.l1c_factory import L1cFactory
@@ -84,7 +85,8 @@ def validate_args(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description='Read, calibrate and navigate NOAA AVHRR GAC data')
-    parser.add_argument('filename', type=str, help='GAC file to be processed')
+    parser.add_argument('path', type=str, help='Path to GAC file(s) to be processed '
+                        '(Can be a file, directory or tar-archive)')
     parser.add_argument('start_line', type=str2scanline,
                         help='First scanline to be processed (0-based)')
     parser.add_argument('end_line', type=str2scanline,
@@ -97,4 +99,29 @@ if __name__ == "__main__":
     if args.config:
         os.environ['PYGAC_CONFIG_FILE'] = args.config
     l1c_factory = L1cFactory()
-    l1c_factory(args.filename, args.start_line, args.end_line)
+    path = args.path
+    start_line = args.start_line
+    end_line = args.end_line
+    if os.path.isfile(path): 
+        if tarfile.is_tarfile(path):
+            # archive
+            logger.info('Open archive "%s"' % str(path))
+            with tarfile.open('archive.tar') as a:
+                for tarinfo in a:
+                    filename = tarinfo.name
+                    fileobj = a.extractfile(filename)
+                    try:
+                        l1c_factory(filename, start_line, 
+                                    end_line, fileobj=fileobj)
+                    except Exception as e:
+                        logger.exception('Could not porcess "%s"' % str(filename))
+        else:
+            l1c_factory(filename, start_line, end_line)
+    elif os.path.isdir(path):
+        logger.info('Open directory "%s"' % str(path))
+        for basename in os.listdir(path):
+            filename = os.path.join(path, basename)
+            l1c_factory(filename, start_line, end_line)
+    else:
+        raise FileNotFoundError(
+            'The provided path "%s" does not exist!' % args.path)
