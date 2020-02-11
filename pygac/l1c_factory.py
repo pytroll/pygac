@@ -30,7 +30,6 @@ from pygac.gac_pod import GACPODReader
 from pygac.lac_klm import LACKLMReader
 from pygac.lac_pod import LACPODReader
 from pygac.utils import file_opener
-from pygac.gac_io import save_gac
 
 
 LOG = logging.getLogger(__name__)
