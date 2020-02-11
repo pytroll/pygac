@@ -482,5 +482,5 @@ def main_pod(reader_cls, filename, start_line, end_line):
     """Generate a l1c file."""
     tic = datetime.datetime.now()
     reader = reader_cls.fromfile(filename)
-    reader.save()
+    reader.save(int(start_line), int(end_line))
     LOG.info("pygac took: %s", str(datetime.datetime.now() - tic))
