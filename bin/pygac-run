@@ -116,12 +116,18 @@ if __name__ == "__main__":
                     except Exception as e:
                         logger.exception('Could not porcess "%s"' % str(filename))
         else:
-            l1c_factory(filename, start_line, end_line)
+            try:
+                l1c_factory(filename, start_line, end_line)
+            except Exception as e:
+                logger.exception('Could not porcess "%s"' % str(filename)) 
     elif os.path.isdir(path):
         logger.info('Open directory "%s"' % str(path))
         for basename in os.listdir(path):
             filename = os.path.join(path, basename)
-            l1c_factory(filename, start_line, end_line)
+            try:
+                l1c_factory(filename, start_line, end_line)
+            except Exception as e:
+                logger.exception('Could not porcess "%s"' % str(filename))
     else:
         raise FileNotFoundError(
             'The provided path "%s" does not exist!' % args.path)
