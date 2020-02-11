@@ -39,11 +39,11 @@ class L1cBuilder(object):
     def __init__(self, Reader):
         self.Reader = Reader
     
-    def __call__(filename, start_line, end_line, fileobj=None):
+    def __call__(self, filename, start_line, end_line, fileobj=None):
         tic = datetime.datetime.now()
         LOG.info("Building file: %s", str(filename))
         reader = self.Reader.fromfile(filename, fileobj=fileobj)
-        reader.save(reader)
+        reader.save(start_line, end_line)
         LOG.info("Processing took: %s", str(datetime.datetime.now() - tic))
 
 class L1cFactory(object):

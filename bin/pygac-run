@@ -31,8 +31,6 @@ import os
 import tarfile
 from datetime import datetime
 
-from pygac.l1c_factory import L1cFactory
-
 logger = logging.getLogger("pygac")
 logger.setLevel(logging.DEBUG)
 ch = logging.StreamHandler()
@@ -98,6 +96,7 @@ if __name__ == "__main__":
     validate_args(args)
     if args.config:
         os.environ['PYGAC_CONFIG_FILE'] = args.config
+    from pygac.l1c_factory import L1cFactory
     l1c_factory = L1cFactory()
     path = args.path
     start_line = args.start_line
@@ -106,8 +105,10 @@ if __name__ == "__main__":
         if tarfile.is_tarfile(path):
             # archive
             logger.info('Open archive "%s"' % str(path))
-            with tarfile.open('archive.tar') as a:
+            with tarfile.open(path) as a:
                 for tarinfo in a:
+                    if not tarinfo.isfile():
+                        continue
                     filename = tarinfo.name
                     fileobj = a.extractfile(filename)
                     try:
@@ -117,6 +118,7 @@ if __name__ == "__main__":
                         logger.exception('Could not porcess "%s"' % str(filename))
         else:
             try:
+                filename = path
                 l1c_factory(filename, start_line, end_line)
             except Exception as e:
                 logger.exception('Could not porcess "%s"' % str(filename)) 

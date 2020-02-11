@@ -174,24 +174,24 @@ class Reader(six.with_metaclass(ABCMeta)):
         """Prepare the channels as input for gac_io.save_gac"""
         return self.get_calibrated_channels()
     
-    def save(self):
+    def save(self, start_line, end_line):
         """Convert the Reader instance content into hdf5 files"""
         self.get_lonlat()
         channels = self._prepare_channels()
         sat_azi, sat_zen, sun_azi, sun_zen, rel_azi = self.get_angles()
         qual_flags = self.get_qual_flags()
-        if (np.all(reader.mask)):
+        if (np.all(self.mask)):
             print("ERROR: All data is masked out. Stop processing")
             raise ValueError("All data is masked out.")
         gac_io.save_gac(
-            reader.spacecraft_name,
-            reader.utcs, reader.lats, reader.lons,
+            self.spacecraft_name,
+            self.utcs, self.lats, self.lons,
             channels[:, :, 0], channels[:, :, 1],
             channels[:, :, 2], channels[:, :, 3],
             channels[:, :, 4], channels[:, :, 5],
             sun_zen, sat_zen, sun_azi, sat_azi, rel_azi,
             qual_flags, start_line, end_line,
-            reader.filename, reader.meta_data
+            self.filename, self.meta_data
         )
 
     @abstractmethod
