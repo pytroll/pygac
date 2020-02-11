@@ -35,16 +35,18 @@ from pygac.gac_io import save_gac
 
 LOG = logging.getLogger(__name__)
 
+
 class L1cBuilder(object):
     def __init__(self, Reader):
         self.Reader = Reader
-    
+
     def __call__(self, filename, start_line, end_line, fileobj=None):
         tic = datetime.datetime.now()
         LOG.info("Building file: %s", str(filename))
         reader = self.Reader.fromfile(filename, fileobj=fileobj)
         reader.save(start_line, end_line)
         LOG.info("Processing took: %s", str(datetime.datetime.now() - tic))
+
 
 class L1cFactory(object):
     """Factory for level 1c files."""
@@ -54,12 +56,13 @@ class L1cFactory(object):
         "lac_klm": L1cBuilder(LACKLMReader),
         "lac_pod": L1cBuilder(LACPODReader)
     }
+
     def __call__(self, filename, start_line, end_line, fileobj=None):
         # check which builder to use
         builder = self.get_builder(filename, fileobj=fileobj)
         # process
         builder(filename, start_line, end_line, fileobj=None)
-    
+
     @classmethod
     def get_builder(cls, filename, fileobj=None):
         try:
@@ -86,4 +89,3 @@ class L1cFactory(object):
         else:
             builder = cls.__builders["gac_pod"]
         return builder
-        

@@ -45,6 +45,7 @@ def is_file_object(filename):
         is_seekable = False
     return has_close and has_read and is_seekable
 
+
 def is_gzip(filename):
     """Check if the input corresponds to a gzip file.
 
@@ -62,6 +63,7 @@ def is_gzip(filename):
     else:
         result = False
     return result
+
 
 @contextmanager
 def file_opener(file):

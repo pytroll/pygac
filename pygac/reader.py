@@ -173,7 +173,7 @@ class Reader(six.with_metaclass(ABCMeta)):
     def _prepare_channels(self):
         """Prepare the channels as input for gac_io.save_gac"""
         return self.get_calibrated_channels()
-    
+
     def save(self, start_line, end_line):
         """Convert the Reader instance content into hdf5 files"""
         self.get_lonlat()
