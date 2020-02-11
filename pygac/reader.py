@@ -156,7 +156,7 @@ class Reader(six.with_metaclass(ABCMeta)):
             fileobj (file object): Open file object to read from
 
         Note:
-            The fileobj is useful when dealing with tar archives, 
+            The fileobj is useful when dealing with tar archives,
             where the filename is given by the tarinfo object, but
             the extracted file object's property 'name' is set to
             the filename of the archive.
