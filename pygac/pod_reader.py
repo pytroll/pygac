@@ -463,30 +463,24 @@ class PODReader(Reader):
         return get_tsm_idx(channels[:, :, 0], channels[:, :, 1],
                            channels[:, :, 3], channels[:, :, 4])
 
+    def _prepare_channels(self):
+        """Prepare the channels as input for gac_io.save_gac"""
+        _channels = self.get_calibrated_channels()
+        # prepare input
+        # maybe there is a better (less memory requiring) method
+        channels = np.empty_like(_channels)
+        channels[:, :, 0] = _channels[:, :, 0]
+        channels[:, :, 1] = _channels[:, :, 1]
+        channels[:, :, 2] = np.nan
+        channels[:, :, 3] = _channels[:, :, 2]
+        channels[:, :, 4] = _channels[:, :, 3]
+        channels[:, :, 5] = _channels[:, :, 4]
+        return channels
+
 
 def main_pod(reader_cls, filename, start_line, end_line):
     """Generate a l1c file."""
-    from pygac import gac_io
     tic = datetime.datetime.now()
     reader = reader_cls.fromfile(filename)
-    reader.get_lonlat()
-    channels = reader.get_calibrated_channels()
-    sat_azi, sat_zen, sun_azi, sun_zen, rel_azi = reader.get_angles()
-
-    qual_flags = reader.get_qual_flags()
-    if (np.all(reader.mask)):
-        print("ERROR: All data is masked out. Stop processing")
-        raise ValueError("All data is masked out.")
-    gac_io.save_gac(reader.spacecraft_name,
-                    reader.utcs,
-                    reader.lats, reader.lons,
-                    channels[:, :, 0], channels[:, :, 1],
-                    np.full_like(channels[:, :, 0], np.nan),
-                    channels[:, :, 2],
-                    channels[:, :, 3],
-                    channels[:, :, 4],
-                    sun_zen, sat_zen, sun_azi, sat_azi, rel_azi,
-                    qual_flags, start_line, end_line,
-                    reader.filename,
-                    reader.meta_data)
+    reader.save()
     LOG.info("pygac took: %s", str(datetime.datetime.now() - tic))

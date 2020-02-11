@@ -26,6 +26,7 @@
 Can't be used as is, has to be subclassed to add specific read functions.
 """
 from abc import ABCMeta, abstractmethod, abstractproperty
+import datetime
 import logging
 import numpy as np
 import os
@@ -42,8 +43,8 @@ except ImportError:
 
 from pyorbital.orbital import Orbital
 from pyorbital import astronomy
-import datetime
 from pygac.calibration import calibrate_solar, calibrate_thermal
+from pygac import gac_io
 from pygac.utils import file_opener
 
 LOG = logging.getLogger(__name__)
@@ -168,6 +169,30 @@ class Reader(six.with_metaclass(ABCMeta)):
         with open_file as f:
             instance.read(f)
         return instance
+
+    def _prepare_channels(self):
+        """Prepare the channels as input for gac_io.save_gac"""
+        return self.get_calibrated_channels()
+    
+    def save(self):
+        """Convert the Reader instance content into hdf5 files"""
+        self.get_lonlat()
+        channels = self._prepare_channels()
+        sat_azi, sat_zen, sun_azi, sun_zen, rel_azi = self.get_angles()
+        qual_flags = self.get_qual_flags()
+        if (np.all(reader.mask)):
+            print("ERROR: All data is masked out. Stop processing")
+            raise ValueError("All data is masked out.")
+        gac_io.save_gac(
+            reader.spacecraft_name,
+            reader.utcs, reader.lats, reader.lons,
+            channels[:, :, 0], channels[:, :, 1],
+            channels[:, :, 2], channels[:, :, 3],
+            channels[:, :, 4], channels[:, :, 5],
+            sun_zen, sat_zen, sun_azi, sat_azi, rel_azi,
+            qual_flags, start_line, end_line,
+            reader.filename, reader.meta_data
+        )
 
     @abstractmethod
     def get_header_timestamp(self):
