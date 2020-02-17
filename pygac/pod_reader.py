@@ -36,11 +36,12 @@ http://www.ncdc.noaa.gov/oa/pod-guide/ncdc/docs/podug/html/c3/sec3-1.htm
 
 import datetime
 import logging
+import re
 
 import numpy as np
 
 from pygac.correct_tsm_issue import TSM_AFFECTED_INTERVALS_POD, get_tsm_idx
-from pygac.reader import Reader
+from pygac.reader import Reader, ReaderError
 from pygac.utils import file_opener
 
 LOG = logging.getLogger(__name__)
@@ -187,6 +188,10 @@ class PODReader(Reader):
 
     tsm_affected_intervals = TSM_AFFECTED_INTERVALS_POD
 
+    # TODO: ask about the complete regex like in klm, would be good if it 
+    #       covers the full 44 characters.
+    data_set_pattern = re.compile(r'\w{3}\.\w{4}\.')
+
     def correct_scan_line_numbers(self):
         """Correct the scan line numbers."""
         # Perform common corrections first.
@@ -222,42 +227,45 @@ class PODReader(Reader):
         LOG.info('Reading %s', self.filename)
         # choose the right header depending on the date
         with file_opener(fileobj or filename) as fd_:
-            # read archive header
-            self.tbm_head, = np.frombuffer(
-                fd_.read(tbm_header.itemsize),
-                dtype=tbm_header, count=1)
-            if ((not self.tbm_head['data_set_name'].startswith(self.creation_site + b'.')) and
-                    (self.tbm_head['data_set_name'] != b'\x00' * 42 + b'  ')):
-                fd_.seek(0)
-                self.tbm_head = None
-                tbm_offset = 0
-            else:
-                tbm_offset = tbm_header.itemsize
-
-            head, = np.frombuffer(
-                fd_.read(header0.itemsize),
-                dtype=header0, count=1)
-            year, jday, _ = self.decode_timestamps(head["start_time"])
-
-            start_date = (datetime.date(year, 1, 1) +
-                          datetime.timedelta(days=int(jday) - 1))
-
-            if start_date < datetime.date(1992, 9, 8):
-                header = header1
-            elif start_date <= datetime.date(1994, 11, 15):
-                header = header2
-            else:
-                header = header3
-
-            fd_.seek(tbm_offset, 0)
-            self.head, = np.frombuffer(
-                fd_.read(header.itemsize),
-                dtype=header, count=1)
-            fd_.seek(self.offset + tbm_offset, 0)
-            self.scans = np.frombuffer(
-                fd_.read(),
-                dtype=self.scanline_type,
-                count=self.head["number_of_scans"])
+            try:
+                # read tbm_header if present
+                self.tbm_head, = np.frombuffer(
+                    fd_.read(tbm_header.itemsize),
+                    dtype=tbm_header, count=1)
+                data_set_name = tbm_head['data_set_name']
+                if (self.data_set_pattern.match(data_set_name)
+                        or (data_set_name == b'\x00' * 42 + b'  ')):
+                    tbm_offset = tbm_header.itemsize
+                else:
+                    fd_.seek(0)
+                    self.tbm_head = None
+                    tbm_offset = 0
+                # read header
+                head0, = np.frombuffer(
+                    fd_.read(header0.itemsize),
+                    dtype=header0, count=1)
+                year, jday, _ = self.decode_timestamps(head0["start_time"])
+                start_date = (datetime.date(year, 1, 1) +
+                              datetime.timedelta(days=int(jday) - 1))
+                if start_date < datetime.date(1992, 9, 8):
+                    header = header1
+                elif start_date <= datetime.date(1994, 11, 15):
+                    header = header2
+                else:
+                    header = header3
+                fd_.seek(offset, 0)
+                self.head, = np.frombuffer(
+                    fd_.read(header.itemsize),
+                    dtype=header, count=1)
+                self._validate_header(self.head)
+                # read scan lines
+                fd_.seek(self.offset + tbm_offset, 0)
+                self.scans = np.frombuffer(
+                    fd_.read(),
+                    dtype=self.scanline_type,
+                    count=self.head["number_of_scans"])
+            except EOFError:
+                raise ReaderError("File has wrong length!")
 
         self.correct_scan_line_numbers()
         self.spacecraft_id = self.head["noaa_spacecraft_identification_code"]
@@ -268,6 +276,27 @@ class PODReader(Reader):
             "Reading %s data", self.spacecrafts_orbital[self.spacecraft_id])
 
         return self.head, self.scans
+        
+    def _validate_header(self, head):
+        """Check if the header belongs to this reader
+
+        Args:
+            header: numpy record array
+                The header metadata
+        """
+        # call super to enter the Method Resolution Order (MRO)
+        super(PODReader, self)._validate_header()
+        data_set_name = self.head['data_set_name']
+        if not self.data_set_pattern.match(data_set_name):
+            raise ReaderError("Data set name does not match!")
+        # split header into parts
+        # TODO: use trollshift
+        creation_site, transfer_mode, platform_id, _ = (
+            data_set_name.decode().split('.', maxsplit=3)
+        )
+        not_allowed_ids = ['NK', 'NL', 'NM', 'NN', 'NP', 'M1', 'M2', 'M3']
+        if platform_id in not_allowed_ids:
+            raise ReaderError('Unrecognised platform id "%s"!' % platform_id)
 
     def get_header_timestamp(self):
         """Get the timestamp from the header.

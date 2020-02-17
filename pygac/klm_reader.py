@@ -575,6 +575,9 @@ class KLMReader(Reader):
 
     tsm_affected_intervals = TSM_AFFECTED_INTERVALS_KLM
 
+    data_set_pattern = re.compile(
+        r'\w{3}\.\w{4}\.\w{2}.D\d{5}\.S\d{4}\.E\d{4}\.B\d{7}\.\w{2}')
+
     def read(self, filename, fileobj=None):
         """Read the data.
 
@@ -591,44 +594,64 @@ class KLMReader(Reader):
         """
         self.filename = filename
         LOG.info('Reading %s', self.filename)
-        # Note that np.fromfile does not work with gzip.GzipFile
-        # objects (numpy version 1.16.4), because it restricts the
-        # file objects to (io.FileIO, io.BufferedReader, io.BufferedWriter)
-        # see: numpy.compat.py3k.isfileobj
         with file_opener(fileobj or filename) as fd_:
-            self.ars_head, = np.frombuffer(
-                fd_.read(ars_header.itemsize),
-                dtype=ars_header, count=1)
-            if not self.ars_head['data_format'].startswith(b'NOAA Level 1b'):
-                fd_.seek(0)
-                self.ars_head = None
-                ars_offset = 0
-            else:
-                ars_offset = ars_header.itemsize
-            self.head, = np.frombuffer(
-                fd_.read(header.itemsize),
-                dtype=header, count=1)
-            self.header_version = self.head[
-                "noaa_level_1b_format_version_number"]
-            if self.header_version >= 5:
-                self.analog_telemetry, = np.frombuffer(
-                    fd_.read(analog_telemetry_v5.itemsize),
-                    dtype=analog_telemetry_v5, count=1)
-            else:
-                self.analog_telemetry, = np.frombuffer(
-                    fd_.read(analog_telemetry_v2.itemsize),
-                    dtype=analog_telemetry_v2, count=1)
-            # LAC: 1, GAC: 2, ...
-            self.data_type = self.head['data_type_code']
-            fd_.seek(self.offset + ars_offset, 0)
-            self.scans = np.frombuffer(
-                fd_.read(),
-                dtype=self.scanline_type,
-                count=self.head["count_of_data_records"])
+            try:
+                # Note that np.fromfile does not work with gzip.GzipFile
+                # objects (numpy version 1.16.4), because it restricts the
+                # file objects to (io.FileIO, io.BufferedReader, io.BufferedWriter)
+                # see: numpy.compat.py3k.isfileobj
+                self.ars_head, = np.frombuffer(
+                    fd_.read(ars_header.itemsize),
+                    dtype=ars_header, count=1)
+                if not self.ars_head['data_format'].startswith(b'NOAA Level 1b'):
+                    fd_.seek(0)
+                    self.ars_head = None
+                    ars_offset = 0
+                else:
+                    ars_offset = ars_header.itemsize
+                self.head, = np.frombuffer(
+                    fd_.read(header.itemsize),
+                    dtype=header, count=1)
+                self._validate_header()
+                self.header_version = self.head[
+                    "noaa_level_1b_format_version_number"]
+                if self.header_version >= 5:
+                    self.analog_telemetry, = np.frombuffer(
+                        fd_.read(analog_telemetry_v5.itemsize),
+                        dtype=analog_telemetry_v5, count=1)
+                else:
+                    self.analog_telemetry, = np.frombuffer(
+                        fd_.read(analog_telemetry_v2.itemsize),
+                        dtype=analog_telemetry_v2, count=1)
+                # LAC: 1, GAC: 2, ...
+                self.data_type = self.head['data_type_code']
+                fd_.seek(self.offset + ars_offset, 0)
+                self.scans = np.frombuffer(
+                    fd_.read(),
+                    dtype=self.scanline_type,
+                    count=self.head["count_of_data_records"])
+            except EOFError:
+                raise ReaderError("File has wrong length!")
 
         self.correct_scan_line_numbers()
         self.spacecraft_id = self.head["noaa_spacecraft_identification_code"]
         self.spacecraft_name = self.spacecraft_names[self.spacecraft_id]
+        
+    def _validate_header(self):
+        """Check if the header belongs to this reader"""
+        # call super to enter the Method Resolution Order (MRO)
+        super(KLMReader, self)._validate_header()
+        data_set_name = self.head['data_set_name']
+        if not self.data_set_pattern.match(data_set_name):
+            raise ReaderError("Data set name does not match!")
+        # split header into parts
+        # TODO: use trollshift
+        creation_site, transfer_mode, platform_id, _ = (
+            data_set_name.decode().split('.', maxsplit=3)
+        )
+        allowed_ids = ['NK', 'NL', 'NM', 'NN', 'NP', 'M1', 'M2', 'M3']
+        if platform_id not in allowed_ids:
+            raise ReaderError('Unrecognised platform id "%s"!' % platform_id)
 
     def get_telemetry(self):
         """Get the telemetry.

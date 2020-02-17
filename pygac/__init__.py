@@ -25,6 +25,12 @@ import os
 import numpy as np
 
 from pygac.version import __version__  # noqa
+from pygac.reader import ReaderError
+from pygac.gac_klm import GACKLMReader
+from pygac.gac_pod import GACPODReader
+from pygac.lac_klm import LACKLMReader
+from pygac.lac_pod import LACPODReader
+from pygac.utils import file_opener
 
 LOG = logging.getLogger(__name__)
 try:
@@ -68,3 +74,42 @@ def calculate_sun_earth_distance_correction(jday):
     # Earth-Sun distance correction factor
     corr = 1.0 - 0.0334 * np.cos(2.0 * np.pi * (jday - 2) / 365.25)
     return corr
+
+
+_Readers = [GACKLMReader, LACKLMReader, GACPODReader, LACPODReader]
+
+def get_reader(filename, fileobj=None):
+    """Read the GAC/LAC KLM/POD data.
+
+        Args:
+            filename (str): Path to GAC/LAC file
+            fileobj: An open file object to read from. (optional)
+        """
+    found_reader = False
+    with file_opener(fileobj or filename) as open_file:
+        for i, Reader in enumerate(_Readers):
+            try:
+                reader = Reader.fromfile(filename, fileobj=open_file)
+                found_reader = True
+                index = i
+            except ReaderError:
+                LOG.debug("%s failed to read the file!" % Reader.__name__)
+            finally:
+                open_file.seek(0)
+            if found_reader:
+                break
+    if not found_reader:
+        raise ValueError('Unable to read the file "%s"' % filename)
+    # Move the Reader in front of _Readers. Chance is high that the 
+    # next file is of the same kind.
+    _Readers.insert(0, _Readers.pop(index))
+    return reader
+
+
+def l1c_processor(filename, start_line, end_line, fileobj=None):
+    tic = datetime.datetime.now()
+    LOG.info("Building file: %s", str(filename))
+    reader = get_reader(filename, fileobj=fileobj)
+    reader.save(start_line, end_line)
+    LOG.info("Processing took: %s", str(datetime.datetime.now() - tic))
+

@@ -78,6 +78,11 @@ rpy_coeffs = {
                }}
 
 
+class ReaderError(ValueError):
+    """Raised in Reader.read if the given file does not correspond to it"""
+    pass
+
+
 class Reader(six.with_metaclass(ABCMeta)):
     """Reader for Gac and Lac, POD and KLM data."""
 
@@ -144,6 +149,11 @@ class Reader(six.with_metaclass(ABCMeta)):
             fileobj: An open file object to read from. (optional)
         """
         raise NotImplementedError
+        
+    def _validate_header(self):
+        """Check if the header belongs to this reader"""
+        # This method does not need to be implemented in all subclasses
+        pass
 
     @classmethod
     def fromfile(cls, filename, fileobj=None):

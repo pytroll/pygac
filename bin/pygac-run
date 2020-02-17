@@ -117,8 +117,8 @@ if __name__ == "__main__":
     validate_args(args)
     if args.config:
         os.environ['PYGAC_CONFIG_FILE'] = args.config
-    from pygac.l1c_factory import L1cFactory
-    l1c_factory = logged_trial(L1cFactory())
+    from pygac.l1c_processor import l1c_processor
+    processor = logged_trial(l1c_processor)
     path = args.path
     start_line = args.start_line
     end_line = args.end_line
@@ -126,15 +126,15 @@ if __name__ == "__main__":
         if tarfile.is_tarfile(path):
             logger.info('Open archive "%s"' % str(path))
             for filename, fileobj in tarfile_walker(path):
-                l1c_factory(filename, start_line, end_line, fileobj=fileobj)
+                processor(filename, start_line, end_line, fileobj=fileobj)
         else:
             filename = path
-            l1c_factory(filename, start_line, end_line)
+            processor(filename, start_line, end_line)
     elif os.path.isdir(path):
         logger.info('Open directory "%s"' % str(path))
         for basename in os.listdir(path):
             filename = os.path.join(path, basename)
-            l1c_factory(filename, start_line, end_line)
+            processor(filename, start_line, end_line)
     else:
         raise FileNotFoundError(
-            'The provided path "%s" does not exist!' % args.path)
+            'The provided path "%s" is neither a file nor a directory!' % args.path)

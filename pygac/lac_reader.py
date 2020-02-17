@@ -38,3 +38,21 @@ class LACReader(Reader):
         super(LACReader, self).__init__(*args, **kwargs)
         self.scan_width = 2048
         self.lonlat_interpolator = gtp.lac_lat_lon_interpolator
+
+    def _validate_header(self, header):
+        """Check if the header belongs to this reader
+
+        Args:
+            header: numpy record array
+                The header metadata
+        """
+        # call super to enter the Method Resolution Order (MRO)
+        super(GACReader, self)._validate_header()
+        data_set_name = self.head['data_set_name']
+        # split header into parts
+        # TODO: use trollshift
+        creation_site, transfer_mode, platform_id, _ = (
+            data_set_name.decode().split('.', maxsplit=3)
+        )
+        if transfer_mode == 'GHRR':
+            raise ReaderError('Wrong transfer mode "%s"!' %s transfer_mode)
