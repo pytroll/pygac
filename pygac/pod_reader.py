@@ -188,7 +188,7 @@ class PODReader(Reader):
 
     tsm_affected_intervals = TSM_AFFECTED_INTERVALS_POD
 
-    # TODO: ask about the complete regex like in klm, would be good if it 
+    # TODO: ask about the complete regex like in klm, would be good if it
     #       covers the full 44 characters.
     data_set_pattern = re.compile(r'\w{3}\.\w{4}\.')
 
@@ -276,7 +276,7 @@ class PODReader(Reader):
             "Reading %s data", self.spacecrafts_orbital[self.spacecraft_id])
 
         return self.head, self.scans
-        
+
     def _validate_header(self, head):
         """Check if the header belongs to this reader
 

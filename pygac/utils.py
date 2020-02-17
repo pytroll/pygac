@@ -46,6 +46,7 @@ def is_file_object(filename):
         is_seekable = False
     return has_close and has_read and is_seekable
 
+
 @contextmanager
 def file_opener(file):
     """Open a file depending on the input.

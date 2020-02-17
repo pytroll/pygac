@@ -149,7 +149,7 @@ class Reader(six.with_metaclass(ABCMeta)):
             fileobj: An open file object to read from. (optional)
         """
         raise NotImplementedError
-        
+
     def _validate_header(self):
         """Check if the header belongs to this reader"""
         # This method does not need to be implemented in all subclasses

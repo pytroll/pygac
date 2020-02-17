@@ -636,7 +636,7 @@ class KLMReader(Reader):
         self.correct_scan_line_numbers()
         self.spacecraft_id = self.head["noaa_spacecraft_identification_code"]
         self.spacecraft_name = self.spacecraft_names[self.spacecraft_id]
-        
+
     def _validate_header(self):
         """Check if the header belongs to this reader"""
         # call super to enter the Method Resolution Order (MRO)

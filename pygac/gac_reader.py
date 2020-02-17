@@ -57,4 +57,4 @@ class GACReader(Reader):
             data_set_name.decode().split('.', maxsplit=3)
         )
         if transfer_mode != 'GHRR':
-            raise ReaderError('Wrong transfer mode "%s"!' %s transfer_mode)
+            raise ReaderError('Wrong transfer mode "%s"!' % s transfer_mode)

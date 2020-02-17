@@ -78,6 +78,7 @@ def calculate_sun_earth_distance_correction(jday):
 
 _Readers = [GACKLMReader, LACKLMReader, GACPODReader, LACPODReader]
 
+
 def get_reader(filename, fileobj=None):
     """Read the GAC/LAC KLM/POD data.
 
@@ -100,7 +101,7 @@ def get_reader(filename, fileobj=None):
                 break
     if not found_reader:
         raise ValueError('Unable to read the file "%s"' % filename)
-    # Move the Reader in front of _Readers. Chance is high that the 
+    # Move the Reader in front of _Readers. Chance is high that the
     # next file is of the same kind.
     _Readers.insert(0, _Readers.pop(index))
     return reader
@@ -112,4 +113,3 @@ def l1c_processor(filename, start_line, end_line, fileobj=None):
     reader = get_reader(filename, fileobj=fileobj)
     reader.save(start_line, end_line)
     LOG.info("Processing took: %s", str(datetime.datetime.now() - tic))
-
