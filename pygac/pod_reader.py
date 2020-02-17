@@ -41,6 +41,7 @@ import numpy as np
 
 from pygac.correct_tsm_issue import TSM_AFFECTED_INTERVALS_POD, get_tsm_idx
 from pygac.reader import Reader
+from pygac.utils import file_opener
 
 LOG = logging.getLogger(__name__)
 
@@ -203,11 +204,12 @@ class PODReader(Reader):
 
         self.scans = self.scans[self.scans["scan_line_number"] != 0]
 
-    def read(self, fileobj):
+    def read(self, filename, fileobj=None):
         """Read the data.
 
         Args:
-            fileobj: An open file object to read from.
+            filename (str): Path to GAC/LAC file
+            fileobj: An open file object to read from. (optional)
 
         Returns:
             header: numpy record array
@@ -216,43 +218,46 @@ class PODReader(Reader):
                 The scanlines
 
         """
+        self.filename = filename
+        LOG.info('Reading %s', self.filename)
         # choose the right header depending on the date
-        # read archive header
-        self.tbm_head, = np.frombuffer(
-            fileobj.read(tbm_header.itemsize),
-            dtype=tbm_header, count=1)
-        if ((not self.tbm_head['data_set_name'].startswith(self.creation_site + b'.')) and
-                (self.tbm_head['data_set_name'] != b'\x00' * 42 + b'  ')):
-            fileobj.seek(0)
-            self.tbm_head = None
-            tbm_offset = 0
-        else:
-            tbm_offset = tbm_header.itemsize
+        with file_opener(fileobj or filename) as fd_:
+            # read archive header
+            self.tbm_head, = np.frombuffer(
+                fd_.read(tbm_header.itemsize),
+                dtype=tbm_header, count=1)
+            if ((not self.tbm_head['data_set_name'].startswith(self.creation_site + b'.')) and
+                    (self.tbm_head['data_set_name'] != b'\x00' * 42 + b'  ')):
+                fd_.seek(0)
+                self.tbm_head = None
+                tbm_offset = 0
+            else:
+                tbm_offset = tbm_header.itemsize
 
-        head, = np.frombuffer(
-            fileobj.read(header0.itemsize),
-            dtype=header0, count=1)
-        year, jday, _ = self.decode_timestamps(head["start_time"])
+            head, = np.frombuffer(
+                fd_.read(header0.itemsize),
+                dtype=header0, count=1)
+            year, jday, _ = self.decode_timestamps(head["start_time"])
 
-        start_date = (datetime.date(year, 1, 1) +
-                      datetime.timedelta(days=int(jday) - 1))
+            start_date = (datetime.date(year, 1, 1) +
+                          datetime.timedelta(days=int(jday) - 1))
 
-        if start_date < datetime.date(1992, 9, 8):
-            header = header1
-        elif start_date <= datetime.date(1994, 11, 15):
-            header = header2
-        else:
-            header = header3
+            if start_date < datetime.date(1992, 9, 8):
+                header = header1
+            elif start_date <= datetime.date(1994, 11, 15):
+                header = header2
+            else:
+                header = header3
 
-        fileobj.seek(tbm_offset, 0)
-        self.head, = np.frombuffer(
-            fileobj.read(header.itemsize),
-            dtype=header, count=1)
-        fileobj.seek(self.offset + tbm_offset, 0)
-        self.scans = np.frombuffer(
-            fileobj.read(),
-            dtype=self.scanline_type,
-            count=self.head["number_of_scans"])
+            fd_.seek(tbm_offset, 0)
+            self.head, = np.frombuffer(
+                fd_.read(header.itemsize),
+                dtype=header, count=1)
+            fd_.seek(self.offset + tbm_offset, 0)
+            self.scans = np.frombuffer(
+                fd_.read(),
+                dtype=self.scanline_type,
+                count=self.head["number_of_scans"])
 
         self.correct_scan_line_numbers()
         self.spacecraft_id = self.head["noaa_spacecraft_identification_code"]

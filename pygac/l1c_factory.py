@@ -49,7 +49,7 @@ class L1cBuilder(object):
 
 class L1cFactory(object):
     """Factory for level 1c files."""
-    __builders = {
+    _builders = {
         "gac_klm": L1cBuilder(GACKLMReader),
         "gac_pod": L1cBuilder(GACPODReader),
         "lac_klm": L1cBuilder(LACKLMReader),
@@ -65,11 +65,7 @@ class L1cFactory(object):
     @classmethod
     def get_builder(cls, filename, fileobj=None):
         try:
-            if fileobj is None:
-                open_file = file_opener(filename)
-            else:
-                open_file = file_opener(fileobj)
-            with open_file as fdes:
+            with file_opener(fileobj or filename) as fdes:
                 try:
                     data = fdes.read(3).decode()
                 except UnicodeDecodeError:
@@ -84,7 +80,7 @@ class L1cFactory(object):
         # At least, this desission does not belong into the run script!
         # How do we determine if we need the lac_klm or lac_pod builder?
         if data in ["CMS", "NSS", "UKM", "DSS"]:
-            builder = cls.__builders["gac_klm"]
+            builder = cls._builders["gac_klm"]
         else:
-            builder = cls.__builders["gac_pod"]
+            builder = cls._builders["gac_pod"]
         return builder

@@ -7,6 +7,7 @@
 
 #   Abhay Devasthale <abhay.devasthale@smhi.se>
 #   Martin Raspaud <martin.raspaud@smhi.se>
+#   Carlos Horn <carlos.horn@external.eumetsat.int>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -30,6 +31,7 @@ import logging
 import os
 import tarfile
 from datetime import datetime
+from functools import wraps
 
 logger = logging.getLogger("pygac")
 logger.setLevel(logging.DEBUG)
@@ -53,6 +55,7 @@ class MyFormatter(logging.Formatter):
 formatter = MyFormatter('[ %(levelname)s %(name)s %(asctime)s] %(message)s')
 ch.setFormatter(formatter)
 logger.addHandler(ch)
+
 
 def str2scanline(string):
     """Convert string to scanline.
@@ -79,12 +82,30 @@ def validate_args(args):
             'The provided config file "%s" does not exist!'
             % args.config)
 
+def tarfile_walker(path):
+    with tarfile.open(path) as archive:
+        for tarinfo in archive:
+            if tarinfo.isfile():
+                filename = tarinfo.name
+                fileobj = archive.extractfile(filename)
+                yield filename, fileobj
+
+def logged_trial(processor):
+    @wraps(processor)
+    def wrapper(filename, *args, **kwargs):
+        try:
+            logger.info('Process "%s"' % str(filename))
+            processor(filename, *args, **kwargs)
+        except Exception:
+            logger.exception('Could not porcess "%s"' % str(filename))
+    return wrapper
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description='Read, calibrate and navigate NOAA AVHRR GAC data')
-    parser.add_argument('path', type=str, help='Path to GAC file(s) to be processed '
-                        '(Can be a file, directory or tar-archive)')
+    parser.add_argument('path', type=str, help='Path to GAC file(s) to be processed'
+                        ' (Can be a file, directory or tar-archive)')
     parser.add_argument('start_line', type=str2scanline,
                         help='First scanline to be processed (0-based)')
     parser.add_argument('end_line', type=str2scanline,
@@ -97,39 +118,23 @@ if __name__ == "__main__":
     if args.config:
         os.environ['PYGAC_CONFIG_FILE'] = args.config
     from pygac.l1c_factory import L1cFactory
-    l1c_factory = L1cFactory()
+    l1c_factory = logged_trial(L1cFactory())
     path = args.path
     start_line = args.start_line
     end_line = args.end_line
     if os.path.isfile(path): 
         if tarfile.is_tarfile(path):
-            # archive
             logger.info('Open archive "%s"' % str(path))
-            with tarfile.open(path) as a:
-                for tarinfo in a:
-                    if not tarinfo.isfile():
-                        continue
-                    filename = tarinfo.name
-                    fileobj = a.extractfile(filename)
-                    try:
-                        l1c_factory(filename, start_line, 
-                                    end_line, fileobj=fileobj)
-                    except Exception as e:
-                        logger.exception('Could not porcess "%s"' % str(filename))
+            for filename, fileobj in tarfile_walker(path):
+                l1c_factory(filename, start_line, end_line, fileobj=fileobj)
         else:
-            try:
-                filename = path
-                l1c_factory(filename, start_line, end_line)
-            except Exception as e:
-                logger.exception('Could not porcess "%s"' % str(filename)) 
+            filename = path
+            l1c_factory(filename, start_line, end_line)
     elif os.path.isdir(path):
         logger.info('Open directory "%s"' % str(path))
         for basename in os.listdir(path):
             filename = os.path.join(path, basename)
-            try:
-                l1c_factory(filename, start_line, end_line)
-            except Exception as e:
-                logger.exception('Could not porcess "%s"' % str(filename))
+            l1c_factory(filename, start_line, end_line)
     else:
         raise FileNotFoundError(
             'The provided path "%s" does not exist!' % args.path)

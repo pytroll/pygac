@@ -38,6 +38,7 @@ import numpy as np
 
 from pygac.correct_tsm_issue import TSM_AFFECTED_INTERVALS_KLM, get_tsm_idx
 from pygac.reader import Reader
+from pygac.utils import file_opener
 
 LOG = logging.getLogger(__name__)
 
@@ -574,11 +575,12 @@ class KLMReader(Reader):
 
     tsm_affected_intervals = TSM_AFFECTED_INTERVALS_KLM
 
-    def read(self, fileobj):
+    def read(self, filename, fileobj=None):
         """Read the data.
 
         Args:
-            fileobj: An open file object to read from.
+            filename: Path to GAC/LAC file
+            fileobj: An open file object to read from. (optional)
 
         Returns:
             header: numpy record array
@@ -587,39 +589,42 @@ class KLMReader(Reader):
                 The scanlines
 
         """
+        self.filename = filename
+        LOG.info('Reading %s', self.filename)
         # Note that np.fromfile does not work with gzip.GzipFile
         # objects (numpy version 1.16.4), because it restricts the
         # file objects to (io.FileIO, io.BufferedReader, io.BufferedWriter)
         # see: numpy.compat.py3k.isfileobj
-        self.ars_head, = np.frombuffer(
-            fileobj.read(ars_header.itemsize),
-            dtype=ars_header, count=1)
-        if not self.ars_head['data_format'].startswith(b'NOAA Level 1b'):
-            fileobj.seek(0)
-            self.ars_head = None
-            ars_offset = 0
-        else:
-            ars_offset = ars_header.itemsize
-        self.head, = np.frombuffer(
-            fileobj.read(header.itemsize),
-            dtype=header, count=1)
-        self.header_version = self.head[
-            "noaa_level_1b_format_version_number"]
-        if self.header_version >= 5:
-            self.analog_telemetry, = np.frombuffer(
-                fileobj.read(analog_telemetry_v5.itemsize),
-                dtype=analog_telemetry_v5, count=1)
-        else:
-            self.analog_telemetry, = np.frombuffer(
-                fileobj.read(analog_telemetry_v2.itemsize),
-                dtype=analog_telemetry_v2, count=1)
-        # LAC: 1, GAC: 2, ...
-        self.data_type = self.head['data_type_code']
-        fileobj.seek(self.offset + ars_offset, 0)
-        self.scans = np.frombuffer(
-            fileobj.read(),
-            dtype=self.scanline_type,
-            count=self.head["count_of_data_records"])
+        with file_opener(fileobj or filename) as fd_:
+            self.ars_head, = np.frombuffer(
+                fd_.read(ars_header.itemsize),
+                dtype=ars_header, count=1)
+            if not self.ars_head['data_format'].startswith(b'NOAA Level 1b'):
+                fd_.seek(0)
+                self.ars_head = None
+                ars_offset = 0
+            else:
+                ars_offset = ars_header.itemsize
+            self.head, = np.frombuffer(
+                fd_.read(header.itemsize),
+                dtype=header, count=1)
+            self.header_version = self.head[
+                "noaa_level_1b_format_version_number"]
+            if self.header_version >= 5:
+                self.analog_telemetry, = np.frombuffer(
+                    fd_.read(analog_telemetry_v5.itemsize),
+                    dtype=analog_telemetry_v5, count=1)
+            else:
+                self.analog_telemetry, = np.frombuffer(
+                    fd_.read(analog_telemetry_v2.itemsize),
+                    dtype=analog_telemetry_v2, count=1)
+            # LAC: 1, GAC: 2, ...
+            self.data_type = self.head['data_type_code']
+            fd_.seek(self.offset + ars_offset, 0)
+            self.scans = np.frombuffer(
+                fd_.read(),
+                dtype=self.scanline_type,
+                count=self.head["count_of_data_records"])
 
         self.correct_scan_line_numbers()
         self.spacecraft_id = self.head["noaa_spacecraft_identification_code"]

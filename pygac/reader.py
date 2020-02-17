@@ -82,8 +82,7 @@ class Reader(six.with_metaclass(ABCMeta)):
     """Reader for Gac and Lac, POD and KLM data."""
 
     def __init__(self, interpolate_coords=True, adjust_clock_drift=True,
-                 tle_dir=None, tle_name=None, tle_thresh=7, creation_site=None,
-                 filename=None):
+                 tle_dir=None, tle_name=None, tle_thresh=7, creation_site=None):
         """Init the reader.
 
         Args:
@@ -106,7 +105,6 @@ class Reader(six.with_metaclass(ABCMeta)):
         self.tle_name = tle_name
         self.tle_thresh = tle_thresh
         self.creation_site = (creation_site or 'NSS').encode('utf-8')
-        self.filename = filename
         self.head = None
         self.scans = None
         self.spacecraft_name = None
@@ -116,32 +114,34 @@ class Reader(six.with_metaclass(ABCMeta)):
         self.lons = None
         self.times = None
         self.tle_lines = None
+        self.filename = None
         self._mask = None
 
     @property
     def filename(self):
         """Get the property 'filename'."""
-        return self.__filename
+        return self._filename
 
     @filename.setter
     def filename(self, filepath):
         """Set the property 'filename'."""
         if filepath is None:
-            self.__filename = None
+            self._filename = None
         else:
             basename = os.path.basename(filepath)
             root, ext = os.path.splitext(filepath)
             if ext == ".gz":
-                self.__filename = root
+                self._filename = root
             else:
-                self.__filename = basename
+                self._filename = basename
 
     @abstractmethod
-    def read(self, fileobj):
+    def read(self, filename, fileobj=None):
         """Read the GAC/LAC data.
 
         Args:
-            fileobj: Open GAC/LAC file object to read from.
+            filename (str): Path to GAC/LAC file
+            fileobj: An open file object to read from. (optional)
         """
         raise NotImplementedError
 
@@ -161,13 +161,8 @@ class Reader(six.with_metaclass(ABCMeta)):
             the extracted file object's property 'name' is set to
             the filename of the archive.
         """
-        instance = cls(filename=filename)
-        if fileobj is None:
-            open_file = file_opener(filename)
-        else:
-            open_file = file_opener(fileobj)
-        with open_file as f:
-            instance.read(f)
+        instance = cls()
+        instance.read(filename, fileobj=fileobj)
         return instance
 
     def _prepare_channels(self):

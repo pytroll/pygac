@@ -4,6 +4,7 @@
 # Author(s):
 
 #   Stephan Finkensieper <stephan.finkensieper@dwd.de>
+#   Carlos Horn <carlos.horn@external.eumetsat.int>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -45,26 +46,6 @@ def is_file_object(filename):
         is_seekable = False
     return has_close and has_read and is_seekable
 
-
-def is_gzip(filename):
-    """Check if the input corresponds to a gzip file.
-
-    Args:
-        filename - path to file or file object
-    """
-    # Use the gzip magic number to identify if a file object
-    # is gzip compressed.
-    magic_number = bytearray.fromhex('1f8b')
-    if is_file_object(filename):
-        result = filename.read(2) == magic_number
-        filename.seek(0)
-    elif str(filename).endswith('.gz'):
-        result = True
-    else:
-        result = False
-    return result
-
-
 @contextmanager
 def file_opener(file):
     """Open a file depending on the input.
@@ -72,14 +53,22 @@ def file_opener(file):
     Args:
         file - path to file or file object
     """
-    close = True
-    if is_gzip(file):
-        file_object = gzip.open(file, mode='rb')
-    elif is_file_object(file):
-        file_object = file
+    # open file if necessary
+    if is_file_object(file):
+        open_file = file
         close = False
     else:
-        file_object = open(file, mode='rb')
+        open_file = open(file, mode='rb')
+        close = True
+    # check if it is a gzip file
+    try:
+        file_object = gzip.open(open_file)
+        file_object.read(1)
+    except OSError:
+        file_object = open_file
+    finally:
+        file_object.seek(0)
+    # provide file_object with the context
     try:
         yield file_object
     finally:
