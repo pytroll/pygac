@@ -23,9 +23,13 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """The LAC reader."""
 
+import logging
+
 from pygac.reader import Reader
 import pygac.pygac_geotiepoints as gtp
 
+
+LOG = logging.getLogger(__name__)
 
 class LACReader(Reader):
     """Reader for LAC data."""
@@ -39,15 +43,11 @@ class LACReader(Reader):
         self.scan_width = 2048
         self.lonlat_interpolator = gtp.lac_lat_lon_interpolator
 
-    def _validate_header(self, header):
-        """Check if the header belongs to this reader
-
-        Args:
-            header: numpy record array
-                The header metadata
-        """
+    def _validate_header(self):
+        """Check if the header belongs to this reader"""
         # call super to enter the Method Resolution Order (MRO)
-        super(GACReader, self)._validate_header()
+        super(LACReader, self)._validate_header()
+        LOG.debug("validate header")
         data_set_name = self.head['data_set_name']
         # split header into parts
         # TODO: use trollshift
@@ -55,4 +55,4 @@ class LACReader(Reader):
             data_set_name.decode().split('.', maxsplit=3)
         )
         if transfer_mode == 'GHRR':
-            raise ReaderError('Wrong transfer mode "%s"!' % s transfer_mode)
+            raise ReaderError('Wrong transfer mode "%s"!' % transfer_mode)

@@ -33,6 +33,7 @@ http://www.ncdc.noaa.gov/oa/pod-guide/ncdc/docs/klm/html/c8/sec83142-1.htm
 
 import datetime
 import logging
+import re
 
 import numpy as np
 
@@ -600,14 +601,15 @@ class KLMReader(Reader):
                 # objects (numpy version 1.16.4), because it restricts the
                 # file objects to (io.FileIO, io.BufferedReader, io.BufferedWriter)
                 # see: numpy.compat.py3k.isfileobj
-                self.ars_head, = np.frombuffer(
+                ars_head, = np.frombuffer(
                     fd_.read(ars_header.itemsize),
                     dtype=ars_header, count=1)
-                if not self.ars_head['data_format'].startswith(b'NOAA Level 1b'):
+                if not ars_head['data_format'].startswith(b'NOAA Level 1b'):
                     fd_.seek(0)
                     self.ars_head = None
                     ars_offset = 0
                 else:
+                    self.ars_head = ars_head
                     ars_offset = ars_header.itemsize
                 self.head, = np.frombuffer(
                     fd_.read(header.itemsize),
@@ -641,13 +643,14 @@ class KLMReader(Reader):
         """Check if the header belongs to this reader"""
         # call super to enter the Method Resolution Order (MRO)
         super(KLMReader, self)._validate_header()
-        data_set_name = self.head['data_set_name']
+        LOG.debug("validate header")
+        data_set_name = self.head['data_set_name'].decode()
         if not self.data_set_pattern.match(data_set_name):
             raise ReaderError("Data set name does not match!")
         # split header into parts
         # TODO: use trollshift
         creation_site, transfer_mode, platform_id, _ = (
-            data_set_name.decode().split('.', maxsplit=3)
+            data_set_name.split('.', maxsplit=3)
         )
         allowed_ids = ['NK', 'NL', 'NM', 'NN', 'NP', 'M1', 'M2', 'M3']
         if platform_id not in allowed_ids:

@@ -229,12 +229,13 @@ class PODReader(Reader):
         with file_opener(fileobj or filename) as fd_:
             try:
                 # read tbm_header if present
-                self.tbm_head, = np.frombuffer(
+                tbm_head, = np.frombuffer(
                     fd_.read(tbm_header.itemsize),
                     dtype=tbm_header, count=1)
-                data_set_name = tbm_head['data_set_name']
+                data_set_name = tbm_head['data_set_name'].decode()
                 if (self.data_set_pattern.match(data_set_name)
                         or (data_set_name == b'\x00' * 42 + b'  ')):
+                    self.tbm_head = tbm_head
                     tbm_offset = tbm_header.itemsize
                 else:
                     fd_.seek(0)
@@ -253,11 +254,11 @@ class PODReader(Reader):
                     header = header2
                 else:
                     header = header3
-                fd_.seek(offset, 0)
+                fd_.seek(tbm_offset, 0)
                 self.head, = np.frombuffer(
                     fd_.read(header.itemsize),
                     dtype=header, count=1)
-                self._validate_header(self.head)
+                self._validate_header()
                 # read scan lines
                 fd_.seek(self.offset + tbm_offset, 0)
                 self.scans = np.frombuffer(
@@ -277,22 +278,18 @@ class PODReader(Reader):
 
         return self.head, self.scans
 
-    def _validate_header(self, head):
-        """Check if the header belongs to this reader
-
-        Args:
-            header: numpy record array
-                The header metadata
-        """
+    def _validate_header(self):
+        """Check if the header belongs to this reader"""
         # call super to enter the Method Resolution Order (MRO)
         super(PODReader, self)._validate_header()
-        data_set_name = self.head['data_set_name']
+        LOG.debug("validate header")
+        data_set_name = self.head['data_set_name'].decode()
         if not self.data_set_pattern.match(data_set_name):
             raise ReaderError("Data set name does not match!")
         # split header into parts
         # TODO: use trollshift
         creation_site, transfer_mode, platform_id, _ = (
-            data_set_name.decode().split('.', maxsplit=3)
+            data_set_name.split('.', maxsplit=3)
         )
         not_allowed_ids = ['NK', 'NL', 'NM', 'NN', 'NP', 'M1', 'M2', 'M3']
         if platform_id in not_allowed_ids:

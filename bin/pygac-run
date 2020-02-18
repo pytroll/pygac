@@ -83,6 +83,14 @@ def validate_args(args):
             % args.config)
 
 def tarfile_walker(path):
+    """Yield all files from a tar archive.
+
+        Args:
+            path (str): Path to archive
+        Yields:
+            filename: name of the extracted file
+            fileobj: corresponding file object
+    """
     with tarfile.open(path) as archive:
         for tarinfo in archive:
             if tarinfo.isfile():
@@ -91,10 +99,10 @@ def tarfile_walker(path):
                 yield filename, fileobj
 
 def logged_trial(processor):
+    """Decorator to logs exceptions during processing."""
     @wraps(processor)
     def wrapper(filename, *args, **kwargs):
         try:
-            logger.info('Process "%s"' % str(filename))
             processor(filename, *args, **kwargs)
         except Exception:
             logger.exception('Could not porcess "%s"' % str(filename))

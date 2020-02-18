@@ -25,9 +25,13 @@
 Can't be used as is, has to be subclassed to add specific read functions.
 """
 
+import logging
+
 from pygac.reader import Reader, ReaderError
 import pygac.pygac_geotiepoints as gtp
 
+
+LOG = logging.getLogger(__name__)
 
 class GACReader(Reader):
     """Reader for GAC data."""
@@ -42,14 +46,10 @@ class GACReader(Reader):
         self.lonlat_interpolator = gtp.gac_lat_lon_interpolator
 
     def _validate_header(self):
-        """Check if the header belongs to this reader
-
-        Args:
-            header: numpy record array
-                The header metadata
-        """
+        """Check if the header belongs to this reader"""
         # call super to enter the Method Resolution Order (MRO)
         super(GACReader, self)._validate_header()
+        LOG.debug("validate header")
         data_set_name = self.head['data_set_name']
         # split header into parts
         # TODO: use trollshift
@@ -57,4 +57,4 @@ class GACReader(Reader):
             data_set_name.decode().split('.', maxsplit=3)
         )
         if transfer_mode != 'GHRR':
-            raise ReaderError('Wrong transfer mode "%s"!' % s transfer_mode)
+            raise ReaderError('Wrong transfer mode "%s"!' % transfer_mode)
