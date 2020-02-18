@@ -45,7 +45,6 @@ from pyorbital.orbital import Orbital
 from pyorbital import astronomy
 from pygac.calibration import calibrate_solar, calibrate_thermal
 from pygac import gac_io
-from pygac.utils import file_opener
 
 LOG = logging.getLogger(__name__)
 

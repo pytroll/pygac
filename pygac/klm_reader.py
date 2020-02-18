@@ -38,7 +38,7 @@ import re
 import numpy as np
 
 from pygac.correct_tsm_issue import TSM_AFFECTED_INTERVALS_KLM, get_tsm_idx
-from pygac.reader import Reader
+from pygac.reader import Reader, ReaderError
 from pygac.utils import file_opener
 
 LOG = logging.getLogger(__name__)
