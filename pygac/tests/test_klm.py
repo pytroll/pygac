@@ -33,6 +33,7 @@ try:
 except ImportError:
     import mock
 
+from pygac.reader import ReaderError
 from pygac import gac_klm
 from pygac.tests.utils import CalledWithArray
 
@@ -70,6 +71,18 @@ class TestKLM(unittest.TestCase):
         streamdata = child.communicate()[0]
         retc = child.returncode
         self.assertTrue(retc == 0, msg=streamdata)
+
+    def test__validate_header(self):
+        """Test the header validation"""
+        self.reader.head = {
+            'data_set_name': b'NSS.GHRR.M2.D18350.S0133.E0318.B6308485.SV'
+        }
+        self.reader._validate_header()
+        with self.assertRaises(ReaderError):
+            self.reader.head = {
+                'data_set_name': b'WRONG.FILE.NAME.PATTERN'
+            }
+            self.reader._validate_header()
 
     def test_get_lonlat(self):
         """Test readout of lon/lat coordinates."""
