@@ -72,7 +72,7 @@ class TestUtils(unittest.TestCase):
             with file_opener(f) as g:
                 message = g.read()
         self.assertEqual(message, self.gzip_message_decoded)
-        
+
     def test_file_opener_keep_open(self):
         with io.BytesIO(self.normal_message) as f:
             with file_opener(f) as g:
