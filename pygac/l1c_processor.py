@@ -37,6 +37,7 @@ LOG = logging.getLogger(__name__)
 
 _Readers = [GACKLMReader, LACKLMReader, GACPODReader, LACPODReader]
 
+
 def get_reader(filename, fileobj=None):
     """Read the GAC/LAC KLM/POD data.
 
@@ -52,7 +53,7 @@ def get_reader(filename, fileobj=None):
                 found_reader = True
                 index = i
             except ReaderError as exception:
-                LOG.debug("%s failed to read the file! %s" 
+                LOG.debug("%s failed to read the file! %s"
                           % (Reader.__name__, repr(exception)))
             finally:
                 open_file.seek(0)
@@ -60,7 +61,7 @@ def get_reader(filename, fileobj=None):
                 break
     if not found_reader:
         raise ValueError('Unable to read the file "%s"' % filename)
-    # Move the Reader in front of _Readers. Chance is high that the 
+    # Move the Reader in front of _Readers. Chance is high that the
     # next file is of the same kind.
     _Readers.insert(0, _Readers.pop(index))
     return reader

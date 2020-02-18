@@ -154,9 +154,9 @@ class Reader(six.with_metaclass(ABCMeta)):
         """Check if the header belongs to this reader"""
         # This method does not need to be implemented in all subclasses.
         # It is intended for cooperative multiple inheritance, i.e.
-        # each child class which implements this method, should call the 
+        # each child class which implements this method, should call the
         # super method to enter into the method resolution order.
-        # See https://docs.python.org/3/library/functions.html#super 
+        # See https://docs.python.org/3/library/functions.html#super
         # second use case “diamond diagrams”.
         pass
 
