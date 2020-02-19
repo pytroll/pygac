@@ -48,11 +48,10 @@ class LACReader(Reader):
         # call super to enter the Method Resolution Order (MRO)
         super(LACReader, self)._validate_header()
         LOG.debug("validate header")
-        data_set_name = self.head['data_set_name']
+        data_set_name = self.head['data_set_name'].decode()
         # split header into parts
-        # TODO: use trollshift
-        creation_site, transfer_mode, platform_id, _ = (
-            data_set_name.decode().split('.', maxsplit=3)
+        creation_site, transfer_mode, _ = (
+            data_set_name.split('.', maxsplit=2)
         )
-        if transfer_mode == 'GHRR':
-            raise ReaderError('Wrong transfer mode "%s"!' % transfer_mode)
+        if transfer_mode != 'LHRR':
+            raise ReaderError('Improper transfer mode "%s"!' % transfer_mode)

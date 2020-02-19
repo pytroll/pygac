@@ -30,6 +30,7 @@ import datetime
 import logging
 import numpy as np
 import os
+import re
 import six
 import types
 
@@ -84,6 +85,10 @@ class ReaderError(ValueError):
 
 class Reader(six.with_metaclass(ABCMeta)):
     """Reader for Gac and Lac, POD and KLM data."""
+
+    # data set header format, see _validate_header for more details
+    data_set_pattern = re.compile(
+        r'\w{3}\.\w{4}\.\w{2}.D\d{5}\.S\d{4}\.E\d{4}\.B\d{7}\.\w{2}')
 
     def __init__(self, interpolate_coords=True, adjust_clock_drift=True,
                  tle_dir=None, tle_name=None, tle_thresh=7, creation_site=None):
@@ -150,14 +155,40 @@ class Reader(six.with_metaclass(ABCMeta)):
         raise NotImplementedError
 
     def _validate_header(self):
-        """Check if the header belongs to this reader"""
+        """Check if the header belongs to this reader
+
+        Note:
+            according to https://www1.ncdc.noaa.gov/pub/data/satellite/
+            publications/podguides/TIROS-N%20thru%20N-14/pdf/NCDCPOD2.pdf
+            and https://www1.ncdc.noaa.gov/pub/data/satellite/
+            publications/podguides/N-15%20thru%20N-19/pdf/
+            2.5%20Section%208.0%20NOAA%20Level%201B%20Database.pdf
+            the data set name splits into
+            PROCESSING-CENTER.DATA-TYPE.SPACECRAFT-UNIQUE-ID.
+            YEAR-DAY.START-TIME.STOP-TIME.PROCESSING-BLOCK-ID.SOURCE
+            This should be sufficient information to determine the
+            reader.
+            Global Area Coverage (GAC):
+                DATA-TYPE = GHRR
+            Local Area Coverage (LAC):
+                DATA-TYPE = LHRR
+            Polar Orbiter Data (POD):
+                SPACECRAFT-UNIQUE-ID in [TN, NA, NB, NC, ND, NE, NF, 
+                                         NG, NH, NI, NJ]
+            NOAA-K, -L, -M system, but also newer satellites (KLM):
+                SPACECRAFT-UNIQUE-ID in [NK, NL, NM, NN, NP, M2, M1]
+        """
         # This method does not need to be implemented in all subclasses.
         # It is intended for cooperative multiple inheritance, i.e.
         # each child class which implements this method, should call the
         # super method to enter into the method resolution order.
         # See https://docs.python.org/3/library/functions.html#super
         # second use case “diamond diagrams”.
-        pass
+        # Check if the data set name matches the pattern
+        LOG.debug("validate header")
+        data_set_name = self.head['data_set_name'].decode()
+        if not self.data_set_pattern.match(data_set_name):
+            raise ReaderError("Data set name does not match!")
 
     @classmethod
     def fromfile(cls, filename, fileobj=None):

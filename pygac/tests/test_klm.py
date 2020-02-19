@@ -23,6 +23,7 @@
 """Test the GAC KLM reader.
 """
 
+import os
 import datetime as dt
 import numpy as np
 import numpy.testing
@@ -35,6 +36,7 @@ except ImportError:
 
 from pygac.reader import ReaderError
 from pygac import gac_klm
+from pygac.lac_klm import LACKLMReader
 from pygac.tests.utils import CalledWithArray
 
 
@@ -74,15 +76,30 @@ class TestKLM(unittest.TestCase):
 
     def test__validate_header(self):
         """Test the header validation"""
-        self.reader.head = {
-            'data_set_name': b'NSS.GHRR.M2.D18350.S0133.E0318.B6308485.SV'
-        }
+        filename = os.path.basename(test_file).encode()
+        self.reader.head = {'data_set_name': filename}
         self.reader._validate_header()
-        with self.assertRaises(ReaderError):
-            self.reader.head = {
-                'data_set_name': b'WRONG.FILE.NAME.PATTERN'
-            }
+        # wrong name pattern
+        with self.assertRaisesRegex(ReaderError,
+                'Data set name does not match!'):
+            self.reader.head = {'data_set_name': b'abc.txt'}
             self.reader._validate_header()
+        # wrong platform
+        name = b'NSS.GHRR.TN.D80001.S0332.E0526.B0627173.WI'
+        with self.assertRaisesRegex(ReaderError,
+                'Improper platform id "TN"!'):
+            self.reader.head = {'data_set_name': name}
+            self.reader._validate_header()
+        # wrong transfer mode
+        name = filename.replace(b'GHRR', b'LHRR')
+        with self.assertRaisesRegex(ReaderError,
+                'Improper transfer mode "LHRR"!'):
+            self.reader.head = {'data_set_name': name}
+            self.reader._validate_header()
+        # change reader
+        lac_reader = LACKLMReader()
+        lac_reader.head = {'data_set_name': name}
+        lac_reader._validate_header()
 
     def test_get_lonlat(self):
         """Test readout of lon/lat coordinates."""

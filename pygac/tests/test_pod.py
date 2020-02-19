@@ -28,7 +28,9 @@ try:
 except ImportError:
     import mock
 
+from pygac.reader import ReaderError
 from pygac.gac_pod import GACPODReader
+from pygac.lac_pod import LACPODReader
 from pygac.tests.utils import CalledWithArray
 
 
@@ -40,6 +42,33 @@ class TestPOD(unittest.TestCase):
     def setUp(self):
         """Set up the test."""
         self.reader = GACPODReader()
+        
+    def test__validate_header(self):
+        """Test the header validation"""
+        filename = b'NSS.GHRR.TN.D80001.S0332.E0526.B0627173.WI'
+        self.reader.head = {'data_set_name': filename}
+        self.reader._validate_header()
+        # wrong name pattern
+        with self.assertRaisesRegex(ReaderError,
+                'Data set name does not match!'):
+            self.reader.head = {'data_set_name': b'abc.txt'}
+            self.reader._validate_header()
+        # wrong platform
+        name = b'NSS.GHRR.NL.D02187.S1904.E2058.B0921517.GC'
+        with self.assertRaisesRegex(ReaderError,
+                'Improper platform id "NL"!'):
+            self.reader.head = {'data_set_name': name}
+            self.reader._validate_header()
+        # wrong transfer mode
+        name = filename.replace(b'GHRR', b'LHRR')
+        with self.assertRaisesRegex(ReaderError,
+                'Improper transfer mode "LHRR"!'):
+            self.reader.head = {'data_set_name': name}
+            self.reader._validate_header()
+        # change reader
+        lac_reader = LACPODReader()
+        lac_reader.head = {'data_set_name': name}
+        lac_reader._validate_header()
 
     def test_decode_timestamps(self):
         """Test POD timestamp decoding."""

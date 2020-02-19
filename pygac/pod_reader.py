@@ -284,16 +284,13 @@ class PODReader(Reader):
         super(PODReader, self)._validate_header()
         LOG.debug("validate header")
         data_set_name = self.head['data_set_name'].decode()
-        if not self.data_set_pattern.match(data_set_name):
-            raise ReaderError("Data set name does not match!")
         # split header into parts
-        # TODO: use trollshift
         creation_site, transfer_mode, platform_id, _ = (
-            data_set_name.split('.', maxsplit=3)
-        )
-        not_allowed_ids = ['NK', 'NL', 'NM', 'NN', 'NP', 'M1', 'M2', 'M3']
-        if platform_id in not_allowed_ids:
-            raise ReaderError('Unrecognised platform id "%s"!' % platform_id)
+            data_set_name.split('.', maxsplit=3))
+        allowed_ids = ['TN', 'NA', 'NB', 'NC', 'ND', 'NE', 'NF', 'NG', 
+                       'NH', 'NI', 'NJ']
+        if platform_id not in allowed_ids:
+            raise ReaderError('Improper platform id "%s"!' % platform_id)
 
     def get_header_timestamp(self):
         """Get the timestamp from the header.

@@ -576,9 +576,6 @@ class KLMReader(Reader):
 
     tsm_affected_intervals = TSM_AFFECTED_INTERVALS_KLM
 
-    data_set_pattern = re.compile(
-        r'\w{3}\.\w{4}\.\w{2}.D\d{5}\.S\d{4}\.E\d{4}\.B\d{7}\.\w{2}')
-
     def read(self, filename, fileobj=None):
         """Read the data.
 
@@ -645,16 +642,12 @@ class KLMReader(Reader):
         super(KLMReader, self)._validate_header()
         LOG.debug("validate header")
         data_set_name = self.head['data_set_name'].decode()
-        if not self.data_set_pattern.match(data_set_name):
-            raise ReaderError("Data set name does not match!")
         # split header into parts
-        # TODO: use trollshift
         creation_site, transfer_mode, platform_id, _ = (
-            data_set_name.split('.', maxsplit=3)
-        )
+            data_set_name.split('.', maxsplit=3))
         allowed_ids = ['NK', 'NL', 'NM', 'NN', 'NP', 'M1', 'M2', 'M3']
         if platform_id not in allowed_ids:
-            raise ReaderError('Unrecognised platform id "%s"!' % platform_id)
+            raise ReaderError('Improper platform id "%s"!' % platform_id)
 
     def get_telemetry(self):
         """Get the telemetry.
