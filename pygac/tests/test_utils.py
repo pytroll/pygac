@@ -46,17 +46,14 @@ class TestUtils(unittest.TestCase):
             f.seek(0)
             self.gzip_message_encoded = f.read()
 
-    def test_is_file_object_normal(self):
-        """Test is_file_object function on open file."""
+    def test_is_file_object(self):
+        """Test is_file_object function."""
+        # true test
         with io.BytesIO(self.normal_message) as fileobj:
             self.assertTrue(is_file_object(fileobj))
-
-    def test_is_file_object_false(self):
-        """Test is_file_object function on bytes."""
-        self.assertFalse(is_file_object(self.normal_message))
-
-    def test_is_file_object_duck(self):
-        """Test is_file_object function on duck type."""
+        # false test
+        self.assertFalse(is_file_object("test.txt"))
+        # duck type test
         class Duck(object):
             def read(self, n):
                 return n*b'\00'
@@ -67,18 +64,19 @@ class TestUtils(unittest.TestCase):
         duck = Duck()
         self.assertTrue(is_file_object(duck))
 
-    def test_file_opener_gzip(self):
-        with io.BytesIO(self.gzip_message_encoded) as f:
-            with file_opener(f) as g:
-                message = g.read()
-        self.assertEqual(message, self.gzip_message_decoded)
-
-    def test_file_opener_keep_open(self):
+    def test_file_opener(self):
+        """Test file_openter function"""
+        # On normal file (check also if it remains open)
         with io.BytesIO(self.normal_message) as f:
             with file_opener(f) as g:
                 message = g.read()
             self.assertFalse(f.closed)
         self.assertEqual(message, self.normal_message)
+        # On gzip file
+        with io.BytesIO(self.gzip_message_encoded) as f:
+            with file_opener(f) as g:
+                message = g.read()
+        self.assertEqual(message, self.gzip_message_decoded)
 
 
 def suite():
