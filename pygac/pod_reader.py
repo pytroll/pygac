@@ -287,7 +287,7 @@ class PODReader(Reader):
         # split header into parts
         creation_site, transfer_mode, platform_id, _ = (
             data_set_name.split('.', maxsplit=3))
-        allowed_ids = ['TN', 'NA', 'NB', 'NC', 'ND', 'NE', 'NF', 'NG', 
+        allowed_ids = ['TN', 'NA', 'NB', 'NC', 'ND', 'NE', 'NF', 'NG',
                        'NH', 'NI', 'NJ']
         if platform_id not in allowed_ids:
             raise ReaderError('Improper platform id "%s"!' % platform_id)

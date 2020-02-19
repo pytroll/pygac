@@ -1,4 +1,4 @@
-#tests/test_utils.py
+# tests/test_utils.py
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
@@ -54,11 +54,14 @@ class TestUtils(unittest.TestCase):
         # false test
         self.assertFalse(is_file_object("test.txt"))
         # duck type test
+
         class Duck(object):
             def read(self, n):
                 return n*b'\00'
+
             def seekable(self):
                 return True
+
             def close(self):
                 pass
         duck = Duck()

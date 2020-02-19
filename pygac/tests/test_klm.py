@@ -81,19 +81,19 @@ class TestKLM(unittest.TestCase):
         self.reader._validate_header()
         # wrong name pattern
         with self.assertRaisesRegex(ReaderError,
-                'Data set name does not match!'):
+                                    'Data set name does not match!'):
             self.reader.head = {'data_set_name': b'abc.txt'}
             self.reader._validate_header()
         # wrong platform
         name = b'NSS.GHRR.TN.D80001.S0332.E0526.B0627173.WI'
         with self.assertRaisesRegex(ReaderError,
-                'Improper platform id "TN"!'):
+                                    'Improper platform id "TN"!'):
             self.reader.head = {'data_set_name': name}
             self.reader._validate_header()
         # wrong transfer mode
         name = filename.replace(b'GHRR', b'LHRR')
         with self.assertRaisesRegex(ReaderError,
-                'Improper transfer mode "LHRR"!'):
+                                    'Improper transfer mode "LHRR"!'):
             self.reader.head = {'data_set_name': name}
             self.reader._validate_header()
         # change reader
