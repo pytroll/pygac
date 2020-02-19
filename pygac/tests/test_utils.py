@@ -1,4 +1,3 @@
-# tests/test_utils.py
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 

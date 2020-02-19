@@ -173,7 +173,7 @@ class Reader(six.with_metaclass(ABCMeta)):
             Local Area Coverage (LAC):
                 DATA-TYPE = LHRR
             Polar Orbiter Data (POD):
-                SPACECRAFT-UNIQUE-ID in [TN, NA, NB, NC, ND, NE, NF, 
+                SPACECRAFT-UNIQUE-ID in [TN, NA, NB, NC, ND, NE, NF,
                                          NG, NH, NI, NJ]
             NOAA-K, -L, -M system, but also newer satellites (KLM):
                 SPACECRAFT-UNIQUE-ID in [NK, NL, NM, NN, NP, M2, M1]
