@@ -642,8 +642,8 @@ class KLMReader(Reader):
         LOG.debug("validate header")
         data_set_name = self.head['data_set_name'].decode()
         # split header into parts
-        creation_site, transfer_mode, platform_id, _ = (
-            data_set_name.split('.', maxsplit=3))
+        creation_site, transfer_mode, platform_id = (
+            data_set_name.split('.')[:3])
         allowed_ids = ['NK', 'NL', 'NM', 'NN', 'NP', 'M1', 'M2', 'M3']
         if platform_id not in allowed_ids:
             raise ReaderError('Improper platform id "%s"!' % platform_id)

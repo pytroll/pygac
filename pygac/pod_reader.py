@@ -285,8 +285,8 @@ class PODReader(Reader):
         LOG.debug("validate header")
         data_set_name = self.head['data_set_name'].decode()
         # split header into parts
-        creation_site, transfer_mode, platform_id, _ = (
-            data_set_name.split('.', maxsplit=3))
+        creation_site, transfer_mode, platform_id = (
+            data_set_name.split('.')[:3])
         allowed_ids = ['TN', 'NA', 'NB', 'NC', 'ND', 'NE', 'NF', 'NG',
                        'NH', 'NI', 'NJ']
         if platform_id not in allowed_ids:

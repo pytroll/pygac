@@ -50,8 +50,7 @@ class LACReader(Reader):
         LOG.debug("validate header")
         data_set_name = self.head['data_set_name'].decode()
         # split header into parts
-        creation_site, transfer_mode, _ = (
-            data_set_name.split('.', maxsplit=2)
-        )
+        creation_site, transfer_mode, platform_id = (
+            data_set_name.split('.')[:3])
         if transfer_mode != 'LHRR':
             raise ReaderError('Improper transfer mode "%s"!' % transfer_mode)
