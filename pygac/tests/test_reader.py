@@ -43,7 +43,7 @@ class TestGacReader(unittest.TestCase):
         """Set up the tests."""
         self.interpolator = interpolator
         self.reader = GACReader()
-        
+
     def test_filename(self):
         """Test the setter of the filename property."""
         # test path with .gz extension

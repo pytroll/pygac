@@ -189,7 +189,7 @@ class Reader(six.with_metaclass(ABCMeta)):
         try:
             data_set_name = self.head['data_set_name'].decode()
         except UnicodeDecodeError:
-            raise ReaderError('Not able to decode the data set name!') 
+            raise ReaderError('Not able to decode the data set name!')
         if not data_set_name:
             LOG.info("Empty data_set_name, use filename %s" % self.filename)
             data_set_name = self.filename
