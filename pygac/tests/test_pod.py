@@ -4,6 +4,7 @@
 # Author(s):
 
 #   Stephan Finkensieper <stephan.finkensieper@dwd.de>
+#   Carlos Horn <carlos.horn@external.eumetsat.int>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
