@@ -77,6 +77,7 @@ def _file_opener(file):
         if close:
             file_object.close()
 
+
 @contextmanager
 def _file_opener_py2(filepath):
     """Open a file depending on the input.
@@ -102,10 +103,12 @@ def _file_opener_py2(filepath):
     finally:
         file_object.close()
 
+
 if sys.version_info.major < 3:
     file_opener = _file_opener_py2
 else:
     file_opener = _file_opener
+
 
 def check_user_scanlines(start_line, end_line, first_valid_lat=None,
                          last_valid_lat=None, along_track=None):

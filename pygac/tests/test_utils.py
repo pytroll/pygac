@@ -34,8 +34,10 @@ except ImportError:
 
 from pygac.utils import is_file_object, file_opener
 
+
 def _raise_OSError(*args, **kwargs):
     raise OSError
+
 
 class TestUtils(unittest.TestCase):
     """Test pygac.utils functions"""
@@ -50,6 +52,7 @@ class TestUtils(unittest.TestCase):
         # false test
         self.assertFalse(is_file_object("test.txt"))
         # duck type test
+
         class Duck(object):
             def read(self, n):
                 return n*b'\00'
