@@ -59,6 +59,9 @@ my_sunsat = "/tmp/ECC_GAC_sunsatangles_noaa16_99999_20020706T1904020Z_20020706T2
 class TestKLM(unittest.TestCase):
     def setUp(self):
         self.reader = gac_klm.GACKLMReader()
+        # python 2 compatibility
+        if sys.version_info.major < 3:
+            self.assertRaisesRegex = self.assertRaisesRegexp
 
     def test_global(self):
         gac_klm.main(test_file, 0, 0)

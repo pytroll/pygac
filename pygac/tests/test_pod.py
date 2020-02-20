@@ -24,6 +24,7 @@ import datetime as dt
 import unittest
 import numpy as np
 import numpy.testing
+import sys
 try:
     from unittest import mock
 except ImportError:
@@ -43,6 +44,9 @@ class TestPOD(unittest.TestCase):
     def setUp(self):
         """Set up the test."""
         self.reader = GACPODReader()
+        # python 2 compatibility
+        if sys.version_info.major < 3:
+            self.assertRaisesRegex = self.assertRaisesRegexp
 
     def test__validate_header(self):
         """Test the header validation"""
