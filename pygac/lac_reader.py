@@ -8,6 +8,7 @@
 #   Adam Dybbroe <adam.dybbroe@smhi.se>
 #   Sajid Pareeth <sajid.pareeth@fmach.it>
 #   Martin Raspaud <martin.raspaud@smhi.se>
+#   Carlos Horn <carlos.horn@external.eumetsat.int>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -25,7 +26,7 @@
 
 import logging
 
-from pygac.reader import Reader
+from pygac.reader import Reader, ReaderError
 import pygac.pygac_geotiepoints as gtp
 
 

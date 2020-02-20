@@ -607,9 +607,10 @@ class KLMReader(Reader):
                 else:
                     self.ars_head = ars_head
                     ars_offset = ars_header.itemsize
+                # need to copy frombuffer to have write access on head
                 self.head, = np.frombuffer(
                     fd_.read(header.itemsize),
-                    dtype=header, count=1)
+                    dtype=header, count=1).copy()
                 self._validate_header()
                 self.header_version = self.head[
                     "noaa_level_1b_format_version_number"]
@@ -624,10 +625,11 @@ class KLMReader(Reader):
                 # LAC: 1, GAC: 2, ...
                 self.data_type = self.head['data_type_code']
                 fd_.seek(self.offset + ars_offset, 0)
+                count = self.head["count_of_data_records"]
                 self.scans = np.frombuffer(
-                    fd_.read(),
+                    fd_.read(count*self.scanline_type.itemsize),
                     dtype=self.scanline_type,
-                    count=self.head["count_of_data_records"])
+                    count=count)
             except EOFError:
                 raise ReaderError("File has wrong length!")
 

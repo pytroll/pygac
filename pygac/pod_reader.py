@@ -255,17 +255,19 @@ class PODReader(Reader):
                 else:
                     header = header3
                 fd_.seek(tbm_offset, 0)
+                # need to copy frombuffer to have write access on head
                 self.head, = np.frombuffer(
                     fd_.read(header.itemsize),
-                    dtype=header, count=1)
+                    dtype=header, count=1).copy()
                 self._validate_header()
                 # read scan lines
                 fd_.seek(self.offset + tbm_offset, 0)
+                count = self.head["number_of_scans"]
                 self.scans = np.frombuffer(
-                    fd_.read(),
+                    fd_.read(count*self.scanline_type.itemsize),
                     dtype=self.scanline_type,
-                    count=self.head["number_of_scans"])
-            except EOFError:
+                    count=count)
+            except (EOFError, ValueError):
                 raise ReaderError("File has wrong length!")
 
         self.correct_scan_line_numbers()
@@ -496,7 +498,9 @@ class PODReader(Reader):
         _channels = self.get_calibrated_channels()
         # prepare input
         # maybe there is a better (less memory requiring) method
-        channels = np.empty_like(_channels)
+        shape = _channels.shape[:-1] + (6,)
+        # empty_like does not know the kwarg shape in older versions
+        channels = np.empty(shape, dtype=_channels.dtype)
         channels[:, :, 0] = _channels[:, :, 0]
         channels[:, :, 1] = _channels[:, :, 1]
         channels[:, :, 2] = np.nan

@@ -138,7 +138,7 @@ class Reader(six.with_metaclass(ABCMeta)):
             self._filename = None
         else:
             basename = os.path.basename(filepath)
-            root, ext = os.path.splitext(filepath)
+            root, ext = os.path.splitext(basename)
             if ext == ".gz":
                 self._filename = root
             else:
@@ -186,9 +186,17 @@ class Reader(six.with_metaclass(ABCMeta)):
         # second use case “diamond diagrams”.
         # Check if the data set name matches the pattern
         LOG.debug("validate header")
-        data_set_name = self.head['data_set_name'].decode()
+        try:
+            data_set_name = self.head['data_set_name'].decode()
+        except UnicodeDecodeError:
+            raise ReaderError('Not able to decode the data set name!') 
+        if not data_set_name:
+            LOG.info("Empty data_set_name, use filename %s" % self.filename)
+            data_set_name = self.filename
+            self.head['data_set_name'] = data_set_name.encode()
         if not self.data_set_pattern.match(data_set_name):
-            raise ReaderError("Data set name does not match!")
+            raise ReaderError(
+                'Data set name "%s" does not match!' % data_set_name)
 
     @classmethod
     def fromfile(cls, filename, fileobj=None):

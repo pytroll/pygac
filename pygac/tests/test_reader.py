@@ -43,6 +43,22 @@ class TestGacReader(unittest.TestCase):
         """Set up the tests."""
         self.interpolator = interpolator
         self.reader = GACReader()
+        
+    def test_filename(self):
+        """Test the setter of the filename property."""
+        # test path with .gz extension
+        filename = 'NSS.GHRR.TN.D80001.S0332.E0526.B0627173.WI'
+        filepath = '/path/to/' + filename + '.gz'
+        self.reader.filename = filepath
+        self.assertEqual(self.reader.filename, filename)
+
+    def test__validate_header(self):
+        """Test the header validation."""
+        # test fallback to filename
+        filename = 'NSS.GHRR.TN.D80001.S0332.E0526.B0627173.WI'
+        self.reader.filename = filename
+        self.reader.head = {'data_set_name': b''}
+        self.reader._validate_header()
 
     def test_to_datetime64(self):
         """Test conversion from (year, jday, msec) to datetime64."""
