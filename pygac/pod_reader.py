@@ -523,7 +523,7 @@ class PODReader(Reader):
         return get_tsm_idx(channels[:, :, 0], channels[:, :, 1],
                            channels[:, :, 3], channels[:, :, 4])
 
-    def _prepare_channels(self):
+    def _get_calibrated_channels_uniform_shape(self):
         """Prepare the channels as input for gac_io.save_gac"""
         _channels = self.get_calibrated_channels()
         # prepare input

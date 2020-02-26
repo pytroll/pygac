@@ -277,14 +277,16 @@ class Reader(six.with_metaclass(ABCMeta)):
         instance.read(filename, fileobj=fileobj)
         return instance
 
-    def _prepare_channels(self):
+    def _get_calibrated_channels_uniform_shape(self):
         """Prepare the channels as input for gac_io.save_gac"""
-        return self.get_calibrated_channels()
+        channels = self.get_calibrated_channels()
+        assert channels.shape[-1] == 6
+        return channels
 
     def save(self, start_line, end_line):
         """Convert the Reader instance content into hdf5 files"""
         self.get_lonlat()
-        channels = self._prepare_channels()
+        channels = self._get_calibrated_channels_uniform_shape()
         sat_azi, sat_zen, sun_azi, sun_zen, rel_azi = self.get_angles()
         qual_flags = self.get_qual_flags()
         if (np.all(self.mask)):
