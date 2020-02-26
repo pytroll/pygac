@@ -137,7 +137,8 @@ if __name__ == "__main__":
                 processor(filename, start_line, end_line, fileobj=fileobj)
         else:
             filename = path
-            processor(filename, start_line, end_line)
+            # Raise exceptions in case of a single file.
+            l1c_processor(filename, start_line, end_line)
     elif os.path.isdir(path):
         logger.info('Open directory "%s"' % str(path))
         for basename in os.listdir(path):

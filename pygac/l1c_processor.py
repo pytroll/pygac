@@ -58,7 +58,8 @@ def get_reader_class(filename, fileobj=None):
 
 
 def l1c_processor(filename, start_line, end_line, fileobj=None):
-    """Level 1c file processor
+    """Level 1c file processor.
+    It reads, calibrates and navigates NOAA AVHRR GAC/LAC POD/KLM data.
 
        Args:
             filename (str): Path to GAC/LAC file

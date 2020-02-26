@@ -56,6 +56,23 @@ class TestGacReader(unittest.TestCase):
         self.reader.filename = filepath
         self.assertEqual(self.reader.filename, filename)
 
+    def test__read_scanlines(self):
+        """Test the scanline extraction"""
+        self.reader.scanline_type = np.dtype([
+            ('a', 'S2'), ('b', 'i4')])
+        # request more scan lines than available
+        with self.assertWarnsRegex(RuntimeWarning,
+                                   "Unexpected number of scanlines!"):
+            buffer = (b'a\x00\x01\x00\x00\x00'
+                      b'b\x00\x02\x00\x00\x00'
+                      b'c\x00\x03\x00\x00\x00')
+            count = 4
+            self.reader._read_scanlines(buffer, count)
+        # check the output
+        first_line = self.reader.scans[0]
+        self.assertEqual(first_line['a'], b'a')
+        self.assertEqual(first_line['b'], 1)
+
     def test__validate_header(self):
         """Test the header validation."""
         # wrong name pattern
