@@ -28,7 +28,7 @@ except ImportError:
     from unittest import mock
 import numpy as np
 import numpy.testing
-from pygac.gac_reader import GACReader
+from pygac.gac_reader import GACReader, ReaderError
 
 
 class TestGacReader(unittest.TestCase):
@@ -54,11 +54,16 @@ class TestGacReader(unittest.TestCase):
 
     def test__validate_header(self):
         """Test the header validation."""
-        # test fallback to filename
-        filename = 'NSS.GHRR.TN.D80001.S0332.E0526.B0627173.WI'
-        self.reader.filename = filename
-        self.reader.head = {'data_set_name': b''}
-        self.reader._validate_header()
+        # wrong name pattern
+        with self.assertRaisesRegex(ReaderError,
+                'Data set name .* does not match!'):
+            head = {'data_set_name': b'abc.txt'}
+            self.reader._validate_header(head)
+        # Unicode error
+        with self.assertRaisesRegex(ReaderError,
+                'Not able to decode the data set name!'):
+            head = {'data_set_name': b'\xea\xf8'}
+            self.reader._validate_header(head)
 
     def test_to_datetime64(self):
         """Test conversion from (year, jday, msec) to datetime64."""

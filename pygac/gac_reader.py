@@ -46,12 +46,13 @@ class GACReader(Reader):
         self.scan_width = 409
         self.lonlat_interpolator = gtp.gac_lat_lon_interpolator
 
-    def _validate_header(self):
+    @classmethod
+    def _validate_header(cls, header):
         """Check if the header belongs to this reader"""
         # call super to enter the Method Resolution Order (MRO)
-        super(GACReader, self)._validate_header()
+        super(GACReader, cls)._validate_header(header)
         LOG.debug("validate header")
-        data_set_name = self.head['data_set_name'].decode()
+        data_set_name = header['data_set_name'].decode()
         # split header into parts
         creation_site, transfer_mode, platform_id = (
             data_set_name.split('.')[:3])

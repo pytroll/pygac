@@ -589,60 +589,88 @@ class KLMReader(Reader):
                 The scanlines
 
         """
+        # Note that np.fromfile does not work with gzip.GzipFile
+        # objects (numpy version 1.16.4), because it restricts the
+        # file objects to (io.FileIO, io.BufferedReader, io.BufferedWriter)
+        # see: numpy.compat.py3k.isfileobj
         self.filename = filename
         LOG.info('Reading %s', self.filename)
         with file_opener(fileobj or filename) as fd_:
-            try:
-                # Note that np.fromfile does not work with gzip.GzipFile
-                # objects (numpy version 1.16.4), because it restricts the
-                # file objects to (io.FileIO, io.BufferedReader, io.BufferedWriter)
-                # see: numpy.compat.py3k.isfileobj
-                ars_head, = np.frombuffer(
-                    fd_.read(ars_header.itemsize),
-                    dtype=ars_header, count=1)
-                if not ars_head['data_format'].startswith(b'NOAA Level 1b'):
-                    fd_.seek(0)
-                    self.ars_head = None
-                    ars_offset = 0
-                else:
-                    self.ars_head = ars_head
-                    ars_offset = ars_header.itemsize
-                # need to copy frombuffer to have write access on head
-                self.head, = np.frombuffer(
-                    fd_.read(header.itemsize),
-                    dtype=header, count=1).copy()
-                self._validate_header()
-                self.header_version = self.head[
-                    "noaa_level_1b_format_version_number"]
-                if self.header_version >= 5:
-                    self.analog_telemetry, = np.frombuffer(
-                        fd_.read(analog_telemetry_v5.itemsize),
-                        dtype=analog_telemetry_v5, count=1)
-                else:
-                    self.analog_telemetry, = np.frombuffer(
-                        fd_.read(analog_telemetry_v2.itemsize),
-                        dtype=analog_telemetry_v2, count=1)
-                # LAC: 1, GAC: 2, ...
-                self.data_type = self.head['data_type_code']
-                fd_.seek(self.offset + ars_offset, 0)
-                count = self.head["count_of_data_records"]
-                self.scans = np.frombuffer(
-                    fd_.read(count*self.scanline_type.itemsize),
-                    dtype=self.scanline_type,
-                    count=count)
-            except EOFError:
-                raise ReaderError("File has wrong length!")
-
+            self.ars_head, self.head = self.read_header(
+                filename, fileobj=fd_)
+            if self.ars_head:
+                ars_offset = ars_header.itemsize
+            else:
+                ars_offset = 0
+            self.header_version = self.head[
+                "noaa_level_1b_format_version_number"]
+            if self.header_version >= 5:
+                self.analog_telemetry, = np.frombuffer(
+                    fd_.read(analog_telemetry_v5.itemsize),
+                    dtype=analog_telemetry_v5, count=1)
+            else:
+                self.analog_telemetry, = np.frombuffer(
+                    fd_.read(analog_telemetry_v2.itemsize),
+                    dtype=analog_telemetry_v2, count=1)
+            # LAC: 1, GAC: 2, ...
+            self.data_type = self.head['data_type_code']
+            # read until end of file
+            fd_.seek(self.offset + ars_offset, 0)
+            buffer = fd_.read()
+            count = self.head["count_of_data_records"]
+            self._read_scanlines(buffer, count)
         self.correct_scan_line_numbers()
         self.spacecraft_id = self.head["noaa_spacecraft_identification_code"]
         self.spacecraft_name = self.spacecraft_names[self.spacecraft_id]
 
-    def _validate_header(self):
+    @classmethod
+    def read_header(cls, filename, fileobj=None):
+        """Read the file header.
+
+        Args:
+            filename (str): Path to GAC/LAC file
+            fileobj: An open file object to read from. (optional)
+
+        Returns:
+            archive_header (struct): archive header
+            header (struct): file header
+        """
+        with file_opener(fileobj or filename) as fd_:
+            # read ars_header if present
+            _ars_head, = np.frombuffer(
+                fd_.read(ars_header.itemsize),
+                dtype=ars_header, count=1)
+            if _ars_head['data_format'].startswith(b'NOAA Level 1b'):
+                ars_head = _ars_head.copy()
+            else:
+                fd_.seek(0)
+                ars_head = None
+            # need to copy frombuffer to have write access on head
+            head, = np.frombuffer(
+                fd_.read(header.itemsize),
+                dtype=header, count=1).copy()
+        # replace empty data_set_name, e.g. TIROS-N data
+        if not head['data_set_name']:
+            match = cls.data_set_pattern.search(filename)
+            if match:
+                data_set_name = match.group()
+                LOG.info("Empty data_set_name, extract from filename %s"
+                         % data_set_name)
+            else:
+                LOG.debug("header['data_set_name']=%s; filename='%s'"
+                          % (head['data_set_name'], filename))
+                raise ReaderError('Cannot determine data_set_name!')
+            head['data_set_name'] = data_set_name.encode()
+        cls._validate_header(head)
+        return ars_head, head
+
+    @classmethod
+    def _validate_header(cls, header):
         """Check if the header belongs to this reader"""
         # call super to enter the Method Resolution Order (MRO)
-        super(KLMReader, self)._validate_header()
+        super(KLMReader, cls)._validate_header(header)
         LOG.debug("validate header")
-        data_set_name = self.head['data_set_name'].decode()
+        data_set_name = header['data_set_name'].decode()
         # split header into parts
         creation_site, transfer_mode, platform_id = (
             data_set_name.split('.')[:3])

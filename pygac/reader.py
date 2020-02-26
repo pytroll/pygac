@@ -33,6 +33,7 @@ import os
 import re
 import six
 import types
+import warnings
 
 from pygac import (CONFIG_FILE, centered_modulus,
                    calculate_sun_earth_distance_correction,
@@ -137,12 +138,11 @@ class Reader(six.with_metaclass(ABCMeta)):
         if filepath is None:
             self._filename = None
         else:
-            basename = os.path.basename(filepath)
-            root, ext = os.path.splitext(basename)
-            if ext == ".gz":
-                self._filename = root
+            match = self.data_set_pattern.search(filepath)
+            if match:
+                self._filename = match.group()
             else:
-                self._filename = basename
+                self._filename = os.path.basename(filepath)
 
     @abstractmethod
     def read(self, filename, fileobj=None):
@@ -154,7 +154,27 @@ class Reader(six.with_metaclass(ABCMeta)):
         """
         raise NotImplementedError
 
-    def _validate_header(self):
+    @classmethod
+    @abstractmethod
+    def read_header(cls, filename, fileobj=None):
+        """Read the file header.
+
+        Args:
+            filename (str): Path to GAC/LAC file
+            fileobj: An open file object to read from. (optional)
+
+        Returns:
+            archive_header (struct): archive header
+            header (struct): file header
+
+        Note:
+            This is a classmethod to avoid throwaway instances while
+            checking if the reader corresponds to the input file.
+        """
+        raise NotImplementedError
+
+    @classmethod
+    def _validate_header(cls, header):
         """Check if the header belongs to this reader
 
         Note:
@@ -187,16 +207,55 @@ class Reader(six.with_metaclass(ABCMeta)):
         # Check if the data set name matches the pattern
         LOG.debug("validate header")
         try:
-            data_set_name = self.head['data_set_name'].decode()
+            data_set_name = header['data_set_name'].decode()
         except UnicodeDecodeError:
             raise ReaderError('Not able to decode the data set name!')
-        if not data_set_name:
-            LOG.info("Empty data_set_name, use filename %s" % self.filename)
-            data_set_name = self.filename
-            self.head['data_set_name'] = data_set_name.encode()
-        if not self.data_set_pattern.match(data_set_name):
+        if not cls.data_set_pattern.match(data_set_name):
             raise ReaderError(
                 'Data set name "%s" does not match!' % data_set_name)
+
+    def _read_scanlines(self, buffer, count):
+        """Read the scanlines from the given buffer
+
+        Args:
+            buffer (bytes, bytearray): buffer to read from
+            count (int): number of expected scanlines
+        """
+        line_count = len(buffer) // self.scanline_type.itemsize
+        if line_count < count:
+            LOG.warning(
+                "Expected %d scan lines, but found %d!"
+                % (count, line_count))
+            warnings.warn("Unexpected number of scanlines!",
+                          category=RuntimeWarning)
+        self.scans = np.frombuffer(
+            buffer, dtype=self.scanline_type, count=line_count)
+
+    @classmethod
+    def can_read(cls, filename, fileobj=None):
+        """Read the GAC/LAC data.
+
+        Args:
+            filename (str): Path to GAC/LAC file
+            fileobj: An open file object to read from. (optional)
+
+        Retruns:
+            result (bool): True if the reader can read the input
+        """
+        if fileobj:
+            pos = fileobj.tell()
+        try:
+            archive_header, header = cls.read_header(
+                filename, fileobj=fileobj)
+            result = True
+        except (ReaderError, ValueError) as exception:
+            LOG.debug("%s failed to read the file! %s"
+                      % (cls.__name__, repr(exception)))
+            result = False
+        finally:
+            if fileobj:
+                fileobj.seek(pos)
+        return result
 
     @classmethod
     def fromfile(cls, filename, fileobj=None):

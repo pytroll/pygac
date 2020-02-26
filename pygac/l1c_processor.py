@@ -19,13 +19,11 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-"""l1c files processor
+"""The l1c files processor."""
 
-"""
 import datetime
 import logging
 
-from pygac.reader import ReaderError
 from pygac.gac_klm import GACKLMReader
 from pygac.gac_pod import GACPODReader
 from pygac.lac_klm import LACKLMReader
@@ -35,36 +33,28 @@ from pygac.utils import file_opener
 
 LOG = logging.getLogger(__name__)
 
-_Readers = [GACKLMReader, LACKLMReader, GACPODReader, LACPODReader]
+_reader_classes = [GACKLMReader, LACKLMReader, GACPODReader, LACPODReader]
 
 
-def get_reader(filename, fileobj=None):
-    """Read the GAC/LAC KLM/POD data.
+def get_reader_class(filename, fileobj=None):
+    """Return the reader class that can read the GAC/LAC KLM/POD file.
 
         Args:
             filename (str): Path to GAC/LAC file
             fileobj: An open file object to read from. (optional)
-        """
+    """
     found_reader = False
-    with file_opener(fileobj or filename) as open_file:
-        for i, Reader in enumerate(_Readers):
-            try:
-                reader = Reader.fromfile(filename, fileobj=open_file)
-                found_reader = True
-                index = i
-            except ReaderError as exception:
-                LOG.debug("%s failed to read the file! %s"
-                          % (Reader.__name__, repr(exception)))
-            finally:
-                open_file.seek(0)
-            if found_reader:
-                break
+    for index, Reader in enumerate(_reader_classes):
+        if Reader.can_read(filename, fileobj=fileobj):
+            LOG.debug("%s can read the file." % Reader.__name__)
+            found_reader = True
+            break
     if not found_reader:
         raise ValueError('Unable to read the file "%s"' % filename)
-    # Move the Reader in front of _Readers. Chance is high that the
+    # Move the Reader in front of _reader_classes. Chance is high that the
     # next file is of the same kind.
-    _Readers.insert(0, _Readers.pop(index))
-    return reader
+    _reader_classes.insert(0, _reader_classes.pop(index))
+    return Reader
 
 
 def l1c_processor(filename, start_line, end_line, fileobj=None):
@@ -79,6 +69,10 @@ def l1c_processor(filename, start_line, end_line, fileobj=None):
     """
     tic = datetime.datetime.now()
     LOG.info("Process file: %s", str(filename))
-    reader = get_reader(filename, fileobj=fileobj)
-    reader.save(start_line, end_line)
+    # Keep the file open while searching for the reader class and later
+    # creation of the instance.
+    with file_opener(fileobj or filename) as open_file:
+        Reader = get_reader_class(filename, fileobj=open_file)
+        reader = Reader.fromfile(filename, fileobj=open_file)
+        reader.save(start_line, end_line)
     LOG.info("Processing took: %s", str(datetime.datetime.now() - tic))

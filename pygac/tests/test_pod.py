@@ -51,29 +51,28 @@ class TestPOD(unittest.TestCase):
     def test__validate_header(self):
         """Test the header validation"""
         filename = b'NSS.GHRR.TN.D80001.S0332.E0526.B0627173.WI'
-        self.reader.head = {'data_set_name': filename}
-        self.reader._validate_header()
+        head = {'data_set_name': filename}
+        GACPODReader._validate_header(head)
         # wrong name pattern
         with self.assertRaisesRegex(ReaderError,
                                     'Data set name .* does not match!'):
-            self.reader.head = {'data_set_name': b'abc.txt'}
-            self.reader._validate_header()
+            head = {'data_set_name': b'abc.txt'}
+            GACPODReader._validate_header(head)
         # wrong platform
         name = b'NSS.GHRR.NL.D02187.S1904.E2058.B0921517.GC'
         with self.assertRaisesRegex(ReaderError,
                                     'Improper platform id "NL"!'):
-            self.reader.head = {'data_set_name': name}
-            self.reader._validate_header()
+            head = {'data_set_name': name}
+            GACPODReader._validate_header(head)
         # wrong transfer mode
         name = filename.replace(b'GHRR', b'LHRR')
         with self.assertRaisesRegex(ReaderError,
                                     'Improper transfer mode "LHRR"!'):
-            self.reader.head = {'data_set_name': name}
-            self.reader._validate_header()
-        # change reader
-        lac_reader = LACPODReader()
-        lac_reader.head = {'data_set_name': name}
-        lac_reader._validate_header()
+            head = {'data_set_name': name}
+            GACPODReader._validate_header(head)
+        # other change reader
+        head = {'data_set_name': name}
+        LACPODReader._validate_header(head)
 
     def test_decode_timestamps(self):
         """Test POD timestamp decoding."""

@@ -44,14 +44,15 @@ class LACReader(Reader):
         self.scan_width = 2048
         self.lonlat_interpolator = gtp.lac_lat_lon_interpolator
 
-    def _validate_header(self):
+    @classmethod
+    def _validate_header(cls, header):
         """Check if the header belongs to this reader"""
         # call super to enter the Method Resolution Order (MRO)
-        super(LACReader, self)._validate_header()
+        super(LACReader, cls)._validate_header(header)
         LOG.debug("validate header")
-        data_set_name = self.head['data_set_name'].decode()
+        data_set_name = header['data_set_name'].decode()
         # split header into parts
         creation_site, transfer_mode, platform_id = (
             data_set_name.split('.')[:3])
-        if transfer_mode != 'LHRR':
+        if transfer_mode not in ['LHRR', 'HRPT']:
             raise ReaderError('Improper transfer mode "%s"!' % transfer_mode)

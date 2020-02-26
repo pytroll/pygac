@@ -188,10 +188,6 @@ class PODReader(Reader):
 
     tsm_affected_intervals = TSM_AFFECTED_INTERVALS_POD
 
-    # TODO: ask about the complete regex like in klm, would be good if it
-    #       covers the full 44 characters.
-    data_set_pattern = re.compile(r'\w{3}\.\w{4}\.')
-
     def correct_scan_line_numbers(self):
         """Correct the scan line numbers."""
         # Perform common corrections first.
@@ -227,49 +223,20 @@ class PODReader(Reader):
         LOG.info('Reading %s', self.filename)
         # choose the right header depending on the date
         with file_opener(fileobj or filename) as fd_:
-            try:
-                # read tbm_header if present
-                tbm_head, = np.frombuffer(
-                    fd_.read(tbm_header.itemsize),
-                    dtype=tbm_header, count=1)
-                data_set_name = tbm_head['data_set_name'].decode()
-                if (self.data_set_pattern.match(data_set_name)
-                        or (data_set_name == b'\x00' * 42 + b'  ')):
-                    self.tbm_head = tbm_head
-                    tbm_offset = tbm_header.itemsize
-                else:
-                    fd_.seek(0)
-                    self.tbm_head = None
-                    tbm_offset = 0
-                # read header
-                head0, = np.frombuffer(
-                    fd_.read(header0.itemsize),
-                    dtype=header0, count=1)
-                year, jday, _ = self.decode_timestamps(head0["start_time"])
-                start_date = (datetime.date(year, 1, 1) +
-                              datetime.timedelta(days=int(jday) - 1))
-                if start_date < datetime.date(1992, 9, 8):
-                    header = header1
-                elif start_date <= datetime.date(1994, 11, 15):
-                    header = header2
-                else:
-                    header = header3
-                fd_.seek(tbm_offset, 0)
-                # need to copy frombuffer to have write access on head
-                self.head, = np.frombuffer(
-                    fd_.read(header.itemsize),
-                    dtype=header, count=1).copy()
-                self._validate_header()
-                # read scan lines
-                fd_.seek(self.offset + tbm_offset, 0)
-                count = self.head["number_of_scans"]
-                self.scans = np.frombuffer(
-                    fd_.read(count*self.scanline_type.itemsize),
-                    dtype=self.scanline_type,
-                    count=count)
-            except (EOFError, ValueError):
-                raise ReaderError("File has wrong length!")
-
+            self.tbm_head, self.head = self.read_header(
+                filename, fileobj=fd_)
+            if self.tbm_head:
+                tbm_offset = tbm_header.itemsize
+            else:
+                tbm_offset = 0
+            # read scan lines until end of file
+            fd_.seek(self.offset + tbm_offset, 0)
+            buffer = fd_.read()
+            count = self.head["number_of_scans"]
+            self._read_scanlines(buffer, count)
+        year, jday, _ = self.decode_timestamps(self.head["start_time"])
+        start_date = (datetime.date(year, 1, 1) +
+                      datetime.timedelta(days=int(jday) - 1))
         self.correct_scan_line_numbers()
         self.spacecraft_id = self.head["noaa_spacecraft_identification_code"]
         if self.spacecraft_id == 1 and start_date < datetime.date(1982, 1, 1):
@@ -277,15 +244,78 @@ class PODReader(Reader):
         self.spacecraft_name = self.spacecraft_names[self.spacecraft_id]
         LOG.info(
             "Reading %s data", self.spacecrafts_orbital[self.spacecraft_id])
-
         return self.head, self.scans
 
-    def _validate_header(self):
+    @classmethod
+    def read_header(cls, filename, fileobj=None):
+        """Read the file header.
+
+        Args:
+            filename (str): Path to GAC/LAC file
+            fileobj: An open file object to read from. (optional)
+
+        Returns:
+            archive_header (struct): archive header
+            header (struct): file header
+        """
+        # choose the right header depending on the date
+        with file_opener(fileobj or filename) as fd_:
+            # read tbm_header if present
+            _tbm_head, = np.frombuffer(
+                fd_.read(tbm_header.itemsize),
+                dtype=tbm_header, count=1)
+            try:
+                data_set_name = _tbm_head['data_set_name'].decode()
+            except UnicodeDecodeError:
+                data_set_name = '---'
+            if (cls.data_set_pattern.match(data_set_name)
+                    or (data_set_name == 42*b'\x00' + b'  ')):
+                tbm_head = _tbm_head.copy()
+                tbm_offset = tbm_header.itemsize
+            else:
+                fd_.seek(0)
+                tbm_head = None
+                tbm_offset = 0
+            # read header
+            head0, = np.frombuffer(
+                fd_.read(header0.itemsize),
+                dtype=header0, count=1)
+            year, jday, _ = cls.decode_timestamps(head0["start_time"])
+            start_date = (datetime.date(year, 1, 1) +
+                          datetime.timedelta(days=int(jday) - 1))
+            if start_date < datetime.date(1992, 9, 8):
+                header = header1
+            elif start_date <= datetime.date(1994, 11, 15):
+                header = header2
+            else:
+                header = header3
+            fd_.seek(tbm_offset, 0)
+            # need to copy frombuffer to have write access on head
+            head, = np.frombuffer(
+                fd_.read(header.itemsize),
+                dtype=header, count=1).copy()
+        # replace empty data_set_name, e.g. TIROS-N data
+        if not head['data_set_name']:
+            match = cls.data_set_pattern.search(filename)
+            if match:
+                data_set_name = match.group()
+                LOG.info("Empty data_set_name, extract from filename %s"
+                         % data_set_name)
+            else:
+                LOG.debug("header['data_set_name']=%s; filename='%s'"
+                          % (head['data_set_name'], filename))
+                raise ReaderError('Cannot determine data_set_name!')
+            head['data_set_name'] = data_set_name.encode()
+        cls._validate_header(head)
+        return tbm_head, head
+
+    @classmethod
+    def _validate_header(cls, header):
         """Check if the header belongs to this reader"""
         # call super to enter the Method Resolution Order (MRO)
-        super(PODReader, self)._validate_header()
+        super(PODReader, cls)._validate_header(header)
         LOG.debug("validate header")
-        data_set_name = self.head['data_set_name'].decode()
+        data_set_name = header['data_set_name'].decode()
         # split header into parts
         creation_site, transfer_mode, platform_id = (
             data_set_name.split('.')[:3])
