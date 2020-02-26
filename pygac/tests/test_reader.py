@@ -48,6 +48,7 @@ class TestGacReader(unittest.TestCase):
         if sys.version_info.major < 3:
             self.assertRaisesRegex = self.assertRaisesRegexp
             self.assertWarnsRegex = self.assertRaisesRegexp
+
     def test_filename(self):
         """Test the setter of the filename property."""
         # test path with .gz extension
