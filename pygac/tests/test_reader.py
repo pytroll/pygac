@@ -22,6 +22,7 @@
 
 import datetime
 import unittest
+import sys
 try:
     import mock
 except ImportError:
@@ -43,6 +44,9 @@ class TestGacReader(unittest.TestCase):
         """Set up the tests."""
         self.interpolator = interpolator
         self.reader = GACReader()
+        # python 2 compatibility
+        if sys.version_info.major < 3:
+            self.assertRaisesRegex = self.assertRaisesRegexp
 
     def test_filename(self):
         """Test the setter of the filename property."""
