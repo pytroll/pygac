@@ -36,7 +36,6 @@ http://www.ncdc.noaa.gov/oa/pod-guide/ncdc/docs/podug/html/c3/sec3-1.htm
 
 import datetime
 import logging
-import re
 
 import numpy as np
 
