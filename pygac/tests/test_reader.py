@@ -60,12 +60,12 @@ class TestGacReader(unittest.TestCase):
         """Test the header validation."""
         # wrong name pattern
         with self.assertRaisesRegex(ReaderError,
-                'Data set name .* does not match!'):
+                                    'Data set name .* does not match!'):
             head = {'data_set_name': b'abc.txt'}
             self.reader._validate_header(head)
         # Unicode error
         with self.assertRaisesRegex(ReaderError,
-                'Not able to decode the data set name!'):
+                                    'Not able to decode the data set name!'):
             head = {'data_set_name': b'\xea\xf8'}
             self.reader._validate_header(head)
 
