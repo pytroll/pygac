@@ -23,6 +23,7 @@
 import datetime
 import unittest
 import sys
+import warnings
 try:
     import mock
 except ImportError:
@@ -48,6 +49,7 @@ class TestGacReader(unittest.TestCase):
         if sys.version_info.major < 3:
             self.assertRaisesRegex = self.assertRaisesRegexp
             self.assertWarnsRegex = self.assertRaisesRegexp
+            warnings.filterwarnings('error')
 
     def test_filename(self):
         """Test the setter of the filename property."""
