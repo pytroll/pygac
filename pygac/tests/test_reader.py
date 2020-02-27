@@ -49,7 +49,6 @@ class TestGacReader(unittest.TestCase):
         if sys.version_info.major < 3:
             self.assertRaisesRegex = self.assertRaisesRegexp
             self.assertWarnsRegex = self.assertRaisesRegexp
-            warnings.filterwarnings('error')
 
     def test_filename(self):
         """Test the setter of the filename property."""
@@ -61,6 +60,8 @@ class TestGacReader(unittest.TestCase):
 
     def test__read_scanlines(self):
         """Test the scanline extraction"""
+        if sys.version_info.major < 3:
+            warnings.filterwarnings('error')
         self.reader.scanline_type = np.dtype([
             ('a', 'S2'), ('b', 'i4')])
         # request more scan lines than available
@@ -75,6 +76,8 @@ class TestGacReader(unittest.TestCase):
         first_line = self.reader.scans[0]
         self.assertEqual(first_line['a'], b'a')
         self.assertEqual(first_line['b'], 1)
+        if sys.version_info.major < 3:
+            warnings.filterwarnings('default')
 
     def test__validate_header(self):
         """Test the header validation."""
