@@ -125,8 +125,8 @@ if __name__ == "__main__":
     validate_args(args)
     if args.config:
         os.environ['PYGAC_CONFIG_FILE'] = args.config
-    from pygac.l1c_processor import l1c_processor
-    processor = logged_trial(l1c_processor)
+    from pygac.runner import process_file
+    processor = logged_trial(process_file)
     path = args.path
     start_line = args.start_line
     end_line = args.end_line
@@ -138,7 +138,7 @@ if __name__ == "__main__":
         else:
             filename = path
             # Raise exceptions in case of a single file.
-            l1c_processor(filename, start_line, end_line)
+            process_file(filename, start_line, end_line)
     elif os.path.isdir(path):
         logger.info('Open directory "%s"' % str(path))
         for basename in os.listdir(path):

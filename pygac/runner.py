@@ -19,7 +19,13 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-"""The l1c files processor."""
+"""Processing utilities for GAC/LAC KLM/POD files.
+
+Functions:
+    process_file: allows to process a given input file
+    get_reader_class: allows to select the appropriate reader 
+                      class for a given file.
+"""
 
 import datetime
 import logging
@@ -57,9 +63,11 @@ def get_reader_class(filename, fileobj=None):
     return Reader
 
 
-def l1c_processor(filename, start_line, end_line, fileobj=None):
-    """Level 1c file processor.
-    It reads, calibrates and navigates NOAA AVHRR GAC/LAC POD/KLM data.
+def process_file(filename, start_line, end_line, fileobj=None):
+    """Read, calibrate and navigate NOAA AVHRR GAC/LAC POD/KLM data.
+    It creates three hdf5 files in the output location given by the pygac
+    config file. The three files contain the avhrr data, quality flags,
+    and sunsatangles.
 
        Args:
             filename (str): Path to GAC/LAC file
