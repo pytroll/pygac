@@ -23,7 +23,7 @@
 
 Functions:
     process_file: allows to process a given input file
-    get_reader_class: allows to select the appropriate reader 
+    get_reader_class: allows to select the appropriate reader
                       class for a given file.
 """
 
