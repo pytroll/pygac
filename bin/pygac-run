@@ -33,11 +33,15 @@ import tarfile
 from datetime import datetime
 from functools import wraps
 
-logger = logging.getLogger("pygac")
-logger.setLevel(logging.DEBUG)
-ch = logging.StreamHandler()
-ch.setLevel(logging.DEBUG)
+import pygac
+from pygac.runner import process_file
 
+logger = logging.getLogger("pygac")
+
+verbosity2loglevel = {
+    1: logging.INFO,
+    2: logging.DEBUG
+}
 
 class MyFormatter(logging.Formatter):
     converter = datetime.fromtimestamp
@@ -50,11 +54,6 @@ class MyFormatter(logging.Formatter):
             t = ct.strftime("%Y-%m-%d %H:%M:%S")
             s = "%s.%03d" % (t, record.msecs)
         return s
-
-
-formatter = MyFormatter('[ %(levelname)s %(name)s %(asctime)s] %(message)s')
-ch.setFormatter(formatter)
-logger.addHandler(ch)
 
 
 def str2scanline(string):
@@ -81,6 +80,17 @@ def validate_args(args):
         raise FileNotFoundError(
             'The provided config file "%s" does not exist!'
             % args.config)
+    if args.verbose > 0:
+        # redirect the log messages to the standart output
+        ch = logging.StreamHandler()
+        formatter = MyFormatter(
+            '[ %(levelname)s %(name)s %(asctime)s] %(message)s')
+        ch.setFormatter(formatter)
+        logger.addHandler(ch)
+        # set the log-level depending on user verbosity
+        verbosity = min(len(verbosity2loglevel), args.verbose)
+        logger.setLevel(verbosity2loglevel[verbosity])
+
 
 def tarfile_walker(path):
     """Yield all files from a tar archive.
@@ -98,14 +108,16 @@ def tarfile_walker(path):
                 fileobj = archive.extractfile(filename)
                 yield filename, fileobj
 
-def logged_trial(processor):
+def logged_trial(processor, debug=False):
     """Decorator to logs exceptions during processing."""
     @wraps(processor)
     def wrapper(filename, *args, **kwargs):
         try:
             processor(filename, *args, **kwargs)
-        except Exception:
-            logger.exception('Could not porcess "%s"' % str(filename))
+        except Exception as exception:
+            logger.exception('Could not process "%s"' % str(filename))
+            if debug:
+                raise exception
     return wrapper
 
 
@@ -121,12 +133,19 @@ if __name__ == "__main__":
                              'set to 0 for the last available scanline)')
     parser.add_argument('-c', '--config', type=str,
                         help='pygac config file to be used')
+    parser.add_argument('--verbose', '-v', action='count', default=0,
+                        help='Explain what is being done, frequent occurrence'
+                             ' increases details')
+    parser.add_argument('--debug', action='store_true',
+                        help="If given, stop on the first exception, otherwise"
+                        " log exception and continue with next file")
+    parser.add_argument('--version', action='version',
+                        version='pygac %s' % pygac.__version__)
     args = parser.parse_args()
     validate_args(args)
     if args.config:
-        os.environ['PYGAC_CONFIG_FILE'] = args.config
-    from pygac.runner import process_file
-    processor = logged_trial(process_file)
+        pygac.set_config_file(args.config)
+    processor = logged_trial(process_file, debug=args.debug)
     path = args.path
     start_line = args.start_line
     end_line = args.end_line

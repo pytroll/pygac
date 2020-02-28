@@ -23,20 +23,50 @@
 import logging
 import os
 import numpy as np
+try:
+    import ConfigParser
+except ImportError:
+    import configparser as ConfigParser
 
 from pygac.version import __version__  # noqa
 
 LOG = logging.getLogger(__name__)
-try:
-    CONFIG_FILE = os.environ['PYGAC_CONFIG_FILE']
-except KeyError:
-    LOG.error('Environment variable PYGAC_CONFIG_FILE not set!')
-    CONFIG_FILE = ''
 
-if not os.path.exists(CONFIG_FILE) or not os.path.isfile(CONFIG_FILE):
-    LOG.warning(
-        str(CONFIG_FILE) + " pointed to by the environment "
-        + "variable PYGAC_CONFIG_FILE is not a file or does not exist!")
+_CONFIG_FILE = ''
+
+
+def get_config_file():
+    """Return the config file path."""
+    global _CONFIG_FILE
+    if not _CONFIG_FILE:
+        try:
+            LOG.info('Config file was not explicitly set. Use'
+                      ' environment variable "PYGAC_CONFIG_FILE"')
+            _CONFIG_FILE = os.environ["PYGAC_CONFIG_FILE"]
+        except KeyError:
+            LOG.error('Environment variable PYGAC_CONFIG_FILE not set!')
+    if not os.path.isfile(_CONFIG_FILE):
+        raise FileNotFoundError('Given config path "%s" is not a file!'
+                                % _CONFIG_FILE)
+    return _CONFIG_FILE
+
+
+def set_config_file(path):
+    """Set the module config file."""
+    global _CONFIG_FILE
+    _CONFIG_FILE = str(path)
+
+
+def get_config():
+    """Retrun the module configuration."""
+    config_file = get_config_file()
+    config = ConfigParser.ConfigParser()
+    try:
+        config.read(config_file)
+    except ConfigParser.NoSectionError as exception:
+        LOG.error('Failed reading configuration file: "%s"' % config_file)
+        raise exception
+    return config
 
 
 def get_absolute_azimuth_angle_diff(sat_azi, sun_azi):

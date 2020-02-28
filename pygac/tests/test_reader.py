@@ -306,12 +306,14 @@ class TestGacReader(unittest.TestCase):
         np.testing.assert_allclose(sun_zenith, expected_sun_zenith, atol=0.01)
         np.testing.assert_allclose(rel_azi, expected_rel_azi, atol=0.01)
 
-    @mock.patch('pygac.reader.ConfigParser.ConfigParser.read')
-    @mock.patch('pygac.reader.ConfigParser.ConfigParser.items')
-    def test_get_tle_file(self, items, *mocks):
+    @mock.patch('pygac.reader.get_config')
+    def test_get_tle_file(self, get_config):
         """Test get_tle_file."""
         # Use TLE name/dir from config file
-        items.return_value = [('tledir', 'a'), ('tlename', 'b')]
+        class MockConfigParser(object):
+            def items(self, *args, **kwargs):
+                return [('tledir', 'a'), ('tlename', 'b')]
+        get_config.return_value = MockConfigParser()
         tle_file = self.reader.get_tle_file()
         self.assertEqual(tle_file, 'a/b')
 

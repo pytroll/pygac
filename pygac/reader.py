@@ -35,13 +35,9 @@ import six
 import types
 import warnings
 
-from pygac import (CONFIG_FILE, centered_modulus,
+from pygac import (get_config, centered_modulus,
                    calculate_sun_earth_distance_correction,
                    get_absolute_azimuth_angle_diff)
-try:
-    import ConfigParser
-except ImportError:
-    import configparser as ConfigParser
 
 from pyorbital.orbital import Orbital
 from pyorbital import astronomy
@@ -221,6 +217,8 @@ class Reader(six.with_metaclass(ABCMeta)):
             buffer (bytes, bytearray): buffer to read from
             count (int): number of expected scanlines
         """
+        # Calculate the actual number of complete scanlines. The integer divisoin
+        # may strip a potentially incomplete line at the end of the file.
         line_count = len(buffer) // self.scanline_type.itemsize
         if line_count < count:
             LOG.warning(
@@ -640,14 +638,7 @@ class Reader(six.with_metaclass(ABCMeta)):
 
         # If user didn't specify TLE dir/name, try config file
         if tle_dir is None or tle_name is None:
-            conf = ConfigParser.ConfigParser()
-            try:
-                conf.read(CONFIG_FILE)
-            except ConfigParser.NoSectionError:
-                LOG.exception('Failed reading configuration file: %s',
-                              str(CONFIG_FILE))
-                raise
-
+            conf = get_config()
             options = {}
             for option, value in conf.items('tle', raw=True):
                 options[option] = value
