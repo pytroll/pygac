@@ -81,7 +81,8 @@ def process_file(filename, start_line, end_line, fileobj=None):
     # Keep the file open while searching for the reader class and later
     # creation of the instance.
     with file_opener(fileobj or filename) as open_file:
-        Reader = get_reader_class(filename, fileobj=open_file)
-        reader = Reader.fromfile(filename, fileobj=open_file)
+        reader_cls = get_reader_class(filename, fileobj=open_file)
+        reader = reader_cls()
+        reader.read(filename, fileobj=fileobj)
         reader.save(start_line, end_line)
     LOG.info("Processing took: %s", str(datetime.datetime.now() - tic))
