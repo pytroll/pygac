@@ -58,7 +58,7 @@ class TestGacReader(unittest.TestCase):
 
     @unittest.skipIf(sys.version_info.major < 3, "Skipped in python2!")
     def test__read_scanlines(self):
-        """Test the scanline extraction"""
+        """Test the scanline extraction."""
         self.reader.scanline_type = np.dtype([
             ('a', 'S2'), ('b', 'i4')])
         # request more scan lines than available
@@ -86,6 +86,15 @@ class TestGacReader(unittest.TestCase):
                                     'Not able to decode the data set name!'):
             head = {'data_set_name': b'\xea\xf8'}
             self.reader._validate_header(head)
+
+    @mock.patch('pygac.reader.Reader.get_calibrated_channels')
+    def test__get_calibrated_channels_uniform_shape(self, get_channels):
+        """Test the uniform shape as required by gac_io.save_gac."""
+        # check if it raises the assertion error
+        channels = np.arange(2*2*5, dtype=float).reshape((2,2,5))
+        get_channels.return_value = channels
+        with self.assertRaises(AssertionError):
+            self.reader._get_calibrated_channels_uniform_shape()
 
     def test_to_datetime64(self):
         """Test conversion from (year, jday, msec) to datetime64."""
