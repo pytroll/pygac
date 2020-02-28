@@ -91,7 +91,7 @@ class TestGacReader(unittest.TestCase):
     def test__get_calibrated_channels_uniform_shape(self, get_channels):
         """Test the uniform shape as required by gac_io.save_gac."""
         # check if it raises the assertion error
-        channels = np.arange(2*2*5, dtype=float).reshape((2,2,5))
+        channels = np.arange(2*2*5, dtype=float).reshape((2, 2, 5))
         get_channels.return_value = channels
         with self.assertRaises(AssertionError):
             self.reader._get_calibrated_channels_uniform_shape()

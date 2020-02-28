@@ -41,7 +41,7 @@ def get_config_file():
     if not _CONFIG_FILE:
         try:
             LOG.info('Config file was not explicitly set. Use'
-                      ' environment variable "PYGAC_CONFIG_FILE"')
+                     ' environment variable "PYGAC_CONFIG_FILE"')
             _CONFIG_FILE = os.environ["PYGAC_CONFIG_FILE"]
         except KeyError:
             LOG.error('Environment variable PYGAC_CONFIG_FILE not set!')

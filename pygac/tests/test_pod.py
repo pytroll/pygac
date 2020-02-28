@@ -77,11 +77,11 @@ class TestPOD(unittest.TestCase):
     @mock.patch('pygac.reader.Reader.get_calibrated_channels')
     def test__get_calibrated_channels_uniform_shape(self, get_channels):
         """Test the uniform shape as required by gac_io.save_gac."""
-        channels = np.arange(2*2*5, dtype=float).reshape((2,2,5))
+        channels = np.arange(2*2*5, dtype=float).reshape((2, 2, 5))
         get_channels.return_value = channels
         uniform_channels = self.reader._get_calibrated_channels_uniform_shape()
-        self.assertTrue(np.isnan(uniform_channels[:,:,2]).all())
-        self.assertTrue(uniform_channels[:,:,[0,1,3,4,5]].sum()
+        self.assertTrue(np.isnan(uniform_channels[:, :, 2]).all())
+        self.assertTrue(uniform_channels[:, :, [0, 1, 3, 4, 5]].sum()
                         == channels.sum())
 
     def test_decode_timestamps(self):
