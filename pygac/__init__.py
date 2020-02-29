@@ -22,6 +22,7 @@
 
 import logging
 import os
+import sys
 import numpy as np
 try:
     import ConfigParser
@@ -29,6 +30,10 @@ except ImportError:
     import configparser as ConfigParser
 
 from pygac.version import __version__  # noqa
+
+if sys.version_info.major < 3:
+    class FileNotFoundError(OSError):
+        pass
 
 LOG = logging.getLogger(__name__)
 
@@ -63,9 +68,9 @@ def get_config():
     config = ConfigParser.ConfigParser()
     try:
         config.read(config_file)
-    except ConfigParser.NoSectionError as exception:
+    except ConfigParser.NoSectionError:
         LOG.error('Failed reading configuration file: "%s"' % config_file)
-        raise exception
+        raise
     return config
 
 

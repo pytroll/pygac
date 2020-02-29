@@ -29,12 +29,17 @@
 import argparse
 import logging
 import os
+import sys
 import tarfile
 from datetime import datetime
 from functools import wraps
 
 import pygac
 from pygac.runner import process_file
+
+if sys.version_info.major < 3:
+    class FileNotFoundError(OSError):
+        pass
 
 logger = logging.getLogger("pygac")
 
@@ -114,10 +119,10 @@ def logged_trial(processor, debug=False):
     def wrapper(filename, *args, **kwargs):
         try:
             processor(filename, *args, **kwargs)
-        except Exception as exception:
+        except Exception:
             logger.exception('Could not process "%s"' % str(filename))
             if debug:
-                raise exception
+                raise
     return wrapper
 
 
