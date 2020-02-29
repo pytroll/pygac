@@ -79,29 +79,35 @@ def _file_opener(file):
 
 
 @contextmanager
-def _file_opener_py2(filepath):
+def _file_opener_py2(file):
     """Open a file depending on the input.
 
     Args:
         file - path to file
     """
-    if is_file_object(filepath):
-        raise ValueError("Cannot open file objects in python2!")
+    close = True
     # check if it is a gzip file
     try:
-        file_object = gzip.open(filepath)
+        file_object = gzip.open(file)
         file_object.read(1)
     # Note: in python 2, this is an IOError, but we keep the
     #       OSError for testing.
     except (OSError, IOError):
-        file_object = open(filepath, mode='rb')
+        file_object = open(file, mode='rb')
+    except TypeError:
+        # In python 2 gzip.open cannot handle file objects
+        LOG.debug("Gzip cannot open file objects in python2!")
+        if is_file_object(file):
+            file_object = file
+            close = False
     finally:
         file_object.seek(0)
     # provide file_object with the context
     try:
         yield file_object
     finally:
-        file_object.close()
+        if close:
+            file_object.close()
 
 
 if sys.version_info.major < 3:
