@@ -33,7 +33,7 @@ import time
 import h5py
 import numpy as np
 
-from pygac import get_config
+from pygac.configuration import get_config
 from pygac.utils import slice_channel, strip_invalid_lat, check_user_scanlines
 
 LOG = logging.getLogger(__name__)
@@ -46,12 +46,8 @@ MISSING_DATA_LATLON = -999999
 def read_config():
     """Read output dir etc from config file."""
     conf = get_config()
-    options = {}
-    for option, value in conf.items('output', raw=True):
-        options[option] = value
-
-    OUTDIR = options['output_dir']
-    OUTPUT_FILE_PREFIX = options['output_file_prefix']
+    OUTDIR = conf.get('output', 'output_dir', raw=True)
+    OUTPUT_FILE_PREFIX = conf.get('output', 'output_file_prefix', raw=True)
 
     SUNSATANGLES_DIR = os.environ.get('SM_SUNSATANGLES_DIR', OUTDIR)
     AVHRR_DIR = os.environ.get('SM_AVHRR_DIR', OUTDIR)

@@ -320,11 +320,14 @@ class TestGacReader(unittest.TestCase):
         """Test get_tle_file."""
         # Use TLE name/dir from config file
         class MockConfigParser(object):
-            def items(self, *args, **kwargs):
-                return [('tledir', 'a'), ('tlename', 'b')]
+            def get(self, section, option, **kwargs):
+                if option == 'tledir':
+                    return 'path/to/TLEs'
+                elif option == 'tlename':
+                    return 'tle_file.txt'
         get_config.return_value = MockConfigParser()
         tle_file = self.reader.get_tle_file()
-        self.assertEqual(tle_file, 'a/b')
+        self.assertEqual(tle_file, 'path/to/TLEs/tle_file.txt')
 
         # Use TLE name/dir from reader instanciation
         self.reader.tle_dir = '/tle/dir'

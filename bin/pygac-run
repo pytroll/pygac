@@ -35,7 +35,6 @@ from datetime import datetime
 from functools import wraps
 
 import pygac
-from pygac.runner import process_file
 
 if sys.version_info.major < 3:
     class FileNotFoundError(OSError):
@@ -138,7 +137,7 @@ if __name__ == "__main__":
                              'set to 0 for the last available scanline)')
     parser.add_argument('-c', '--config', type=str,
                         help='pygac config file to be used')
-    parser.add_argument('--verbose', '-v', action='count', default=0,
+    parser.add_argument('-v', '--verbose', action='count', default=0,
                         help='Explain what is being done, frequent occurrence'
                              ' increases details')
     parser.add_argument('--debug', action='store_true',
@@ -149,8 +148,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
     validate_args(args)
     if args.config:
-        pygac.set_config_file(args.config)
-    processor = logged_trial(process_file, debug=args.debug)
+        pygac.read_config_file(args.config)
+    processor = logged_trial(pygac.process_file, debug=args.debug)
     path = args.path
     start_line = args.start_line
     end_line = args.end_line
@@ -162,7 +161,7 @@ if __name__ == "__main__":
         else:
             filename = path
             # Raise exceptions in case of a single file.
-            process_file(filename, start_line, end_line)
+            pygac.process_file(filename, start_line, end_line)
     elif os.path.isdir(path):
         logger.info('Open directory "%s"' % str(path))
         for basename in os.listdir(path):

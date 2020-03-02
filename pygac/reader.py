@@ -35,7 +35,7 @@ import six
 import types
 import warnings
 
-from pygac import get_config
+from pygac.configuration import get_config
 from pygac.utils import (centered_modulus,
                          calculate_sun_earth_distance_correction,
                          get_absolute_azimuth_angle_diff)
@@ -639,12 +639,8 @@ class Reader(six.with_metaclass(ABCMeta)):
         # If user didn't specify TLE dir/name, try config file
         if tle_dir is None or tle_name is None:
             conf = get_config()
-            options = {}
-            for option, value in conf.items('tle', raw=True):
-                options[option] = value
-
-            tle_dir = options['tledir']
-            tle_name = options['tlename']
+            tle_dir = conf.get('tle', 'tledir', raw=True)
+            tle_name = conf.get('tle', 'tlename', raw=True)
 
         values = {"satname": self.spacecraft_name, }
         tle_filename = os.path.join(tle_dir, tle_name % values)
