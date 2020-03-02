@@ -72,34 +72,3 @@ def get_config():
         LOG.error('Failed reading configuration file: "%s"' % config_file)
         raise
     return config
-
-
-def get_absolute_azimuth_angle_diff(sat_azi, sun_azi):
-    """Calculates absolute azimuth difference angle. """
-    rel_azi = abs(sat_azi - sun_azi)
-    rel_azi = rel_azi % 360
-    # Not using np.where to avoid copying array
-    rel_azi[rel_azi > 180] = 360.0 - rel_azi[rel_azi > 180]
-    return rel_azi
-
-
-def centered_modulus(array, divisor):
-    """Transform array to half open range ]-divisor/2, divisor/2]."""
-    arr = array % divisor
-    arr[arr > divisor / 2] -= divisor
-    return arr
-
-
-def calculate_sun_earth_distance_correction(jday):
-    """Calculate the sun earth distance correction.
-
-    In 2008 3-4 different equations of ESD were considered.
-    This one was chosen as it at the time gave reflectances most closely
-    matching the PATMOS-x data provided then by Andy Heidinger.
-
-    Formula might need to be reconsidered if jday is updated to a float.
-
-    """
-    # Earth-Sun distance correction factor
-    corr = 1.0 - 0.0334 * np.cos(2.0 * np.pi * (jday - 2) / 365.25)
-    return corr

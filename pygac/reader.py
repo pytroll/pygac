@@ -35,10 +35,10 @@ import six
 import types
 import warnings
 
-from pygac import (get_config, centered_modulus,
-                   calculate_sun_earth_distance_correction,
-                   get_absolute_azimuth_angle_diff)
-
+from pygac import get_config
+from pygac.utils import (centered_modulus,
+                         calculate_sun_earth_distance_correction,
+                         get_absolute_azimuth_angle_diff)
 from pyorbital.orbital import Orbital
 from pyorbital import astronomy
 from pygac.calibration import calibrate_solar, calibrate_thermal

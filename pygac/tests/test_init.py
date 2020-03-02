@@ -26,16 +26,10 @@ import unittest
 
 import numpy as np
 
-from pygac import calculate_sun_earth_distance_correction
-
 
 class TestInit(unittest.TestCase):
     """Test function for the angle calculation."""
-
-    def test_calculate_sun_earth_distance_correction(self):
-        """Test function for the sun distance corretction."""
-        corr = calculate_sun_earth_distance_correction(3)
-        np.testing.assert_almost_equal(corr, 0.96660494, decimal=7)
+    pass
 
 
 def suite():

@@ -27,8 +27,8 @@ import unittest
 
 import numpy as np
 
-from pygac import (get_absolute_azimuth_angle_diff,
-                   centered_modulus)
+from pygac.utils import (get_absolute_azimuth_angle_diff,
+                         centered_modulus)
 
 
 class TestAngles(unittest.TestCase):

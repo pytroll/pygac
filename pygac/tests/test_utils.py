@@ -27,12 +27,14 @@ import unittest
 import io
 import gzip
 import sys
+import numpy as np
 try:
     from unittest import mock
 except ImportError:
     import mock
 
-from pygac.utils import is_file_object, file_opener
+from pygac.utils import (is_file_object, file_opener,
+                         calculate_sun_earth_distance_correction)
 
 
 def _raise_OSError(*args, **kwargs):
@@ -95,6 +97,11 @@ class TestUtils(unittest.TestCase):
             with file_opener(f) as g:
                 message = g.read()
         self.assertEqual(message, gzip_message_decoded)
+
+    def test_calculate_sun_earth_distance_correction(self):
+        """Test function for the sun distance corretction."""
+        corr = calculate_sun_earth_distance_correction(3)
+        np.testing.assert_almost_equal(corr, 0.96660494, decimal=7)
 
 
 def suite():
