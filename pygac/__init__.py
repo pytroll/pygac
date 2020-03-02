@@ -21,5 +21,5 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from pygac.version import __version__  # noqa
-from pygac.configuration import get_config, read_config_file
-from pygac.runner import get_reader_class, process_file
+from pygac.configuration import get_config, read_config_file  # noqa
+from pygac.runner import get_reader_class, process_file  # noqa
