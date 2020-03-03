@@ -170,6 +170,30 @@ class Reader(six.with_metaclass(ABCMeta)):
         raise NotImplementedError
 
     @classmethod
+    def _correct_data_set_name(cls, header, filename):
+        """Replace invalid data_set_name from header with filename
+
+        Args:
+            header (struct): file header
+            filename (str): path to file
+        """
+        data_set_name = header['data_set_name'].decode(errors='ignore')
+        if not cls.data_set_pattern.match(data_set_name):
+            LOG.debug('The data_set_name in header %s does not match.'
+                      ' Use filename instead.' % header['data_set_name'])
+            match = cls.data_set_pattern.search(filename)
+            if match:
+                data_set_name = match.group()
+                LOG.debug("Set data_set_name, to filename %s"
+                         % data_set_name)
+                header['data_set_name'] = data_set_name.encode()
+            else:
+                LOG.debug("header['data_set_name']=%s; filename='%s'"
+                          % (header['data_set_name'], filename))
+                raise ReaderError('Cannot determine data_set_name!')
+        return header
+
+    @classmethod
     def _validate_header(cls, header):
         """Check if the header belongs to this reader
 
@@ -202,13 +226,10 @@ class Reader(six.with_metaclass(ABCMeta)):
         # second use case “diamond diagrams”.
         # Check if the data set name matches the pattern
         LOG.debug("validate header")
-        try:
-            data_set_name = header['data_set_name'].decode()
-        except UnicodeDecodeError:
-            raise ReaderError('Not able to decode the data set name!')
+        data_set_name = header['data_set_name'].decode(errors='ignore')
         if not cls.data_set_pattern.match(data_set_name):
-            raise ReaderError(
-                'Data set name "%s" does not match!' % data_set_name)
+            raise ReaderError('Data set name %s does not match!'
+                              % header['data_set_name'])
 
     def _read_scanlines(self, buffer, count):
         """Read the scanlines from the given buffer

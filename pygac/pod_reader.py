@@ -293,18 +293,7 @@ class PODReader(Reader):
             head, = np.frombuffer(
                 fd_.read(header.itemsize),
                 dtype=header, count=1).copy()
-        # replace empty data_set_name, e.g. TIROS-N data
-        if not head['data_set_name']:
-            match = cls.data_set_pattern.search(filename)
-            if match:
-                data_set_name = match.group()
-                LOG.info("Empty data_set_name, extract from filename %s"
-                         % data_set_name)
-            else:
-                LOG.debug("header['data_set_name']=%s; filename='%s'"
-                          % (head['data_set_name'], filename))
-                raise ReaderError('Cannot determine data_set_name!')
-            head['data_set_name'] = data_set_name.encode()
+        head = cls._correct_data_set_name(head, filename)
         cls._validate_header(head)
         return tbm_head, head
 
