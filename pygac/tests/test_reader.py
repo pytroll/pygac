@@ -81,11 +81,34 @@ class TestGacReader(unittest.TestCase):
                                     'Data set name .* does not match!'):
             head = {'data_set_name': b'abc.txt'}
             self.reader._validate_header(head)
-        # Unicode error
+        # Unicode errors are now caught with the same exception.
         with self.assertRaisesRegex(ReaderError,
-                                    'Not able to decode the data set name!'):
+                                    'Data set name .* does not match!'):
             head = {'data_set_name': b'\xea\xf8'}
             self.reader._validate_header(head)
+
+    def test__correct_data_set_name(self):
+        """Test the data_set_name correction in file header."""
+        val_filename = 'NSS.GHRR.TN.D80001.S0332.E0526.B0627173.WI'
+        val_filepath = 'path/to/' + val_filename
+        val_head = {'data_set_name': b'NSS.GHRR.TN.D80001.S0332.E0526.B0627173.WI'}
+        inv_filename = 'InvalidFileName'
+        inv_filepath = 'path/to/' + inv_filename
+        inv_head = {'data_set_name': b'InvalidDataSetName'}
+        # Note: always pass a copy to _correct_data_set_name, because 
+        #       the input header is modified in place.
+        # enter a valid data_set_name and filepath
+        head = self.reader._correct_data_set_name(val_head.copy(), val_filepath)
+        # enter an invalid data_set_name, but valid filepath
+        head = self.reader._correct_data_set_name(inv_head.copy(), val_filepath)
+        self.assertEqual(head['data_set_name'], val_filename.encode())
+        # enter an invalid data_set_name, and invalid filepath
+        with self.assertRaisesRegex(ReaderError, 'Cannot determine data_set_name!'):
+            head = self.reader._correct_data_set_name(inv_head.copy(), inv_filepath)
+        # enter a valid data_set_name, and an invalid filepath
+        # should be fine, because the data_set_name is the pefered source
+        head = self.reader._correct_data_set_name(val_head.copy(), inv_filepath)
+        self.assertEqual(head['data_set_name'], val_head['data_set_name'])
 
     @mock.patch('pygac.reader.Reader.get_calibrated_channels')
     def test__get_calibrated_channels_uniform_shape(self, get_channels):
