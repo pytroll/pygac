@@ -95,7 +95,7 @@ class TestGacReader(unittest.TestCase):
         inv_filename = 'InvalidFileName'
         inv_filepath = 'path/to/' + inv_filename
         inv_head = {'data_set_name': b'InvalidDataSetName'}
-        # Note: always pass a copy to _correct_data_set_name, because 
+        # Note: always pass a copy to _correct_data_set_name, because
         #       the input header is modified in place.
         # enter a valid data_set_name and filepath
         head = self.reader._correct_data_set_name(val_head.copy(), val_filepath)

@@ -185,7 +185,7 @@ class Reader(six.with_metaclass(ABCMeta)):
             if match:
                 data_set_name = match.group()
                 LOG.debug("Set data_set_name, to filename %s"
-                         % data_set_name)
+                          % data_set_name)
                 header['data_set_name'] = data_set_name.encode()
             else:
                 LOG.debug("header['data_set_name']=%s; filename='%s'"
