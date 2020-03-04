@@ -241,7 +241,7 @@ class Reader(six.with_metaclass(ABCMeta)):
         # Calculate the actual number of complete scanlines. The integer divisoin
         # may strip a potentially incomplete line at the end of the file.
         line_count = len(buffer) // self.scanline_type.itemsize
-        if line_count < count:
+        if line_count != count:
             LOG.warning(
                 "Expected %d scan lines, but found %d!"
                 % (count, line_count))
