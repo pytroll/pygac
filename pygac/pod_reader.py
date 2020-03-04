@@ -267,8 +267,9 @@ class PODReader(Reader):
                 data_set_name = _tbm_head['data_set_name'].decode()
             except UnicodeDecodeError:
                 data_set_name = '---'
+            allowed_empty = (42*b'\x00' + b'  ')
             if (cls.data_set_pattern.match(data_set_name)
-                    or (data_set_name == 42*b'\x00' + b'  ')):
+                    or (_tbm_head['data_set_name'] == allowed_empty)):
                 tbm_head = _tbm_head.copy()
                 tbm_offset = tbm_header.itemsize
             else:
