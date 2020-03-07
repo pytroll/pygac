@@ -107,7 +107,7 @@ class TestUtils(unittest.TestCase):
         self.assertEqual(len(bits_1), 5)
         self.assertEqual(bits_1.shape[1], 16)
         # compare bits
-        self.assertTrue((bits_1[:,1:] == bits_2[:, :-1]).all())
+        self.assertTrue((bits_1[:, 1:] == bits_2[:, :-1]).all())
 
     def test_calculate_sun_earth_distance_correction(self):
         """Test function for the sun distance corretction."""
