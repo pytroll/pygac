@@ -191,6 +191,7 @@ class LACKLMReader(LACReader, KLMReader):
         LACReader.__init__(self, *args, **kwargs)
         self.scanline_type = scanline
         self.offset = 15872
+        self.quality_indicator_label = "quality_indicator_bit_field"
         # packed: 15872
         # self.offset = 22528
         # unpacked: 22528

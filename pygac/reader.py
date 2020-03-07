@@ -36,7 +36,7 @@ import types
 import warnings
 
 from pygac.configuration import get_config
-from pygac.utils import (centered_modulus,
+from pygac.utils import (unpack_bits, centered_modulus,
                          calculate_sun_earth_distance_correction,
                          get_absolute_azimuth_angle_diff)
 from pyorbital.orbital import Orbital
@@ -122,6 +122,7 @@ class Reader(six.with_metaclass(ABCMeta)):
         self.tle_lines = None
         self.filename = None
         self._mask = None
+        self._quality_bits = None
 
     @property
     def filename(self):
@@ -321,6 +322,17 @@ class Reader(six.with_metaclass(ABCMeta)):
             qual_flags, start_line, end_line,
             self.filename, self.meta_data
         )
+
+    def _unpack_quality_bits(self):
+        """Unpack the quality indicators bits.
+
+        Note:
+            The quality indicator label depends on the scanline type.
+        """
+        if self._quality_bits is None:
+            self._quality_bits = unpack_bits(
+                self.scan[self.quality_indicator_label])
+        return self._quality_bits
 
     @abstractmethod
     def get_header_timestamp(self):

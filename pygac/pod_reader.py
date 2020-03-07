@@ -480,24 +480,52 @@ class PODReader(Reader):
         return prt_counts, ict_counts, space_counts
 
     def _get_corrupt_mask(self):
-        """Get mask for corrupt scanlines."""
-        mask = ((self.scans["quality_indicators"] >> 31) |
-                ((self.scans["quality_indicators"] << 4) >> 31) |
-                ((self.scans["quality_indicators"] << 5) >> 31))
-        return mask.astype(bool)
+        """Get mask for corrupt scanlines.
+
+        Note
+            The quality indicator format is listed in
+            https://www1.ncdc.noaa.gov/pub/data/satellite/publications/
+            podguides/TIROS-N%20thru%20N-14/pdf/NCDCPOD3.pdf
+            Table 3.1.2.1-2. Format of quality indicators.
+        """
+        # quality indicator bit position
+        # Note the index numeration is inverted to Table 3.1.2.1-2.
+        # Format of quality indicators, because we skip the big
+        # endian int conversion and directly read the bitstream
+        FATAL_FLAG = 0  # Data should not be used for product generation
+        CALIBRATION = 4  # Insufficient data for calibration
+        NO_EARTH_LOCATION = 5  # Earth location data not available
+        # read quality bits
+        quality_bits = self._unpack_quality_bits()
+        subset = [FATAL_FLAG, CALIBRATION, NO_EARTH_LOCATION]
+        mask = quality_bits[:, subset].any(axis=1)
+        return mask
 
     def get_qual_flags(self):
         """Read quality flags."""
+        # quality indicator bit position
+        # Note the index numeration is inverted to Table 3.1.2.1-2.
+        # Format of quality indicators, because we skip the big
+        # endian int conversion and directly read the bitstream
+        FATAL_FLAG = 0  # Data should not be used for product generation
+        CALIBRATION = 4  # Insufficient data for calibration
+        NO_EARTH_LOCATION = 5  # Earth location data not available
+        # Channle X solar blackbody contamination (SBBC) indicators
+        # 0 = no correction; 1 = solar contamination corrected
+        CH3_SBBC = 13  # Channel 3 solar blackbody contamination indicator
+        CH4_SBBC = 14  # Channel 4 solar blackbody contamination indicator
+        CH5_SBBC = 15  # Channel 5 solar blackbody contamination indicator
+        # read quality bits
+        quality_bits = self._unpack_quality_bits()
         number_of_scans = self.scans["telemetry"].shape[0]
         qual_flags = np.zeros((int(number_of_scans), 7))
         qual_flags[:, 0] = self.scans["scan_line_number"]
-        qual_flags[:, 1] = (self.scans["quality_indicators"] >> 31)
-        qual_flags[:, 2] = ((self.scans["quality_indicators"] << 4) >> 31)
-        qual_flags[:, 3] = ((self.scans["quality_indicators"] << 5) >> 31)
-        qual_flags[:, 4] = ((self.scans["quality_indicators"] << 13) >> 31)
-        qual_flags[:, 5] = ((self.scans["quality_indicators"] << 14) >> 31)
-        qual_flags[:, 6] = ((self.scans["quality_indicators"] << 15) >> 31)
-
+        qual_flags[:, 1] = quality_bits[:, FATAL_FLAG]
+        qual_flags[:, 2] = quality_bits[:, CALIBRATION]
+        qual_flags[:, 3] = quality_bits[:, NO_EARTH_LOCATION]
+        qual_flags[:, 4] = quality_bits[:, CH3_SBBC]
+        qual_flags[:, 5] = quality_bits[:, CH4_SBBC]
+        qual_flags[:, 6] = quality_bits[:, CH5_SBBC]
         return qual_flags
 
     def postproc(self, channels):

@@ -116,6 +116,23 @@ else:
     file_opener = _file_opener
 
 
+def unpack_bits(array):
+    """Unpack bits from an array of arbitrary type.
+
+    Args:
+        array (numpy.ndarray) - incomming data
+
+    Returns:
+        bitstream (numpy.ndarray(dtype=bool)) - data bits
+    """
+    BITS_PER_BYTE = 8
+    # need a contiguous array for memory view
+    data = np.ascontiguousarray(array).view(dtype=np.ubyte)
+    shape = array.shape + (BITS_PER_BYTE*array.itemsize,)
+    bitstream = np.unpackbits(data).reshape(shape)
+    return bitstream.view(dtype=np.bool8)
+
+
 def get_absolute_azimuth_angle_diff(sat_azi, sun_azi):
     """Calculates absolute azimuth difference angle. """
     rel_azi = abs(sat_azi - sun_azi)
