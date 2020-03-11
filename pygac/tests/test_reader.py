@@ -92,10 +92,17 @@ class TestGacReader(unittest.TestCase):
         lats_exp = np.array([1, 2, np.nan, np.nan, np.nan, np.nan])
 
         # Default
+        call_order = mock.Mock()
+        call_order.attach_mock(adjust_clockdrift, 'adjust_clockdrift')
+        call_order.attach_mock(update_meta_data, 'update_meta_data')
+
         lons, lats = self.reader.get_lonlat()
+
+        call_order.assert_has_calls(
+            [mock.call.adjust_clockdrift(),
+             mock.call.update_meta_data()]
+        )  # clock adjusted *before* metadata update?
         get_lonlat.assert_called()
-        update_meta_data.assert_called()
-        adjust_clockdrift.assert_called()
         numpy.testing.assert_array_equal(lons, lons_exp)
         numpy.testing.assert_array_equal(lats, lats_exp)
 

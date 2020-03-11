@@ -411,7 +411,6 @@ class Reader(six.with_metaclass(ABCMeta)):
         """
         if self.lons is None and self.lats is None:
             self.lons, self.lats = self._get_lonlat()
-            self.update_meta_data()
 
             # Interpolate from every eighth pixel to all pixels.
             if self.interpolate_coords:
@@ -421,6 +420,7 @@ class Reader(six.with_metaclass(ABCMeta)):
             # Adjust clock drift
             if self.adjust_clock_drift:
                 self._adjust_clock_drift()
+            self.update_meta_data()
 
             # Mask out corrupt scanlines
             self.lons[self.mask] = np.nan
