@@ -7,6 +7,7 @@
 
 #   Nina Hakansson <nina.hakansson@smhi.se>
 #   Adam Dybbroe <adam.dypbroe@smhi.se>
+#   Carlos Horn <carlos.horn@external.eumetsat.int>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by

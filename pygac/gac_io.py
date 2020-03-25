@@ -9,6 +9,7 @@
 #   Adam Dybbroe <adam.dybbroe@smhi.se>
 #   Sara Hornquist <sara.hornquist@smhi.se>
 #   Martin Raspaud <martin.raspaud@smhi.se>
+#   Carlos Horn <carlos.horn@external.eumetsat.int>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
