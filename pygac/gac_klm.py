@@ -198,7 +198,6 @@ class GACKLMReader(GACReader, KLMReader):
         GACReader.__init__(self, *args, **kwargs)
         self.scanline_type = scanline
         self.offset = 4608
-        self.quality_indicator_label = "quality_indicator_bit_field"
 
 
 def main(filename, start_line, end_line):

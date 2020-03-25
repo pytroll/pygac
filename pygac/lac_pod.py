@@ -63,7 +63,6 @@ class LACPODReader(LACReader, PODReader):
         self.scanline_type = scanline
         self.offset = 14800
         self.scan_points = np.arange(2048)
-        self.quality_indicator_label = "quality_indicators"
 
 
 def main(filename, start_line, end_line):
