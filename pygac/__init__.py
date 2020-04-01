@@ -6,6 +6,7 @@
 # Author(s):
 
 #   Adam.Dybbroe <a000680@c14526.ad.smhi.se>
+#   Carlos Horn <carlos.horn@external.eumetsat.int>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -21,50 +22,11 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import logging
-import os
-import numpy as np
-
 from pygac.version import __version__  # noqa
+from pygac.configuration import get_config, read_config_file  # noqa
+from pygac.runner import get_reader_class, process_file  # noqa
 
-LOG = logging.getLogger(__name__)
-try:
-    CONFIG_FILE = os.environ['PYGAC_CONFIG_FILE']
-except KeyError:
-    LOG.error('Environment variable PYGAC_CONFIG_FILE not set!')
-    CONFIG_FILE = ''
-
-if not os.path.exists(CONFIG_FILE) or not os.path.isfile(CONFIG_FILE):
-    LOG.warning(
-        str(CONFIG_FILE) + " pointed to by the environment "
-        + "variable PYGAC_CONFIG_FILE is not a file or does not exist!")
-
-
-def get_absolute_azimuth_angle_diff(sat_azi, sun_azi):
-    """Calculates absolute azimuth difference angle. """
-    rel_azi = abs(sat_azi - sun_azi)
-    rel_azi = rel_azi % 360
-    # Not using np.where to avoid copying array
-    rel_azi[rel_azi > 180] = 360.0 - rel_azi[rel_azi > 180]
-    return rel_azi
-
-
-def centered_modulus(array, divisor):
-    """Transform array to half open range ]-divisor/2, divisor/2]."""
-    arr = array % divisor
-    arr[arr > divisor / 2] -= divisor
-    return arr
-
-
-def calculate_sun_earth_distance_correction(jday):
-    """Calculate the sun earth distance correction.
-
-    In 2008 3-4 different equations of ESD were considered.
-    This one was chosen as it at the time gave reflectances most closely
-    matching the PATMOS-x data provided then by Andy Heidinger.
-
-    Formula might need to be reconsidered if jday is updated to a float.
-
-    """
-    # Earth-Sun distance correction factor
-    corr = 1.0 - 0.0334 * np.cos(2.0 * np.pi * (jday - 2) / 365.25)
-    return corr
+# add a NullHandler to prevent messages in sys.stderr if the using application does
+# not use logging, but pygac makes logging calls of severity WARNING and greater.
+# See https://docs.python.org/3/howto/logging.html (Configuring Logging for a Library)
+logging.getLogger('pygac').addHandler(logging.NullHandler())

@@ -26,26 +26,23 @@
 Can't be used as is, has to be subclassed to add specific read functions.
 """
 from abc import ABCMeta, abstractmethod, abstractproperty
+import datetime
 import logging
 import numpy as np
 import os
+import re
 import six
 import types
-import gzip
-from contextlib import contextmanager
+import warnings
 
-from pygac import (CONFIG_FILE, centered_modulus,
-                   calculate_sun_earth_distance_correction,
-                   get_absolute_azimuth_angle_diff)
-try:
-    import ConfigParser
-except ImportError:
-    import configparser as ConfigParser
-
+from pygac.configuration import get_config
+from pygac.utils import (centered_modulus,
+                         calculate_sun_earth_distance_correction,
+                         get_absolute_azimuth_angle_diff)
 from pyorbital.orbital import Orbital
 from pyorbital import astronomy
-import datetime
 from pygac.calibration import calibrate_solar, calibrate_thermal
+from pygac import gac_io
 
 LOG = logging.getLogger(__name__)
 
@@ -78,8 +75,17 @@ rpy_coeffs = {
                }}
 
 
+class ReaderError(ValueError):
+    """Raised in Reader.read if the given file does not correspond to it"""
+    pass
+
+
 class Reader(six.with_metaclass(ABCMeta)):
     """Reader for Gac and Lac, POD and KLM data."""
+
+    # data set header format, see _validate_header for more details
+    data_set_pattern = re.compile(
+        r'\w{3}\.\w{4}\.\w{2}.D\d{5}\.S\d{4}\.E\d{4}\.B\d{7}\.\w{2}')
 
     def __init__(self, interpolate_coords=True, adjust_clock_drift=True,
                  tle_dir=None, tle_name=None, tle_thresh=7, creation_site=None):
@@ -95,6 +101,7 @@ class Reader(six.with_metaclass(ABCMeta)):
             tle_thresh: Maximum number of days between observation and nearest
                 TLE
             creation_site: The three-letter identifier of the creation site (eg 'NSS')
+            filename: GAC/LAC filename
 
         """
         self.meta_data = {}
@@ -116,38 +123,204 @@ class Reader(six.with_metaclass(ABCMeta)):
         self.filename = None
         self._mask = None
 
+    @property
+    def filename(self):
+        """Get the property 'filename'."""
+        return self._filename
+
+    @filename.setter
+    def filename(self, filepath):
+        """Set the property 'filename'."""
+        if filepath is None:
+            self._filename = None
+        else:
+            match = self.data_set_pattern.search(filepath)
+            if match:
+                self._filename = match.group()
+            else:
+                self._filename = os.path.basename(filepath)
+
     @abstractmethod
-    def read(self, filename):
+    def read(self, filename, fileobj=None):
         """Read the GAC/LAC data.
 
         Args:
-            filename (str): Specifies the GAC/LAC file to be read.
+            filename (str): Path to GAC/LAC file
+            fileobj: An open file object to read from. (optional)
         """
         raise NotImplementedError
 
-    @contextmanager
-    def _open(self, filename):
-        """Open the GAC/LAC data file and yield the filehandle.
+    @classmethod
+    @abstractmethod
+    def read_header(cls, filename, fileobj=None):
+        """Read the file header.
 
         Args:
-            filename (str): Path to GAC/LAC file to open
+            filename (str): Path to GAC/LAC file
+            fileobj: An open file object to read from. (optional)
+
+        Returns:
+            archive_header (struct): archive header
+            header (struct): file header
 
         Note:
-            This method should be called inside the Reader.read implementation
+            This is a classmethod to avoid throwaway instances while
+            checking if the reader corresponds to the input file.
         """
-        basename = os.path.basename(filename)
-        root, ext = os.path.splitext(basename)
-        if ext == ".gz":
-            self.filename = root
-            file_object = gzip.open(filename, mode='rb')
-        else:
-            self.filename = basename
-            file_object = open(filename, mode='rb')
-        LOG.info('Reading %s', self.filename)
+        raise NotImplementedError
+
+    @classmethod
+    def _correct_data_set_name(cls, header, filename):
+        """Replace invalid data_set_name from header with filename
+
+        Args:
+            header (struct): file header
+            filename (str): path to file
+        """
+        data_set_name = header['data_set_name'].decode(errors='ignore')
+        if not cls.data_set_pattern.match(data_set_name):
+            LOG.debug('The data_set_name in header %s does not match.'
+                      ' Use filename instead.' % header['data_set_name'])
+            match = cls.data_set_pattern.search(filename)
+            if match:
+                data_set_name = match.group()
+                LOG.debug("Set data_set_name, to filename %s"
+                          % data_set_name)
+                header['data_set_name'] = data_set_name.encode()
+            else:
+                LOG.debug("header['data_set_name']=%s; filename='%s'"
+                          % (header['data_set_name'], filename))
+                raise ReaderError('Cannot determine data_set_name!')
+        return header
+
+    @classmethod
+    def _validate_header(cls, header):
+        """Check if the header belongs to this reader
+
+        Note:
+            according to https://www1.ncdc.noaa.gov/pub/data/satellite/
+            publications/podguides/TIROS-N%20thru%20N-14/pdf/NCDCPOD2.pdf
+            and https://www1.ncdc.noaa.gov/pub/data/satellite/
+            publications/podguides/N-15%20thru%20N-19/pdf/
+            2.5%20Section%208.0%20NOAA%20Level%201B%20Database.pdf
+            the data set name splits into
+            PROCESSING-CENTER.DATA-TYPE.SPACECRAFT-UNIQUE-ID.
+            YEAR-DAY.START-TIME.STOP-TIME.PROCESSING-BLOCK-ID.SOURCE
+            This should be sufficient information to determine the
+            reader.
+            Global Area Coverage (GAC):
+                DATA-TYPE = GHRR
+            Local Area Coverage (LAC):
+                DATA-TYPE = LHRR
+            Polar Orbiter Data (POD):
+                SPACECRAFT-UNIQUE-ID in [TN, NA, NB, NC, ND, NE, NF,
+                                         NG, NH, NI, NJ]
+            NOAA-K, -L, -M system, but also newer satellites (KLM):
+                SPACECRAFT-UNIQUE-ID in [NK, NL, NM, NN, NP, M2, M1]
+        """
+        # This method does not need to be implemented in all subclasses.
+        # It is intended for cooperative multiple inheritance, i.e.
+        # each child class which implements this method, should call the
+        # super method to enter into the method resolution order.
+        # See https://docs.python.org/3/library/functions.html#super
+        # second use case “diamond diagrams”.
+        # Check if the data set name matches the pattern
+        LOG.debug("validate header")
+        data_set_name = header['data_set_name'].decode(errors='ignore')
+        if not cls.data_set_pattern.match(data_set_name):
+            raise ReaderError('Data set name %s does not match!'
+                              % header['data_set_name'])
+
+    def _read_scanlines(self, buffer, count):
+        """Read the scanlines from the given buffer
+
+        Args:
+            buffer (bytes, bytearray): buffer to read from
+            count (int): number of expected scanlines
+        """
+        # Calculate the actual number of complete scanlines. The integer divisoin
+        # may strip a potentially incomplete line at the end of the file.
+        line_count = len(buffer) // self.scanline_type.itemsize
+        if line_count != count:
+            LOG.warning(
+                "Expected %d scan lines, but found %d!"
+                % (count, line_count))
+            warnings.warn("Unexpected number of scanlines!",
+                          category=RuntimeWarning)
+        self.scans = np.frombuffer(
+            buffer, dtype=self.scanline_type, count=line_count)
+
+    @classmethod
+    def can_read(cls, filename, fileobj=None):
+        """Read the GAC/LAC data.
+
+        Args:
+            filename (str): Path to GAC/LAC file
+            fileobj: An open file object to read from. (optional)
+
+        Retruns:
+            result (bool): True if the reader can read the input
+        """
+        if fileobj:
+            pos = fileobj.tell()
         try:
-            yield file_object
+            archive_header, header = cls.read_header(
+                filename, fileobj=fileobj)
+            result = True
+        except (ReaderError, ValueError) as exception:
+            LOG.debug("%s failed to read the file! %s"
+                      % (cls.__name__, repr(exception)))
+            result = False
         finally:
-            file_object.close()
+            if fileobj:
+                fileobj.seek(pos)
+        return result
+
+    @classmethod
+    def fromfile(cls, filename, fileobj=None):
+        """Create Reader from file (alternative constructor)
+
+        Args:
+            filename (str): Path to GAC/LAC file
+
+        Kwargs:
+            fileobj (file object): Open file object to read from
+
+        Note:
+            The fileobj is useful when dealing with tar archives,
+            where the filename is given by the tarinfo object, but
+            the extracted file object's property 'name' is set to
+            the filename of the archive.
+        """
+        instance = cls()
+        instance.read(filename, fileobj=fileobj)
+        return instance
+
+    def _get_calibrated_channels_uniform_shape(self):
+        """Prepare the channels as input for gac_io.save_gac"""
+        channels = self.get_calibrated_channels()
+        assert channels.shape[-1] == 6
+        return channels
+
+    def save(self, start_line, end_line):
+        """Convert the Reader instance content into hdf5 files"""
+        self.get_lonlat()
+        channels = self._get_calibrated_channels_uniform_shape()
+        sat_azi, sat_zen, sun_azi, sun_zen, rel_azi = self.get_angles()
+        qual_flags = self.get_qual_flags()
+        if (np.all(self.mask)):
+            print("ERROR: All data is masked out. Stop processing")
+            raise ValueError("All data is masked out.")
+        gac_io.save_gac(
+            self.spacecraft_name,
+            self.utcs, self.lats, self.lons,
+            channels[:, :, 0], channels[:, :, 1],
+            channels[:, :, 2], channels[:, :, 3],
+            channels[:, :, 4], channels[:, :, 5],
+            sun_zen, sat_zen, sun_azi, sat_azi, rel_azi,
+            qual_flags, start_line, end_line,
+            self.filename, self.meta_data
+        )
 
     @abstractmethod
     def get_header_timestamp(self):
@@ -486,20 +659,9 @@ class Reader(six.with_metaclass(ABCMeta)):
 
         # If user didn't specify TLE dir/name, try config file
         if tle_dir is None or tle_name is None:
-            conf = ConfigParser.ConfigParser()
-            try:
-                conf.read(CONFIG_FILE)
-            except ConfigParser.NoSectionError:
-                LOG.exception('Failed reading configuration file: %s',
-                              str(CONFIG_FILE))
-                raise
-
-            options = {}
-            for option, value in conf.items('tle', raw=True):
-                options[option] = value
-
-            tle_dir = options['tledir']
-            tle_name = options['tlename']
+            conf = get_config()
+            tle_dir = conf.get('tle', 'tledir', raw=True)
+            tle_name = conf.get('tle', 'tlename', raw=True)
 
         values = {"satname": self.spacecraft_name, }
         tle_filename = os.path.join(tle_dir, tle_name % values)

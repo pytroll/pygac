@@ -6,6 +6,7 @@
 # Author(s):
 
 #   Martin Raspaud <martin.raspaud@smhi.se>
+#   Carlos Horn <carlos.horn@external.eumetsat.int>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -25,9 +26,13 @@
 Can't be used as is, has to be subclassed to add specific read functions.
 """
 
-from pygac.reader import Reader
+import logging
+
+from pygac.reader import Reader, ReaderError
 import pygac.pygac_geotiepoints as gtp
 
+
+LOG = logging.getLogger(__name__)
 
 class GACReader(Reader):
     """Reader for GAC data."""
@@ -40,3 +45,16 @@ class GACReader(Reader):
         super(GACReader, self).__init__(*args, **kwargs)
         self.scan_width = 409
         self.lonlat_interpolator = gtp.gac_lat_lon_interpolator
+
+    @classmethod
+    def _validate_header(cls, header):
+        """Check if the header belongs to this reader"""
+        # call super to enter the Method Resolution Order (MRO)
+        super(GACReader, cls)._validate_header(header)
+        LOG.debug("validate header")
+        data_set_name = header['data_set_name'].decode()
+        # split header into parts
+        creation_site, transfer_mode, platform_id = (
+            data_set_name.split('.')[:3])
+        if transfer_mode != 'GHRR':
+            raise ReaderError('Improper transfer mode "%s"!' % transfer_mode)

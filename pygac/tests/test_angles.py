@@ -7,6 +7,7 @@
 
 #   Nina Hakansson <nina.hakansson@smhi.se>
 #   Adam Dybbroe <adam.dypbroe@smhi.se>
+#   Carlos Horn <carlos.horn@external.eumetsat.int>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -27,8 +28,8 @@ import unittest
 
 import numpy as np
 
-from pygac import (get_absolute_azimuth_angle_diff,
-                   centered_modulus)
+from pygac.utils import (get_absolute_azimuth_angle_diff,
+                         centered_modulus)
 
 
 class TestAngles(unittest.TestCase):

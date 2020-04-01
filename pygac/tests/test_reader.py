@@ -22,13 +22,14 @@
 
 import datetime
 import unittest
+import sys
 try:
     import mock
 except ImportError:
     from unittest import mock
 import numpy as np
 import numpy.testing
-from pygac.gac_reader import GACReader
+from pygac.gac_reader import GACReader, ReaderError
 
 
 class TestGacReader(unittest.TestCase):
@@ -43,17 +44,80 @@ class TestGacReader(unittest.TestCase):
         """Set up the tests."""
         self.interpolator = interpolator
         self.reader = GACReader()
+        # python 2 compatibility
+        if sys.version_info.major < 3:
+            self.assertRaisesRegex = self.assertRaisesRegexp
 
-    @mock.patch('pygac.reader.open', mock.mock_open(read_data='normal'))
-    @mock.patch('pygac.reader.gzip.open', mock.mock_open(read_data='gzip'))
-    def test__open(self):
-        """Test if proper opener is used."""
-        with self.reader._open("test_file") as f:
-            content_normal = f.read()
-        self.assertEqual(content_normal, 'normal')
-        with self.reader._open("test_file.gz") as f:
-            content_gzip = f.read()
-        self.assertEqual(content_gzip, 'gzip')
+    def test_filename(self):
+        """Test the setter of the filename property."""
+        # test path with .gz extension
+        filename = 'NSS.GHRR.TN.D80001.S0332.E0526.B0627173.WI'
+        filepath = '/path/to/' + filename + '.gz'
+        self.reader.filename = filepath
+        self.assertEqual(self.reader.filename, filename)
+
+    @unittest.skipIf(sys.version_info.major < 3, "Skipped in python2!")
+    def test__read_scanlines(self):
+        """Test the scanline extraction."""
+        self.reader.scanline_type = np.dtype([
+            ('a', 'S2'), ('b', 'i4')])
+        # request more scan lines than available
+        with self.assertWarnsRegex(RuntimeWarning,
+                                   "Unexpected number of scanlines!"):
+            buffer = (b'a\x00\x01\x00\x00\x00'
+                      b'b\x00\x02\x00\x00\x00'
+                      b'c\x00\x03\x00\x00\x00')
+            count = 4
+            self.reader._read_scanlines(buffer, count)
+        # check the output
+        first_line = self.reader.scans[0]
+        self.assertEqual(first_line['a'], b'a')
+        self.assertEqual(first_line['b'], 1)
+
+    def test__validate_header(self):
+        """Test the header validation."""
+        # wrong name pattern
+        with self.assertRaisesRegex(ReaderError,
+                                    'Data set name .* does not match!'):
+            head = {'data_set_name': b'abc.txt'}
+            self.reader._validate_header(head)
+        # Unicode errors are now caught with the same exception.
+        with self.assertRaisesRegex(ReaderError,
+                                    'Data set name .* does not match!'):
+            head = {'data_set_name': b'\xea\xf8'}
+            self.reader._validate_header(head)
+
+    def test__correct_data_set_name(self):
+        """Test the data_set_name correction in file header."""
+        val_filename = 'NSS.GHRR.TN.D80001.S0332.E0526.B0627173.WI'
+        val_filepath = 'path/to/' + val_filename
+        val_head = {'data_set_name': b'NSS.GHRR.TN.D80001.S0332.E0526.B0627173.WI'}
+        inv_filename = 'InvalidFileName'
+        inv_filepath = 'path/to/' + inv_filename
+        inv_head = {'data_set_name': b'InvalidDataSetName'}
+        # Note: always pass a copy to _correct_data_set_name, because
+        #       the input header is modified in place.
+        # enter a valid data_set_name and filepath
+        head = self.reader._correct_data_set_name(val_head.copy(), val_filepath)
+        # enter an invalid data_set_name, but valid filepath
+        head = self.reader._correct_data_set_name(inv_head.copy(), val_filepath)
+        self.assertEqual(head['data_set_name'], val_filename.encode())
+        # enter an invalid data_set_name, and invalid filepath
+        with self.assertRaisesRegex(ReaderError, 'Cannot determine data_set_name!'):
+            head = self.reader._correct_data_set_name(inv_head.copy(), inv_filepath)
+        # enter a valid data_set_name, and an invalid filepath
+        # should be fine, because the data_set_name is the pefered source
+        head = self.reader._correct_data_set_name(val_head.copy(), inv_filepath)
+        self.assertEqual(head['data_set_name'], val_head['data_set_name'])
+
+    @mock.patch('pygac.reader.Reader.get_calibrated_channels')
+    def test__get_calibrated_channels_uniform_shape(self, get_channels):
+        """Test the uniform shape as required by gac_io.save_gac."""
+        # check if it raises the assertion error
+        channels = np.arange(2*2*5, dtype=float).reshape((2, 2, 5))
+        get_channels.return_value = channels
+        with self.assertRaises(AssertionError):
+            self.reader._get_calibrated_channels_uniform_shape()
 
     def test_to_datetime64(self):
         """Test conversion from (year, jday, msec) to datetime64."""
@@ -274,14 +338,19 @@ class TestGacReader(unittest.TestCase):
         np.testing.assert_allclose(sun_zenith, expected_sun_zenith, atol=0.01)
         np.testing.assert_allclose(rel_azi, expected_rel_azi, atol=0.01)
 
-    @mock.patch('pygac.reader.ConfigParser.ConfigParser.read')
-    @mock.patch('pygac.reader.ConfigParser.ConfigParser.items')
-    def test_get_tle_file(self, items, *mocks):
+    @mock.patch('pygac.reader.get_config')
+    def test_get_tle_file(self, get_config):
         """Test get_tle_file."""
         # Use TLE name/dir from config file
-        items.return_value = [('tledir', 'a'), ('tlename', 'b')]
+        class MockConfigParser(object):
+            def get(self, section, option, **kwargs):
+                if option == 'tledir':
+                    return 'path/to/TLEs'
+                elif option == 'tlename':
+                    return 'tle_file.txt'
+        get_config.return_value = MockConfigParser()
         tle_file = self.reader.get_tle_file()
-        self.assertEqual(tle_file, 'a/b')
+        self.assertEqual(tle_file, 'path/to/TLEs/tle_file.txt')
 
         # Use TLE name/dir from reader instanciation
         self.reader.tle_dir = '/tle/dir'

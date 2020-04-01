@@ -37,7 +37,8 @@ import logging
 import numpy as np
 
 from pygac.correct_tsm_issue import TSM_AFFECTED_INTERVALS_KLM, get_tsm_idx
-from pygac.reader import Reader
+from pygac.reader import Reader, ReaderError
+from pygac.utils import file_opener
 
 LOG = logging.getLogger(__name__)
 
@@ -574,12 +575,12 @@ class KLMReader(Reader):
 
     tsm_affected_intervals = TSM_AFFECTED_INTERVALS_KLM
 
-    def read(self, filename):
+    def read(self, filename, fileobj=None):
         """Read the data.
 
         Args:
-            filename: string
-                The filename to read from.
+            filename: Path to GAC/LAC file
+            fileobj: An open file object to read from. (optional)
 
         Returns:
             header: numpy record array
@@ -588,23 +589,19 @@ class KLMReader(Reader):
                 The scanlines
 
         """
-        with self._open(filename) as fd_:
-            # Note that np.fromfile does not work with gzip.GzipFile
-            # objects (numpy version 1.16.4), because it restricts the
-            # file objects to (io.FileIO, io.BufferedReader, io.BufferedWriter)
-            # see: numpy.compat.py3k.isfileobj
-            self.ars_head, = np.frombuffer(
-                fd_.read(ars_header.itemsize),
-                dtype=ars_header, count=1)
-            if not self.ars_head['data_format'].startswith(b'NOAA Level 1b'):
-                fd_.seek(0)
-                self.ars_head = None
-                ars_offset = 0
-            else:
+        # Note that np.fromfile does not work with gzip.GzipFile
+        # objects (numpy version 1.16.4), because it restricts the
+        # file objects to (io.FileIO, io.BufferedReader, io.BufferedWriter)
+        # see: numpy.compat.py3k.isfileobj
+        self.filename = filename
+        LOG.info('Reading %s', self.filename)
+        with file_opener(fileobj or filename) as fd_:
+            self.ars_head, self.head = self.read_header(
+                filename, fileobj=fd_)
+            if self.ars_head:
                 ars_offset = ars_header.itemsize
-            self.head, = np.frombuffer(
-                fd_.read(header.itemsize),
-                dtype=header, count=1)
+            else:
+                ars_offset = 0
             self.header_version = self.head[
                 "noaa_level_1b_format_version_number"]
             if self.header_version >= 5:
@@ -617,15 +614,58 @@ class KLMReader(Reader):
                     dtype=analog_telemetry_v2, count=1)
             # LAC: 1, GAC: 2, ...
             self.data_type = self.head['data_type_code']
+            # read until end of file
             fd_.seek(self.offset + ars_offset, 0)
-            self.scans = np.frombuffer(
-                fd_.read(),
-                dtype=self.scanline_type,
-                count=self.head["count_of_data_records"])
-
+            buffer = fd_.read()
+            count = self.head["count_of_data_records"]
+            self._read_scanlines(buffer, count)
         self.correct_scan_line_numbers()
         self.spacecraft_id = self.head["noaa_spacecraft_identification_code"]
         self.spacecraft_name = self.spacecraft_names[self.spacecraft_id]
+
+    @classmethod
+    def read_header(cls, filename, fileobj=None):
+        """Read the file header.
+
+        Args:
+            filename (str): Path to GAC/LAC file
+            fileobj: An open file object to read from. (optional)
+
+        Returns:
+            archive_header (struct): archive header
+            header (struct): file header
+        """
+        with file_opener(fileobj or filename) as fd_:
+            # read ars_header if present
+            _ars_head, = np.frombuffer(
+                fd_.read(ars_header.itemsize),
+                dtype=ars_header, count=1)
+            if _ars_head['data_format'].startswith(b'NOAA Level 1b'):
+                ars_head = _ars_head.copy()
+            else:
+                fd_.seek(0)
+                ars_head = None
+            # need to copy frombuffer to have write access on head
+            head, = np.frombuffer(
+                fd_.read(header.itemsize),
+                dtype=header, count=1).copy()
+        head = cls._correct_data_set_name(head, filename)
+        cls._validate_header(head)
+        return ars_head, head
+
+    @classmethod
+    def _validate_header(cls, header):
+        """Check if the header belongs to this reader"""
+        # call super to enter the Method Resolution Order (MRO)
+        super(KLMReader, cls)._validate_header(header)
+        LOG.debug("validate header")
+        data_set_name = header['data_set_name'].decode()
+        # split header into parts
+        creation_site, transfer_mode, platform_id = (
+            data_set_name.split('.')[:3])
+        allowed_ids = ['NK', 'NL', 'NM', 'NN', 'NP', 'M1', 'M2', 'M3']
+        if platform_id not in allowed_ids:
+            raise ReaderError('Improper platform id "%s"!' % platform_id)
 
     def get_telemetry(self):
         """Get the telemetry.
@@ -747,28 +787,7 @@ class KLMReader(Reader):
 
 def main_klm(reader_cls, filename, start_line, end_line):
     """Generate a l1c file."""
-    from pygac import gac_io
     tic = datetime.datetime.now()
-    reader = reader_cls()
-    reader.read(filename)
-    reader.get_lonlat()
-    channels = reader.get_calibrated_channels()
-    sat_azi, sat_zen, sun_azi, sun_zen, rel_azi = reader.get_angles()
-    qual_flags = reader.get_qual_flags()
-    if (np.all(reader.mask)):
-        print("ERROR: All data is masked out. Stop processing")
-        raise ValueError("All data is masked out.")
-
-    gac_io.save_gac(reader.spacecraft_name,
-                    reader.utcs,
-                    reader.lats, reader.lons,
-                    channels[:, :, 0], channels[:, :, 1],
-                    channels[:, :, 2],
-                    channels[:, :, 3],
-                    channels[:, :, 4],
-                    channels[:, :, 5],
-                    sun_zen, sat_zen, sun_azi, sat_azi, rel_azi,
-                    qual_flags, start_line, end_line,
-                    reader.filename,
-                    reader.meta_data)
+    reader = reader_cls.fromfile(filename)
+    reader.save(int(start_line), int(end_line))
     LOG.info("pygac took: %s", str(datetime.datetime.now() - tic))

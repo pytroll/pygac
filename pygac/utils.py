@@ -4,6 +4,7 @@
 # Author(s):
 
 #   Stephan Finkensieper <stephan.finkensieper@dwd.de>
+#   Carlos Horn <carlos.horn@external.eumetsat.int>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,11 +19,132 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+import gzip
 import logging
 import numpy as np
-
+import sys
+from contextlib import contextmanager
 
 LOG = logging.getLogger(__name__)
+
+
+def is_file_object(filename):
+    """Check if the input is a file object.
+
+    Args:
+        filename - object to check
+
+    Note:
+        This method only check if the object implements the
+        interface of a file object to allow duck types like
+        gzip.GzipFile instances.
+    """
+    has_close = hasattr(filename, 'close')
+    has_read = hasattr(filename, 'read')
+    if hasattr(filename, 'seekable'):
+        is_seekable = filename.seekable()
+    else:
+        is_seekable = False
+    return has_close and has_read and is_seekable
+
+
+@contextmanager
+def _file_opener(file):
+    """Open a file depending on the input.
+
+    Args:
+        file - path to file or file object
+    """
+    # open file if necessary
+    if is_file_object(file):
+        open_file = file
+        close = False
+    else:
+        open_file = open(file, mode='rb')
+        close = True
+    # check if it is a gzip file
+    try:
+        file_object = gzip.open(open_file)
+        file_object.read(1)
+    except OSError:
+        file_object = open_file
+    finally:
+        file_object.seek(0)
+    # provide file_object with the context
+    try:
+        yield file_object
+    finally:
+        if close:
+            file_object.close()
+
+
+@contextmanager
+def _file_opener_py2(file):
+    """Open a file depending on the input.
+
+    Args:
+        file - path to file
+    """
+    close = True
+    # check if it is a gzip file
+    try:
+        file_object = gzip.open(file)
+        file_object.read(1)
+    # Note: in python 2, this is an IOError, but we keep the
+    #       OSError for testing.
+    except (OSError, IOError):
+        file_object = open(file, mode='rb')
+    except TypeError:
+        # In python 2 gzip.open cannot handle file objects
+        LOG.debug("Gzip cannot open file objects in python2!")
+        if is_file_object(file):
+            file_object = file
+            close = False
+    finally:
+        file_object.seek(0)
+    # provide file_object with the context
+    try:
+        yield file_object
+    finally:
+        if close:
+            file_object.close()
+
+
+if sys.version_info.major < 3:
+    file_opener = _file_opener_py2
+else:
+    file_opener = _file_opener
+
+
+def get_absolute_azimuth_angle_diff(sat_azi, sun_azi):
+    """Calculates absolute azimuth difference angle. """
+    rel_azi = abs(sat_azi - sun_azi)
+    rel_azi = rel_azi % 360
+    # Not using np.where to avoid copying array
+    rel_azi[rel_azi > 180] = 360.0 - rel_azi[rel_azi > 180]
+    return rel_azi
+
+
+def centered_modulus(array, divisor):
+    """Transform array to half open range ]-divisor/2, divisor/2]."""
+    arr = array % divisor
+    arr[arr > divisor / 2] -= divisor
+    return arr
+
+
+def calculate_sun_earth_distance_correction(jday):
+    """Calculate the sun earth distance correction.
+
+    In 2008 3-4 different equations of ESD were considered.
+    This one was chosen as it at the time gave reflectances most closely
+    matching the PATMOS-x data provided then by Andy Heidinger.
+
+    Formula might need to be reconsidered if jday is updated to a float.
+
+    """
+    # Earth-Sun distance correction factor
+    corr = 1.0 - 0.0334 * np.cos(2.0 * np.pi * (jday - 2) / 365.25)
+    return corr
 
 
 def check_user_scanlines(start_line, end_line, first_valid_lat=None,

@@ -4,6 +4,7 @@
 # Author(s):
 
 #   Stephan Finkensieper <stephan.finkensieper@dwd.de>
+#   Carlos Horn <carlos.horn@external.eumetsat.int>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -23,12 +24,15 @@ import datetime as dt
 import unittest
 import numpy as np
 import numpy.testing
+import sys
 try:
     from unittest import mock
 except ImportError:
     import mock
 
+from pygac.reader import ReaderError
 from pygac.gac_pod import GACPODReader
+from pygac.lac_pod import LACPODReader
 from pygac.tests.utils import CalledWithArray
 
 
@@ -40,6 +44,45 @@ class TestPOD(unittest.TestCase):
     def setUp(self):
         """Set up the test."""
         self.reader = GACPODReader()
+        # python 2 compatibility
+        if sys.version_info.major < 3:
+            self.assertRaisesRegex = self.assertRaisesRegexp
+
+    def test__validate_header(self):
+        """Test the header validation"""
+        filename = b'NSS.GHRR.TN.D80001.S0332.E0526.B0627173.WI'
+        head = {'data_set_name': filename}
+        GACPODReader._validate_header(head)
+        # wrong name pattern
+        with self.assertRaisesRegex(ReaderError,
+                                    'Data set name .* does not match!'):
+            head = {'data_set_name': b'abc.txt'}
+            GACPODReader._validate_header(head)
+        # wrong platform
+        name = b'NSS.GHRR.NL.D02187.S1904.E2058.B0921517.GC'
+        with self.assertRaisesRegex(ReaderError,
+                                    'Improper platform id "NL"!'):
+            head = {'data_set_name': name}
+            GACPODReader._validate_header(head)
+        # wrong transfer mode
+        name = filename.replace(b'GHRR', b'LHRR')
+        with self.assertRaisesRegex(ReaderError,
+                                    'Improper transfer mode "LHRR"!'):
+            head = {'data_set_name': name}
+            GACPODReader._validate_header(head)
+        # other change reader
+        head = {'data_set_name': name}
+        LACPODReader._validate_header(head)
+
+    @mock.patch('pygac.reader.Reader.get_calibrated_channels')
+    def test__get_calibrated_channels_uniform_shape(self, get_channels):
+        """Test the uniform shape as required by gac_io.save_gac."""
+        channels = np.arange(2*2*5, dtype=float).reshape((2, 2, 5))
+        get_channels.return_value = channels
+        uniform_channels = self.reader._get_calibrated_channels_uniform_shape()
+        self.assertTrue(np.isnan(uniform_channels[:, :, 2]).all())
+        self.assertTrue(uniform_channels[:, :, [0, 1, 3, 4, 5]].sum()
+                        == channels.sum())
 
     def test_decode_timestamps(self):
         """Test POD timestamp decoding."""

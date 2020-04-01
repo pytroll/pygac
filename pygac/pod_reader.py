@@ -40,7 +40,8 @@ import logging
 import numpy as np
 
 from pygac.correct_tsm_issue import TSM_AFFECTED_INTERVALS_POD, get_tsm_idx
-from pygac.reader import Reader
+from pygac.reader import Reader, ReaderError
+from pygac.utils import file_opener
 
 LOG = logging.getLogger(__name__)
 
@@ -203,12 +204,12 @@ class PODReader(Reader):
 
         self.scans = self.scans[self.scans["scan_line_number"] != 0]
 
-    def read(self, filename):
+    def read(self, filename, fileobj=None):
         """Read the data.
 
         Args:
-            filename: string
-                The filename to read from.
+            filename (str): Path to GAC/LAC file
+            fileobj: An open file object to read from. (optional)
 
         Returns:
             header: numpy record array
@@ -217,45 +218,24 @@ class PODReader(Reader):
                 The scanlines
 
         """
+        self.filename = filename
+        LOG.info('Reading %s', self.filename)
         # choose the right header depending on the date
-        with self._open(filename) as fd_:
-            # read archive header
-            self.tbm_head, = np.frombuffer(
-                fd_.read(tbm_header.itemsize),
-                dtype=tbm_header, count=1)
-            if ((not self.tbm_head['data_set_name'].startswith(self.creation_site + b'.')) and
-                    (self.tbm_head['data_set_name'] != b'\x00' * 42 + b'  ')):
-                fd_.seek(0)
-                self.tbm_head = None
-                tbm_offset = 0
-            else:
+        with file_opener(fileobj or filename) as fd_:
+            self.tbm_head, self.head = self.read_header(
+                filename, fileobj=fd_)
+            if self.tbm_head:
                 tbm_offset = tbm_header.itemsize
-
-            head, = np.frombuffer(
-                fd_.read(header0.itemsize),
-                dtype=header0, count=1)
-            year, jday, _ = self.decode_timestamps(head["start_time"])
-
-            start_date = (datetime.date(year, 1, 1) +
-                          datetime.timedelta(days=int(jday) - 1))
-
-            if start_date < datetime.date(1992, 9, 8):
-                header = header1
-            elif start_date <= datetime.date(1994, 11, 15):
-                header = header2
             else:
-                header = header3
-
-            fd_.seek(tbm_offset, 0)
-            self.head, = np.frombuffer(
-                fd_.read(header.itemsize),
-                dtype=header, count=1)
+                tbm_offset = 0
+            # read scan lines until end of file
             fd_.seek(self.offset + tbm_offset, 0)
-            self.scans = np.frombuffer(
-                fd_.read(),
-                dtype=self.scanline_type,
-                count=self.head["number_of_scans"])
-
+            buffer = fd_.read()
+            count = self.head["number_of_scans"]
+            self._read_scanlines(buffer, count)
+        year, jday, _ = self.decode_timestamps(self.head["start_time"])
+        start_date = (datetime.date(year, 1, 1) +
+                      datetime.timedelta(days=int(jday) - 1))
         self.correct_scan_line_numbers()
         self.spacecraft_id = self.head["noaa_spacecraft_identification_code"]
         if self.spacecraft_id == 1 and start_date < datetime.date(1982, 1, 1):
@@ -263,8 +243,75 @@ class PODReader(Reader):
         self.spacecraft_name = self.spacecraft_names[self.spacecraft_id]
         LOG.info(
             "Reading %s data", self.spacecrafts_orbital[self.spacecraft_id])
-
         return self.head, self.scans
+
+    @classmethod
+    def read_header(cls, filename, fileobj=None):
+        """Read the file header.
+
+        Args:
+            filename (str): Path to GAC/LAC file
+            fileobj: An open file object to read from. (optional)
+
+        Returns:
+            archive_header (struct): archive header
+            header (struct): file header
+        """
+        # choose the right header depending on the date
+        with file_opener(fileobj or filename) as fd_:
+            # read tbm_header if present
+            _tbm_head, = np.frombuffer(
+                fd_.read(tbm_header.itemsize),
+                dtype=tbm_header, count=1)
+            try:
+                data_set_name = _tbm_head['data_set_name'].decode()
+            except UnicodeDecodeError:
+                data_set_name = '---'
+            allowed_empty = (42*b'\x00' + b'  ')
+            if (cls.data_set_pattern.match(data_set_name)
+                    or (_tbm_head['data_set_name'] == allowed_empty)):
+                tbm_head = _tbm_head.copy()
+                tbm_offset = tbm_header.itemsize
+            else:
+                fd_.seek(0)
+                tbm_head = None
+                tbm_offset = 0
+            # read header
+            head0, = np.frombuffer(
+                fd_.read(header0.itemsize),
+                dtype=header0, count=1)
+            year, jday, _ = cls.decode_timestamps(head0["start_time"])
+            start_date = (datetime.date(year, 1, 1) +
+                          datetime.timedelta(days=int(jday) - 1))
+            if start_date < datetime.date(1992, 9, 8):
+                header = header1
+            elif start_date <= datetime.date(1994, 11, 15):
+                header = header2
+            else:
+                header = header3
+            fd_.seek(tbm_offset, 0)
+            # need to copy frombuffer to have write access on head
+            head, = np.frombuffer(
+                fd_.read(header.itemsize),
+                dtype=header, count=1).copy()
+        head = cls._correct_data_set_name(head, filename)
+        cls._validate_header(head)
+        return tbm_head, head
+
+    @classmethod
+    def _validate_header(cls, header):
+        """Check if the header belongs to this reader"""
+        # call super to enter the Method Resolution Order (MRO)
+        super(PODReader, cls)._validate_header(header)
+        LOG.debug("validate header")
+        data_set_name = header['data_set_name'].decode()
+        # split header into parts
+        creation_site, transfer_mode, platform_id = (
+            data_set_name.split('.')[:3])
+        allowed_ids = ['TN', 'NA', 'NB', 'NC', 'ND', 'NE', 'NF', 'NG',
+                       'NH', 'NI', 'NJ']
+        if platform_id not in allowed_ids:
+            raise ReaderError('Improper platform id "%s"!' % platform_id)
 
     def get_header_timestamp(self):
         """Get the timestamp from the header.
@@ -465,31 +512,26 @@ class PODReader(Reader):
         return get_tsm_idx(channels[:, :, 0], channels[:, :, 1],
                            channels[:, :, 3], channels[:, :, 4])
 
+    def _get_calibrated_channels_uniform_shape(self):
+        """Prepare the channels as input for gac_io.save_gac"""
+        _channels = self.get_calibrated_channels()
+        # prepare input
+        # maybe there is a better (less memory requiring) method
+        shape = _channels.shape[:-1] + (6,)
+        # empty_like does not know the kwarg shape in older versions
+        channels = np.empty(shape, dtype=_channels.dtype)
+        channels[:, :, 0] = _channels[:, :, 0]
+        channels[:, :, 1] = _channels[:, :, 1]
+        channels[:, :, 2] = np.nan
+        channels[:, :, 3] = _channels[:, :, 2]
+        channels[:, :, 4] = _channels[:, :, 3]
+        channels[:, :, 5] = _channels[:, :, 4]
+        return channels
+
 
 def main_pod(reader_cls, filename, start_line, end_line):
     """Generate a l1c file."""
-    from pygac import gac_io
     tic = datetime.datetime.now()
-    reader = reader_cls()
-    reader.read(filename)
-    reader.get_lonlat()
-    channels = reader.get_calibrated_channels()
-    sat_azi, sat_zen, sun_azi, sun_zen, rel_azi = reader.get_angles()
-
-    qual_flags = reader.get_qual_flags()
-    if (np.all(reader.mask)):
-        print("ERROR: All data is masked out. Stop processing")
-        raise ValueError("All data is masked out.")
-    gac_io.save_gac(reader.spacecraft_name,
-                    reader.utcs,
-                    reader.lats, reader.lons,
-                    channels[:, :, 0], channels[:, :, 1],
-                    np.full_like(channels[:, :, 0], np.nan),
-                    channels[:, :, 2],
-                    channels[:, :, 3],
-                    channels[:, :, 4],
-                    sun_zen, sat_zen, sun_azi, sat_azi, rel_azi,
-                    qual_flags, start_line, end_line,
-                    reader.filename,
-                    reader.meta_data)
+    reader = reader_cls.fromfile(filename)
+    reader.save(int(start_line), int(end_line))
     LOG.info("pygac took: %s", str(datetime.datetime.now() - tic))

@@ -6,6 +6,7 @@
 # Author(s):
 
 #   Martin Raspaud <martin.raspaud@smhi.se>
+#   Carlos Horn <carlos.horn@external.eumetsat.int>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -23,17 +24,21 @@
 """Test the GAC KLM reader.
 """
 
+import os
 import datetime as dt
 import numpy as np
 import numpy.testing
 import unittest
 import subprocess as sp
+import sys
 try:
     from unittest import mock
 except ImportError:
     import mock
 
+from pygac.reader import ReaderError
 from pygac import gac_klm
+from pygac.lac_klm import LACKLMReader
 from pygac.tests.utils import CalledWithArray
 
 
@@ -55,6 +60,9 @@ my_sunsat = "/tmp/ECC_GAC_sunsatangles_noaa16_99999_20020706T1904020Z_20020706T2
 class TestKLM(unittest.TestCase):
     def setUp(self):
         self.reader = gac_klm.GACKLMReader()
+        # python 2 compatibility
+        if sys.version_info.major < 3:
+            self.assertRaisesRegex = self.assertRaisesRegexp
 
     def test_global(self):
         gac_klm.main(test_file, 0, 0)
@@ -70,6 +78,33 @@ class TestKLM(unittest.TestCase):
         streamdata = child.communicate()[0]
         retc = child.returncode
         self.assertTrue(retc == 0, msg=streamdata)
+
+    def test__validate_header(self):
+        """Test the header validation"""
+        filename = os.path.basename(test_file).encode()
+        self.reader.head = {'data_set_name': filename}
+        self.reader._validate_header()
+        # wrong name pattern
+        with self.assertRaisesRegex(ReaderError,
+                                    'Data set name .* does not match!'):
+            self.reader.head = {'data_set_name': b'abc.txt'}
+            self.reader._validate_header()
+        # wrong platform
+        name = b'NSS.GHRR.TN.D80001.S0332.E0526.B0627173.WI'
+        with self.assertRaisesRegex(ReaderError,
+                                    'Improper platform id "TN"!'):
+            self.reader.head = {'data_set_name': name}
+            self.reader._validate_header()
+        # wrong transfer mode
+        name = filename.replace(b'GHRR', b'LHRR')
+        with self.assertRaisesRegex(ReaderError,
+                                    'Improper transfer mode "LHRR"!'):
+            self.reader.head = {'data_set_name': name}
+            self.reader._validate_header()
+        # change reader
+        lac_reader = LACKLMReader()
+        lac_reader.head = {'data_set_name': name}
+        lac_reader._validate_header()
 
     def test_get_lonlat(self):
         """Test readout of lon/lat coordinates."""

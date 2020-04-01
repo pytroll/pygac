@@ -8,6 +8,7 @@
 #   Adam Dybbroe <adam.dybbroe@smhi.se>
 #   Sajid Pareeth <sajid.pareeth@fmach.it>
 #   Martin Raspaud <martin.raspaud@smhi.se>
+#   Carlos Horn <carlos.horn@external.eumetsat.int>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -23,9 +24,13 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """The LAC reader."""
 
-from pygac.reader import Reader
+import logging
+
+from pygac.reader import Reader, ReaderError
 import pygac.pygac_geotiepoints as gtp
 
+
+LOG = logging.getLogger(__name__)
 
 class LACReader(Reader):
     """Reader for LAC data."""
@@ -38,3 +43,16 @@ class LACReader(Reader):
         super(LACReader, self).__init__(*args, **kwargs)
         self.scan_width = 2048
         self.lonlat_interpolator = gtp.lac_lat_lon_interpolator
+
+    @classmethod
+    def _validate_header(cls, header):
+        """Check if the header belongs to this reader"""
+        # call super to enter the Method Resolution Order (MRO)
+        super(LACReader, cls)._validate_header(header)
+        LOG.debug("validate header")
+        data_set_name = header['data_set_name'].decode()
+        # split header into parts
+        creation_site, transfer_mode, platform_id = (
+            data_set_name.split('.')[:3])
+        if transfer_mode not in ['LHRR', 'HRPT']:
+            raise ReaderError('Improper transfer mode "%s"!' % transfer_mode)

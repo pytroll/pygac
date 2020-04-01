@@ -9,6 +9,7 @@
 #   Adam Dybbroe <adam.dybbroe@smhi.se>
 #   Sara Hornquist <sara.hornquist@smhi.se>
 #   Martin Raspaud <martin.raspaud@smhi.se>
+#   Carlos Horn <carlos.horn@external.eumetsat.int>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -33,12 +34,7 @@ import time
 import h5py
 import numpy as np
 
-try:
-    import ConfigParser
-except ImportError:
-    import configparser as ConfigParser
-
-from pygac import CONFIG_FILE
+from pygac.configuration import get_config
 from pygac.utils import slice_channel, strip_invalid_lat, check_user_scanlines
 
 LOG = logging.getLogger(__name__)
@@ -50,24 +46,9 @@ MISSING_DATA_LATLON = -999999
 
 def read_config():
     """Read output dir etc from config file."""
-    if not os.path.exists(CONFIG_FILE) or not os.path.isfile(CONFIG_FILE):
-        raise IOError('{} pointed to by the environment variable '
-                      'PYGAC_CONFIG_FILE is not a file or does not exist!'
-                      .format(str(CONFIG_FILE)))
-
-    conf = ConfigParser.ConfigParser()
-    try:
-        conf.read(CONFIG_FILE)
-    except ConfigParser.NoSectionError:
-        LOG.exception('Failed reading configuration file: ' + str(CONFIG_FILE))
-        raise
-
-    options = {}
-    for option, value in conf.items('output', raw=True):
-        options[option] = value
-
-    OUTDIR = options['output_dir']
-    OUTPUT_FILE_PREFIX = options['output_file_prefix']
+    conf = get_config()
+    OUTDIR = conf.get('output', 'output_dir', raw=True)
+    OUTPUT_FILE_PREFIX = conf.get('output', 'output_file_prefix', raw=True)
 
     SUNSATANGLES_DIR = os.environ.get('SM_SUNSATANGLES_DIR', OUTDIR)
     AVHRR_DIR = os.environ.get('SM_AVHRR_DIR', OUTDIR)
