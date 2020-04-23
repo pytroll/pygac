@@ -42,19 +42,20 @@ class Calibrator(object):
     fields = 'ah al bh bl ch cl c_s c_dark l_date d n_s c_wn a b b0 b1 b2'.split()
     Calibrator = namedtuple('Calibrator', fields)
     Calibrator.__new__.__defaults__ = (None,) * len(fields)
+
     def __new__(cls, spacecraft):
         spacecraft_coeffs = {
             key: cls.parse(coeffs[spacecraft].get(key))
             for key in cls.fields
         }
         return cls.Calibrator(**spacecraft_coeffs)
-                
+
     @staticmethod
     def parse(value):
         if isinstance(value, list):
             value = np.asarray(value)
         return value
-            
+
 
 def calibrate_solar(counts, chan, year, jday, spacecraft, corr=1):
     """Do the solar calibration and return reflectance (between 0 and 100)."""
