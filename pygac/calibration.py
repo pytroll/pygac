@@ -32,7 +32,7 @@ from pkg_resources import resource_filename
 
 coeffs_file = resource_filename('pygac', 'data/calibration.json')
 with open(coeffs_file, mode='r') as json_file:
-    coeffs = json.load(json_file)
+    default_coeffs = json.load(json_file)
 
 
 class Calibrator(object):
@@ -41,9 +41,11 @@ class Calibrator(object):
     Calibrator = namedtuple('Calibrator', fields)
     Calibrator.__new__.__defaults__ = (None,) * len(fields)
 
-    def __new__(cls, spacecraft):
+    def __new__(cls, spacecraft, custom_coeffs=None):
+        custom = custom_coeffs or {}
+        default = default_coeffs[spacecraft]
         spacecraft_coeffs = {
-            key: cls.parse(coeffs[spacecraft].get(key))
+            key: cls.parse(custom.get(key) or default.get(key))
             for key in cls.fields
         }
         return cls.Calibrator(**spacecraft_coeffs)
@@ -55,9 +57,9 @@ class Calibrator(object):
         return value
 
 
-def calibrate_solar(counts, chan, year, jday, spacecraft, corr=1):
+def calibrate_solar(counts, chan, year, jday, spacecraft, corr=1, custom_coeffs=None):
     """Do the solar calibration and return reflectance (between 0 and 100)."""
-    cal = Calibrator(spacecraft)
+    cal = Calibrator(spacecraft, custom_coeffs=custom_coeffs)
 
     t = (year + jday / 365.0) - cal.l_date
     stl = (cal.al[chan] * (100.0 + cal.bl[chan] * t
@@ -78,9 +80,9 @@ def calibrate_solar(counts, chan, year, jday, spacecraft, corr=1):
     return refl
 
 
-def calibrate_thermal(counts, prt, ict, space, line_numbers, channel, spacecraft):
+def calibrate_thermal(counts, prt, ict, space, line_numbers, channel, spacecraft, custom_coeffs=None):
     """Do the thermal calibration and return brightness temperatures (K)."""
-    cal = Calibrator(spacecraft)
+    cal = Calibrator(spacecraft, custom_coeffs=custom_coeffs)
 
     chan = channel - 3
 

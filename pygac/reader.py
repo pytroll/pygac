@@ -88,7 +88,8 @@ class Reader(six.with_metaclass(ABCMeta)):
         r'\w{3}\.\w{4}\.\w{2}.D\d{5}\.S\d{4}\.E\d{4}\.B\d{7}\.\w{2}')
 
     def __init__(self, interpolate_coords=True, adjust_clock_drift=True,
-                 tle_dir=None, tle_name=None, tle_thresh=7, creation_site=None):
+                 tle_dir=None, tle_name=None, tle_thresh=7, creation_site=None,
+                 calibration=None):
         """Init the reader.
 
         Args:
@@ -101,6 +102,7 @@ class Reader(six.with_metaclass(ABCMeta)):
             tle_thresh: Maximum number of days between observation and nearest
                 TLE
             creation_site: The three-letter identifier of the creation site (eg 'NSS')
+            calibration: dictionary with satellite specific calibration coefficients
             filename: GAC/LAC filename
 
         """
@@ -111,6 +113,7 @@ class Reader(six.with_metaclass(ABCMeta)):
         self.tle_name = tle_name
         self.tle_thresh = tle_thresh
         self.creation_site = (creation_site or 'NSS').encode('utf-8')
+        self.calibration = calibration
         self.head = None
         self.scans = None
         self.spacecraft_name = None
@@ -548,11 +551,14 @@ class Reader(six.with_metaclass(ABCMeta)):
         # how many reflective channels are there ?
         tot_ref = channels.shape[2] - 3
 
-        channels[:, :, 0:tot_ref] = calibrate_solar(channels[:, :, 0:tot_ref],
-                                                    np.arange(tot_ref),
-                                                    year, jday,
-                                                    self.spacecraft_name,
-                                                    corr)
+        channels[:, :, 0:tot_ref] = calibrate_solar(
+            channels[:, :, 0:tot_ref],
+            np.arange(tot_ref),
+            year, jday,
+            self.spacecraft_name,
+            corr,
+            custom_coeffs=self.calibration
+        )
         prt, ict, space = self.get_telemetry()
         for chan in [3, 4, 5]:
             channels[:, :, chan - 6] = calibrate_thermal(
@@ -562,7 +568,9 @@ class Reader(six.with_metaclass(ABCMeta)):
                 space[:, chan - 3],
                 self.scans["scan_line_number"],
                 chan,
-                self.spacecraft_name)
+                self.spacecraft_name,
+                custom_coeffs=self.calibration
+            )
 
         # Mask out corrupt values
         channels[self.mask] = np.nan
