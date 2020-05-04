@@ -14,8 +14,7 @@ Contents:
    installation
    usage
    api
-   Calibration procedure
-   Notes on quality control
+   
    
 
 Indices and tables
