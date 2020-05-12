@@ -65,6 +65,21 @@ class Configuration(configparser.ConfigParser):
                       % config_file)
             raise
         self.config_file = config_file
+    
+    def get(self, *args, **kwargs):
+        """python 2 compatibility for fallback attribute"""
+        if sys.version_info.major < 3:
+            if 'fallback' in kwargs:
+                fallback = kwargs.pop('fallback')
+            else:
+                fallback = None
+            try:
+                value = super(Configuration, self).get(*args, **kwargs)
+            except (configparser.NoSectionError, configparser.NoOptionError):
+                value = fallback
+        else:
+            value = super().get(*args, **kwargs)
+        return value
 
 
 _config = Configuration()
