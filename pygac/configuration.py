@@ -39,7 +39,7 @@ if sys.version_info.major < 3:
 LOG = logging.getLogger(__name__)
 
 
-class Configuration(configparser.ConfigParser):
+class Configuration(configparser.ConfigParser, object):
     """Configuration container for pygac."""
 
     config_file = ''
