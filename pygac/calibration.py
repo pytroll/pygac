@@ -24,38 +24,84 @@
 """Calibration coefficients and generic calibration functions
 """
 from __future__ import division
+import logging
 import numpy as np
 import json
 from collections import namedtuple
 from pkg_resources import resource_filename
 
+import pygac.configuration
 
-coeffs_file = resource_filename('pygac', 'data/calibration.json')
-with open(coeffs_file, mode='r') as json_file:
-    default_coeffs = json.load(json_file)
-
+LOG = logging.getLogger(__name__)
 
 class Calibrator(object):
-    """Namespace for calibration coefficients of a given spacecraft"""
+    """Factory class to create namedtuples holding the calibration coefficients.
+
+    Attributes:
+        fields: coefficient names
+        Calibrator: namedtuple constructor
+        default_coeffs: dictonary containing default values for all spacecrafts
+    """
     fields = 'ah al bh bl ch cl c_s c_dark l_date d n_s c_wn a b b0 b1 b2'.split()
     Calibrator = namedtuple('Calibrator', fields)
-    Calibrator.__new__.__defaults__ = (None,) * len(fields)
+    default_coeffs = None
 
     def __new__(cls, spacecraft, custom_coeffs=None):
-        custom = custom_coeffs or {}
-        default = default_coeffs[spacecraft]
-        spacecraft_coeffs = {
-            key: cls.parse(custom.get(key) or default.get(key))
-            for key in cls.fields
-        }
-        return cls.Calibrator(**spacecraft_coeffs)
+        """Creates a namedtuple for calibration coefficients of a given spacecraft
+
+        Args:
+            spacecraft (str): spacecraft name in pygac convention
+            custom_coeffs (dict): custom coefficients (optional)
+
+        Returns:
+            calibrator (namedtuple): calibration coefficients
+        """
+        if cls.default_coeffs is None:
+            cls.load_defaults()
+        custom_coeffs = custom_coeffs or {}
+        customs = {key: cls.parse(value) for key, value in custom_coeffs.items()}
+        defaults = cls.default_coeffs[spacecraft]
+        spacecraft_coeffs = dict.fromkeys(cls.fields)
+        spacecraft_coeffs.update(defaults)
+        spacecraft_coeffs.update(customs)
+        if custom_coeffs:
+            LOG.info('Using following custom coefficients "%s".', customs)
+        calibrator = cls.Calibrator(**spacecraft_coeffs)
+        return calibrator
 
     @staticmethod
     def parse(value):
+        """Cast lists to numpy arrays."""
         if isinstance(value, list):
             value = np.asarray(value)
         return value
+    
+    @classmethod
+    def load_defaults(cls):
+        """Read the default coefficients from file.
 
+        Note:
+            The pygac internal defaults are stored in data/calibration.json.
+            The user can provide different defaults via the config file
+            in the section "calibration" as option "coeffs_file", e.g.
+            [calibration]
+            coeffs_file = /path/to/user/default/coeffs.json
+        """
+        # check if the user has set a coefficient file
+        config = pygac.configuration.get_config()
+        coeffs_file = config.get("calibration", "coeffs_file", fallback='')
+        # if no coeffs file has been specified, use the pygac defaults
+        if not coeffs_file:
+            coeffs_file = resource_filename('pygac', 'data/calibration.json')
+        LOG.info('Use default coefficients from "%s"', coeffs_file)
+        with open(coeffs_file, mode='r') as json_file:
+            default_coeffs = json.load(json_file)
+        # parse values in defaults
+        cls.default_coeffs = {
+            sat: {key: cls.parse(value) for key, value in defaults.items()}
+            for sat, defaults in default_coeffs.items()
+        }
+        
 
 def calibrate_solar(counts, chan, year, jday, spacecraft, corr=1, custom_coeffs=None):
     """Do the solar calibration and return reflectance (between 0 and 100)."""
