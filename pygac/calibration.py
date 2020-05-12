@@ -75,7 +75,7 @@ class Calibrator(object):
         if isinstance(value, list):
             value = np.asarray(value)
         return value
-    
+
     @classmethod
     def load_defaults(cls):
         """Read the default coefficients from file.
@@ -101,7 +101,7 @@ class Calibrator(object):
             sat: {key: cls.parse(value) for key, value in defaults.items()}
             for sat, defaults in default_coeffs.items()
         }
-        
+
 
 def calibrate_solar(counts, chan, year, jday, spacecraft, corr=1, custom_coeffs=None):
     """Do the solar calibration and return reflectance (between 0 and 100)."""
