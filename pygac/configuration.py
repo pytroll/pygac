@@ -65,7 +65,7 @@ class Configuration(configparser.ConfigParser):
                       % config_file)
             raise
         self.config_file = config_file
-    
+
     def get(self, *args, **kwargs):
         """python 2 compatibility for fallback attribute"""
         if sys.version_info.major < 3:
