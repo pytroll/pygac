@@ -297,8 +297,7 @@ def calibrate_thermal(counts, prt, ict, space, line_numbers, channel, spacecraft
     space_convolved[0:(wlength - 1) // 2] = space_convolved[(wlength - 1) // 2]
     tprt_convolved[-(wlength - 1) // 2:] = tprt_convolved[-((wlength + 1) // 2)]
     ict_convolved[-(wlength - 1) // 2:] = ict_convolved[-((wlength + 1) // 2)]
-    space_convolved[-(wlength - 1) // 2:] = \
-        space_convolved[-((wlength + 1) // 2)]
+    space_convolved[-(wlength - 1) // 2:] = space_convolved[-((wlength + 1) // 2)]
 
     new_tprt = np.transpose(np.tile(tprt_convolved, (columns, 1)))
     new_ict = np.transpose(np.tile(ict_convolved, (columns, 1)))
@@ -373,3 +372,4 @@ def calibrate_thermal(counts, prt, ict, space, line_numbers, channel, spacecraft
     bt = np.where(np.logical_or(bt < 170.0, bt > 350.0), np.nan, bt)
 
     return bt
+
