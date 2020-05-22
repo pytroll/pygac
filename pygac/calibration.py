@@ -372,4 +372,3 @@ def calibrate_thermal(counts, prt, ict, space, line_numbers, channel, spacecraft
     bt = np.where(np.logical_or(bt < 170.0, bt > 350.0), np.nan, bt)
 
     return bt
-
