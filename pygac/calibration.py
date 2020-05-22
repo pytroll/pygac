@@ -121,7 +121,7 @@ def calibrate_solar(counts, chan, year, jday, spacecraft, corr=1, custom_coeffs=
         This function follows the solar calibration from PATMOS-x as described in
         Heidinger, A.K., W.C. Straka III, C.C. Molling, J.T. Sullivan, and X. Wu, (2010).
         Deriving an inter-sensor consistent calibration for the AVHRR solar reflectance data record.
-        International Journal of Remote Sensing, 31:6493 – 6517.
+        International Journal of Remote Sensing, 31:6493 - 6517.
     """
     # get the calibration coefficients for this spacecraft
     cal = Calibrator(spacecraft, custom_coeffs=custom_coeffs)
@@ -306,8 +306,8 @@ def calibrate_thermal(counts, prt, ict, space, line_numbers, channel, spacecraft
 
     # Step 2. The radiance NBB sensed in each thermal AVHRR channel from the internal blackbody
     # at temperature TBB is the weighted mean of the Planck function over the spectral response of the
-    # channel. [...]. Each thermal channel has one equation, which uses a centroid wavenumber Λc and an
-    # “effective” blackbody temperature TBB*. The two steps are:
+    # channel. [...]. Each thermal channel has one equation, which uses a centroid wavenumber labmda_c and an
+    # "effective" blackbody temperature TBB*. The two steps are:
     # TsBB = A + B*TBB    (7.1.2.4-3)
     # NBB = c1*nu_e^3/(exp(c2*nu_e/TsBB) - 1)    (7.1.2.4-3)
     # where c1 = 1.1910427e-5 mW/m^2/sr/cm^{-4}, c2 = 1.4387752 cm K
