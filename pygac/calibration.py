@@ -112,11 +112,11 @@ def calibrate_solar(counts, chan, year, jday, spacecraft, corr=1, custom_coeffs=
         year (int) - year
         jday (int) - day of year
         spacecraft (str) - pygac internal spacecraft name
-        
+
     Optionals:
         corr (float) - reflectance correction multiplier (default = 1)
         custom_coeffs (dict) - custom calibration coefficients (default = None)
-        
+
     Note:
         This function follows the solar calibration from PATMOS-x as described in
         Heidinger, A.K., W.C. Straka III, C.C. Molling, J.T. Sullivan, and X. Wu, (2010). 
@@ -130,18 +130,18 @@ def calibrate_solar(counts, chan, year, jday, spacecraft, corr=1, custom_coeffs=
     # S(t) = S_0*(100 + S_1*t + S_2*t^2) / 100,
     # where t is the time since launch expressed as years, S(t) is the calibration slope
     # and S_0, S_1 and S_2 are the coefficients of the quadratic fit.
-    # See Fitting of Calibration Slope Equations in patmosx documentation 
+    # See Fitting of Calibration Slope Equations in patmosx documentation
     # (CDRP-ATBD-0184 Rev. 2 03/29/2018 page 19)
-    
+
     # Note that the this implementation does not take leap years into account!
     t = (year + jday / 365.0) - cal.l_date
-    
+
     # apply slope equation for low and high gain coefficients
     stl = (cal.al[chan] * (100.0 + cal.bl[chan] * t
                            + cal.cl[chan] * t * t)) / 100.0
     sth = (cal.ah[chan] * (100.0 + cal.bh[chan] * t
                            + cal.ch[chan] * t * t)) / 100.0
-    
+
     # Calculate the reflactance using equation (1) in Heidinger et al 2010
     # R = S*(C-D),
     # where R_cal is the value generated from the calibration and is referred to as a
@@ -149,7 +149,7 @@ def calibrate_solar(counts, chan, year, jday, spacecraft, corr=1, custom_coeffs=
     # This equation is only valid for single gain instruments. Starting with the AVHRR/3 series
     # (1998, starting with NOAA-15, aka KLM), the channel-1, channel-2 and channel-3a require a
     # dual-gain calibration. See Appendix A in Heidinger et al 2010, for more information.
-    # Long story short: The reflectance as function of instrument counts is a continuous piecewise 
+    # Long story short: The reflectance as function of instrument counts is a continuous piecewise
     # linear function of two line segments.
     #        R
     #        ^           *
@@ -185,10 +185,10 @@ def calibrate_thermal(counts, prt, ict, space, line_numbers, channel, spacecraft
         line_numbers (array) - line number index
         channel (array) - pygac internal channel index array
         spacecraft (str) - pygac internal spacecraft name
-        
+
     Optionals:
         custom_coeffs (dict) - custom calibration coefficients (default = None)
-        
+
     Note:
         This function follows steps 1 to 4 from the KLM guide section 7.1.2.4 
         "Steps to Calibrate the AVHRR Thermal Channels"
@@ -213,7 +213,7 @@ def calibrate_thermal(counts, prt, ict, space, line_numbers, channel, spacecraft
     # Table D.2-9 for NOAA-16, Table D.3-3 for NOAA-17 and Table D.4-3 for NOAA-18. To
     # calculate the internal blackbody temperature TBB, NESDIS uses the simple average
     # T_BB = (T_PRT1 + T_PRT2 + T_PRT3 + T_PRT4)/4    (7.1.2.4-2)
-    
+
     # Find the corresponding PRT values for a given line number
     # Why do we calculate this offset? Where does the threshold of prt_val < 50 come from?
     offset = 0
@@ -255,8 +255,8 @@ def calibrate_thermal(counts, prt, ict, space, line_numbers, channel, spacecraft
 
     # Note: the KLM Guide proposes to calculate the mean temperature using
     # equation (7.1.2.4-2). PyGAC follows a different Averaging approach.
-    # It fills the zeros that mark a complete set of thermometer measurements 
-    # by interpolation, then it uses a weighting function (so far only equal 
+    # It fills the zeros that mark a complete set of thermometer measurements
+    # by interpolation, then it uses a weighting function (so far only equal
     # weighting) to convolve the temperatures (build a global average).
     # The same averaging technique is applied for ICTs and Space counts.
     zeros = iprt == 0
@@ -311,14 +311,14 @@ def calibrate_thermal(counts, prt, ict, space, line_numbers, channel, spacecraft
     # TsBB = A + B*TBB    (7.1.2.4-3)
     # NBB = c1*nu_e^3/(exp(c2*nu_e/TsBB) - 1)    (7.1.2.4-3)
     # where c1 = 1.1910427e-5 mW/m^2/sr/cm^{-4}, c2 = 1.4387752 cm K
-    
+
     # calibrating thermal channel
 
     tBB = new_tprt
     tsBB = cal.a[chan] + cal.b[chan] * tBB
     nBB_num = (1.1910427 * 0.000010) * cal.c_wn[chan] ** 3
     nBB = nBB_num / (np.exp((1.4387752 * cal.c_wn[chan]) / tsBB) - 1.0)
-    
+
     # Step 3. Output from the two in-orbit calibration targets is used to compute a linear estimate of
     # the Earth scene radiance NE. Each scanline, the AVHRR views the internal blackbody target and
     # outputs 10 count values for each of the three thermal channel detectors; these are found in words
@@ -353,7 +353,7 @@ def calibrate_thermal(counts, prt, ict, space, line_numbers, channel, spacecraft
              / (new_space - new_ict)))
     Ncor = cal.b0[chan] + Nlin * (cal.b1[chan] + cal.b2[chan] * Nlin)
     Ne = Ncor
-    
+
     # Step 4. Data users often convert the computed Earth scene radiance value NE into an equivalent
     # blackbody temperature TE. This temperature is defined by simple inverting the steps used to
     # calculate the radiance NE sensed by an AVHRR channel from an emitting blackbody at a
