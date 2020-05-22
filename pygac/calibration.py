@@ -119,7 +119,7 @@ def calibrate_solar(counts, chan, year, jday, spacecraft, corr=1, custom_coeffs=
 
     Note:
         This function follows the solar calibration from PATMOS-x as described in
-        Heidinger, A.K., W.C. Straka III, C.C. Molling, J.T. Sullivan, and X. Wu, (2010). 
+        Heidinger, A.K., W.C. Straka III, C.C. Molling, J.T. Sullivan, and X. Wu, (2010).
         Deriving an inter-sensor consistent calibration for the AVHRR solar reflectance data record.
         International Journal of Remote Sensing, 31:6493 – 6517.
     """
@@ -190,7 +190,7 @@ def calibrate_thermal(counts, prt, ict, space, line_numbers, channel, spacecraft
         custom_coeffs (dict) - custom calibration coefficients (default = None)
 
     Note:
-        This function follows steps 1 to 4 from the KLM guide section 7.1.2.4 
+        This function follows steps 1 to 4 from the KLM guide section 7.1.2.4
         "Steps to Calibrate the AVHRR Thermal Channels"
     """
     # get the calibration coefficients for this spacecraft
