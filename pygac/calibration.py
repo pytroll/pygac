@@ -61,7 +61,7 @@ def date2float(date, decimals=5):
     seconds = diff.total_seconds()
     date_float = date.year + seconds/(days_in_year*24*3600)
     if decimals is not None:
-        date_float = round(date_float, decimals)
+         date_float = round(date_float, decimals)
     return date_float
 
 
@@ -77,9 +77,9 @@ def float2date(date_float):
     Note
         This is the reverse function of date2float.
     """
-    year = int(l_date)
+    year = int(date_float)
     days_in_year = (dt.datetime(year+1, 1, 1) - dt.datetime(year, 1, 1)).days
-    seconds = l_date*days_in_year*24*3600 - year*days_in_year*24*3600
+    seconds = date_float*days_in_year*24*3600 - year*days_in_year*24*3600
     diff = dt.timedelta(seconds=seconds)
     date = dt.datetime(year, 1, 1) + diff
     return date
@@ -93,28 +93,30 @@ def new2old_coeffs(new_coeffs):
     for i, ch in enumerate(['1', '2', '3a']):
         for slope, char in enumerate('abc'):
             for gain in ['high', 'low']:
-                old_coeffs[f'{char}{gain[0]}'].append(
-                    new_coeffs[f'channel_{ch}'][f'gain_{gain}_s{slope}']
+                old_coeffs['{0}{1}'.format(char,gain[0])].append(
+                    new_coeffs['channel_{0}'.format(ch)]['gain_{0}_s{1}'.format(gain,slope)]
                 )
-        old_coeffs['c_dark'].append(new_coeffs[f'channel_{ch}']['dark_count'])
-        if new_coeffs[f'channel_1'].get('gain_switch') is not None:
-            old_coeffs['c_s'].append(new_coeffs[f'channel_{ch}']['gain_switch'])
+        old_coeffs['c_dark'].append(new_coeffs['channel_{0}'.format(ch)]['dark_count'])
+        if new_coeffs['channel_1'].get('gain_switch') is not None:
+            old_coeffs['c_s'].append(new_coeffs['channel_{0}'.format(ch)]['gain_switch'])
     old_coeffs['d'].append(5*[0.0])
     for prt in range(1, 5):
         old_coeffs['d'].append([
-            new_coeffs[f'thermometer_{prt}'][f'c{i}']
+            new_coeffs['thermometer_{0}'.format(prt)]['c{0}'.format(i)]
             for i in range(5)
         ])
     for ch in ['3b', '4', '5']:
-        old_coeffs['n_s'].append(new_coeffs[f'channel_{ch}']['space_radiance'])
-        old_coeffs['c_wn'].append(new_coeffs[f'channel_{ch}']['centroid_wavenumber'])
-        old_coeffs['a'].append(new_coeffs[f'channel_{ch}']['to_eff_blackbody_intercept'])
-        old_coeffs['b'].append(new_coeffs[f'channel_{ch}']['to_eff_blackbody_slope'])
+        old_coeffs['n_s'].append(new_coeffs['channel_{0}'.format(ch)]['space_radiance'])
+        old_coeffs['c_wn'].append(new_coeffs['channel_{0}'.format(ch)]['centroid_wavenumber'])
+        old_coeffs['a'].append(new_coeffs['channel_{0}'.format(ch)]['to_eff_blackbody_intercept'])
+        old_coeffs['b'].append(new_coeffs['channel_{0}'.format(ch)]['to_eff_blackbody_slope'])
         for j in range(3):
-            if j == 1:
-                old_coeffs[f'b{j}'].append(1 + new_coeffs[f'channel_{ch}'][f'radiance_correction_c{j}'])
+            if j==1:
+                old_coeffs['b{0}'.format(j)].append(1 + new_coeffs['channel_{0}'.format(ch)][
+                    'radiance_correction_c{0}'.format(j)])
             else:
-                old_coeffs[f'b{j}'].append(new_coeffs[f'channel_{ch}'][f'radiance_correction_c{j}'])
+                old_coeffs['b{0}'.format(j)].append(new_coeffs['channel_{0}'.format(ch)][
+                    'radiance_correction_c{0}'.format(j)])
     return dict(old_coeffs)
 
 
@@ -122,27 +124,29 @@ def old2new_coeffs(old_coeffs):
     """convert old coefficients to new coefficients"""
     new_coeffs = {}
     for i, ch in enumerate(['1', '2', '3a']):
-        new_coeffs[f'channel_{ch}'] = {}
+        new_coeffs['channel_{0}'.format(ch)] = {}
         for slope, char in enumerate('abc'):
             for gain in ['high', 'low']:
-                new_coeffs[f'channel_{ch}'][f'gain_{gain}_s{slope}'] = old_coeffs[f'{char}{gain[0]}'][i]
-        new_coeffs[f'channel_{ch}'][f'dark_count'] = old_coeffs['c_dark'][i]
-        new_coeffs[f'channel_{ch}'][f'gain_switch'] = old_coeffs.get('c_s', 3*[None])[i]
+                new_coeffs['channel_{0}'.format(ch)]['gain_{0}_s{1}'.format(gain,slope)] = old_coeffs[
+                    '{0}{1}'.format(char,gain[0])][i]
+        new_coeffs['channel_{0}'.format(ch)]['dark_count'] = old_coeffs['c_dark'][i]
+        new_coeffs['channel_{0}'.format(ch)]['gain_switch'] = old_coeffs.get('c_s', 3*[None])[i]
     new_coeffs['date_of_launch'] = str(float2date(old_coeffs['l_date']))
     for prt in range(1, 5):
-        new_coeffs[f'thermometer_{prt}'] = {}
+        new_coeffs['thermometer_{0}'.format(prt)] = {}
         for i in range(5):
-            new_coeffs[f'thermometer_{prt}'][f'c{i}'] = old_coeffs['d'][prt][i]
+            new_coeffs['thermometer_{0}'.format(prt)]['c{0}'.format(i)] = old_coeffs['d'][prt][i]
     for i, ch in enumerate(['3b', '4', '5']):
-        new_coeffs[f'channel_{ch}'] = {}
-        new_coeffs[f'channel_{ch}'][f'space_radiance'] = old_coeffs['n_s'][i]
-        new_coeffs[f'channel_{ch}'][f'centroid_wavenumber'] = old_coeffs['c_wn'][i]
-        new_coeffs[f'channel_{ch}'][f'to_eff_blackbody_intercept'] = old_coeffs['a'][i]
-        new_coeffs[f'channel_{ch}'][f'to_eff_blackbody_slope'] = old_coeffs['b'][i]
+        new_coeffs['channel_{0}'.format(ch)] = {}
+        new_coeffs['channel_{0}'.format(ch)]['space_radiance'] = old_coeffs['n_s'][i]
+        new_coeffs['channel_{0}'.format(ch)]['centroid_wavenumber'] = old_coeffs['c_wn'][i]
+        new_coeffs['channel_{0}'.format(ch)]['to_eff_blackbody_intercept'] = old_coeffs['a'][i]
+        new_coeffs['channel_{0}'.format(ch)]['to_eff_blackbody_slope'] = old_coeffs['b'][i]
         for j in range(3):
-            new_coeffs[f'channel_{ch}'][f'radiance_correction_c{j}'] = old_coeffs[f'b{j}'][i]
+            new_coeffs['channel_{0}'.format(ch)]['radiance_correction_c{0}'.format(j)] = old_coeffs[
+                'b{0}'.format(j)][i]
             if j == 1:
-                new_coeffs[f'channel_{ch}'][f'radiance_correction_c{j}'] -= 1
+                new_coeffs['channel_{0}'.format(ch)]['radiance_correction_c{0}'.format(j)] -= 1
     return new_coeffs
 
 
@@ -173,7 +177,7 @@ class Calibrator(object):
         custom_coeffs = custom_coeffs or {}
         customs = {key: cls.parse(value) for key, value in custom_coeffs.items()}
         defaults = cls.default_coeffs[spacecraft]
-        spacecraft_coeffs = {}  # dict.fromkeys(cls.fields)
+        spacecraft_coeffs = {} # dict.fromkeys(cls.fields)
         spacecraft_coeffs.update(defaults)
         spacecraft_coeffs.update(customs)
         if custom_coeffs:
