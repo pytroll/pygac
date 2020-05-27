@@ -61,7 +61,7 @@ def date2float(date, decimals=5):
     seconds = diff.total_seconds()
     date_float = date.year + seconds/(days_in_year*24*3600)
     if decimals is not None:
-         date_float = round(date_float, decimals)
+        date_float = round(date_float, decimals)
     return date_float
 
 
@@ -93,8 +93,8 @@ def new2old_coeffs(new_coeffs):
     for i, ch in enumerate(['1', '2', '3a']):
         for slope, char in enumerate('abc'):
             for gain in ['high', 'low']:
-                old_coeffs['{0}{1}'.format(char,gain[0])].append(
-                    new_coeffs['channel_{0}'.format(ch)]['gain_{0}_s{1}'.format(gain,slope)]
+                old_coeffs['{0}{1}'.format(char, gain[0])].append(
+                    new_coeffs['channel_{0}'.format(ch)]['gain_{0}_s{1}'.format(gain, slope)]
                 )
         old_coeffs['c_dark'].append(new_coeffs['channel_{0}'.format(ch)]['dark_count'])
         if new_coeffs['channel_1'].get('gain_switch') is not None:
@@ -111,7 +111,7 @@ def new2old_coeffs(new_coeffs):
         old_coeffs['a'].append(new_coeffs['channel_{0}'.format(ch)]['to_eff_blackbody_intercept'])
         old_coeffs['b'].append(new_coeffs['channel_{0}'.format(ch)]['to_eff_blackbody_slope'])
         for j in range(3):
-            if j==1:
+            if j == 1:
                 old_coeffs['b{0}'.format(j)].append(1 + new_coeffs['channel_{0}'.format(ch)][
                     'radiance_correction_c{0}'.format(j)])
             else:
@@ -127,8 +127,8 @@ def old2new_coeffs(old_coeffs):
         new_coeffs['channel_{0}'.format(ch)] = {}
         for slope, char in enumerate('abc'):
             for gain in ['high', 'low']:
-                new_coeffs['channel_{0}'.format(ch)]['gain_{0}_s{1}'.format(gain,slope)] = old_coeffs[
-                    '{0}{1}'.format(char,gain[0])][i]
+                new_coeffs['channel_{0}'.format(ch)]['gain_{0}_s{1}'.format(gain, slope)] = old_coeffs[
+                    '{0}{1}'.format(char, gain[0])][i]
         new_coeffs['channel_{0}'.format(ch)]['dark_count'] = old_coeffs['c_dark'][i]
         new_coeffs['channel_{0}'.format(ch)]['gain_switch'] = old_coeffs.get('c_s', 3*[None])[i]
     new_coeffs['date_of_launch'] = str(float2date(old_coeffs['l_date']))
@@ -177,7 +177,7 @@ class Calibrator(object):
         custom_coeffs = custom_coeffs or {}
         customs = {key: cls.parse(value) for key, value in custom_coeffs.items()}
         defaults = cls.default_coeffs[spacecraft]
-        spacecraft_coeffs = {} # dict.fromkeys(cls.fields)
+        spacecraft_coeffs = {}  # dict.fromkeys(cls.fields)
         spacecraft_coeffs.update(defaults)
         spacecraft_coeffs.update(customs)
         if custom_coeffs:
