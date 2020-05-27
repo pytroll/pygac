@@ -27,12 +27,124 @@ from __future__ import division
 import logging
 import numpy as np
 import json
-from collections import namedtuple
+import datetime as dt
+import dateutil.parser
+from collections import namedtuple, defaultdict
 from pkg_resources import resource_filename
+
 
 import pygac.configuration
 
 LOG = logging.getLogger(__name__)
+
+
+def date2float(date, decimals=5):
+    """Convert date to year float.
+
+    Argument
+        date (datetime.datetime) - date
+        decimals (int or None) - rounding precision if None, do not round (default=5)
+
+    Return
+        date_float (float) - date as year
+
+    Note
+        rounding to the 5th decimal reproduces the original float values from patmos-x
+
+    Example:
+        date2float('2000-07-02') == 2000.5
+        because the 2nd of July was the middle day of the leap year 2000
+    """
+    year = date.year
+    days_in_year = (dt.datetime(year+1, 1, 1) - dt.datetime(year, 1, 1)).days
+    diff = date - dt.datetime(year, 1, 1)
+    seconds = diff.total_seconds()
+    date_float = date.year + seconds/(days_in_year*24*3600)
+    if decimals is not None:
+         date_float = round(date_float, decimals)
+    return date_float
+
+
+def float2date(date_float):
+    """Convert date float to date.
+
+    Argument
+        date_float (float) - date as year
+
+    Return
+        date (datetime.datetime) - date
+
+    Note
+        This is the reverse function of date2float.
+    """
+    year = int(l_date)
+    days_in_year = (dt.datetime(year+1, 1, 1) - dt.datetime(year, 1, 1)).days
+    seconds = l_date*days_in_year*24*3600 - year*days_in_year*24*3600
+    diff = dt.timedelta(seconds=seconds)
+    date = dt.datetime(year, 1, 1) + diff
+    return date
+
+
+def new2old_coeffs(new_coeffs):
+    """convert new coefficients to old coefficients"""
+    old_coeffs = defaultdict(list)
+    date_of_launch = dateutil.parser.parse(new_coeffs['date_of_launch'])
+    old_coeffs['l_date'] = date2float(date_of_launch)
+    for i, ch in enumerate(['1', '2', '3a']):
+        for slope, char in enumerate('abc'):
+            for gain in ['high', 'low']:
+                old_coeffs[f'{char}{gain[0]}'].append(
+                    new_coeffs[f'channel_{ch}'][f'gain_{gain}_s{slope}']
+                )
+        old_coeffs['c_dark'].append(new_coeffs[f'channel_{ch}']['dark_count'])
+        if new_coeffs[f'channel_1'].get('gain_switch') is not None:
+            old_coeffs['c_s'].append(new_coeffs[f'channel_{ch}']['gain_switch'])
+    old_coeffs['d'].append(5*[0.0])
+    for prt in range(1, 5):
+        old_coeffs['d'].append([
+            new_coeffs[f'thermometer_{prt}'][f'c{i}']
+            for i in range(5)
+        ])
+    for ch in ['3b', '4', '5']:
+        old_coeffs['n_s'].append(new_coeffs[f'channel_{ch}']['space_radiance'])
+        old_coeffs['c_wn'].append(new_coeffs[f'channel_{ch}']['centroid_wavenumber'])
+        old_coeffs['a'].append(new_coeffs[f'channel_{ch}']['to_eff_blackbody_intercept'])
+        old_coeffs['b'].append(new_coeffs[f'channel_{ch}']['to_eff_blackbody_slope'])
+        for j in range(3):
+            if j==1:
+                old_coeffs[f'b{j}'].append(1 + new_coeffs[f'channel_{ch}'][f'radiance_correction_c{j}'])
+            else:
+                old_coeffs[f'b{j}'].append(new_coeffs[f'channel_{ch}'][f'radiance_correction_c{j}'])
+    return dict(old_coeffs)
+
+
+def old2new_coeffs(old_coeffs):
+    """convert old coefficients to new coefficients"""
+    new_coeffs = {}
+    for i, ch in enumerate(['1', '2', '3a']):
+        new_coeffs[f'channel_{ch}'] = {}
+        for slope, char in enumerate('abc'):
+            for gain in ['high', 'low']:
+                new_coeffs[f'channel_{ch}'][f'gain_{gain}_s{slope}'] = old_coeffs[f'{char}{gain[0]}'][i]
+        new_coeffs[f'channel_{ch}'][f'dark_count'] = old_coeffs['c_dark'][i]
+        new_coeffs[f'channel_{ch}'][f'gain_switch'] = old_coeffs.get('c_s', 3*[None])[i]
+    new_coeffs['date_of_launch'] = str(float2date(old_coeffs['l_date']))
+    for prt in range(1, 5):
+        new_coeffs[f'thermometer_{prt}'] = {}
+        for i in range(5):
+            new_coeffs[f'thermometer_{prt}'][f'c{i}'] = old_coeffs['d'][prt][i]
+    for i, ch in enumerate(['3b', '4', '5']):
+        new_coeffs[f'channel_{ch}'] = {}
+        new_coeffs[f'channel_{ch}'][f'space_radiance'] = old_coeffs['n_s'][i]
+        new_coeffs[f'channel_{ch}'][f'centroid_wavenumber'] = old_coeffs['c_wn'][i]
+        new_coeffs[f'channel_{ch}'][f'to_eff_blackbody_intercept'] = old_coeffs['a'][i]
+        new_coeffs[f'channel_{ch}'][f'to_eff_blackbody_slope'] = old_coeffs['b'][i]
+        for j in range(3):
+            new_coeffs[f'channel_{ch}'][f'radiance_correction_c{j}'] = old_coeffs[f'b{j}'][i]
+            if j == 1:
+                new_coeffs[f'channel_{ch}'][f'radiance_correction_c{j}'] -= 1
+    return new_coeffs
+
 
 class Calibrator(object):
     """Factory class to create namedtuples holding the calibration coefficients.
@@ -61,12 +173,21 @@ class Calibrator(object):
         custom_coeffs = custom_coeffs or {}
         customs = {key: cls.parse(value) for key, value in custom_coeffs.items()}
         defaults = cls.default_coeffs[spacecraft]
-        spacecraft_coeffs = dict.fromkeys(cls.fields)
+        spacecraft_coeffs = {} # dict.fromkeys(cls.fields)
         spacecraft_coeffs.update(defaults)
         spacecraft_coeffs.update(customs)
         if custom_coeffs:
             LOG.info('Using following custom coefficients "%s".', customs)
-        calibrator = cls.Calibrator(**spacecraft_coeffs)
+        # Note: The follwoing conversion from new to old coefficient names should
+        #       disappear in a future version.
+        #       The commit intorducing this comment contains everything to convert
+        #       new to old names and vice versa
+        _spacecraft_coeffs = dict.fromkeys(cls.fields)
+        _spacecraft_coeffs.update({
+            key: cls.parse(value)  # parse lists to arrays
+            for key, value in new2old_coeffs(spacecraft_coeffs).items()
+        })
+        calibrator = cls.Calibrator(**_spacecraft_coeffs)
         return calibrator
 
     @staticmethod
@@ -95,12 +216,7 @@ class Calibrator(object):
             coeffs_file = resource_filename('pygac', 'data/calibration.json')
         LOG.info('Use default coefficients from "%s"', coeffs_file)
         with open(coeffs_file, mode='r') as json_file:
-            default_coeffs = json.load(json_file)
-        # parse values in defaults
-        cls.default_coeffs = {
-            sat: {key: cls.parse(value) for key, value in defaults.items()}
-            for sat, defaults in default_coeffs.items()
-        }
+            cls.default_coeffs = json.load(json_file)
 
 
 def calibrate_solar(counts, chan, year, jday, spacecraft, corr=1, custom_coeffs=None):
