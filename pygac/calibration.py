@@ -61,7 +61,7 @@ def date2float(date, decimals=5):
     seconds = diff.total_seconds()
     date_float = date.year + seconds/(days_in_year*24*3600)
     if decimals is not None:
-         date_float = round(date_float, decimals)
+        date_float = round(date_float, decimals)
     return date_float
 
 
@@ -111,7 +111,7 @@ def new2old_coeffs(new_coeffs):
         old_coeffs['a'].append(new_coeffs[f'channel_{ch}']['to_eff_blackbody_intercept'])
         old_coeffs['b'].append(new_coeffs[f'channel_{ch}']['to_eff_blackbody_slope'])
         for j in range(3):
-            if j==1:
+            if j == 1:
                 old_coeffs[f'b{j}'].append(1 + new_coeffs[f'channel_{ch}'][f'radiance_correction_c{j}'])
             else:
                 old_coeffs[f'b{j}'].append(new_coeffs[f'channel_{ch}'][f'radiance_correction_c{j}'])
@@ -173,7 +173,7 @@ class Calibrator(object):
         custom_coeffs = custom_coeffs or {}
         customs = {key: cls.parse(value) for key, value in custom_coeffs.items()}
         defaults = cls.default_coeffs[spacecraft]
-        spacecraft_coeffs = {} # dict.fromkeys(cls.fields)
+        spacecraft_coeffs = {}  # dict.fromkeys(cls.fields)
         spacecraft_coeffs.update(defaults)
         spacecraft_coeffs.update(customs)
         if custom_coeffs:
