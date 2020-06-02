@@ -2,33 +2,24 @@
     "metopa": {
         "channel_1": {
             "dark_count": 40.43,
-            "gain_high_s0": 0.169,
-            "gain_high_s1": 0.609,
-            "gain_high_s2": -0.029,
-            "gain_low_s0": 0.056,
-            "gain_low_s1": 0.609,
-            "gain_low_s2": -0.029,
-            "gain_switch": 501.0
+            "gain_switch": 501.0,
+            "s0": 0.11266666666666668,
+            "s1": 0.609,
+            "s2": -0.029
         },
         "channel_2": {
             "dark_count": 39.75,
-            "gain_high_s0": 0.199,
-            "gain_high_s1": 0.98,
-            "gain_high_s2": -0.016,
-            "gain_low_s0": 0.066,
-            "gain_low_s1": 0.98,
-            "gain_low_s2": -0.016,
-            "gain_switch": 500.0
+            "gain_switch": 500.0,
+            "s0": 0.13266666666666668,
+            "s1": 0.98,
+            "s2": -0.016
         },
         "channel_3a": {
             "dark_count": 41.8,
-            "gain_high_s0": 0.213,
-            "gain_high_s1": -0.016,
-            "gain_high_s2": -0.033,
-            "gain_low_s0": 0.03,
-            "gain_low_s1": -0.016,
-            "gain_low_s2": -0.033,
-            "gain_switch": 502.0
+            "gain_switch": 502.0,
+            "s0": 0.1217142857142857,
+            "s1": -0.016,
+            "s2": -0.033
         },
         "channel_3b": {
             "centroid_wavenumber": 2687.0392,
@@ -90,33 +81,24 @@
     "metopb": {
         "channel_1": {
             "dark_count": 39.7,
-            "gain_high_s0": 0.166,
-            "gain_high_s1": 2.019,
-            "gain_high_s2": -0.201,
-            "gain_low_s0": 0.055,
-            "gain_low_s1": 2.019,
-            "gain_low_s2": -0.201,
-            "gain_switch": 501.12
+            "gain_switch": 501.12,
+            "s0": 0.11066666666666668,
+            "s1": 2.019,
+            "s2": -0.201
         },
         "channel_2": {
             "dark_count": 40.0,
-            "gain_high_s0": 0.183,
-            "gain_high_s1": 1.476,
-            "gain_high_s2": -0.137,
-            "gain_low_s0": 0.061,
-            "gain_low_s1": 1.476,
-            "gain_low_s2": -0.137,
-            "gain_switch": 500.82
+            "gain_switch": 500.82,
+            "s0": 0.122,
+            "s1": 1.476,
+            "s2": -0.137
         },
         "channel_3a": {
             "dark_count": 40.3,
-            "gain_high_s0": 0.201,
-            "gain_high_s1": 1.748,
-            "gain_high_s2": -0.033,
-            "gain_low_s0": 0.029,
-            "gain_low_s1": 1.748,
-            "gain_low_s2": -0.033,
-            "gain_switch": 501.32
+            "gain_switch": 501.32,
+            "s0": 0.11485714285714287,
+            "s1": 1.748,
+            "s2": -0.033
         },
         "channel_3b": {
             "centroid_wavenumber": 2664.3384,
@@ -178,33 +160,24 @@
     "noaa10": {
         "channel_1": {
             "dark_count": 39.44,
-            "gain_high_s0": 0.111,
-            "gain_high_s1": 6.087,
-            "gain_high_s2": -1.039,
-            "gain_low_s0": 0.111,
-            "gain_low_s1": 6.087,
-            "gain_low_s2": -1.039,
-            "gain_switch": null
+            "gain_switch": null,
+            "s0": 0.111,
+            "s1": 6.087,
+            "s2": -1.039
         },
         "channel_2": {
             "dark_count": 39.4,
-            "gain_high_s0": 0.137,
-            "gain_high_s1": 0.119,
-            "gain_high_s2": 0.123,
-            "gain_low_s0": 0.137,
-            "gain_low_s1": 0.119,
-            "gain_low_s2": 0.123,
-            "gain_switch": null
+            "gain_switch": null,
+            "s0": 0.137,
+            "s1": 0.119,
+            "s2": 0.123
         },
         "channel_3a": {
             "dark_count": 37.51,
-            "gain_high_s0": 0.1,
-            "gain_high_s1": 0.0,
-            "gain_high_s2": 0.0,
-            "gain_low_s0": 0.1,
-            "gain_low_s1": 0.0,
-            "gain_low_s2": 0.0,
-            "gain_switch": null
+            "gain_switch": null,
+            "s0": 0.1,
+            "s1": 0.0,
+            "s2": 0.0
         },
         "channel_3b": {
             "centroid_wavenumber": 2672.6164,
@@ -266,33 +239,24 @@
     "noaa11": {
         "channel_1": {
             "dark_count": 40.0,
-            "gain_high_s0": 0.11,
-            "gain_high_s1": 0.632,
-            "gain_high_s2": -0.044,
-            "gain_low_s0": 0.11,
-            "gain_low_s1": 0.632,
-            "gain_low_s2": -0.044,
-            "gain_switch": null
+            "gain_switch": null,
+            "s0": 0.11,
+            "s1": 0.632,
+            "s2": -0.044
         },
         "channel_2": {
             "dark_count": 40.0,
-            "gain_high_s0": 0.118,
-            "gain_high_s1": -0.037,
-            "gain_high_s2": 0.072,
-            "gain_low_s0": 0.118,
-            "gain_low_s1": -0.037,
-            "gain_low_s2": 0.072,
-            "gain_switch": null
+            "gain_switch": null,
+            "s0": 0.118,
+            "s1": -0.037,
+            "s2": 0.072
         },
         "channel_3a": {
             "dark_count": 40.0,
-            "gain_high_s0": 0.0,
-            "gain_high_s1": 0.0,
-            "gain_high_s2": 0.0,
-            "gain_low_s0": 0.0,
-            "gain_low_s1": 0.0,
-            "gain_low_s2": 0.0,
-            "gain_switch": null
+            "gain_switch": null,
+            "s0": 0.0,
+            "s1": 0.0,
+            "s2": 0.0
         },
         "channel_3b": {
             "centroid_wavenumber": 2680.05,
@@ -354,33 +318,24 @@
     "noaa12": {
         "channel_1": {
             "dark_count": 41.0,
-            "gain_high_s0": 0.121,
-            "gain_high_s1": 2.032,
-            "gain_high_s2": -0.032,
-            "gain_low_s0": 0.121,
-            "gain_low_s1": 2.032,
-            "gain_low_s2": -0.032,
-            "gain_switch": null
+            "gain_switch": null,
+            "s0": 0.121,
+            "s1": 2.032,
+            "s2": -0.032
         },
         "channel_2": {
             "dark_count": 40.0,
-            "gain_high_s0": 0.148,
-            "gain_high_s1": 1.323,
-            "gain_high_s2": -0.008,
-            "gain_low_s0": 0.148,
-            "gain_low_s1": 1.323,
-            "gain_low_s2": -0.008,
-            "gain_switch": null
+            "gain_switch": null,
+            "s0": 0.148,
+            "s1": 1.323,
+            "s2": -0.008
         },
         "channel_3a": {
             "dark_count": 40.0,
-            "gain_high_s0": 0.1,
-            "gain_high_s1": 0.0,
-            "gain_high_s2": 0.0,
-            "gain_low_s0": 0.1,
-            "gain_low_s1": 0.0,
-            "gain_low_s2": 0.0,
-            "gain_switch": null
+            "gain_switch": null,
+            "s0": 0.1,
+            "s1": 0.0,
+            "s2": 0.0
         },
         "channel_3b": {
             "centroid_wavenumber": 2651.7708,
@@ -442,33 +397,24 @@
     "noaa14": {
         "channel_1": {
             "dark_count": 41.0,
-            "gain_high_s0": 0.121,
-            "gain_high_s1": 3.555,
-            "gain_high_s2": -0.339,
-            "gain_low_s0": 0.121,
-            "gain_low_s1": 3.555,
-            "gain_low_s2": -0.339,
-            "gain_switch": null
+            "gain_switch": null,
+            "s0": 0.121,
+            "s1": 3.555,
+            "s2": -0.339
         },
         "channel_2": {
             "dark_count": 41.0,
-            "gain_high_s0": 0.152,
-            "gain_high_s1": 0.254,
-            "gain_high_s2": 0.201,
-            "gain_low_s0": 0.152,
-            "gain_low_s1": 0.254,
-            "gain_low_s2": 0.201,
-            "gain_switch": null
+            "gain_switch": null,
+            "s0": 0.152,
+            "s1": 0.254,
+            "s2": 0.201
         },
         "channel_3a": {
             "dark_count": 39.0,
-            "gain_high_s0": 0.1,
-            "gain_high_s1": 0.0,
-            "gain_high_s2": 0.0,
-            "gain_low_s0": 0.1,
-            "gain_low_s1": 0.0,
-            "gain_low_s2": 0.0,
-            "gain_switch": null
+            "gain_switch": null,
+            "s0": 0.1,
+            "s1": 0.0,
+            "s2": 0.0
         },
         "channel_3b": {
             "centroid_wavenumber": 2654.25,
@@ -530,33 +476,24 @@
     "noaa15": {
         "channel_1": {
             "dark_count": 39.0,
-            "gain_high_s0": 0.179,
-            "gain_high_s1": -0.069,
-            "gain_high_s2": 0.002,
-            "gain_low_s0": 0.06,
-            "gain_low_s1": -0.069,
-            "gain_low_s2": 0.002,
-            "gain_switch": 500.0
+            "gain_switch": 500.0,
+            "s0": 0.11933333333333333,
+            "s1": -0.069,
+            "s2": 0.002
         },
         "channel_2": {
             "dark_count": 40.0,
-            "gain_high_s0": 0.206,
-            "gain_high_s1": 0.339,
-            "gain_high_s2": -0.01,
-            "gain_low_s0": 0.069,
-            "gain_low_s1": 0.339,
-            "gain_low_s2": -0.01,
-            "gain_switch": 500.0
+            "gain_switch": 500.0,
+            "s0": 0.13733333333333334,
+            "s1": 0.339,
+            "s2": -0.01
         },
         "channel_3a": {
             "dark_count": 39.0,
-            "gain_high_s0": 0.175,
-            "gain_high_s1": 0.0,
-            "gain_high_s2": 0.0,
-            "gain_low_s0": 0.025,
-            "gain_low_s1": 0.0,
-            "gain_low_s2": 0.0,
-            "gain_switch": 500.0
+            "gain_switch": 500.0,
+            "s0": 0.1,
+            "s1": 0.0,
+            "s2": 0.0
         },
         "channel_3b": {
             "centroid_wavenumber": 2695.9743,
@@ -618,33 +555,24 @@
     "noaa16": {
         "channel_1": {
             "dark_count": 39.3,
-            "gain_high_s0": 0.165,
-            "gain_high_s1": 0.839,
-            "gain_high_s2": -0.051,
-            "gain_low_s0": 0.055,
-            "gain_low_s1": 0.839,
-            "gain_low_s2": -0.051,
-            "gain_switch": 498.96
+            "gain_switch": 498.96,
+            "s0": 0.11,
+            "s1": 0.839,
+            "s2": -0.051
         },
         "channel_2": {
             "dark_count": 38.9,
-            "gain_high_s0": 0.179,
-            "gain_high_s1": 0.786,
-            "gain_high_s2": -0.031,
-            "gain_low_s0": 0.06,
-            "gain_low_s1": 0.786,
-            "gain_low_s2": -0.031,
-            "gain_switch": 500.17
+            "gain_switch": 500.17,
+            "s0": 0.11933333333333333,
+            "s1": 0.786,
+            "s2": -0.031
         },
         "channel_3a": {
             "dark_count": 38.4,
-            "gain_high_s0": 0.187,
-            "gain_high_s1": 0.29,
-            "gain_high_s2": -0.294,
-            "gain_low_s0": 0.027,
-            "gain_low_s1": 0.29,
-            "gain_low_s2": -0.294,
-            "gain_switch": 499.43
+            "gain_switch": 499.43,
+            "s0": 0.10685714285714286,
+            "s1": 0.29,
+            "s2": -0.294
         },
         "channel_3b": {
             "centroid_wavenumber": 2681.254,
@@ -706,33 +634,24 @@
     "noaa17": {
         "channel_1": {
             "dark_count": 39.99,
-            "gain_high_s0": 0.172,
-            "gain_high_s1": 1.007,
-            "gain_high_s2": -0.044,
-            "gain_low_s0": 0.057,
-            "gain_low_s1": 1.007,
-            "gain_low_s2": -0.044,
-            "gain_switch": 501.12
+            "gain_switch": 501.12,
+            "s0": 0.11466666666666665,
+            "s1": 1.007,
+            "s2": -0.044
         },
         "channel_2": {
             "dark_count": 39.09,
-            "gain_high_s0": 0.21,
-            "gain_high_s1": 1.474,
-            "gain_high_s2": -0.118,
-            "gain_low_s0": 0.07,
-            "gain_low_s1": 1.474,
-            "gain_low_s2": -0.118,
-            "gain_switch": 500.73
+            "gain_switch": 500.73,
+            "s0": 0.14,
+            "s1": 1.474,
+            "s2": -0.118
         },
         "channel_3a": {
             "dark_count": 42.09,
-            "gain_high_s0": 0.209,
-            "gain_high_s1": 2.787,
-            "gain_high_s2": -0.292,
-            "gain_low_s0": 0.03,
-            "gain_low_s1": 2.787,
-            "gain_low_s2": -0.292,
-            "gain_switch": 501.37
+            "gain_switch": 501.37,
+            "s0": 0.11942857142857143,
+            "s1": 2.787,
+            "s2": -0.292
         },
         "channel_3b": {
             "centroid_wavenumber": 2669.1414,
@@ -794,33 +713,24 @@
     "noaa18": {
         "channel_1": {
             "dark_count": 39.44,
-            "gain_high_s0": 0.171,
-            "gain_high_s1": 0.603,
-            "gain_high_s2": 0.0,
-            "gain_low_s0": 0.057,
-            "gain_low_s1": 0.603,
-            "gain_low_s2": 0.0,
-            "gain_switch": 500.54
+            "gain_switch": 500.54,
+            "s0": 0.114,
+            "s1": 0.603,
+            "s2": 0.0
         },
         "channel_2": {
             "dark_count": 39.4,
-            "gain_high_s0": 0.192,
-            "gain_high_s1": 0.632,
-            "gain_high_s2": 0.045,
-            "gain_low_s0": 0.064,
-            "gain_low_s1": 0.632,
-            "gain_low_s2": 0.045,
-            "gain_switch": 500.4
+            "gain_switch": 500.4,
+            "s0": 0.128,
+            "s1": 0.632,
+            "s2": 0.045
         },
         "channel_3a": {
             "dark_count": 37.51,
-            "gain_high_s0": 0.175,
-            "gain_high_s1": 0.0,
-            "gain_high_s2": 0.0,
-            "gain_low_s0": 0.025,
-            "gain_low_s1": 0.0,
-            "gain_low_s2": 0.0,
-            "gain_switch": 500.56
+            "gain_switch": 500.56,
+            "s0": 0.1,
+            "s1": 0.0,
+            "s2": 0.0
         },
         "channel_3b": {
             "centroid_wavenumber": 2660.6468,
@@ -882,33 +792,24 @@
     "noaa19": {
         "channel_1": {
             "dark_count": 38.8,
-            "gain_high_s0": 0.162,
-            "gain_high_s1": 0.626,
-            "gain_high_s2": -0.044,
-            "gain_low_s0": 0.054,
-            "gain_low_s1": 0.626,
-            "gain_low_s2": -0.044,
-            "gain_switch": 496.43
+            "gain_switch": 496.43,
+            "s0": 0.108,
+            "s1": 0.626,
+            "s2": -0.044
         },
         "channel_2": {
             "dark_count": 39.0,
-            "gain_high_s0": 0.183,
-            "gain_high_s1": 0.95,
-            "gain_high_s2": -0.039,
-            "gain_low_s0": 0.061,
-            "gain_low_s1": 0.95,
-            "gain_low_s2": -0.039,
-            "gain_switch": 500.37
+            "gain_switch": 500.37,
+            "s0": 0.122,
+            "s1": 0.95,
+            "s2": -0.039
         },
         "channel_3a": {
             "dark_count": 39.4,
-            "gain_high_s0": 0.175,
-            "gain_high_s1": 0.0,
-            "gain_high_s2": 0.0,
-            "gain_low_s0": 0.025,
-            "gain_low_s1": 0.0,
-            "gain_low_s2": 0.0,
-            "gain_switch": 496.11
+            "gain_switch": 496.11,
+            "s0": 0.1,
+            "s1": 0.0,
+            "s2": 0.0
         },
         "channel_3b": {
             "centroid_wavenumber": 2670.2425,
@@ -970,33 +871,24 @@
     "noaa6": {
         "channel_1": {
             "dark_count": 39.44,
-            "gain_high_s0": 0.133,
-            "gain_high_s1": 0.9,
-            "gain_high_s2": 0.0,
-            "gain_low_s0": 0.133,
-            "gain_low_s1": 0.9,
-            "gain_low_s2": 0.0,
-            "gain_switch": null
+            "gain_switch": null,
+            "s0": 0.133,
+            "s1": 0.9,
+            "s2": 0.0
         },
         "channel_2": {
             "dark_count": 39.4,
-            "gain_high_s0": 0.128,
-            "gain_high_s1": 0.699,
-            "gain_high_s2": 0.0,
-            "gain_low_s0": 0.128,
-            "gain_low_s1": 0.699,
-            "gain_low_s2": 0.0,
-            "gain_switch": null
+            "gain_switch": null,
+            "s0": 0.128,
+            "s1": 0.699,
+            "s2": 0.0
         },
         "channel_3a": {
             "dark_count": 37.51,
-            "gain_high_s0": 0.1,
-            "gain_high_s1": 0.0,
-            "gain_high_s2": 0.0,
-            "gain_low_s0": 0.1,
-            "gain_low_s1": 0.0,
-            "gain_low_s2": 0.0,
-            "gain_switch": null
+            "gain_switch": null,
+            "s0": 0.1,
+            "s1": 0.0,
+            "s2": 0.0
         },
         "channel_3b": {
             "centroid_wavenumber": 2671.5433,
@@ -1058,33 +950,24 @@
     "noaa7": {
         "channel_1": {
             "dark_count": 36.0,
-            "gain_high_s0": 0.115,
-            "gain_high_s1": 3.792,
-            "gain_high_s2": -0.269,
-            "gain_low_s0": 0.115,
-            "gain_low_s1": 3.972,
-            "gain_low_s2": -0.269,
-            "gain_switch": null
+            "gain_switch": null,
+            "s0": 0.115,
+            "s1": 3.792,
+            "s2": -0.269
         },
         "channel_2": {
             "dark_count": 37.0,
-            "gain_high_s0": 0.127,
-            "gain_high_s1": 2.685,
-            "gain_high_s2": -0.101,
-            "gain_low_s0": 0.127,
-            "gain_low_s1": 2.685,
-            "gain_low_s2": -0.101,
-            "gain_switch": null
+            "gain_switch": null,
+            "s0": 0.127,
+            "s1": 2.685,
+            "s2": -0.101
         },
         "channel_3a": {
             "dark_count": 39.0,
-            "gain_high_s0": 0.1,
-            "gain_high_s1": 0.0,
-            "gain_high_s2": 0.0,
-            "gain_low_s0": 0.1,
-            "gain_low_s1": 0.0,
-            "gain_low_s2": 0.0,
-            "gain_switch": null
+            "gain_switch": null,
+            "s0": 0.1,
+            "s1": 0.0,
+            "s2": 0.0
         },
         "channel_3b": {
             "centroid_wavenumber": 2684.5233,
@@ -1146,33 +1029,24 @@
     "noaa8": {
         "channel_1": {
             "dark_count": 39.44,
-            "gain_high_s0": 0.119,
-            "gain_high_s1": 6.065,
-            "gain_high_s2": 0.0,
-            "gain_low_s0": 0.119,
-            "gain_low_s1": 6.065,
-            "gain_low_s2": 0.0,
-            "gain_switch": null
+            "gain_switch": null,
+            "s0": 0.119,
+            "s1": 6.065,
+            "s2": 0.0
         },
         "channel_2": {
             "dark_count": 39.4,
-            "gain_high_s0": 0.136,
-            "gain_high_s1": 7.248,
-            "gain_high_s2": 0.0,
-            "gain_low_s0": 0.136,
-            "gain_low_s1": 7.248,
-            "gain_low_s2": 0.0,
-            "gain_switch": null
+            "gain_switch": null,
+            "s0": 0.136,
+            "s1": 7.248,
+            "s2": 0.0
         },
         "channel_3a": {
             "dark_count": 37.51,
-            "gain_high_s0": 0.1,
-            "gain_high_s1": 0.0,
-            "gain_high_s2": 0.0,
-            "gain_low_s0": 0.1,
-            "gain_low_s1": 0.0,
-            "gain_low_s2": 0.0,
-            "gain_switch": null
+            "gain_switch": null,
+            "s0": 0.1,
+            "s1": 0.0,
+            "s2": 0.0
         },
         "channel_3b": {
             "centroid_wavenumber": 2651.3776,
@@ -1234,33 +1108,24 @@
     "noaa9": {
         "channel_1": {
             "dark_count": 38.0,
-            "gain_high_s0": 0.108,
-            "gain_high_s1": 4.255,
-            "gain_high_s2": 0.64,
-            "gain_low_s0": 0.108,
-            "gain_low_s1": 4.255,
-            "gain_low_s2": 0.64,
-            "gain_switch": null
+            "gain_switch": null,
+            "s0": 0.108,
+            "s1": 4.255,
+            "s2": 0.64
         },
         "channel_2": {
             "dark_count": 40.0,
-            "gain_high_s0": 0.122,
-            "gain_high_s1": 0.31,
-            "gain_high_s2": 0.642,
-            "gain_low_s0": 0.122,
-            "gain_low_s1": 0.31,
-            "gain_low_s2": 0.642,
-            "gain_switch": null
+            "gain_switch": null,
+            "s0": 0.122,
+            "s1": 0.31,
+            "s2": 0.642
         },
         "channel_3a": {
             "dark_count": 38.0,
-            "gain_high_s0": 0.1,
-            "gain_high_s1": 0.0,
-            "gain_high_s2": 0.0,
-            "gain_low_s0": 0.1,
-            "gain_low_s1": 0.0,
-            "gain_low_s2": 0.0,
-            "gain_switch": null
+            "gain_switch": null,
+            "s0": 0.1,
+            "s1": 0.0,
+            "s2": 0.0
         },
         "channel_3b": {
             "centroid_wavenumber": 2690.0451,
@@ -1322,33 +1187,24 @@
     "tirosn": {
         "channel_1": {
             "dark_count": 39.44,
-            "gain_high_s0": 0.115,
-            "gain_high_s1": 5.11,
-            "gain_high_s2": 0.0,
-            "gain_low_s0": 0.115,
-            "gain_low_s1": 5.11,
-            "gain_low_s2": 0.0,
-            "gain_switch": null
+            "gain_switch": null,
+            "s0": 0.115,
+            "s1": 5.11,
+            "s2": 0.0
         },
         "channel_2": {
             "dark_count": 39.4,
-            "gain_high_s0": 0.133,
-            "gain_high_s1": 0.717,
-            "gain_high_s2": 0.0,
-            "gain_low_s0": 0.133,
-            "gain_low_s1": 0.717,
-            "gain_low_s2": 0.0,
-            "gain_switch": null
+            "gain_switch": null,
+            "s0": 0.133,
+            "s1": 0.717,
+            "s2": 0.0
         },
         "channel_3a": {
             "dark_count": 37.51,
-            "gain_high_s0": 0.1,
-            "gain_high_s1": 0.0,
-            "gain_high_s2": 0.0,
-            "gain_low_s0": 0.1,
-            "gain_low_s1": 0.0,
-            "gain_low_s2": 0.0,
-            "gain_switch": null
+            "gain_switch": null,
+            "s0": 0.1,
+            "s1": 0.0,
+            "s2": 0.0
         },
         "channel_3b": {
             "centroid_wavenumber": 2655.7409,

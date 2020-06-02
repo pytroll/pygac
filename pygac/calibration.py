@@ -32,12 +32,33 @@ import datetime as dt
 import dateutil.parser
 from collections import namedtuple, defaultdict
 from pkg_resources import resource_filename
+from scipy.optimize import bisect
 
 
 import pygac.configuration
 
 LOG = logging.getLogger(__name__)
 
+
+def find_s0(s0_low, s0_high, ch):
+    if ch == '3a':
+        g_low, g_high = 0.25, 1.75
+    else:
+        g_low, g_high = 0.5, 1.5
+    diff = lambda s0: s0_low - round(s0*g_low, 3) + s0_high - round(s0*g_high, 3)
+    
+    s0_l = s0_low / g_low
+    s0_h = s0_high / g_high
+    s0_ = (s0_l + s0_h)/2
+    if diff(s0_) == 0:
+        s0 = s0_
+    if diff(s0_l) == 0:
+        s0 = s0_l
+    elif diff(s0_h) == 0:
+        s0 = s0_h
+    else:
+        s0 = bisect(diff, s0_l, s0_h)
+    return s0
 
 def date2float(date, decimals=5):
     """Convert date to year float.
@@ -94,9 +115,24 @@ def new2old_coeffs(new_coeffs):
     for i, ch in enumerate(['1', '2', '3a']):
         for slope, char in enumerate('abc'):
             for gain in ['high', 'low']:
-                old_coeffs['{0}{1}'.format(char, gain[0])].append(
-                    new_coeffs['channel_{0}'.format(ch)]['gain_{0}_s{1}'.format(gain, slope)]
-                )
+                if slope==0 and new_coeffs['channel_{0}'.format(ch)].get('gain_switch') is not None:
+                    if gain=='low' and ch=='3a':
+                        g = 0.25
+                    elif gain=='low':
+                        g = 0.5
+                    elif gain=='high' and ch=='3a':
+                        g = 1.75
+                    elif gain=='high':
+                        g = 1.5
+                    else:
+                        raise RuntimeError('Should not happen!')
+                    old_coeffs['{0}{1}'.format(char,gain[0])].append(
+                        round(new_coeffs['channel_{0}'.format(ch)]['s{0}'.format(slope)]*g, 3)
+                    )
+                else:
+                    old_coeffs['{0}{1}'.format(char,gain[0])].append(
+                        new_coeffs['channel_{0}'.format(ch)]['s{0}'.format(slope)]
+                    )
         old_coeffs['c_dark'].append(new_coeffs['channel_{0}'.format(ch)]['dark_count'])
         if new_coeffs['channel_1'].get('gain_switch') is not None:
             old_coeffs['c_s'].append(new_coeffs['channel_{0}'.format(ch)]['gain_switch'])
@@ -130,9 +166,14 @@ def old2new_coeffs(old_coeffs):
     for i, ch in enumerate(['1', '2', '3a']):
         new_coeffs['channel_{0}'.format(ch)] = {}
         for slope, char in enumerate('abc'):
-            for gain in ['high', 'low']:
-                new_coeffs['channel_{0}'.format(ch)]['gain_{0}_s{1}'.format(gain, slope)] = old_coeffs[
-                    '{0}{1}'.format(char, gain[0])][i]
+            if slope==0 and old_coeffs.get('c_s') is not None:
+                new_coeffs['channel_{0}'.format(ch)]['s{0}'.format(slope)] = find_s0(
+                    old_coeffs['{0}l'.format(char)][i],
+                    old_coeffs['{0}h'.format(char)][i],
+                    ch
+                )
+            else:
+                new_coeffs['channel_{0}'.format(ch)]['s{0}'.format(slope)] = old_coeffs['{0}h'.format(char)][i]
         new_coeffs['channel_{0}'.format(ch)]['dark_count'] = old_coeffs['c_dark'][i]
         new_coeffs['channel_{0}'.format(ch)]['gain_switch'] = old_coeffs.get('c_s', 3*[None])[i]
     new_coeffs['date_of_launch'] = str(float2date(old_coeffs['l_date']))
