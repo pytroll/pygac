@@ -113,10 +113,10 @@ def new2old_coeffs(new_coeffs):
         old_coeffs['b'].append(new_coeffs['channel_{0}'.format(ch)]['to_eff_blackbody_slope'])
         for j in range(3):
             # revert to original definition of the linear coefficient (not including +1)
-            #if j == 1:
+            # if j == 1:
             #    old_coeffs['b{0}'.format(j)].append(1 + new_coeffs['channel_{0}'.format(ch)][
             #        'radiance_correction_c{0}'.format(j)])
-            #else:
+            # else:
             #    old_coeffs['b{0}'.format(j)].append(new_coeffs['channel_{0}'.format(ch)][
             #        'radiance_correction_c{0}'.format(j)])
             old_coeffs['b{0}'.format(j)].append(new_coeffs['channel_{0}'.format(ch)][
@@ -150,7 +150,7 @@ def old2new_coeffs(old_coeffs):
             new_coeffs['channel_{0}'.format(ch)]['radiance_correction_c{0}'.format(j)] = old_coeffs[
                 'b{0}'.format(j)][i]
             # revert to original definition of the linear coefficient (not including +1)
-            #if j == 1:
+            # if j == 1:
             #    new_coeffs['channel_{0}'.format(ch)]['radiance_correction_c{0}'.format(j)] -= 1
     return new_coeffs
 
@@ -257,7 +257,7 @@ def calibrate_solar(counts, chan, year, jday, spacecraft, corr=1, custom_coeffs=
             " of the function result clear. Please make any unit conversion outside this function.",
             DeprecationWarning
         )
-    
+
     # get the calibration coefficients for this spacecraft
     cal = Calibrator(spacecraft, custom_coeffs=custom_coeffs)
 
@@ -282,8 +282,8 @@ def calibrate_solar(counts, chan, year, jday, spacecraft, corr=1, custom_coeffs=
     # where R_cal is the value generated from the calibration and is referred to as a
     # scaled radiance, S is the calibration slope, C the measured count and D the dark count.
     # This equation is only valid for single gain instruments. Starting with the AVHRR/3 series
-    # (from NOAA-15 onwards), the channel-1, 2 and 3a require a dual-gain calibration. The dual-gain 
-    # counts have been converted to equivalent single-gain counts determined by a gain switch to be 
+    # (from NOAA-15 onwards), the channel-1, 2 and 3a require a dual-gain calibration. The dual-gain
+    # counts have been converted to equivalent single-gain counts determined by a gain switch to be
     # linearly propotional to radiance (Appendix A in Heidinger et al, 2010).
     # Long story short: The scaled radiance as function of instrument counts is a continuous piecewise
     # linear function of two line segments.
@@ -354,13 +354,13 @@ def calibrate_thermal(counts, prt, ict, space, line_numbers, channel, spacecraft
     # T_BB = (T_PRT1 + T_PRT2 + T_PRT3 + T_PRT4)/4    (7.1.2.4-2)
 
     # Find the corresponding PRT values for a given line number
-    # Note that the prt values are the average value of the three readings from one of the four 
+    # Note that the prt values are the average value of the three readings from one of the four
     # PRTs. See reader.get_telemetry implementations.
     prt_threshold = 50  # empirically found and set by Abhay Devasthale
     offset = 0
 
     for i, prt_val in enumerate(prt):
-        # According to the KLM Guide the fill value between PRT measurments is 0, but we search 
+        # According to the KLM Guide the fill value between PRT measurments is 0, but we search
         # for the first measurment gap using the threshold. Is this on purpose?
         if prt_val < prt_threshold:
             offset = i
@@ -397,7 +397,7 @@ def calibrate_thermal(counts, prt, ict, space, line_numbers, channel, spacecraft
               (cal.d[iprt, 3] + prt *
                (cal.d[iprt, 4])))))
 
-    # Note: the KLM Guide proposes to calculate the mean temperature using equation (7.1.2.4-2). 
+    # Note: the KLM Guide proposes to calculate the mean temperature using equation (7.1.2.4-2).
     # PyGAC follows the smoothing approach by Trishchenko (2002), i.e.
     # filling the zeros that mark a complete set of thermometer measurements
     # by interpolation, and then using a weighting function (so far only equal
