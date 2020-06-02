@@ -45,8 +45,9 @@ def find_s0(s0_low, s0_high, ch):
         g_low, g_high = 0.25, 1.75
     else:
         g_low, g_high = 0.5, 1.5
-    diff = lambda s0: s0_low - round(s0*g_low, 3) + s0_high - round(s0*g_high, 3)
-    
+
+    def diff(s0): return s0_low - round(s0*g_low, 3) + s0_high - round(s0*g_high, 3)
+
     s0_l = s0_low / g_low
     s0_h = s0_high / g_high
     s0_ = (s0_l + s0_h)/2
@@ -59,6 +60,7 @@ def find_s0(s0_low, s0_high, ch):
     else:
         s0 = bisect(diff, s0_l, s0_h)
     return s0
+
 
 def date2float(date, decimals=5):
     """Convert date to year float.
@@ -115,22 +117,22 @@ def new2old_coeffs(new_coeffs):
     for i, ch in enumerate(['1', '2', '3a']):
         for slope, char in enumerate('abc'):
             for gain in ['high', 'low']:
-                if slope==0 and new_coeffs['channel_{0}'.format(ch)].get('gain_switch') is not None:
-                    if gain=='low' and ch=='3a':
+                if slope == 0 and new_coeffs['channel_{0}'.format(ch)].get('gain_switch') is not None:
+                    if gain == 'low' and ch == '3a':
                         g = 0.25
-                    elif gain=='low':
+                    elif gain == 'low':
                         g = 0.5
-                    elif gain=='high' and ch=='3a':
+                    elif gain == 'high' and ch == '3a':
                         g = 1.75
-                    elif gain=='high':
+                    elif gain == 'high':
                         g = 1.5
                     else:
                         raise RuntimeError('Should not happen!')
-                    old_coeffs['{0}{1}'.format(char,gain[0])].append(
+                    old_coeffs['{0}{1}'.format(char, gain[0])].append(
                         round(new_coeffs['channel_{0}'.format(ch)]['s{0}'.format(slope)]*g, 3)
                     )
                 else:
-                    old_coeffs['{0}{1}'.format(char,gain[0])].append(
+                    old_coeffs['{0}{1}'.format(char, gain[0])].append(
                         new_coeffs['channel_{0}'.format(ch)]['s{0}'.format(slope)]
                     )
         old_coeffs['c_dark'].append(new_coeffs['channel_{0}'.format(ch)]['dark_count'])
@@ -166,7 +168,7 @@ def old2new_coeffs(old_coeffs):
     for i, ch in enumerate(['1', '2', '3a']):
         new_coeffs['channel_{0}'.format(ch)] = {}
         for slope, char in enumerate('abc'):
-            if slope==0 and old_coeffs.get('c_s') is not None:
+            if slope == 0 and old_coeffs.get('c_s') is not None:
                 new_coeffs['channel_{0}'.format(ch)]['s{0}'.format(slope)] = find_s0(
                     old_coeffs['{0}l'.format(char)][i],
                     old_coeffs['{0}h'.format(char)][i],
@@ -339,9 +341,9 @@ def calibrate_solar(counts, chan, year, jday, spacecraft, corr=1, custom_coeffs=
     # Note, that the implementation allows for an additional correction factor corr which defaults to one. (depricated)
     if cal.c_s is not None:
         r_cal = np.where(counts <= cal.c_s[chan],
-                        (counts - cal.c_dark[chan]) * stl * corr,
-                        ((cal.c_s[chan] - cal.c_dark[chan]) * stl
-                         + (counts - cal.c_s[chan]) * sth) * corr)
+                         (counts - cal.c_dark[chan]) * stl * corr,
+                         ((cal.c_s[chan] - cal.c_dark[chan]) * stl
+                          + (counts - cal.c_s[chan]) * sth) * corr)
     else:
         r_cal = (counts - cal.c_dark[chan]) * stl * corr
 
