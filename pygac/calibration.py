@@ -326,9 +326,9 @@ def calibrate_thermal(counts, prt, ict, space, line_numbers, channel, spacecraft
         custom_coeffs (dict) - custom calibration coefficients (default = None)
 
     Note:
-        This function and documentation follows steps 1 to 4 from the  KLM User’s Guide 
-        (Robel, J. (2009). NOAA KLM user's guide with NOAA-N,-P supplement. NOAA KLM Users 
-        Guide –August 2014 Revision) section 7.1.2.4 "Steps to Calibrate the AVHRR Thermal Channels",
+        This function and documentation follows steps 1 to 4 from the  KLM User's Guide
+        (Robel, J. (2009). NOAA KLM user's guide with NOAA-N,-P supplement. NOAA KLM Users
+        Guide - August 2014 Revision) section 7.1.2.4 "Steps to Calibrate the AVHRR Thermal Channels",
         and the smoothing approach by Trishchenko (2002).
         The correction method for the non-linear response of the Mercury-Cadmium-Telluride detectors used
         for channels 4 and 5 is based on Walton et al. (1998)
