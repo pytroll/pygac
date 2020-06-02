@@ -27,6 +27,7 @@ from __future__ import division
 import logging
 import numpy as np
 import json
+import warnings
 import datetime as dt
 import dateutil.parser
 from collections import namedtuple, defaultdict
@@ -111,12 +112,15 @@ def new2old_coeffs(new_coeffs):
         old_coeffs['a'].append(new_coeffs['channel_{0}'.format(ch)]['to_eff_blackbody_intercept'])
         old_coeffs['b'].append(new_coeffs['channel_{0}'.format(ch)]['to_eff_blackbody_slope'])
         for j in range(3):
-            if j == 1:
-                old_coeffs['b{0}'.format(j)].append(1 + new_coeffs['channel_{0}'.format(ch)][
-                    'radiance_correction_c{0}'.format(j)])
-            else:
-                old_coeffs['b{0}'.format(j)].append(new_coeffs['channel_{0}'.format(ch)][
-                    'radiance_correction_c{0}'.format(j)])
+            # revert to original definition of the linear coefficient (not including +1)
+            #if j == 1:
+            #    old_coeffs['b{0}'.format(j)].append(1 + new_coeffs['channel_{0}'.format(ch)][
+            #        'radiance_correction_c{0}'.format(j)])
+            #else:
+            #    old_coeffs['b{0}'.format(j)].append(new_coeffs['channel_{0}'.format(ch)][
+            #        'radiance_correction_c{0}'.format(j)])
+            old_coeffs['b{0}'.format(j)].append(new_coeffs['channel_{0}'.format(ch)][
+                'radiance_correction_c{0}'.format(j)])
     return dict(old_coeffs)
 
 
@@ -145,8 +149,9 @@ def old2new_coeffs(old_coeffs):
         for j in range(3):
             new_coeffs['channel_{0}'.format(ch)]['radiance_correction_c{0}'.format(j)] = old_coeffs[
                 'b{0}'.format(j)][i]
-            if j == 1:
-                new_coeffs['channel_{0}'.format(ch)]['radiance_correction_c{0}'.format(j)] -= 1
+            # revert to original definition of the linear coefficient (not including +1)
+            #if j == 1:
+            #    new_coeffs['channel_{0}'.format(ch)]['radiance_correction_c{0}'.format(j)] -= 1
     return new_coeffs
 
 
@@ -224,33 +229,43 @@ class Calibrator(object):
 
 
 def calibrate_solar(counts, chan, year, jday, spacecraft, corr=1, custom_coeffs=None):
-    """Do the solar calibration and return reflectance (between 0 and 100).
+    """Do the solar calibration and return scaled radiance.
 
     Arguments:
-        counts (array) - counts for the given channel
+        counts (array) - raw counts for the given channels (options 1, 2[, 3A if available & active])
         chan (array) - pygac internal channel index array
         year (int) - year
         jday (int) - day of year
         spacecraft (str) - pygac internal spacecraft name
 
     Optionals:
-        corr (float) - reflectance correction multiplier (default = 1)
+        corr (float) - depricated - reflectance correction multiplier (default = 1)
         custom_coeffs (dict) - custom calibration coefficients (default = None)
 
+    Returns:
+        r_cal (array) - scaled radiance
+
     Note:
-        This function follows the solar calibration from PATMOS-x as described in
+        This function and documentation follows the time-dependent solar calibration as described in:
         Heidinger, A.K., W.C. Straka III, C.C. Molling, J.T. Sullivan, and X. Wu, (2010).
-        Deriving an inter-sensor consistent calibration for the AVHRR solar reflectance data record.
+        "Deriving an inter-sensor consistent calibration for the AVHRR solar reflectance data record.",
         International Journal of Remote Sensing, 31:6493 - 6517.
     """
+    if corr != 1:
+        warnings.warn(
+            "Using the 'corr' argument is depricated in favor of making the units"
+            " of the function result clear. Please make any unit conversion outside this function.",
+            DeprecationWarning
+        )
+    
     # get the calibration coefficients for this spacecraft
     cal = Calibrator(spacecraft, custom_coeffs=custom_coeffs)
 
-    # calculate the calibration slope with equation (6) in Heidinger et al 2010
+    # Step 1. Obtain the calibration slope using equation (6) in Heidinger et al 2010
     # S(t) = S_0*(100 + S_1*t + S_2*t^2) / 100,
     # where t is the time since launch expressed as years, S(t) is the calibration slope
     # and S_0, S_1 and S_2 are the coefficients of the quadratic fit.
-    # See Fitting of Calibration Slope Equations in patmosx documentation
+    # See section "Fitting of Calibration Slope Equations" in PATMOS-x documentation
     # (CDRP-ATBD-0184 Rev. 2 03/29/2018 page 19)
 
     # Note that the this implementation does not take leap years into account!
@@ -262,43 +277,44 @@ def calibrate_solar(counts, chan, year, jday, spacecraft, corr=1, custom_coeffs=
     sth = (cal.ah[chan] * (100.0 + cal.bh[chan] * t
                            + cal.ch[chan] * t * t)) / 100.0
 
-    # Calculate the reflactance using equation (1) in Heidinger et al 2010
-    # R = S*(C-D),
+    # Step 2. Calculate the scaled radiance using equation (1) in Heidinger et al 2010
+    # R_cal = S*(C-D),
     # where R_cal is the value generated from the calibration and is referred to as a
     # scaled radiance, S is the calibration slope, C the measured count and D the dark count.
     # This equation is only valid for single gain instruments. Starting with the AVHRR/3 series
-    # (1998, starting with NOAA-15, aka KLM), the channel-1, channel-2 and channel-3a require a
-    # dual-gain calibration. See Appendix A in Heidinger et al 2010, for more information.
-    # Long story short: The reflectance as function of instrument counts is a continuous piecewise
+    # (from NOAA-15 onwards), the channel-1, 2 and 3a require a dual-gain calibration. The dual-gain 
+    # counts have been converted to equivalent single-gain counts determined by a gain switch to be 
+    # linearly propotional to radiance (Appendix A in Heidinger et al, 2010).
+    # Long story short: The scaled radiance as function of instrument counts is a continuous piecewise
     # linear function of two line segments.
-    #        R
-    #        ^           *
-    #        |          *             The reflactance R is given by
-    #        |         *              R = S_l*(C - D)                 if C <= C_s
-    # R(C_s) |--------*               R = R_cal(C_s) + S_h*(C - C_s)  if C > C_s
-    #        |     *  |               where S_l and S_h are the low and high gain slopes,
-    #        +--*-------------> C     D is the dark count, C_s is the gain switch.
-    #     -D *       C_s
-    # Note, that the implementation allows for an additional correction factor corr which defaults to one.
+    #            R_cal
+    #            ^           *
+    #            |          *             The scaled radiance R_cal is given by
+    #            |         *              R_cal = S_l*(C - D)                 if C <= C_s
+    # R_cal(C_s) |--------*               R_cal = R_cal(C_s) + S_h*(C - C_s)  if C > C_s
+    #            |     *  |               where S_l and S_h are the low and high gain slopes,
+    #          0 +--*-------------> C     D is the dark count, C_s is the gain switch.
+    #            *  D    C_s
+    # Note, that the implementation allows for an additional correction factor corr which defaults to one. (depricated)
     if cal.c_s is not None:
-        refl = np.where(counts <= cal.c_s[chan],
+        r_cal = np.where(counts <= cal.c_s[chan],
                         (counts - cal.c_dark[chan]) * stl * corr,
                         ((cal.c_s[chan] - cal.c_dark[chan]) * stl
                          + (counts - cal.c_s[chan]) * sth) * corr)
     else:
-        refl = (counts - cal.c_dark[chan]) * stl * corr
+        r_cal = (counts - cal.c_dark[chan]) * stl * corr
 
-    # Mask negative reflectances
-    refl[refl < 0] = np.nan
+    # Mask negative scaled radiances
+    r_cal[r_cal < 0] = np.nan
 
-    return refl
+    return r_cal
 
 
 def calibrate_thermal(counts, prt, ict, space, line_numbers, channel, spacecraft, custom_coeffs=None):
     """Do the thermal calibration and return brightness temperatures (K).
 
     Arguments:
-        counts (array) - counts for the given channel
+        counts (array) - counts for the given channel (options: 3B (if active), 4, 5)
         prt (array) - counts of the Platinum Resistance Thermometers (PRT)
         ict (array) - counts of the In-orbit Calibration Targets (ICT)
         space (array) - counts of cold space
@@ -310,23 +326,26 @@ def calibrate_thermal(counts, prt, ict, space, line_numbers, channel, spacecraft
         custom_coeffs (dict) - custom calibration coefficients (default = None)
 
     Note:
-        This function follows steps 1 to 4 from the KLM guide section 7.1.2.4
-        "Steps to Calibrate the AVHRR Thermal Channels"
+        This function and documentation follows steps 1 to 4 from the  KLM User’s Guide 
+        (Robel, J. (2009). NOAA KLM user's guide with NOAA-N,-P supplement. NOAA KLM Users 
+        Guide –August 2014 Revision) section 7.1.2.4 "Steps to Calibrate the AVHRR Thermal Channels",
+        and the smoothing approach by Trishchenko (2002).
+        The correction method for the non-linear response of the Mercury-Cadmium-Telluride detectors used
+        for channels 4 and 5 is based on Walton et al. (1998)
     """
     # get the calibration coefficients for this spacecraft
     cal = Calibrator(spacecraft, custom_coeffs=custom_coeffs)
 
-    # Shift channel index by three because from the possible channels [1, 2, 3a, 3b, 4, 5],
-    # channels [3b, 4, 5] are the thermal channels
+    # Shift channel index by three to obtain thermal channels [3b, 4, 5].
     chan = channel - 3
 
     lines, columns = counts.shape[:2]
 
-    # Step 1. The temperature of the internal blackbody target is measured by four PRTs. In each
-    # scanline, data words 18, 19 and 20 in the HRPT minor frame format contain three readings from
-    # one of the four PRTs. (See Section 4.1.3) A different PRT is sampled each scanline; every fifth
-    # scanline all three PRT values are set equal to 0 to indicate that a set of four PRTs has just been
-    # sampled. The count value CPRT of each PRT is converted to temperature TPRT by the formula
+    # Step 1. The temperature of the internal blackbody target is measured by four platinum resistance
+    # thermometers (PRT)s. In each scanline, data words 18, 19 and 20 in the HRPT minor frame format contain
+    # three readings from one of the four PRTs. (See Section 4.1.3) A different PRT is sampled each scanline;
+    # every fifth scanline all three PRT values are set equal to 0 to indicate that a set of four PRTs has
+    # just been sampled. The count value CPRT of each PRT is converted to temperature TPRT by the formula
     # T_PRT = d0 + d1*C_PRT + d2*C_PRT^2 + d3*C_PRT^3 + d4*C_PRT^4    (7.1.2.4-1)
     # The coefficients d0, d1, d2, d3 and d4 vary slightly for each PRT. Values for the coefficients are
     # found in Appendix D, in Table D.1-8 for NOAA-15 (coefficients d3 and d4 are 0 for NOAA-15),
@@ -335,49 +354,54 @@ def calibrate_thermal(counts, prt, ict, space, line_numbers, channel, spacecraft
     # T_BB = (T_PRT1 + T_PRT2 + T_PRT3 + T_PRT4)/4    (7.1.2.4-2)
 
     # Find the corresponding PRT values for a given line number
-    # Why do we calculate this offset? Where does the threshold of prt_val < 50 come from?
+    # Note that the prt values are the average value of the three readings from one of the four 
+    # PRTs. See reader.get_telemetry implementations.
+    prt_threshold = 50  # empirically found and set by Abhay Devasthale
     offset = 0
 
     for i, prt_val in enumerate(prt):
-        if prt_val < 50:
+        # According to the KLM Guide the fill value between PRT measurments is 0, but we search 
+        # for the first measurment gap using the threshold. Is this on purpose?
+        if prt_val < prt_threshold:
             offset = i
             break
 
-    # get the PRT index and fix some values (again based on threshold 50)
+    # get the PRT index, iprt equals to 0 corresponds to the measurement gaps
     iprt = (line_numbers - line_numbers[0] + 5 - offset) % 5
 
-    ifix = np.where(np.logical_and(iprt == 1, prt < 50))
+    # fill measured values below threshold by interpolation
+    ifix = np.where(np.logical_and(iprt == 1, prt < prt_threshold))
     if len(ifix[0]):
-        inofix = np.where(np.logical_and(iprt == 1, prt > 50))
+        inofix = np.where(np.logical_and(iprt == 1, prt > prt_threshold))
         prt[ifix] = np.interp(ifix[0], inofix[0], prt[inofix])
 
-    ifix = np.where(np.logical_and(iprt == 2, prt < 50))
+    ifix = np.where(np.logical_and(iprt == 2, prt < prt_threshold))
     if len(ifix[0]):
-        inofix = np.where(np.logical_and(iprt == 2, prt > 50))
+        inofix = np.where(np.logical_and(iprt == 2, prt > prt_threshold))
         prt[ifix] = np.interp(ifix[0], inofix[0], prt[inofix])
 
-    ifix = np.where(np.logical_and(iprt == 3, prt < 50))
+    ifix = np.where(np.logical_and(iprt == 3, prt < prt_threshold))
     if len(ifix[0]):
-        inofix = np.where(np.logical_and(iprt == 3, prt > 50))
+        inofix = np.where(np.logical_and(iprt == 3, prt > prt_threshold))
         prt[ifix] = np.interp(ifix[0], inofix[0], prt[inofix])
 
-    ifix = np.where(np.logical_and(iprt == 4, prt < 50))
+    ifix = np.where(np.logical_and(iprt == 4, prt < prt_threshold))
     if len(ifix[0]):
-        inofix = np.where(np.logical_and(iprt == 4, prt > 50))
+        inofix = np.where(np.logical_and(iprt == 4, prt > prt_threshold))
         prt[ifix] = np.interp(ifix[0], inofix[0], prt[inofix])
 
-    # calculate temperature using equation (7.1.2.4-1)
+    # calculate PRT temperature using equation (7.1.2.4-1) KLM Guide
     tprt = (cal.d[iprt, 0] + prt *
             (cal.d[iprt, 1] + prt *
              (cal.d[iprt, 2] + prt *
               (cal.d[iprt, 3] + prt *
                (cal.d[iprt, 4])))))
 
-    # Note: the KLM Guide proposes to calculate the mean temperature using
-    # equation (7.1.2.4-2). PyGAC follows a different Averaging approach.
-    # It fills the zeros that mark a complete set of thermometer measurements
-    # by interpolation, then it uses a weighting function (so far only equal
-    # weighting) to convolve the temperatures (build a global average).
+    # Note: the KLM Guide proposes to calculate the mean temperature using equation (7.1.2.4-2). 
+    # PyGAC follows the smoothing approach by Trishchenko (2002), i.e.
+    # filling the zeros that mark a complete set of thermometer measurements
+    # by interpolation, and then using a weighting function (so far only equal
+    # weighting) to convolve the temperatures to calculate a moving average of a given window size.
     # The same averaging technique is applied for ICTs and Space counts.
     zeros = iprt == 0
     nonzeros = np.logical_not(zeros)
@@ -402,7 +426,7 @@ def calibrate_thermal(counts, prt, ict, space, line_numbers, channel, spacecraft
 
     # convolving and smoothing PRT, ICT and SPACE values
     if lines > 51:
-        wlength = 51
+        wlength = 51  # empirically found and set by Abhay Devasthale
     else:
         wlength = 3
 
@@ -431,8 +455,6 @@ def calibrate_thermal(counts, prt, ict, space, line_numbers, channel, spacecraft
     # NBB = c1*nu_e^3/(exp(c2*nu_e/TsBB) - 1)    (7.1.2.4-3)
     # where c1 = 1.1910427e-5 mW/m^2/sr/cm^{-4}, c2 = 1.4387752 cm K
 
-    # calibrating thermal channel
-
     tBB = new_tprt
     tsBB = cal.a[chan] + cal.b[chan] * tBB
     nBB_num = (1.1910427 * 0.000010) * cal.c_wn[chan] ** 3
@@ -449,9 +471,9 @@ def calibrate_thermal(counts, prt, ict, space, line_numbers, channel, spacecraft
     # average space count CS, together with blackbody radiance NBB and space radiance NS, explained
     # in the next paragraph, are used to compute the linear radiance estimate NLIN,
     # NLIN = NS + (NBB - NS)*(CS - CE)/(CS -CBB)    (7.1.2.4-5)
-    # where CE is the AVHRR count output when it views one of the 2,048 Earth targets.
-    # The Mercury-Cadmium-Telluride detectors used for channels 4 and 5 have a nonlinear response
-    # to incoming radiance. Pre-launch laboratory measurements show that:
+    # where CE is the AVHRR count output when it views one of the reference Earth targets.
+    # While the detector in channel 3B has a linear response, the Mercury-Cadmium-Telluride detectors used
+    # for channels 4 and 5 have a nonlinear response to incoming radiance. Pre-launch laboratory measurements show that:
     #     a. scene radiance is a slightly nonlinear (quadratic) function of AVHRR output count,
     #     b. the nonlinearity depends on the AVHRR operating temperature.
     # It is assumed that the nonlinear response will persist in orbit. For the NOAA KLM series of
@@ -463,15 +485,13 @@ def calibrate_thermal(counts, prt, ict, space, line_numbers, channel, spacecraft
     # Finally, the Earth scene radiance is obtained by adding NCOR to NLIN
     # NE = NLIN + NCOR
 
-    # Note: PyGAC increases the linear correction coefficient by 1 to accout for the linear part!
-    # Therefore, NE = NCOR in PyGAC
-
+    # Note: For channel 3B, the correction coefficients are set to zero to use the same equation.
     Nlin = (cal.n_s[chan] +
             (((nBB - cal.n_s[chan])
               * (new_space - counts.astype(float)))
              / (new_space - new_ict)))
     Ncor = cal.b0[chan] + Nlin * (cal.b1[chan] + cal.b2[chan] * Nlin)
-    Ne = Ncor
+    Ne = Nlin + Ncor
 
     # Step 4. Data users often convert the computed Earth scene radiance value NE into an equivalent
     # blackbody temperature TE. This temperature is defined by simple inverting the steps used to
