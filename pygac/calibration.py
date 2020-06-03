@@ -167,7 +167,7 @@ def new2old_coeffs(new_coeffs):
             #    old_coeffs['b{0}'.format(j)].append(new_coeffs['channel_{0}'.format(ch)][
             #        'radiance_correction_c{0}'.format(j)])
             old_coeffs['b{0}'.format(j)].append(new_coeffs['channel_{0}'.format(ch)][
-                'radiance_correction_a{0}'.format(j)])
+                'b{0}'.format(j)])
     return dict(old_coeffs)
 
 
@@ -199,11 +199,11 @@ def old2new_coeffs(old_coeffs):
         new_coeffs['channel_{0}'.format(ch)]['to_eff_blackbody_intercept'] = old_coeffs['a'][i]
         new_coeffs['channel_{0}'.format(ch)]['to_eff_blackbody_slope'] = old_coeffs['b'][i]
         for j in range(3):
-            new_coeffs['channel_{0}'.format(ch)]['radiance_correction_a{0}'.format(j)] = old_coeffs[
+            new_coeffs['channel_{0}'.format(ch)]['b{0}'.format(j)] = old_coeffs[
                 'b{0}'.format(j)][i]
             # revert to original definition of the linear coefficient (not including +1)
             if j == 1:
-                new_coeffs['channel_{0}'.format(ch)]['radiance_correction_a{0}'.format(j)] -= 1
+                new_coeffs['channel_{0}'.format(ch)]['b{0}'.format(j)] -= 1
     return new_coeffs
 
 

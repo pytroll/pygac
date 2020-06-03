@@ -1,4 +1,44 @@
 {
+    "description": {
+        "thermal": {
+            "channels": [
+                "3b",
+                "4",
+                "5"
+            ],
+            "coefficients": {
+                "b0": "constant non-linear radiance correction coefficient [mW m^{-2} sr cm^{-1}]",
+                "b1": "linear non-linear radiance correction coefficient []",
+                "b2": "quadratic non-linear radiance correction coefficient [(mW^{-1} m^2 sr^{-1} cm)]",
+                "centroid_wavenumber": "centroid wavenumber [cm^{-1}]",
+                "d0": "constant thermometer counts to temperature conversion coefficient [K]",
+                "d1": "linear thermometer counts to temperature conversion coefficient [K]",
+                "d2": "quadratic thermometer counts to temperature conversion coefficient [K]",
+                "d3": "cubic thermometer counts to temperature conversion coefficient [K]",
+                "d4": "quartic thermometer counts to temperature conversion coefficient [K]",
+                "space_radiance": "radiance of space [mW m^{-2} sr cm^{-1}]",
+                "to_eff_blackbody_intercept": "thermal channel temperature to effective blackbody temperature intercept [K]",
+                "to_eff_blackbody_slope": "thermal channel temperature to effective blackbody temperature slope []"
+            },
+            "method": "Walton, C. C., J. T. Sullivan, C. R. N. Rao, and M. P. Weinreb, 1998: Corrections for detector nonlinearities and calibration inconsistencies of the infrared channels of the Advanced Very High Resolution Radiometer. J. Geophys. Res., 103, 3323-3337; Trishchenko, A.P., 2002: Removing Unwanted Fluctuations in the AVHRR Thermal Calibration Data Using Robust Techniques. Journal of Atmospheric and Oceanic Technology, 19:1939-1954"
+        },
+        "visible": {
+            "channels": [
+                "1",
+                "2",
+                "3a"
+            ],
+            "coefficients": {
+                "dark_count": "instrument counts under dark conditions []",
+                "date_of_launch": "timestamp of launch date [UTC]",
+                "gain_switch": "dual-gain switch count, set to 'null' for single-gain instruments []",
+                "s0": "single-gain calibration slope at launch date [%]",
+                "s1": "linear single-gain calibration slope parameter [% years^{-1}]",
+                "s2": "quadratic single-gain calibration slope parameter [% years^{-2}]"
+            },
+            "method": "Heidinger, A.K., W.C. Straka III, C.C. Molling, J.T. Sullivan, and X. Wu, 2010: Deriving an inter-sensor consistent calibration for the AVHRR solar reflectance data record. International Journal of Remote Sensing, 31:6493-6517"
+        }
+    },
     "metopa": {
         "channel_1": {
             "dark_count": 40.43,
@@ -22,28 +62,28 @@
             "s2": -0.033
         },
         "channel_3b": {
+            "b0": 0.0,
+            "b1": 0.0,
+            "b2": 0.0,
             "centroid_wavenumber": 2687.0392,
-            "radiance_correction_a0": 0.0,
-            "radiance_correction_a1": 0.0,
-            "radiance_correction_a2": 0.0,
             "space_radiance": 0.0,
             "to_eff_blackbody_intercept": 2.0653147,
             "to_eff_blackbody_slope": 0.9965700053555672
         },
         "channel_4": {
+            "b0": 5.44,
+            "b1": -0.10152000000000005,
+            "b2": 0.00046964,
             "centroid_wavenumber": 927.2763,
-            "radiance_correction_a0": 5.44,
-            "radiance_correction_a1": -0.10152000000000005,
-            "radiance_correction_a2": 0.00046964,
             "space_radiance": -4.98,
             "to_eff_blackbody_intercept": 0.56503332,
             "to_eff_blackbody_slope": 0.998493273650062
         },
         "channel_5": {
+            "b0": 3.84,
+            "b1": -0.062490000000000046,
+            "b2": 0.00025239,
             "centroid_wavenumber": 837.80762,
-            "radiance_correction_a0": 3.84,
-            "radiance_correction_a1": -0.062490000000000046,
-            "radiance_correction_a2": 0.00025239,
             "space_radiance": -3.4,
             "to_eff_blackbody_intercept": 0.38472766,
             "to_eff_blackbody_slope": 0.9988748673494177
@@ -101,28 +141,28 @@
             "s2": -0.033
         },
         "channel_3b": {
+            "b0": 0.0,
+            "b1": 0.0,
+            "b2": 0.0,
             "centroid_wavenumber": 2664.3384,
-            "radiance_correction_a0": 0.0,
-            "radiance_correction_a1": 0.0,
-            "radiance_correction_a2": 0.0,
             "space_radiance": 0.0,
             "to_eff_blackbody_intercept": 1.7711318,
             "to_eff_blackbody_slope": 0.9970158319134996
         },
         "channel_4": {
+            "b0": 5.44,
+            "b1": -0.10152000000000005,
+            "b2": 0.00046964,
             "centroid_wavenumber": 933.71521,
-            "radiance_correction_a0": 5.44,
-            "radiance_correction_a1": -0.10152000000000005,
-            "radiance_correction_a2": 0.00046964,
             "space_radiance": -4.98,
             "to_eff_blackbody_intercept": 0.51860807,
             "to_eff_blackbody_slope": 0.9986240957209157
         },
         "channel_5": {
+            "b0": 3.84,
+            "b1": -0.062490000000000046,
+            "b2": 0.00025239,
             "centroid_wavenumber": 839.72764,
-            "radiance_correction_a0": 3.84,
-            "radiance_correction_a1": -0.062490000000000046,
-            "radiance_correction_a2": 0.00025239,
             "space_radiance": -3.4,
             "to_eff_blackbody_intercept": 0.40059787,
             "to_eff_blackbody_slope": 0.9988311677674785
@@ -180,28 +220,28 @@
             "s2": 0.0
         },
         "channel_3b": {
+            "b0": 0.0,
+            "b1": 0.0,
+            "b2": 0.0,
             "centroid_wavenumber": 2672.6164,
-            "radiance_correction_a0": 0.0,
-            "radiance_correction_a1": 0.0,
-            "radiance_correction_a2": 0.0,
             "space_radiance": 0.0,
             "to_eff_blackbody_intercept": 1.7986926,
             "to_eff_blackbody_slope": 0.9973743123852146
         },
         "channel_4": {
+            "b0": 5.76,
+            "b1": -0.11570000000000003,
+            "b2": 0.0005885,
             "centroid_wavenumber": 910.49626,
-            "radiance_correction_a0": 5.76,
-            "radiance_correction_a1": -0.11570000000000003,
-            "radiance_correction_a2": 0.0005885,
             "space_radiance": -7.27,
             "to_eff_blackbody_intercept": 0.45707063,
             "to_eff_blackbody_slope": 0.9987743041739178
         },
         "channel_5": {
+            "b0": 5.76,
+            "b1": -0.11570000000000003,
+            "b2": 0.0005882,
             "centroid_wavenumber": 910.49626,
-            "radiance_correction_a0": 5.76,
-            "radiance_correction_a1": -0.11570000000000003,
-            "radiance_correction_a2": 0.0005882,
             "space_radiance": -7.29,
             "to_eff_blackbody_intercept": 0.45707063,
             "to_eff_blackbody_slope": 0.9987743041739178
@@ -259,28 +299,28 @@
             "s2": 0.0
         },
         "channel_3b": {
+            "b0": 0.0,
+            "b1": 0.0,
+            "b2": 0.0,
             "centroid_wavenumber": 2680.05,
-            "radiance_correction_a0": 0.0,
-            "radiance_correction_a1": 0.0,
-            "radiance_correction_a2": 0.0,
             "space_radiance": 0.0,
             "to_eff_blackbody_intercept": 1.738973,
             "to_eff_blackbody_slope": 0.9966572117119181
         },
         "channel_4": {
+            "b0": 7.21,
+            "b1": -0.15880000000000005,
+            "b2": 0.0008739,
             "centroid_wavenumber": 927.462,
-            "radiance_correction_a0": 7.21,
-            "radiance_correction_a1": -0.15880000000000005,
-            "radiance_correction_a2": 0.0008739,
             "space_radiance": -8.055,
             "to_eff_blackbody_intercept": 0.321199,
             "to_eff_blackbody_slope": 0.9987884695863918
         },
         "channel_5": {
+            "b0": 2.92,
+            "b1": -0.05401999999999996,
+            "b2": 0.0002504,
             "centroid_wavenumber": 840.746,
-            "radiance_correction_a0": 2.92,
-            "radiance_correction_a1": -0.05401999999999996,
-            "radiance_correction_a2": 0.0002504,
             "space_radiance": -3.51,
             "to_eff_blackbody_intercept": 0.048652,
             "to_eff_blackbody_slope": 0.9993364406034393
@@ -338,28 +378,28 @@
             "s2": 0.0
         },
         "channel_3b": {
+            "b0": 0.0,
+            "b1": 0.0,
+            "b2": 0.0,
             "centroid_wavenumber": 2651.7708,
-            "radiance_correction_a0": 0.0,
-            "radiance_correction_a1": 0.0,
-            "radiance_correction_a2": 0.0,
             "space_radiance": 0.0,
             "to_eff_blackbody_intercept": 1.9052739,
             "to_eff_blackbody_slope": 0.9969990329109382
         },
         "channel_4": {
+            "b0": 5.11,
+            "b1": -0.11070999999999998,
+            "b2": 0.0005968,
             "centroid_wavenumber": 922.36261,
-            "radiance_correction_a0": 5.11,
-            "radiance_correction_a1": -0.11070999999999998,
-            "radiance_correction_a2": 0.0005968,
             "space_radiance": -5.51,
             "to_eff_blackbody_intercept": 0.63404209,
             "to_eff_blackbody_slope": 0.9982953109270609
         },
         "channel_5": {
+            "b0": 1.91,
+            "b1": -0.03700999999999999,
+            "b2": 0.0001775,
             "centroid_wavenumber": 838.02678,
-            "radiance_correction_a0": 1.91,
-            "radiance_correction_a1": -0.03700999999999999,
-            "radiance_correction_a2": 0.0001775,
             "space_radiance": -2.51,
             "to_eff_blackbody_intercept": 0.41086587,
             "to_eff_blackbody_slope": 0.9988004406707545
@@ -417,28 +457,28 @@
             "s2": 0.0
         },
         "channel_3b": {
+            "b0": -0.0031,
+            "b1": 0.003589999999999982,
+            "b2": 0.0,
             "centroid_wavenumber": 2654.25,
-            "radiance_correction_a0": -0.0031,
-            "radiance_correction_a1": 0.003589999999999982,
-            "radiance_correction_a2": 0.0,
             "space_radiance": 0.0069,
             "to_eff_blackbody_intercept": 1.88533,
             "to_eff_blackbody_slope": 0.996175681558497
         },
         "channel_4": {
+            "b0": 3.72,
+            "b1": -0.07621999999999995,
+            "b2": 0.0003822,
             "centroid_wavenumber": 928.349,
-            "radiance_correction_a0": 3.72,
-            "radiance_correction_a1": -0.07621999999999995,
-            "radiance_correction_a2": 0.0003822,
             "space_radiance": -4.05,
             "to_eff_blackbody_intercept": 0.308384,
             "to_eff_blackbody_slope": 0.9985590792486442
         },
         "channel_5": {
+            "b0": 2.0,
+            "b1": -0.03805999999999998,
+            "b2": 0.0001742,
             "centroid_wavenumber": 833.04,
-            "radiance_correction_a0": 2.0,
-            "radiance_correction_a1": -0.03805999999999998,
-            "radiance_correction_a2": 0.0001742,
             "space_radiance": -2.29,
             "to_eff_blackbody_intercept": 0.022171,
             "to_eff_blackbody_slope": 0.9994622892883629
@@ -496,28 +536,28 @@
             "s2": 0.0
         },
         "channel_3b": {
+            "b0": 0.0,
+            "b1": 0.0,
+            "b2": 0.0,
             "centroid_wavenumber": 2695.9743,
-            "radiance_correction_a0": 0.0,
-            "radiance_correction_a1": 0.0,
-            "radiance_correction_a2": 0.0,
             "space_radiance": 0.0,
             "to_eff_blackbody_intercept": 1.624481,
             "to_eff_blackbody_slope": 0.9980149482678952
         },
         "channel_4": {
+            "b0": 4.76,
+            "b1": -0.09319999999999995,
+            "b2": 0.0004524,
             "centroid_wavenumber": 925.4075,
-            "radiance_correction_a0": 4.76,
-            "radiance_correction_a1": -0.09319999999999995,
-            "radiance_correction_a2": 0.0004524,
             "space_radiance": -4.5,
             "to_eff_blackbody_intercept": 0.338243,
             "to_eff_blackbody_slope": 0.9987186439797741
         },
         "channel_5": {
+            "b0": 3.83,
+            "b1": -0.06589999999999996,
+            "b2": 0.0002811,
             "centroid_wavenumber": 839.8979,
-            "radiance_correction_a0": 3.83,
-            "radiance_correction_a1": -0.06589999999999996,
-            "radiance_correction_a2": 0.0002811,
             "space_radiance": -3.61,
             "to_eff_blackbody_intercept": 0.304856,
             "to_eff_blackbody_slope": 0.9990239535973354
@@ -575,28 +615,28 @@
             "s2": -0.294
         },
         "channel_3b": {
+            "b0": 0.0,
+            "b1": 0.0,
+            "b2": 0.0,
             "centroid_wavenumber": 2681.254,
-            "radiance_correction_a0": 0.0,
-            "radiance_correction_a1": 0.0,
-            "radiance_correction_a2": 0.0,
             "space_radiance": 0.0,
             "to_eff_blackbody_intercept": 1.6774586,
             "to_eff_blackbody_slope": 0.9982713932554388
         },
         "channel_4": {
+            "b0": 2.96,
+            "b1": -0.05410999999999999,
+            "b2": 0.00024532,
             "centroid_wavenumber": 922.3479,
-            "radiance_correction_a0": 2.96,
-            "radiance_correction_a1": -0.05410999999999999,
-            "radiance_correction_a2": 0.00024532,
             "space_radiance": -2.467,
             "to_eff_blackbody_intercept": 0.55636216,
             "to_eff_blackbody_slope": 0.9985101230454039
         },
         "channel_5": {
+            "b0": 2.25,
+            "b1": -0.03664999999999996,
+            "b2": 0.00014854,
             "centroid_wavenumber": 834.61814,
-            "radiance_correction_a0": 2.25,
-            "radiance_correction_a1": -0.03664999999999996,
-            "radiance_correction_a2": 0.00014854,
             "space_radiance": -2.009,
             "to_eff_blackbody_intercept": 0.41430789,
             "to_eff_blackbody_slope": 0.9987848783170394
@@ -654,28 +694,28 @@
             "s2": -0.292
         },
         "channel_3b": {
+            "b0": 0.0,
+            "b1": 0.0,
+            "b2": 0.0,
             "centroid_wavenumber": 2669.1414,
-            "radiance_correction_a0": 0.0,
-            "radiance_correction_a1": 0.0,
-            "radiance_correction_a2": 0.0,
             "space_radiance": 0.0,
             "to_eff_blackbody_intercept": 1.70002941,
             "to_eff_blackbody_slope": 0.997334722687091
         },
         "channel_4": {
+            "b0": 8.22,
+            "b1": -0.15795000000000003,
+            "b2": 0.00075579,
             "centroid_wavenumber": 928.29959,
-            "radiance_correction_a0": 8.22,
-            "radiance_correction_a1": -0.15795000000000003,
-            "radiance_correction_a2": 0.00075579,
             "space_radiance": -8.55,
             "to_eff_blackbody_intercept": 0.56634758,
             "to_eff_blackbody_slope": 0.9984818084103121
         },
         "channel_5": {
+            "b0": 4.31,
+            "b1": -0.07318000000000002,
+            "b2": 0.00030976,
             "centroid_wavenumber": 840.20289,
-            "radiance_correction_a0": 4.31,
-            "radiance_correction_a1": -0.07318000000000002,
-            "radiance_correction_a2": 0.00030976,
             "space_radiance": -3.97,
             "to_eff_blackbody_intercept": 0.37264803,
             "to_eff_blackbody_slope": 0.9989170740000766
@@ -733,28 +773,28 @@
             "s2": 0.0
         },
         "channel_3b": {
+            "b0": 0.0,
+            "b1": 0.0,
+            "b2": 0.0,
             "centroid_wavenumber": 2660.6468,
-            "radiance_correction_a0": 0.0,
-            "radiance_correction_a1": 0.0,
-            "radiance_correction_a2": 0.0,
             "space_radiance": 0.0,
             "to_eff_blackbody_intercept": 1.722265,
             "to_eff_blackbody_slope": 0.9971448750791857
         },
         "channel_4": {
+            "b0": 5.82,
+            "b1": -0.11068999999999996,
+            "b2": 0.00052337,
             "centroid_wavenumber": 928.73452,
-            "radiance_correction_a0": 5.82,
-            "radiance_correction_a1": -0.11068999999999996,
-            "radiance_correction_a2": 0.00052337,
             "space_radiance": -5.53,
             "to_eff_blackbody_intercept": 0.54696239,
             "to_eff_blackbody_slope": 0.9985440229601218
         },
         "channel_5": {
+            "b0": 2.67,
+            "b1": -0.04359999999999997,
+            "b2": 0.00017715,
             "centroid_wavenumber": 834.08306,
-            "radiance_correction_a0": 2.67,
-            "radiance_correction_a1": -0.04359999999999997,
-            "radiance_correction_a2": 0.00017715,
             "space_radiance": -2.22,
             "to_eff_blackbody_intercept": 0.39938376,
             "to_eff_blackbody_slope": 0.9988289729121578
@@ -812,28 +852,28 @@
             "s2": 0.0
         },
         "channel_3b": {
+            "b0": 0.0,
+            "b1": 0.0,
+            "b2": 0.0,
             "centroid_wavenumber": 2670.2425,
-            "radiance_correction_a0": 0.0,
-            "radiance_correction_a1": 0.0,
-            "radiance_correction_a2": 0.0,
             "space_radiance": 0.0,
             "to_eff_blackbody_intercept": 1.6863857,
             "to_eff_blackbody_slope": 0.9974112191806167
         },
         "channel_4": {
+            "b0": 5.7,
+            "b1": -0.11187000000000002,
+            "b2": 0.00054668,
             "centroid_wavenumber": 927.92374,
-            "radiance_correction_a0": 5.7,
-            "radiance_correction_a1": -0.11187000000000002,
-            "radiance_correction_a2": 0.00054668,
             "space_radiance": -5.49,
             "to_eff_blackbody_intercept": 0.39419031,
             "to_eff_blackbody_slope": 0.9986718662850276
         },
         "channel_5": {
+            "b0": 3.58,
+            "b1": -0.05991000000000002,
+            "b2": 0.00024985,
             "centroid_wavenumber": 831.28619,
-            "radiance_correction_a0": 3.58,
-            "radiance_correction_a1": -0.05991000000000002,
-            "radiance_correction_a2": 0.00024985,
             "space_radiance": -3.39,
             "to_eff_blackbody_intercept": 0.2636462,
             "to_eff_blackbody_slope": 0.9990463103920997
@@ -891,28 +931,28 @@
             "s2": 0.0
         },
         "channel_3b": {
+            "b0": 0.0,
+            "b1": 0.0,
+            "b2": 0.0,
             "centroid_wavenumber": 2671.5433,
-            "radiance_correction_a0": 0.0,
-            "radiance_correction_a1": 0.0,
-            "radiance_correction_a2": 0.0,
             "space_radiance": 0.0,
             "to_eff_blackbody_intercept": 1.766711,
             "to_eff_blackbody_slope": 0.9975631527305099
         },
         "channel_4": {
+            "b0": 2.24,
+            "b1": -0.03964000000000001,
+            "b2": 0.00016925,
             "centroid_wavenumber": 913.46088,
-            "radiance_correction_a0": 2.24,
-            "radiance_correction_a1": -0.03964000000000001,
-            "radiance_correction_a2": 0.00016925,
             "space_radiance": -3.26,
             "to_eff_blackbody_intercept": 0.5039597,
             "to_eff_blackbody_slope": 0.9986426449170288
         },
         "channel_5": {
+            "b0": 2.24,
+            "b1": -0.03964000000000001,
+            "b2": 0.00016925,
             "centroid_wavenumber": 913.46088,
-            "radiance_correction_a0": 2.24,
-            "radiance_correction_a1": -0.03964000000000001,
-            "radiance_correction_a2": 0.00016925,
             "space_radiance": -3.26,
             "to_eff_blackbody_intercept": 0.5039597,
             "to_eff_blackbody_slope": 0.9986426449170288
@@ -970,28 +1010,28 @@
             "s2": 0.0
         },
         "channel_3b": {
+            "b0": 0.0,
+            "b1": 0.0,
+            "b2": 0.0,
             "centroid_wavenumber": 2684.5233,
-            "radiance_correction_a0": 0.0,
-            "radiance_correction_a1": 0.0,
-            "radiance_correction_a2": 0.0,
             "space_radiance": 0.0,
             "to_eff_blackbody_intercept": 1.9488269,
             "to_eff_blackbody_slope": 0.9970825364982062
         },
         "channel_4": {
+            "b0": 5.25,
+            "b1": -0.10216999999999998,
+            "b2": 0.0004819,
             "centroid_wavenumber": 928.23757,
-            "radiance_correction_a0": 5.25,
-            "radiance_correction_a1": -0.10216999999999998,
-            "radiance_correction_a2": 0.0004819,
             "space_radiance": -5.16,
             "to_eff_blackbody_intercept": 0.52807997,
             "to_eff_blackbody_slope": 0.9985980681720933
         },
         "channel_5": {
+            "b0": 3.93,
+            "b1": -0.06316999999999995,
+            "b2": 0.0002425,
             "centroid_wavenumber": 841.52137,
-            "radiance_correction_a0": 3.93,
-            "radiance_correction_a1": -0.06316999999999995,
-            "radiance_correction_a2": 0.0002425,
             "space_radiance": -4.28,
             "to_eff_blackbody_intercept": 0.40557027,
             "to_eff_blackbody_slope": 0.9988224881686979
@@ -1049,28 +1089,28 @@
             "s2": 0.0
         },
         "channel_3b": {
+            "b0": 0.0,
+            "b1": 0.0,
+            "b2": 0.0,
             "centroid_wavenumber": 2651.3776,
-            "radiance_correction_a0": 0.0,
-            "radiance_correction_a1": 0.0,
-            "radiance_correction_a2": 0.0,
             "space_radiance": 0.0,
             "to_eff_blackbody_intercept": 1.7664105,
             "to_eff_blackbody_slope": 0.9975798712323902
         },
         "channel_4": {
+            "b0": 2.24,
+            "b1": -0.03964000000000001,
+            "b2": 0.00016925,
             "centroid_wavenumber": 915.3033,
-            "radiance_correction_a0": 2.24,
-            "radiance_correction_a1": -0.03964000000000001,
-            "radiance_correction_a2": 0.00016925,
             "space_radiance": -3.26,
             "to_eff_blackbody_intercept": 0.50017997,
             "to_eff_blackbody_slope": 0.9986558092807081
         },
         "channel_5": {
+            "b0": 2.24,
+            "b1": -0.03964000000000001,
+            "b2": 0.00016925,
             "centroid_wavenumber": 915.3033,
-            "radiance_correction_a0": 2.24,
-            "radiance_correction_a1": -0.03964000000000001,
-            "radiance_correction_a2": 0.00016925,
             "space_radiance": -3.26,
             "to_eff_blackbody_intercept": 0.50017997,
             "to_eff_blackbody_slope": 0.9986558092807081
@@ -1128,28 +1168,28 @@
             "s2": 0.0
         },
         "channel_3b": {
+            "b0": 0.0,
+            "b1": 0.0,
+            "b2": 0.0,
             "centroid_wavenumber": 2690.0451,
-            "radiance_correction_a0": 0.0,
-            "radiance_correction_a1": 0.0,
-            "radiance_correction_a2": 0.0,
             "space_radiance": 0.0,
             "to_eff_blackbody_intercept": 1.8832662,
             "to_eff_blackbody_slope": 0.9971105729816139
         },
         "channel_4": {
+            "b0": 5.24,
+            "b1": -0.11356999999999995,
+            "b2": 0.0006033,
             "centroid_wavenumber": 930.5023,
-            "radiance_correction_a0": 5.24,
-            "radiance_correction_a1": -0.11356999999999995,
-            "radiance_correction_a2": 0.0006033,
             "space_radiance": -5.53,
             "to_eff_blackbody_intercept": 0.5115335,
             "to_eff_blackbody_slope": 0.99864483895354
         },
         "channel_5": {
+            "b0": 2.42,
+            "b1": -0.04688999999999999,
+            "b2": 0.0002198,
             "centroid_wavenumber": 845.75,
-            "radiance_correction_a0": 2.42,
-            "radiance_correction_a1": -0.04688999999999999,
-            "radiance_correction_a2": 0.0002198,
             "space_radiance": -3.06,
             "to_eff_blackbody_intercept": 0.388215,
             "to_eff_blackbody_slope": 0.9988802552338829
@@ -1207,28 +1247,28 @@
             "s2": 0.0
         },
         "channel_3b": {
+            "b0": 0.00195,
+            "b1": -0.015000000000000013,
+            "b2": 0.011,
             "centroid_wavenumber": 2655.7409,
-            "radiance_correction_a0": 0.00195,
-            "radiance_correction_a1": -0.015000000000000013,
-            "radiance_correction_a2": 0.011,
             "space_radiance": -0.0039,
             "to_eff_blackbody_intercept": 1.6485446,
             "to_eff_blackbody_slope": 0.9979149564899099
         },
         "channel_4": {
+            "b0": 6.13,
+            "b1": -0.131942,
+            "b2": 0.000673193,
             "centroid_wavenumber": 913.0537,
-            "radiance_correction_a0": 6.13,
-            "radiance_correction_a1": -0.131942,
-            "radiance_correction_a2": 0.000673193,
             "space_radiance": -8.13,
             "to_eff_blackbody_intercept": 0.53135445,
             "to_eff_blackbody_slope": 0.9985677542700504
         },
         "channel_5": {
+            "b0": 6.13,
+            "b1": -0.131942,
+            "b2": 0.000673193,
             "centroid_wavenumber": 913.0537,
-            "radiance_correction_a0": 6.13,
-            "radiance_correction_a1": -0.131942,
-            "radiance_correction_a2": 0.000673193,
             "space_radiance": -8.13,
             "to_eff_blackbody_intercept": 0.53135445,
             "to_eff_blackbody_slope": 0.9985677542700504
