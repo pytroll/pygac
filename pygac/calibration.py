@@ -113,6 +113,15 @@ def new2old_coeffs(new_coeffs):
     """convert new coefficients to old coefficients"""
     old_coeffs = defaultdict(list)
     date_of_launch = dateutil.parser.parse(new_coeffs['date_of_launch'])
+    # python 2 throws a TypeError for an empty tzlocal as caused by the UTC Z
+    try:
+        # apply local time shift to get UTC
+        date_of_launch = date_of_launch.astimezone()
+    except TypeError:
+        pass
+    finally:
+        # remove time zone information (easier to handle in calculations)
+        date_of_launch = date_of_launch.replace(tzinfo=None)
     old_coeffs['l_date'] = date2float(date_of_launch)
     for i, ch in enumerate(['1', '2', '3a']):
         for slope, char in enumerate('abc'):
@@ -178,7 +187,7 @@ def old2new_coeffs(old_coeffs):
                 new_coeffs['channel_{0}'.format(ch)]['s{0}'.format(slope)] = old_coeffs['{0}h'.format(char)][i]
         new_coeffs['channel_{0}'.format(ch)]['dark_count'] = old_coeffs['c_dark'][i]
         new_coeffs['channel_{0}'.format(ch)]['gain_switch'] = old_coeffs.get('c_s', 3*[None])[i]
-    new_coeffs['date_of_launch'] = str(float2date(old_coeffs['l_date']))
+    new_coeffs['date_of_launch'] = float2date(old_coeffs['l_date']).strftime('%Y-%m-%dT%H:%M:%S.%fZ')
     for prt in range(1, 5):
         new_coeffs['thermometer_{0}'.format(prt)] = {}
         for i in range(5):
@@ -193,8 +202,8 @@ def old2new_coeffs(old_coeffs):
             new_coeffs['channel_{0}'.format(ch)]['radiance_correction_c{0}'.format(j)] = old_coeffs[
                 'b{0}'.format(j)][i]
             # revert to original definition of the linear coefficient (not including +1)
-            # if j == 1:
-            #    new_coeffs['channel_{0}'.format(ch)]['radiance_correction_c{0}'.format(j)] -= 1
+            if j == 1:
+                new_coeffs['channel_{0}'.format(ch)]['radiance_correction_c{0}'.format(j)] -= 1
     return new_coeffs
 
 
@@ -496,12 +505,14 @@ def calibrate_thermal(counts, prt, ict, space, line_numbers, channel, spacecraft
     # "effective" blackbody temperature TBB*. The two steps are:
     # TsBB = A + B*TBB    (7.1.2.4-3)
     # NBB = c1*nu_e^3/(exp(c2*nu_e/TsBB) - 1)    (7.1.2.4-3)
-    # where c1 = 1.1910427e-5 mW/m^2/sr/cm^{-4}, c2 = 1.4387752 cm K
+    # where the constants of the Planck function are defined as c1 = 2*h*c^2, c2 = h*c/k_B.
+    c1 = 1.1910427e-5  # mW/m^2/sr/cm^{-4}
+    c2 = 1.4387752  # cm K
 
     tBB = new_tprt
     tsBB = cal.a[chan] + cal.b[chan] * tBB
-    nBB_num = (1.1910427 * 0.000010) * cal.c_wn[chan] ** 3
-    nBB = nBB_num / (np.exp((1.4387752 * cal.c_wn[chan]) / tsBB) - 1.0)
+    nBB_num = c1 * cal.c_wn[chan] ** 3
+    nBB = nBB_num / (np.exp((c2 * cal.c_wn[chan]) / tsBB) - 1.0)
 
     # Step 3. Output from the two in-orbit calibration targets is used to compute a linear estimate of
     # the Earth scene radiance NE. Each scanline, the AVHRR views the internal blackbody target and
@@ -543,7 +554,7 @@ def calibrate_thermal(counts, prt, ict, space, line_numbers, channel, spacecraft
     # TsE = c2*nu_c / ln(1 + (c1*nu_c/NE))    (7.1.2.4-8)
     # TE = (TsE - A)/B    (7.1.2.4-9)
 
-    tsE = ((1.4387752 * cal.c_wn[chan])
+    tsE = ((c2 * cal.c_wn[chan])
            / np.log(1.0 + nBB_num / Ne))
     bt = (tsE - cal.a[chan]) / cal.b[chan]
 
