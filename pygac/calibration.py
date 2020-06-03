@@ -27,6 +27,7 @@ from __future__ import division
 import logging
 import numpy as np
 import json
+import hashlib
 import warnings
 import datetime as dt
 import dateutil.parser
@@ -215,6 +216,9 @@ class Calibrator(object):
         Calibrator: namedtuple constructor
         default_coeffs: dictonary containing default values for all spacecrafts
     """
+    version_hashs = {
+        '4c17c81a9619bed06e30d0988b69805d': 'PATMOS-x, v2017r1'  # version information
+    }
     fields = 'ah al bh bl ch cl c_s c_dark l_date d n_s c_wn a b b0 b1 b2'.split()
     Calibrator = namedtuple('Calibrator', fields)
     default_coeffs = None
@@ -277,7 +281,16 @@ class Calibrator(object):
             coeffs_file = resource_filename('pygac', 'data/calibration.json')
         LOG.info('Use default coefficients from "%s"', coeffs_file)
         with open(coeffs_file, mode='r') as json_file:
-            cls.default_coeffs = json.load(json_file)
+            content = json_file.read()
+            md5_hash = hashlib.md5(content.encode())
+            digest = md5_hash.hexdigest()
+            version = cls.version_hashs.get(digest)
+            if version is None:
+                warnings.warn("Unknown calibration coefficients version!", RuntimeWarning)
+                LOG.warning("Unknown calibration coefficients version!")
+            else:
+                LOG.info('Using calibration coefficients version "%s".', version)
+            cls.default_coeffs = json.loads(content)
 
 
 def calibrate_solar(counts, chan, year, jday, spacecraft, corr=1, custom_coeffs=None):
