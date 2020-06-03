@@ -23,59 +23,59 @@
         },
         "channel_3b": {
             "centroid_wavenumber": 2687.0392,
-            "radiance_correction_c0": 0.0,
-            "radiance_correction_c1": 0.0,
-            "radiance_correction_c2": 0.0,
+            "radiance_correction_a0": 0.0,
+            "radiance_correction_a1": 0.0,
+            "radiance_correction_a2": 0.0,
             "space_radiance": 0.0,
             "to_eff_blackbody_intercept": 2.0653147,
             "to_eff_blackbody_slope": 0.9965700053555672
         },
         "channel_4": {
             "centroid_wavenumber": 927.2763,
-            "radiance_correction_c0": 5.44,
-            "radiance_correction_c1": -0.10152000000000005,
-            "radiance_correction_c2": 0.00046964,
+            "radiance_correction_a0": 5.44,
+            "radiance_correction_a1": -0.10152000000000005,
+            "radiance_correction_a2": 0.00046964,
             "space_radiance": -4.98,
             "to_eff_blackbody_intercept": 0.56503332,
             "to_eff_blackbody_slope": 0.998493273650062
         },
         "channel_5": {
             "centroid_wavenumber": 837.80762,
-            "radiance_correction_c0": 3.84,
-            "radiance_correction_c1": -0.062490000000000046,
-            "radiance_correction_c2": 0.00025239,
+            "radiance_correction_a0": 3.84,
+            "radiance_correction_a1": -0.062490000000000046,
+            "radiance_correction_a2": 0.00025239,
             "space_radiance": -3.4,
             "to_eff_blackbody_intercept": 0.38472766,
             "to_eff_blackbody_slope": 0.9988748673494177
         },
-        "date_of_launch": "2006-10-19 19:37:12",
+        "date_of_launch": "2006-10-19T19:37:12.000000Z",
         "thermometer_1": {
-            "c0": 276.6194,
-            "c1": 0.050919,
-            "c2": 1.471e-06,
-            "c3": 0.0,
-            "c4": 0.0
+            "d0": 276.6194,
+            "d1": 0.050919,
+            "d2": 1.471e-06,
+            "d3": 0.0,
+            "d4": 0.0
         },
         "thermometer_2": {
-            "c0": 276.6511,
-            "c1": 0.050892,
-            "c2": 1.489e-06,
-            "c3": 0.0,
-            "c4": 0.0
+            "d0": 276.6511,
+            "d1": 0.050892,
+            "d2": 1.489e-06,
+            "d3": 0.0,
+            "d4": 0.0
         },
         "thermometer_3": {
-            "c0": 276.6597,
-            "c1": 0.050845,
-            "c2": 1.521e-06,
-            "c3": 0.0,
-            "c4": 0.0
+            "d0": 276.6597,
+            "d1": 0.050845,
+            "d2": 1.521e-06,
+            "d3": 0.0,
+            "d4": 0.0
         },
         "thermometer_4": {
-            "c0": 276.3685,
-            "c1": 0.050992,
-            "c2": 1.482e-06,
-            "c3": 0.0,
-            "c4": 0.0
+            "d0": 276.3685,
+            "d1": 0.050992,
+            "d2": 1.482e-06,
+            "d3": 0.0,
+            "d4": 0.0
         }
     },
     "metopb": {
@@ -102,59 +102,59 @@
         },
         "channel_3b": {
             "centroid_wavenumber": 2664.3384,
-            "radiance_correction_c0": 0.0,
-            "radiance_correction_c1": 0.0,
-            "radiance_correction_c2": 0.0,
+            "radiance_correction_a0": 0.0,
+            "radiance_correction_a1": 0.0,
+            "radiance_correction_a2": 0.0,
             "space_radiance": 0.0,
             "to_eff_blackbody_intercept": 1.7711318,
             "to_eff_blackbody_slope": 0.9970158319134996
         },
         "channel_4": {
             "centroid_wavenumber": 933.71521,
-            "radiance_correction_c0": 5.44,
-            "radiance_correction_c1": -0.10152000000000005,
-            "radiance_correction_c2": 0.00046964,
+            "radiance_correction_a0": 5.44,
+            "radiance_correction_a1": -0.10152000000000005,
+            "radiance_correction_a2": 0.00046964,
             "space_radiance": -4.98,
             "to_eff_blackbody_intercept": 0.51860807,
             "to_eff_blackbody_slope": 0.9986240957209157
         },
         "channel_5": {
             "centroid_wavenumber": 839.72764,
-            "radiance_correction_c0": 3.84,
-            "radiance_correction_c1": -0.062490000000000046,
-            "radiance_correction_c2": 0.00025239,
+            "radiance_correction_a0": 3.84,
+            "radiance_correction_a1": -0.062490000000000046,
+            "radiance_correction_a2": 0.00025239,
             "space_radiance": -3.4,
             "to_eff_blackbody_intercept": 0.40059787,
             "to_eff_blackbody_slope": 0.9988311677674785
         },
-        "date_of_launch": "2012-10-08 19:40:48",
+        "date_of_launch": "2012-10-08T19:40:48.000000Z",
         "thermometer_1": {
-            "c0": 276.6194,
-            "c1": 0.050919,
-            "c2": 1.471e-06,
-            "c3": 0.0,
-            "c4": 0.0
+            "d0": 276.6194,
+            "d1": 0.050919,
+            "d2": 1.471e-06,
+            "d3": 0.0,
+            "d4": 0.0
         },
         "thermometer_2": {
-            "c0": 276.6511,
-            "c1": 0.050892,
-            "c2": 1.489e-06,
-            "c3": 0.0,
-            "c4": 0.0
+            "d0": 276.6511,
+            "d1": 0.050892,
+            "d2": 1.489e-06,
+            "d3": 0.0,
+            "d4": 0.0
         },
         "thermometer_3": {
-            "c0": 276.6597,
-            "c1": 0.050845,
-            "c2": 1.521e-06,
-            "c3": 0.0,
-            "c4": 0.0
+            "d0": 276.6597,
+            "d1": 0.050845,
+            "d2": 1.521e-06,
+            "d3": 0.0,
+            "d4": 0.0
         },
         "thermometer_4": {
-            "c0": 276.3685,
-            "c1": 0.050992,
-            "c2": 1.482e-06,
-            "c3": 0.0,
-            "c4": 0.0
+            "d0": 276.3685,
+            "d1": 0.050992,
+            "d2": 1.482e-06,
+            "d3": 0.0,
+            "d4": 0.0
         }
     },
     "noaa10": {
@@ -181,59 +181,59 @@
         },
         "channel_3b": {
             "centroid_wavenumber": 2672.6164,
-            "radiance_correction_c0": 0.0,
-            "radiance_correction_c1": 0.0,
-            "radiance_correction_c2": 0.0,
+            "radiance_correction_a0": 0.0,
+            "radiance_correction_a1": 0.0,
+            "radiance_correction_a2": 0.0,
             "space_radiance": 0.0,
             "to_eff_blackbody_intercept": 1.7986926,
             "to_eff_blackbody_slope": 0.9973743123852146
         },
         "channel_4": {
             "centroid_wavenumber": 910.49626,
-            "radiance_correction_c0": 5.76,
-            "radiance_correction_c1": -0.11570000000000003,
-            "radiance_correction_c2": 0.0005885,
+            "radiance_correction_a0": 5.76,
+            "radiance_correction_a1": -0.11570000000000003,
+            "radiance_correction_a2": 0.0005885,
             "space_radiance": -7.27,
             "to_eff_blackbody_intercept": 0.45707063,
             "to_eff_blackbody_slope": 0.9987743041739178
         },
         "channel_5": {
             "centroid_wavenumber": 910.49626,
-            "radiance_correction_c0": 5.76,
-            "radiance_correction_c1": -0.11570000000000003,
-            "radiance_correction_c2": 0.0005882,
+            "radiance_correction_a0": 5.76,
+            "radiance_correction_a1": -0.11570000000000003,
+            "radiance_correction_a2": 0.0005882,
             "space_radiance": -7.29,
             "to_eff_blackbody_intercept": 0.45707063,
             "to_eff_blackbody_slope": 0.9987743041739178
         },
-        "date_of_launch": "1986-09-17 21:07:12",
+        "date_of_launch": "1986-09-17T21:07:12.000000Z",
         "thermometer_1": {
-            "c0": 276.659,
-            "c1": 0.051275,
-            "c2": 1.363e-06,
-            "c3": 0.0,
-            "c4": 0.0
+            "d0": 276.659,
+            "d1": 0.051275,
+            "d2": 1.363e-06,
+            "d3": 0.0,
+            "d4": 0.0
         },
         "thermometer_2": {
-            "c0": 276.659,
-            "c1": 0.051275,
-            "c2": 1.363e-06,
-            "c3": 0.0,
-            "c4": 0.0
+            "d0": 276.659,
+            "d1": 0.051275,
+            "d2": 1.363e-06,
+            "d3": 0.0,
+            "d4": 0.0
         },
         "thermometer_3": {
-            "c0": 276.659,
-            "c1": 0.051275,
-            "c2": 1.363e-06,
-            "c3": 0.0,
-            "c4": 0.0
+            "d0": 276.659,
+            "d1": 0.051275,
+            "d2": 1.363e-06,
+            "d3": 0.0,
+            "d4": 0.0
         },
         "thermometer_4": {
-            "c0": 276.659,
-            "c1": 0.051275,
-            "c2": 1.363e-06,
-            "c3": 0.0,
-            "c4": 0.0
+            "d0": 276.659,
+            "d1": 0.051275,
+            "d2": 1.363e-06,
+            "d3": 0.0,
+            "d4": 0.0
         }
     },
     "noaa11": {
@@ -260,59 +260,59 @@
         },
         "channel_3b": {
             "centroid_wavenumber": 2680.05,
-            "radiance_correction_c0": 0.0,
-            "radiance_correction_c1": 0.0,
-            "radiance_correction_c2": 0.0,
+            "radiance_correction_a0": 0.0,
+            "radiance_correction_a1": 0.0,
+            "radiance_correction_a2": 0.0,
             "space_radiance": 0.0,
             "to_eff_blackbody_intercept": 1.738973,
             "to_eff_blackbody_slope": 0.9966572117119181
         },
         "channel_4": {
             "centroid_wavenumber": 927.462,
-            "radiance_correction_c0": 7.21,
-            "radiance_correction_c1": -0.15880000000000005,
-            "radiance_correction_c2": 0.0008739,
+            "radiance_correction_a0": 7.21,
+            "radiance_correction_a1": -0.15880000000000005,
+            "radiance_correction_a2": 0.0008739,
             "space_radiance": -8.055,
             "to_eff_blackbody_intercept": 0.321199,
             "to_eff_blackbody_slope": 0.9987884695863918
         },
         "channel_5": {
             "centroid_wavenumber": 840.746,
-            "radiance_correction_c0": 2.92,
-            "radiance_correction_c1": -0.05401999999999996,
-            "radiance_correction_c2": 0.0002504,
+            "radiance_correction_a0": 2.92,
+            "radiance_correction_a1": -0.05401999999999996,
+            "radiance_correction_a2": 0.0002504,
             "space_radiance": -3.51,
             "to_eff_blackbody_intercept": 0.048652,
             "to_eff_blackbody_slope": 0.9993364406034393
         },
-        "date_of_launch": "1988-09-24 13:06:14.399994",
+        "date_of_launch": "1988-09-24T13:06:14.399994Z",
         "thermometer_1": {
-            "c0": 276.597,
-            "c1": 0.051275,
-            "c2": 1.363e-06,
-            "c3": 0.0,
-            "c4": 0.0
+            "d0": 276.597,
+            "d1": 0.051275,
+            "d2": 1.363e-06,
+            "d3": 0.0,
+            "d4": 0.0
         },
         "thermometer_2": {
-            "c0": 276.597,
-            "c1": 0.051275,
-            "c2": 1.363e-06,
-            "c3": 0.0,
-            "c4": 0.0
+            "d0": 276.597,
+            "d1": 0.051275,
+            "d2": 1.363e-06,
+            "d3": 0.0,
+            "d4": 0.0
         },
         "thermometer_3": {
-            "c0": 276.597,
-            "c1": 0.051275,
-            "c2": 1.363e-06,
-            "c3": 0.0,
-            "c4": 0.0
+            "d0": 276.597,
+            "d1": 0.051275,
+            "d2": 1.363e-06,
+            "d3": 0.0,
+            "d4": 0.0
         },
         "thermometer_4": {
-            "c0": 276.597,
-            "c1": 0.051275,
-            "c2": 1.363e-06,
-            "c3": 0.0,
-            "c4": 0.0
+            "d0": 276.597,
+            "d1": 0.051275,
+            "d2": 1.363e-06,
+            "d3": 0.0,
+            "d4": 0.0
         }
     },
     "noaa12": {
@@ -339,59 +339,59 @@
         },
         "channel_3b": {
             "centroid_wavenumber": 2651.7708,
-            "radiance_correction_c0": 0.0,
-            "radiance_correction_c1": 0.0,
-            "radiance_correction_c2": 0.0,
+            "radiance_correction_a0": 0.0,
+            "radiance_correction_a1": 0.0,
+            "radiance_correction_a2": 0.0,
             "space_radiance": 0.0,
             "to_eff_blackbody_intercept": 1.9052739,
             "to_eff_blackbody_slope": 0.9969990329109382
         },
         "channel_4": {
             "centroid_wavenumber": 922.36261,
-            "radiance_correction_c0": 5.11,
-            "radiance_correction_c1": -0.11070999999999998,
-            "radiance_correction_c2": 0.0005968,
+            "radiance_correction_a0": 5.11,
+            "radiance_correction_a1": -0.11070999999999998,
+            "radiance_correction_a2": 0.0005968,
             "space_radiance": -5.51,
             "to_eff_blackbody_intercept": 0.63404209,
             "to_eff_blackbody_slope": 0.9982953109270609
         },
         "channel_5": {
             "centroid_wavenumber": 838.02678,
-            "radiance_correction_c0": 1.91,
-            "radiance_correction_c1": -0.03700999999999999,
-            "radiance_correction_c2": 0.0001775,
+            "radiance_correction_a0": 1.91,
+            "radiance_correction_a1": -0.03700999999999999,
+            "radiance_correction_a2": 0.0001775,
             "space_radiance": -2.51,
             "to_eff_blackbody_intercept": 0.41086587,
             "to_eff_blackbody_slope": 0.9988004406707545
         },
-        "date_of_launch": "1991-05-14 22:02:38.400002",
+        "date_of_launch": "1991-05-14T22:02:38.400002Z",
         "thermometer_1": {
-            "c0": 276.597,
-            "c1": 0.051275,
-            "c2": 1.363e-06,
-            "c3": 0.0,
-            "c4": 0.0
+            "d0": 276.597,
+            "d1": 0.051275,
+            "d2": 1.363e-06,
+            "d3": 0.0,
+            "d4": 0.0
         },
         "thermometer_2": {
-            "c0": 276.597,
-            "c1": 0.051275,
-            "c2": 1.363e-06,
-            "c3": 0.0,
-            "c4": 0.0
+            "d0": 276.597,
+            "d1": 0.051275,
+            "d2": 1.363e-06,
+            "d3": 0.0,
+            "d4": 0.0
         },
         "thermometer_3": {
-            "c0": 276.597,
-            "c1": 0.051275,
-            "c2": 1.363e-06,
-            "c3": 0.0,
-            "c4": 0.0
+            "d0": 276.597,
+            "d1": 0.051275,
+            "d2": 1.363e-06,
+            "d3": 0.0,
+            "d4": 0.0
         },
         "thermometer_4": {
-            "c0": 276.597,
-            "c1": 0.051275,
-            "c2": 1.363e-06,
-            "c3": 0.0,
-            "c4": 0.0
+            "d0": 276.597,
+            "d1": 0.051275,
+            "d2": 1.363e-06,
+            "d3": 0.0,
+            "d4": 0.0
         }
     },
     "noaa14": {
@@ -418,59 +418,59 @@
         },
         "channel_3b": {
             "centroid_wavenumber": 2654.25,
-            "radiance_correction_c0": -0.0031,
-            "radiance_correction_c1": 0.003589999999999982,
-            "radiance_correction_c2": 0.0,
+            "radiance_correction_a0": -0.0031,
+            "radiance_correction_a1": 0.003589999999999982,
+            "radiance_correction_a2": 0.0,
             "space_radiance": 0.0069,
             "to_eff_blackbody_intercept": 1.88533,
             "to_eff_blackbody_slope": 0.996175681558497
         },
         "channel_4": {
             "centroid_wavenumber": 928.349,
-            "radiance_correction_c0": 3.72,
-            "radiance_correction_c1": -0.07621999999999995,
-            "radiance_correction_c2": 0.0003822,
+            "radiance_correction_a0": 3.72,
+            "radiance_correction_a1": -0.07621999999999995,
+            "radiance_correction_a2": 0.0003822,
             "space_radiance": -4.05,
             "to_eff_blackbody_intercept": 0.308384,
             "to_eff_blackbody_slope": 0.9985590792486442
         },
         "channel_5": {
             "centroid_wavenumber": 833.04,
-            "radiance_correction_c0": 2.0,
-            "radiance_correction_c1": -0.03805999999999998,
-            "radiance_correction_c2": 0.0001742,
+            "radiance_correction_a0": 2.0,
+            "radiance_correction_a1": -0.03805999999999998,
+            "radiance_correction_a2": 0.0001742,
             "space_radiance": -2.29,
             "to_eff_blackbody_intercept": 0.022171,
             "to_eff_blackbody_slope": 0.9994622892883629
         },
-        "date_of_launch": "1994-12-30 18:12:57.599991",
+        "date_of_launch": "1994-12-30T18:12:57.599991Z",
         "thermometer_1": {
-            "c0": 276.597,
-            "c1": 0.051275,
-            "c2": 1.363e-06,
-            "c3": 0.0,
-            "c4": 0.0
+            "d0": 276.597,
+            "d1": 0.051275,
+            "d2": 1.363e-06,
+            "d3": 0.0,
+            "d4": 0.0
         },
         "thermometer_2": {
-            "c0": 276.597,
-            "c1": 0.051275,
-            "c2": 1.363e-06,
-            "c3": 0.0,
-            "c4": 0.0
+            "d0": 276.597,
+            "d1": 0.051275,
+            "d2": 1.363e-06,
+            "d3": 0.0,
+            "d4": 0.0
         },
         "thermometer_3": {
-            "c0": 276.597,
-            "c1": 0.051275,
-            "c2": 1.363e-06,
-            "c3": 0.0,
-            "c4": 0.0
+            "d0": 276.597,
+            "d1": 0.051275,
+            "d2": 1.363e-06,
+            "d3": 0.0,
+            "d4": 0.0
         },
         "thermometer_4": {
-            "c0": 276.597,
-            "c1": 0.051275,
-            "c2": 1.363e-06,
-            "c3": 0.0,
-            "c4": 0.0
+            "d0": 276.597,
+            "d1": 0.051275,
+            "d2": 1.363e-06,
+            "d3": 0.0,
+            "d4": 0.0
         }
     },
     "noaa15": {
@@ -497,59 +497,59 @@
         },
         "channel_3b": {
             "centroid_wavenumber": 2695.9743,
-            "radiance_correction_c0": 0.0,
-            "radiance_correction_c1": 0.0,
-            "radiance_correction_c2": 0.0,
+            "radiance_correction_a0": 0.0,
+            "radiance_correction_a1": 0.0,
+            "radiance_correction_a2": 0.0,
             "space_radiance": 0.0,
             "to_eff_blackbody_intercept": 1.624481,
             "to_eff_blackbody_slope": 0.9980149482678952
         },
         "channel_4": {
             "centroid_wavenumber": 925.4075,
-            "radiance_correction_c0": 4.76,
-            "radiance_correction_c1": -0.09319999999999995,
-            "radiance_correction_c2": 0.0004524,
+            "radiance_correction_a0": 4.76,
+            "radiance_correction_a1": -0.09319999999999995,
+            "radiance_correction_a2": 0.0004524,
             "space_radiance": -4.5,
             "to_eff_blackbody_intercept": 0.338243,
             "to_eff_blackbody_slope": 0.9987186439797741
         },
         "channel_5": {
             "centroid_wavenumber": 839.8979,
-            "radiance_correction_c0": 3.83,
-            "radiance_correction_c1": -0.06589999999999996,
-            "radiance_correction_c2": 0.0002811,
+            "radiance_correction_a0": 3.83,
+            "radiance_correction_a1": -0.06589999999999996,
+            "radiance_correction_a2": 0.0002811,
             "space_radiance": -3.61,
             "to_eff_blackbody_intercept": 0.304856,
             "to_eff_blackbody_slope": 0.9990239535973354
         },
-        "date_of_launch": "1998-05-13 21:30:57.600006",
+        "date_of_launch": "1998-05-13T21:30:57.600006Z",
         "thermometer_1": {
-            "c0": 276.60157,
-            "c1": 0.051045,
-            "c2": 1.36328e-06,
-            "c3": 0.0,
-            "c4": 0.0
+            "d0": 276.60157,
+            "d1": 0.051045,
+            "d2": 1.36328e-06,
+            "d3": 0.0,
+            "d4": 0.0
         },
         "thermometer_2": {
-            "c0": 276.62531,
-            "c1": 0.050909,
-            "c2": 1.47266e-06,
-            "c3": 0.0,
-            "c4": 0.0
+            "d0": 276.62531,
+            "d1": 0.050909,
+            "d2": 1.47266e-06,
+            "d3": 0.0,
+            "d4": 0.0
         },
         "thermometer_3": {
-            "c0": 276.67413,
-            "c1": 0.050907,
-            "c2": 1.47656e-06,
-            "c3": 0.0,
-            "c4": 0.0
+            "d0": 276.67413,
+            "d1": 0.050907,
+            "d2": 1.47656e-06,
+            "d3": 0.0,
+            "d4": 0.0
         },
         "thermometer_4": {
-            "c0": 276.59258,
-            "c1": 0.050966,
-            "c2": 1.47656e-06,
-            "c3": 0.0,
-            "c4": 0.0
+            "d0": 276.59258,
+            "d1": 0.050966,
+            "d2": 1.47656e-06,
+            "d3": 0.0,
+            "d4": 0.0
         }
     },
     "noaa16": {
@@ -576,59 +576,59 @@
         },
         "channel_3b": {
             "centroid_wavenumber": 2681.254,
-            "radiance_correction_c0": 0.0,
-            "radiance_correction_c1": 0.0,
-            "radiance_correction_c2": 0.0,
+            "radiance_correction_a0": 0.0,
+            "radiance_correction_a1": 0.0,
+            "radiance_correction_a2": 0.0,
             "space_radiance": 0.0,
             "to_eff_blackbody_intercept": 1.6774586,
             "to_eff_blackbody_slope": 0.9982713932554388
         },
         "channel_4": {
             "centroid_wavenumber": 922.3479,
-            "radiance_correction_c0": 2.96,
-            "radiance_correction_c1": -0.05410999999999999,
-            "radiance_correction_c2": 0.00024532,
+            "radiance_correction_a0": 2.96,
+            "radiance_correction_a1": -0.05410999999999999,
+            "radiance_correction_a2": 0.00024532,
             "space_radiance": -2.467,
             "to_eff_blackbody_intercept": 0.55636216,
             "to_eff_blackbody_slope": 0.9985101230454039
         },
         "channel_5": {
             "centroid_wavenumber": 834.61814,
-            "radiance_correction_c0": 2.25,
-            "radiance_correction_c1": -0.03664999999999996,
-            "radiance_correction_c2": 0.00014854,
+            "radiance_correction_a0": 2.25,
+            "radiance_correction_a1": -0.03664999999999996,
+            "radiance_correction_a2": 0.00014854,
             "space_radiance": -2.009,
             "to_eff_blackbody_intercept": 0.41430789,
             "to_eff_blackbody_slope": 0.9987848783170394
         },
-        "date_of_launch": "2000-09-21 13:04:30.719994",
+        "date_of_launch": "2000-09-21T13:04:30.719994Z",
         "thermometer_1": {
-            "c0": 276.355,
-            "c1": 0.05562,
-            "c2": -1.59e-05,
-            "c3": 2.486e-08,
-            "c4": -1.199e-11
+            "d0": 276.355,
+            "d1": 0.05562,
+            "d2": -1.59e-05,
+            "d3": 2.486e-08,
+            "d4": -1.199e-11
         },
         "thermometer_2": {
-            "c0": 276.142,
-            "c1": 0.05605,
-            "c2": -1.707e-05,
-            "c3": 2.595e-08,
-            "c4": -1.224e-11
+            "d0": 276.142,
+            "d1": 0.05605,
+            "d2": -1.707e-05,
+            "d3": 2.595e-08,
+            "d4": -1.224e-11
         },
         "thermometer_3": {
-            "c0": 275.996,
-            "c1": 0.05486,
-            "c2": -1.223e-05,
-            "c3": 1.862e-08,
-            "c4": -8.53e-12
+            "d0": 275.996,
+            "d1": 0.05486,
+            "d2": -1.223e-05,
+            "d3": 1.862e-08,
+            "d4": -8.53e-12
         },
         "thermometer_4": {
-            "c0": 276.132,
-            "c1": 0.05494,
-            "c2": -1.344e-05,
-            "c3": 2.112e-08,
-            "c4": -1.001e-11
+            "d0": 276.132,
+            "d1": 0.05494,
+            "d2": -1.344e-05,
+            "d3": 2.112e-08,
+            "d4": -1.001e-11
         }
     },
     "noaa17": {
@@ -655,59 +655,59 @@
         },
         "channel_3b": {
             "centroid_wavenumber": 2669.1414,
-            "radiance_correction_c0": 0.0,
-            "radiance_correction_c1": 0.0,
-            "radiance_correction_c2": 0.0,
+            "radiance_correction_a0": 0.0,
+            "radiance_correction_a1": 0.0,
+            "radiance_correction_a2": 0.0,
             "space_radiance": 0.0,
             "to_eff_blackbody_intercept": 1.70002941,
             "to_eff_blackbody_slope": 0.997334722687091
         },
         "channel_4": {
             "centroid_wavenumber": 928.29959,
-            "radiance_correction_c0": 8.22,
-            "radiance_correction_c1": -0.15795000000000003,
-            "radiance_correction_c2": 0.00075579,
+            "radiance_correction_a0": 8.22,
+            "radiance_correction_a1": -0.15795000000000003,
+            "radiance_correction_a2": 0.00075579,
             "space_radiance": -8.55,
             "to_eff_blackbody_intercept": 0.56634758,
             "to_eff_blackbody_slope": 0.9984818084103121
         },
         "channel_5": {
             "centroid_wavenumber": 840.20289,
-            "radiance_correction_c0": 4.31,
-            "radiance_correction_c1": -0.07318000000000002,
-            "radiance_correction_c2": 0.00030976,
+            "radiance_correction_a0": 4.31,
+            "radiance_correction_a1": -0.07318000000000002,
+            "radiance_correction_a2": 0.00030976,
             "space_radiance": -3.97,
             "to_eff_blackbody_intercept": 0.37264803,
             "to_eff_blackbody_slope": 0.9989170740000766
         },
-        "date_of_launch": "2002-06-24 21:05:28.319992",
+        "date_of_launch": "2002-06-24T21:05:28.319992Z",
         "thermometer_1": {
-            "c0": 276.628,
-            "c1": 0.05098,
-            "c2": 1.371e-06,
-            "c3": 0.0,
-            "c4": 0.0
+            "d0": 276.628,
+            "d1": 0.05098,
+            "d2": 1.371e-06,
+            "d3": 0.0,
+            "d4": 0.0
         },
         "thermometer_2": {
-            "c0": 276.538,
-            "c1": 0.05098,
-            "c2": 1.371e-06,
-            "c3": 0.0,
-            "c4": 0.0
+            "d0": 276.538,
+            "d1": 0.05098,
+            "d2": 1.371e-06,
+            "d3": 0.0,
+            "d4": 0.0
         },
         "thermometer_3": {
-            "c0": 276.761,
-            "c1": 0.05097,
-            "c2": 1.369e-06,
-            "c3": 0.0,
-            "c4": 0.0
+            "d0": 276.761,
+            "d1": 0.05097,
+            "d2": 1.369e-06,
+            "d3": 0.0,
+            "d4": 0.0
         },
         "thermometer_4": {
-            "c0": 276.66,
-            "c1": 0.051,
-            "c2": 1.348e-06,
-            "c3": 0.0,
-            "c4": 0.0
+            "d0": 276.66,
+            "d1": 0.051,
+            "d2": 1.348e-06,
+            "d3": 0.0,
+            "d4": 0.0
         }
     },
     "noaa18": {
@@ -734,59 +734,59 @@
         },
         "channel_3b": {
             "centroid_wavenumber": 2660.6468,
-            "radiance_correction_c0": 0.0,
-            "radiance_correction_c1": 0.0,
-            "radiance_correction_c2": 0.0,
+            "radiance_correction_a0": 0.0,
+            "radiance_correction_a1": 0.0,
+            "radiance_correction_a2": 0.0,
             "space_radiance": 0.0,
             "to_eff_blackbody_intercept": 1.722265,
             "to_eff_blackbody_slope": 0.9971448750791857
         },
         "channel_4": {
             "centroid_wavenumber": 928.73452,
-            "radiance_correction_c0": 5.82,
-            "radiance_correction_c1": -0.11068999999999996,
-            "radiance_correction_c2": 0.00052337,
+            "radiance_correction_a0": 5.82,
+            "radiance_correction_a1": -0.11068999999999996,
+            "radiance_correction_a2": 0.00052337,
             "space_radiance": -5.53,
             "to_eff_blackbody_intercept": 0.54696239,
             "to_eff_blackbody_slope": 0.9985440229601218
         },
         "channel_5": {
             "centroid_wavenumber": 834.08306,
-            "radiance_correction_c0": 2.67,
-            "radiance_correction_c1": -0.04359999999999997,
-            "radiance_correction_c2": 0.00017715,
+            "radiance_correction_a0": 2.67,
+            "radiance_correction_a1": -0.04359999999999997,
+            "radiance_correction_a2": 0.00017715,
             "space_radiance": -2.22,
             "to_eff_blackbody_intercept": 0.39938376,
             "to_eff_blackbody_slope": 0.9988289729121578
         },
-        "date_of_launch": "2005-05-20 21:42:28.799988",
+        "date_of_launch": "2005-05-20T21:42:28.799988Z",
         "thermometer_1": {
-            "c0": 276.601,
-            "c1": 0.0509,
-            "c2": 1.657e-06,
-            "c3": 0.0,
-            "c4": 0.0
+            "d0": 276.601,
+            "d1": 0.0509,
+            "d2": 1.657e-06,
+            "d3": 0.0,
+            "d4": 0.0
         },
         "thermometer_2": {
-            "c0": 276.683,
-            "c1": 0.05101,
-            "c2": 1.482e-06,
-            "c3": 0.0,
-            "c4": 0.0
+            "d0": 276.683,
+            "d1": 0.05101,
+            "d2": 1.482e-06,
+            "d3": 0.0,
+            "d4": 0.0
         },
         "thermometer_3": {
-            "c0": 276.565,
-            "c1": 0.05117,
-            "c2": 1.313e-06,
-            "c3": 0.0,
-            "c4": 0.0
+            "d0": 276.565,
+            "d1": 0.05117,
+            "d2": 1.313e-06,
+            "d3": 0.0,
+            "d4": 0.0
         },
         "thermometer_4": {
-            "c0": 276.615,
-            "c1": 0.05103,
-            "c2": 1.484e-06,
-            "c3": 0.0,
-            "c4": 0.0
+            "d0": 276.615,
+            "d1": 0.05103,
+            "d2": 1.484e-06,
+            "d3": 0.0,
+            "d4": 0.0
         }
     },
     "noaa19": {
@@ -813,59 +813,59 @@
         },
         "channel_3b": {
             "centroid_wavenumber": 2670.2425,
-            "radiance_correction_c0": 0.0,
-            "radiance_correction_c1": 0.0,
-            "radiance_correction_c2": 0.0,
+            "radiance_correction_a0": 0.0,
+            "radiance_correction_a1": 0.0,
+            "radiance_correction_a2": 0.0,
             "space_radiance": 0.0,
             "to_eff_blackbody_intercept": 1.6863857,
             "to_eff_blackbody_slope": 0.9974112191806167
         },
         "channel_4": {
             "centroid_wavenumber": 927.92374,
-            "radiance_correction_c0": 5.7,
-            "radiance_correction_c1": -0.11187000000000002,
-            "radiance_correction_c2": 0.00054668,
+            "radiance_correction_a0": 5.7,
+            "radiance_correction_a1": -0.11187000000000002,
+            "radiance_correction_a2": 0.00054668,
             "space_radiance": -5.49,
             "to_eff_blackbody_intercept": 0.39419031,
             "to_eff_blackbody_slope": 0.9986718662850276
         },
         "channel_5": {
             "centroid_wavenumber": 831.28619,
-            "radiance_correction_c0": 3.58,
-            "radiance_correction_c1": -0.05991000000000002,
-            "radiance_correction_c2": 0.00024985,
+            "radiance_correction_a0": 3.58,
+            "radiance_correction_a1": -0.05991000000000002,
+            "radiance_correction_a2": 0.00024985,
             "space_radiance": -3.39,
             "to_eff_blackbody_intercept": 0.2636462,
             "to_eff_blackbody_slope": 0.9990463103920997
         },
-        "date_of_launch": "2009-02-05 00:57:36",
+        "date_of_launch": "2009-02-05T00:57:36.000000Z",
         "thermometer_1": {
-            "c0": 276.6067,
-            "c1": 0.051111,
-            "c2": 1.405783e-06,
-            "c3": 0.0,
-            "c4": 0.0
+            "d0": 276.6067,
+            "d1": 0.051111,
+            "d2": 1.405783e-06,
+            "d3": 0.0,
+            "d4": 0.0
         },
         "thermometer_2": {
-            "c0": 276.6119,
-            "c1": 0.05109,
-            "c2": 1.496037e-06,
-            "c3": 0.0,
-            "c4": 0.0
+            "d0": 276.6119,
+            "d1": 0.05109,
+            "d2": 1.496037e-06,
+            "d3": 0.0,
+            "d4": 0.0
         },
         "thermometer_3": {
-            "c0": 276.6311,
-            "c1": 0.051033,
-            "c2": 1.49699e-06,
-            "c3": 0.0,
-            "c4": 0.0
+            "d0": 276.6311,
+            "d1": 0.051033,
+            "d2": 1.49699e-06,
+            "d3": 0.0,
+            "d4": 0.0
         },
         "thermometer_4": {
-            "c0": 276.6268,
-            "c1": 0.051058,
-            "c2": 1.49311e-06,
-            "c3": 0.0,
-            "c4": 0.0
+            "d0": 276.6268,
+            "d1": 0.051058,
+            "d2": 1.49311e-06,
+            "d3": 0.0,
+            "d4": 0.0
         }
     },
     "noaa6": {
@@ -892,59 +892,59 @@
         },
         "channel_3b": {
             "centroid_wavenumber": 2671.5433,
-            "radiance_correction_c0": 0.0,
-            "radiance_correction_c1": 0.0,
-            "radiance_correction_c2": 0.0,
+            "radiance_correction_a0": 0.0,
+            "radiance_correction_a1": 0.0,
+            "radiance_correction_a2": 0.0,
             "space_radiance": 0.0,
             "to_eff_blackbody_intercept": 1.766711,
             "to_eff_blackbody_slope": 0.9975631527305099
         },
         "channel_4": {
             "centroid_wavenumber": 913.46088,
-            "radiance_correction_c0": 2.24,
-            "radiance_correction_c1": -0.03964000000000001,
-            "radiance_correction_c2": 0.00016925,
+            "radiance_correction_a0": 2.24,
+            "radiance_correction_a1": -0.03964000000000001,
+            "radiance_correction_a2": 0.00016925,
             "space_radiance": -3.26,
             "to_eff_blackbody_intercept": 0.5039597,
             "to_eff_blackbody_slope": 0.9986426449170288
         },
         "channel_5": {
             "centroid_wavenumber": 913.46088,
-            "radiance_correction_c0": 2.24,
-            "radiance_correction_c1": -0.03964000000000001,
-            "radiance_correction_c2": 0.00016925,
+            "radiance_correction_a0": 2.24,
+            "radiance_correction_a1": -0.03964000000000001,
+            "radiance_correction_a2": 0.00016925,
             "space_radiance": -3.26,
             "to_eff_blackbody_intercept": 0.5039597,
             "to_eff_blackbody_slope": 0.9986426449170288
         },
-        "date_of_launch": "1979-06-28 20:23:59.999992",
+        "date_of_launch": "1979-06-28T20:23:59.999992Z",
         "thermometer_1": {
-            "c0": 277.659,
-            "c1": 0.051275,
-            "c2": 1.363e-06,
-            "c3": 0.0,
-            "c4": 0.0
+            "d0": 277.659,
+            "d1": 0.051275,
+            "d2": 1.363e-06,
+            "d3": 0.0,
+            "d4": 0.0
         },
         "thermometer_2": {
-            "c0": 276.659,
-            "c1": 0.051275,
-            "c2": 1.363e-06,
-            "c3": 0.0,
-            "c4": 0.0
+            "d0": 276.659,
+            "d1": 0.051275,
+            "d2": 1.363e-06,
+            "d3": 0.0,
+            "d4": 0.0
         },
         "thermometer_3": {
-            "c0": 276.659,
-            "c1": 0.051275,
-            "c2": 1.363e-06,
-            "c3": 0.0,
-            "c4": 0.0
+            "d0": 276.659,
+            "d1": 0.051275,
+            "d2": 1.363e-06,
+            "d3": 0.0,
+            "d4": 0.0
         },
         "thermometer_4": {
-            "c0": 276.659,
-            "c1": 0.051275,
-            "c2": 1.363e-06,
-            "c3": 0.0,
-            "c4": 0.0
+            "d0": 276.659,
+            "d1": 0.051275,
+            "d2": 1.363e-06,
+            "d3": 0.0,
+            "d4": 0.0
         }
     },
     "noaa7": {
@@ -971,59 +971,59 @@
         },
         "channel_3b": {
             "centroid_wavenumber": 2684.5233,
-            "radiance_correction_c0": 0.0,
-            "radiance_correction_c1": 0.0,
-            "radiance_correction_c2": 0.0,
+            "radiance_correction_a0": 0.0,
+            "radiance_correction_a1": 0.0,
+            "radiance_correction_a2": 0.0,
             "space_radiance": 0.0,
             "to_eff_blackbody_intercept": 1.9488269,
             "to_eff_blackbody_slope": 0.9970825364982062
         },
         "channel_4": {
             "centroid_wavenumber": 928.23757,
-            "radiance_correction_c0": 5.25,
-            "radiance_correction_c1": -0.10216999999999998,
-            "radiance_correction_c2": 0.0004819,
+            "radiance_correction_a0": 5.25,
+            "radiance_correction_a1": -0.10216999999999998,
+            "radiance_correction_a2": 0.0004819,
             "space_radiance": -5.16,
             "to_eff_blackbody_intercept": 0.52807997,
             "to_eff_blackbody_slope": 0.9985980681720933
         },
         "channel_5": {
             "centroid_wavenumber": 841.52137,
-            "radiance_correction_c0": 3.93,
-            "radiance_correction_c1": -0.06316999999999995,
-            "radiance_correction_c2": 0.0002425,
+            "radiance_correction_a0": 3.93,
+            "radiance_correction_a1": -0.06316999999999995,
+            "radiance_correction_a2": 0.0002425,
             "space_radiance": -4.28,
             "to_eff_blackbody_intercept": 0.40557027,
             "to_eff_blackbody_slope": 0.9988224881686979
         },
-        "date_of_launch": "1981-06-23 21:15:50.400009",
+        "date_of_launch": "1981-06-23T21:15:50.400009Z",
         "thermometer_1": {
-            "c0": 277.099,
-            "c1": 0.05048,
-            "c2": 2.823e-06,
-            "c3": 0.0,
-            "c4": 0.0
+            "d0": 277.099,
+            "d1": 0.05048,
+            "d2": 2.823e-06,
+            "d3": 0.0,
+            "d4": 0.0
         },
         "thermometer_2": {
-            "c0": 276.734,
-            "c1": 0.05069,
-            "c2": 2.493e-06,
-            "c3": 0.0,
-            "c4": 0.0
+            "d0": 276.734,
+            "d1": 0.05069,
+            "d2": 2.493e-06,
+            "d3": 0.0,
+            "d4": 0.0
         },
         "thermometer_3": {
-            "c0": 276.876,
-            "c1": 0.05148,
-            "c2": 1.04e-06,
-            "c3": 0.0,
-            "c4": 0.0
+            "d0": 276.876,
+            "d1": 0.05148,
+            "d2": 1.04e-06,
+            "d3": 0.0,
+            "d4": 0.0
         },
         "thermometer_4": {
-            "c0": 276.16,
-            "c1": 0.05128,
-            "c2": 1.414e-06,
-            "c3": 0.0,
-            "c4": 0.0
+            "d0": 276.16,
+            "d1": 0.05128,
+            "d2": 1.414e-06,
+            "d3": 0.0,
+            "d4": 0.0
         }
     },
     "noaa8": {
@@ -1050,59 +1050,59 @@
         },
         "channel_3b": {
             "centroid_wavenumber": 2651.3776,
-            "radiance_correction_c0": 0.0,
-            "radiance_correction_c1": 0.0,
-            "radiance_correction_c2": 0.0,
+            "radiance_correction_a0": 0.0,
+            "radiance_correction_a1": 0.0,
+            "radiance_correction_a2": 0.0,
             "space_radiance": 0.0,
             "to_eff_blackbody_intercept": 1.7664105,
             "to_eff_blackbody_slope": 0.9975798712323902
         },
         "channel_4": {
             "centroid_wavenumber": 915.3033,
-            "radiance_correction_c0": 2.24,
-            "radiance_correction_c1": -0.03964000000000001,
-            "radiance_correction_c2": 0.00016925,
+            "radiance_correction_a0": 2.24,
+            "radiance_correction_a1": -0.03964000000000001,
+            "radiance_correction_a2": 0.00016925,
             "space_radiance": -3.26,
             "to_eff_blackbody_intercept": 0.50017997,
             "to_eff_blackbody_slope": 0.9986558092807081
         },
         "channel_5": {
             "centroid_wavenumber": 915.3033,
-            "radiance_correction_c0": 2.24,
-            "radiance_correction_c1": -0.03964000000000001,
-            "radiance_correction_c2": 0.00016925,
+            "radiance_correction_a0": 2.24,
+            "radiance_correction_a1": -0.03964000000000001,
+            "radiance_correction_a2": 0.00016925,
             "space_radiance": -3.26,
             "to_eff_blackbody_intercept": 0.50017997,
             "to_eff_blackbody_slope": 0.9986558092807081
         },
-        "date_of_launch": "1983-03-29 23:09:36",
+        "date_of_launch": "1983-03-29T23:09:36.000000Z",
         "thermometer_1": {
-            "c0": 276.659,
-            "c1": 0.051275,
-            "c2": 1.363e-06,
-            "c3": 0.0,
-            "c4": 0.0
+            "d0": 276.659,
+            "d1": 0.051275,
+            "d2": 1.363e-06,
+            "d3": 0.0,
+            "d4": 0.0
         },
         "thermometer_2": {
-            "c0": 276.659,
-            "c1": 0.051275,
-            "c2": 1.363e-06,
-            "c3": 0.0,
-            "c4": 0.0
+            "d0": 276.659,
+            "d1": 0.051275,
+            "d2": 1.363e-06,
+            "d3": 0.0,
+            "d4": 0.0
         },
         "thermometer_3": {
-            "c0": 276.659,
-            "c1": 0.051275,
-            "c2": 1.363e-06,
-            "c3": 0.0,
-            "c4": 0.0
+            "d0": 276.659,
+            "d1": 0.051275,
+            "d2": 1.363e-06,
+            "d3": 0.0,
+            "d4": 0.0
         },
         "thermometer_4": {
-            "c0": 276.659,
-            "c1": 0.051275,
-            "c2": 1.363e-06,
-            "c3": 0.0,
-            "c4": 0.0
+            "d0": 276.659,
+            "d1": 0.051275,
+            "d2": 1.363e-06,
+            "d3": 0.0,
+            "d4": 0.0
         }
     },
     "noaa9": {
@@ -1129,59 +1129,59 @@
         },
         "channel_3b": {
             "centroid_wavenumber": 2690.0451,
-            "radiance_correction_c0": 0.0,
-            "radiance_correction_c1": 0.0,
-            "radiance_correction_c2": 0.0,
+            "radiance_correction_a0": 0.0,
+            "radiance_correction_a1": 0.0,
+            "radiance_correction_a2": 0.0,
             "space_radiance": 0.0,
             "to_eff_blackbody_intercept": 1.8832662,
             "to_eff_blackbody_slope": 0.9971105729816139
         },
         "channel_4": {
             "centroid_wavenumber": 930.5023,
-            "radiance_correction_c0": 5.24,
-            "radiance_correction_c1": -0.11356999999999995,
-            "radiance_correction_c2": 0.0006033,
+            "radiance_correction_a0": 5.24,
+            "radiance_correction_a1": -0.11356999999999995,
+            "radiance_correction_a2": 0.0006033,
             "space_radiance": -5.53,
             "to_eff_blackbody_intercept": 0.5115335,
             "to_eff_blackbody_slope": 0.99864483895354
         },
         "channel_5": {
             "centroid_wavenumber": 845.75,
-            "radiance_correction_c0": 2.42,
-            "radiance_correction_c1": -0.04688999999999999,
-            "radiance_correction_c2": 0.0002198,
+            "radiance_correction_a0": 2.42,
+            "radiance_correction_a1": -0.04688999999999999,
+            "radiance_correction_a2": 0.0002198,
             "space_radiance": -3.06,
             "to_eff_blackbody_intercept": 0.388215,
             "to_eff_blackbody_slope": 0.9988802552338829
         },
-        "date_of_launch": "1984-12-12 23:13:55.200005",
+        "date_of_launch": "1984-12-12T23:13:55.200005Z",
         "thermometer_1": {
-            "c0": 277.018,
-            "c1": 0.05128,
-            "c2": 0.0,
-            "c3": 0.0,
-            "c4": 0.0
+            "d0": 277.018,
+            "d1": 0.05128,
+            "d2": 0.0,
+            "d3": 0.0,
+            "d4": 0.0
         },
         "thermometer_2": {
-            "c0": 276.75,
-            "c1": 0.05128,
-            "c2": 0.0,
-            "c3": 0.0,
-            "c4": 0.0
+            "d0": 276.75,
+            "d1": 0.05128,
+            "d2": 0.0,
+            "d3": 0.0,
+            "d4": 0.0
         },
         "thermometer_3": {
-            "c0": 276.862,
-            "c1": 0.05128,
-            "c2": 0.0,
-            "c3": 0.0,
-            "c4": 0.0
+            "d0": 276.862,
+            "d1": 0.05128,
+            "d2": 0.0,
+            "d3": 0.0,
+            "d4": 0.0
         },
         "thermometer_4": {
-            "c0": 276.546,
-            "c1": 0.05128,
-            "c2": 0.0,
-            "c3": 0.0,
-            "c4": 0.0
+            "d0": 276.546,
+            "d1": 0.05128,
+            "d2": 0.0,
+            "d3": 0.0,
+            "d4": 0.0
         }
     },
     "tirosn": {
@@ -1208,59 +1208,59 @@
         },
         "channel_3b": {
             "centroid_wavenumber": 2655.7409,
-            "radiance_correction_c0": 0.00195,
-            "radiance_correction_c1": -0.015000000000000013,
-            "radiance_correction_c2": 0.011,
+            "radiance_correction_a0": 0.00195,
+            "radiance_correction_a1": -0.015000000000000013,
+            "radiance_correction_a2": 0.011,
             "space_radiance": -0.0039,
             "to_eff_blackbody_intercept": 1.6485446,
             "to_eff_blackbody_slope": 0.9979149564899099
         },
         "channel_4": {
             "centroid_wavenumber": 913.0537,
-            "radiance_correction_c0": 6.13,
-            "radiance_correction_c1": -0.131942,
-            "radiance_correction_c2": 0.000673193,
+            "radiance_correction_a0": 6.13,
+            "radiance_correction_a1": -0.131942,
+            "radiance_correction_a2": 0.000673193,
             "space_radiance": -8.13,
             "to_eff_blackbody_intercept": 0.53135445,
             "to_eff_blackbody_slope": 0.9985677542700504
         },
         "channel_5": {
             "centroid_wavenumber": 913.0537,
-            "radiance_correction_c0": 6.13,
-            "radiance_correction_c1": -0.131942,
-            "radiance_correction_c2": 0.000673193,
+            "radiance_correction_a0": 6.13,
+            "radiance_correction_a1": -0.131942,
+            "radiance_correction_a2": 0.000673193,
             "space_radiance": -8.13,
             "to_eff_blackbody_intercept": 0.53135445,
             "to_eff_blackbody_slope": 0.9985677542700504
         },
-        "date_of_launch": "1978-10-13 19:04:47.999992",
+        "date_of_launch": "1978-10-13T19:04:47.999992Z",
         "thermometer_1": {
-            "c0": 277.659,
-            "c1": 0.051275,
-            "c2": 1.363e-06,
-            "c3": 0.0,
-            "c4": 0.0
+            "d0": 277.659,
+            "d1": 0.051275,
+            "d2": 1.363e-06,
+            "d3": 0.0,
+            "d4": 0.0
         },
         "thermometer_2": {
-            "c0": 276.659,
-            "c1": 0.051275,
-            "c2": 1.363e-06,
-            "c3": 0.0,
-            "c4": 0.0
+            "d0": 276.659,
+            "d1": 0.051275,
+            "d2": 1.363e-06,
+            "d3": 0.0,
+            "d4": 0.0
         },
         "thermometer_3": {
-            "c0": 276.659,
-            "c1": 0.051275,
-            "c2": 1.363e-06,
-            "c3": 0.0,
-            "c4": 0.0
+            "d0": 276.659,
+            "d1": 0.051275,
+            "d2": 1.363e-06,
+            "d3": 0.0,
+            "d4": 0.0
         },
         "thermometer_4": {
-            "c0": 276.659,
-            "c1": 0.051275,
-            "c2": 1.363e-06,
-            "c3": 0.0,
-            "c4": 0.0
+            "d0": 276.659,
+            "d1": 0.051275,
+            "d2": 1.363e-06,
+            "d3": 0.0,
+            "d4": 0.0
         }
     }
 }

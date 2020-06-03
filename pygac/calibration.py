@@ -150,7 +150,7 @@ def new2old_coeffs(new_coeffs):
     old_coeffs['d'].append(5*[0.0])
     for prt in range(1, 5):
         old_coeffs['d'].append([
-            new_coeffs['thermometer_{0}'.format(prt)]['c{0}'.format(i)]
+            new_coeffs['thermometer_{0}'.format(prt)]['d{0}'.format(i)]
             for i in range(5)
         ])
     for ch in ['3b', '4', '5']:
@@ -167,7 +167,7 @@ def new2old_coeffs(new_coeffs):
             #    old_coeffs['b{0}'.format(j)].append(new_coeffs['channel_{0}'.format(ch)][
             #        'radiance_correction_c{0}'.format(j)])
             old_coeffs['b{0}'.format(j)].append(new_coeffs['channel_{0}'.format(ch)][
-                'radiance_correction_c{0}'.format(j)])
+                'radiance_correction_a{0}'.format(j)])
     return dict(old_coeffs)
 
 
@@ -191,7 +191,7 @@ def old2new_coeffs(old_coeffs):
     for prt in range(1, 5):
         new_coeffs['thermometer_{0}'.format(prt)] = {}
         for i in range(5):
-            new_coeffs['thermometer_{0}'.format(prt)]['c{0}'.format(i)] = old_coeffs['d'][prt][i]
+            new_coeffs['thermometer_{0}'.format(prt)]['d{0}'.format(i)] = old_coeffs['d'][prt][i]
     for i, ch in enumerate(['3b', '4', '5']):
         new_coeffs['channel_{0}'.format(ch)] = {}
         new_coeffs['channel_{0}'.format(ch)]['space_radiance'] = old_coeffs['n_s'][i]
@@ -199,11 +199,11 @@ def old2new_coeffs(old_coeffs):
         new_coeffs['channel_{0}'.format(ch)]['to_eff_blackbody_intercept'] = old_coeffs['a'][i]
         new_coeffs['channel_{0}'.format(ch)]['to_eff_blackbody_slope'] = old_coeffs['b'][i]
         for j in range(3):
-            new_coeffs['channel_{0}'.format(ch)]['radiance_correction_c{0}'.format(j)] = old_coeffs[
+            new_coeffs['channel_{0}'.format(ch)]['radiance_correction_a{0}'.format(j)] = old_coeffs[
                 'b{0}'.format(j)][i]
             # revert to original definition of the linear coefficient (not including +1)
             if j == 1:
-                new_coeffs['channel_{0}'.format(ch)]['radiance_correction_c{0}'.format(j)] -= 1
+                new_coeffs['channel_{0}'.format(ch)]['radiance_correction_a{0}'.format(j)] -= 1
     return new_coeffs
 
 
@@ -462,14 +462,17 @@ def calibrate_thermal(counts, prt, ict, space, line_numbers, channel, spacecraft
                             (nonzeros).nonzero()[0],
                             tprt[nonzeros])
 
+    # Thresholds to flag missing/wrong data for interpolation
+    ict_threshold = 100
+    space_threshold = 100
     if channel == 3:
-        zeros = ict < 100
+        zeros = ict < ict_threshold
         nonzeros = np.logical_not(zeros)
 
         ict[zeros] = np.interp((zeros).nonzero()[0],
                                (nonzeros).nonzero()[0],
                                ict[nonzeros])
-        zeros = space < 100
+        zeros = space < space_threshold
         nonzeros = np.logical_not(zeros)
 
         space[zeros] = np.interp((zeros).nonzero()[0],
