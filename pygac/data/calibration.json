@@ -20,7 +20,7 @@
                 "to_eff_blackbody_intercept": "thermal channel temperature to effective blackbody temperature intercept [K]",
                 "to_eff_blackbody_slope": "thermal channel temperature to effective blackbody temperature slope []"
             },
-            "method": "Walton, C. C., J. T. Sullivan, C. R. N. Rao, and M. P. Weinreb, 1998: Corrections for detector nonlinearities and calibration inconsistencies of the infrared channels of the Advanced Very High Resolution Radiometer. J. Geophys. Res., 103, 3323-3337; Trishchenko, A.P., 2002: Removing Unwanted Fluctuations in the AVHRR Thermal Calibration Data Using Robust Techniques. Journal of Atmospheric and Oceanic Technology, 19:1939-1954"
+            "method": "Goodrum, G., Kidwell, K.B. and W. Winston, 2000: NOAA KLM User's Guide. U.S. Department of Commerce, National Oceanic and Atmospheric Administration, National Environmental Satellite, Data and Information Service; Walton, C. C., J. T. Sullivan, C. R. N. Rao, and M. P. Weinreb, 1998: Corrections for detector nonlinearities and calibration inconsistencies of the infrared channels of the Advanced Very High Resolution Radiometer. J. Geophys. Res., 103, 3323-3337; Trishchenko, A.P., 2002: Removing Unwanted Fluctuations in the AVHRR Thermal Calibration Data Using Robust Techniques. Journal of Atmospheric and Oceanic Technology, 19:1939-1954"
         },
         "visible": {
             "channels": [
