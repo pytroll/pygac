@@ -743,15 +743,24 @@ class Reader(six.with_metaclass(ABCMeta)):
         """
         self.get_times()
         self.get_lonlat()
-        tle1, tle2 = self.get_tle_lines()
-        orb = Orbital(self.spacecrafts_orbital[self.spacecraft_id],
-                      line1=tle1, line2=tle2)
 
-        sat_azi, sat_elev = orb.get_observer_look(self.times[:, np.newaxis],
-                                                  self.lons, self.lats, 0)
+        try:
+            tle1, tle2 = self.get_tle_lines()
+            orb = Orbital(self.spacecrafts_orbital[self.spacecraft_id],
+                          line1=tle1, line2=tle2)
+            sat_azi, sat_elev = orb.get_observer_look(self.times[:, np.newaxis],
+                                                      self.lons, self.lats, 0)
+        except IndexError:
+            from pyorbital.orbital import get_observer_look as get_observer_look_no_tle
+            sat_alt = 850.0  # km  TIROS-N OSCAR
+            sat_azi, sat_elev = get_observer_look_no_tle(
+                self.lons[:, 204][:, np.newaxis],
+                self.lats[:, 204][:, np.newaxis],  # approximate satellite position
+                sat_alt,  # approximate satellite altitude
+                self.times[:, np.newaxis],
+                self.lons, self.lats, 0)
 
         sat_zenith = 90 - sat_elev
-
         sun_zenith = astronomy.sun_zenith_angle(self.times[:, np.newaxis],
                                                 self.lons, self.lats)
 
