@@ -74,7 +74,7 @@ class Calibrator(object):
         if cls.default_coeffs is None:
             cls.load_defaults()
         if custom_coeffs:
-            LOG.info('Using following custom coefficients "%s".', customs)
+            LOG.info('Using following custom coefficients "%s".', custom_coeffs)
         customs = custom_coeffs or {}
         defaults = cls.default_coeffs[spacecraft]
         coeffs = defaults.copy()
@@ -274,7 +274,7 @@ def calibrate_solar(counts, chan, year, jday, spacecraft, corr=1, custom_coeffs=
     # > and 2 half of the available Digital Number (DN) range is assigned to the low albedo range from
     # > 0 to 25% with the other half to the high albedo range from 26 to 100%. This allows for an increase
     # > in the radiometric resolution for dark targets. For channel 3A, the split between low and high
-    # > albedo range is set at 12.5% albedo (Rao and Sullivan 2001)”.
+    # > albedo range is set at 12.5% albedo (Rao and Sullivan 2001).
     # The gain factors are given by the ratio of the fraction of albedo range to the fraction of count range
     # for the given count region. From the information given by the book quote, we get
     # G_low = 25% / 50% = 0.5 for channel-1 and 2
@@ -293,7 +293,7 @@ def calibrate_solar(counts, chan, year, jday, spacecraft, corr=1, custom_coeffs=
     #            *  D    B_dg
     # Note, that in the former implementation, there was a distinction beteen low and high gain slopes
     # given by S_low/high = S*G_low/high. which only affects S0 in equation (6) in Heidinger et al 2010.
-    # Furthermore, the implementation allows for an additional correction factor corr which defaults to one. (depricated)
+    # Furthermore, the implementation allows for an additional correction factor corr which defaults to 1. (depricated)
     d = cal.dark_count[chan]
     b_dg = cal.gain_switch[chan]
     # Note that in case of a single-gain instrument, all gain_switch parameters are set to NaN.
