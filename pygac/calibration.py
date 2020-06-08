@@ -52,11 +52,11 @@ class Calibrator(object):
         'ee643f5737a5a1c91ef97833b7ec868c': 'PATMOS-x, v2017r1'  # version information
     }
     fields = [
-        "dark_count", "gain_switch", "s0", "s1", "s2", "b",#"b0", "b1", "b2",
+        "dark_count", "gain_switch", "s0", "s1", "s2", "b",  # "b0", "b1", "b2",
         "centroid_wavenumber", "space_radiance", "to_eff_blackbody_intercept",
         "to_eff_blackbody_slope", "date_of_launch", "d", "spacecraft"
     ]
-    
+
     Calibrator = namedtuple('Calibrator', fields)
     default_coeffs = None
     _version = None
@@ -167,7 +167,7 @@ class Calibrator(object):
                 LOG.info('Using default calibration coefficients version "%s".', version)
             cls.default_coeffs = json.loads(content)
             cls._version = version
-            
+
     @staticmethod
     def date2float(date, decimals=5):
         """Convert date to year float.
@@ -237,7 +237,7 @@ def calibrate_solar(counts, chan, year, jday, spacecraft, corr=1, custom_coeffs=
     l_date = Calibrator.date2float(cal.date_of_launch)
     t = (year + jday / 365.0) - l_date
 
-    # Note: splitting the calibration slope is needed to reproduce old results and may disappear in future, 
+    # Note: splitting the calibration slope is needed to reproduce old results and may disappear in future,
     #       because actually there is only one set of slope parameters defined for single-gain counts
     #       as described in Heidinger et al. 2010. See Step 2 for more information.
     # Note that in case of a single-gain instrument, all gain_switch parameters are set to NaN.
@@ -249,7 +249,7 @@ def calibrate_solar(counts, chan, year, jday, spacecraft, corr=1, custom_coeffs=
     # especially the rounding to three digits is crutial to exectly reproduce the original PATMOS-x values.
     al, bl, cl = np.round(glow*cal.s0, 3), cal.s1, cal.s2
     ah, bh, ch = np.round(ghigh*cal.s0, 3), cal.s1, cal.s2
-    
+
     # apply slope equation for low and high gain coefficients
     stl = (al[chan] * (100.0 + bl[chan] * t + cl[chan] * t * t)) / 100.0
     sth = (ah[chan] * (100.0 + bh[chan] * t + ch[chan] * t * t)) / 100.0
@@ -259,7 +259,7 @@ def calibrate_solar(counts, chan, year, jday, spacecraft, corr=1, custom_coeffs=
     # where R_cal is the value generated from the calibration and is referred to as a
     # scaled radiance, S is the calibration slope, C the measured count and D the dark count.
     # This equation is only valid for single-gain instruments. Starting with the AVHRR/3 series
-    # (from NOAA-15 onwards), the channel-1, 2 and 3a require a dual-gain calibration. 
+    # (from NOAA-15 onwards), the channel-1, 2 and 3a require a dual-gain calibration.
     # The conversion for channel-1 and 2 is given in the appendix, equation (A1) and (A2).
     # In general, these equations can be written as
     # C(C_dg) = D + G_low*(C_dg-D),            if C_dg <= B_dg
@@ -272,8 +272,8 @@ def calibrate_solar(counts, chan, year, jday, spacecraft, corr=1, custom_coeffs=
     # > instrument for low reflectance targets, the dynamic range of the instrument was divided equally
     # > in two ranges, i.e. nominally from 0 to 500 counts and from 500 to 1,000 counts. For channels 1
     # > and 2 half of the available Digital Number (DN) range is assigned to the low albedo range from
-    # > 0 to 25% with the other half to the high albedo range from 26 to 100%. This allows for an increase 
-    # > in the radiometric resolution for dark targets. For channel 3A, the split between low and high 
+    # > 0 to 25% with the other half to the high albedo range from 26 to 100%. This allows for an increase
+    # > in the radiometric resolution for dark targets. For channel 3A, the split between low and high
     # > albedo range is set at 12.5% albedo (Rao and Sullivan 2001)”.
     # The gain factors are given by the ratio of the fraction of albedo range to the fraction of count range
     # for the given count region. From the information given by the book quote, we get
@@ -476,7 +476,7 @@ def calibrate_thermal(counts, prt, ict, space, line_numbers, channel, spacecraft
     b = cal.b[chan, 0:3]  # the second index are the three polynomial coefficients
     # variables
     tBB = new_tprt
-    cS = new_space 
+    cS = new_space
     cE = counts.astype(float)
     cBB = new_ict
 
