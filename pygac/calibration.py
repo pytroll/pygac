@@ -49,7 +49,7 @@ class Calibrator(object):
         default_coeffs: dictonary containing default values for all spacecrafts
     """
     version_hashs = {
-        '4c17c81a9619bed06e30d0988b69805d': 'PATMOS-x, v2017r1'  # version information
+        'ee643f5737a5a1c91ef97833b7ec868c': 'PATMOS-x, v2017r1'  # version information
     }
     fields = [
         "dark_count", "gain_switch", "s0", "s1", "s2", "b",#"b0", "b1", "b2",
