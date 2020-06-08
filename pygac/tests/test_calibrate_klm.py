@@ -283,8 +283,7 @@ class TestGenericCalibration(unittest.TestCase):
             " of the function result clear. Please make any unit conversion outside this function."
         )
         with self.assertWarnsRegex(DeprecationWarning, message):
-            scaled_radiance = calibrate_solar(counts, channel, year, jday,
-                                              spacecraft_id, corr=corr)
+            calibrate_solar(counts, channel, year, jday, spacecraft_id, corr=corr)
 
 def suite():
     """The suite for test_slerp
