@@ -24,188 +24,20 @@
 """Calibration coefficients and generic calibration functions
 """
 from __future__ import division
+import sys
 import logging
 import numpy as np
 import json
 import hashlib
 import warnings
 import datetime as dt
-import dateutil.parser
-from collections import namedtuple, defaultdict
+from collections import namedtuple
 from pkg_resources import resource_filename
-from scipy.optimize import bisect
 
 
 import pygac.configuration
 
 LOG = logging.getLogger(__name__)
-
-
-def find_s0(s0_low, s0_high, ch):
-    if ch == '3a':
-        g_low, g_high = 0.25, 1.75
-    else:
-        g_low, g_high = 0.5, 1.5
-
-    def diff(s0): return s0_low - round(s0*g_low, 3) + s0_high - round(s0*g_high, 3)
-
-    s0_l = s0_low / g_low
-    s0_h = s0_high / g_high
-    s0_ = (s0_l + s0_h)/2
-    if diff(s0_) == 0:
-        s0 = s0_
-    if diff(s0_l) == 0:
-        s0 = s0_l
-    elif diff(s0_h) == 0:
-        s0 = s0_h
-    else:
-        s0 = bisect(diff, s0_l, s0_h)
-    return s0
-
-
-def date2float(date, decimals=5):
-    """Convert date to year float.
-
-    Argument
-        date (datetime.datetime) - date
-        decimals (int or None) - rounding precision if None, do not round (default=5)
-
-    Return
-        date_float (float) - date as year
-
-    Note
-        rounding to the 5th decimal reproduces the original float values from patmos-x
-
-    Example:
-        date2float('2000-07-02') == 2000.5
-        because the 2nd of July was the middle day of the leap year 2000
-    """
-    year = date.year
-    days_in_year = (dt.datetime(year+1, 1, 1) - dt.datetime(year, 1, 1)).days
-    diff = date - dt.datetime(year, 1, 1)
-    seconds = diff.total_seconds()
-    date_float = date.year + seconds/(days_in_year*24*3600)
-    if decimals is not None:
-        date_float = round(date_float, decimals)
-    return date_float
-
-
-def float2date(date_float):
-    """Convert date float to date.
-
-    Argument
-        date_float (float) - date as year
-
-    Return
-        date (datetime.datetime) - date
-
-    Note
-        This is the reverse function of date2float.
-    """
-    year = int(date_float)
-    days_in_year = (dt.datetime(year+1, 1, 1) - dt.datetime(year, 1, 1)).days
-    seconds = date_float*days_in_year*24*3600 - year*days_in_year*24*3600
-    diff = dt.timedelta(seconds=seconds)
-    date = dt.datetime(year, 1, 1) + diff
-    return date
-
-
-def new2old_coeffs(new_coeffs):
-    """convert new coefficients to old coefficients"""
-    old_coeffs = defaultdict(list)
-    date_of_launch = dateutil.parser.parse(new_coeffs['date_of_launch'])
-    # python 2 throws a TypeError for an empty tzlocal as caused by the UTC Z
-    try:
-        # apply local time shift to get UTC
-        date_of_launch = date_of_launch.astimezone()
-    except TypeError:
-        pass
-    finally:
-        # remove time zone information (easier to handle in calculations)
-        date_of_launch = date_of_launch.replace(tzinfo=None)
-    old_coeffs['l_date'] = date2float(date_of_launch)
-    for i, ch in enumerate(['1', '2', '3a']):
-        for slope, char in enumerate('abc'):
-            for gain in ['high', 'low']:
-                if slope == 0 and new_coeffs['channel_{0}'.format(ch)].get('gain_switch') is not None:
-                    if gain == 'low' and ch == '3a':
-                        g = 0.25
-                    elif gain == 'low':
-                        g = 0.5
-                    elif gain == 'high' and ch == '3a':
-                        g = 1.75
-                    elif gain == 'high':
-                        g = 1.5
-                    else:
-                        raise RuntimeError('Should not happen!')
-                    old_coeffs['{0}{1}'.format(char, gain[0])].append(
-                        round(new_coeffs['channel_{0}'.format(ch)]['s{0}'.format(slope)]*g, 3)
-                    )
-                else:
-                    old_coeffs['{0}{1}'.format(char, gain[0])].append(
-                        new_coeffs['channel_{0}'.format(ch)]['s{0}'.format(slope)]
-                    )
-        old_coeffs['c_dark'].append(new_coeffs['channel_{0}'.format(ch)]['dark_count'])
-        if new_coeffs['channel_1'].get('gain_switch') is not None:
-            old_coeffs['c_s'].append(new_coeffs['channel_{0}'.format(ch)]['gain_switch'])
-    old_coeffs['d'].append(5*[0.0])
-    for prt in range(1, 5):
-        old_coeffs['d'].append([
-            new_coeffs['thermometer_{0}'.format(prt)]['d{0}'.format(i)]
-            for i in range(5)
-        ])
-    for ch in ['3b', '4', '5']:
-        old_coeffs['n_s'].append(new_coeffs['channel_{0}'.format(ch)]['space_radiance'])
-        old_coeffs['c_wn'].append(new_coeffs['channel_{0}'.format(ch)]['centroid_wavenumber'])
-        old_coeffs['a'].append(new_coeffs['channel_{0}'.format(ch)]['to_eff_blackbody_intercept'])
-        old_coeffs['b'].append(new_coeffs['channel_{0}'.format(ch)]['to_eff_blackbody_slope'])
-        for j in range(3):
-            # revert to original definition of the linear coefficient (not including +1)
-            # if j == 1:
-            #    old_coeffs['b{0}'.format(j)].append(1 + new_coeffs['channel_{0}'.format(ch)][
-            #        'radiance_correction_c{0}'.format(j)])
-            # else:
-            #    old_coeffs['b{0}'.format(j)].append(new_coeffs['channel_{0}'.format(ch)][
-            #        'radiance_correction_c{0}'.format(j)])
-            old_coeffs['b{0}'.format(j)].append(new_coeffs['channel_{0}'.format(ch)][
-                'b{0}'.format(j)])
-    return dict(old_coeffs)
-
-
-def old2new_coeffs(old_coeffs):
-    """convert old coefficients to new coefficients"""
-    new_coeffs = {}
-    for i, ch in enumerate(['1', '2', '3a']):
-        new_coeffs['channel_{0}'.format(ch)] = {}
-        for slope, char in enumerate('abc'):
-            if slope == 0 and old_coeffs.get('c_s') is not None:
-                new_coeffs['channel_{0}'.format(ch)]['s{0}'.format(slope)] = find_s0(
-                    old_coeffs['{0}l'.format(char)][i],
-                    old_coeffs['{0}h'.format(char)][i],
-                    ch
-                )
-            else:
-                new_coeffs['channel_{0}'.format(ch)]['s{0}'.format(slope)] = old_coeffs['{0}h'.format(char)][i]
-        new_coeffs['channel_{0}'.format(ch)]['dark_count'] = old_coeffs['c_dark'][i]
-        new_coeffs['channel_{0}'.format(ch)]['gain_switch'] = old_coeffs.get('c_s', 3*[None])[i]
-    new_coeffs['date_of_launch'] = float2date(old_coeffs['l_date']).strftime('%Y-%m-%dT%H:%M:%S.%fZ')
-    for prt in range(1, 5):
-        new_coeffs['thermometer_{0}'.format(prt)] = {}
-        for i in range(5):
-            new_coeffs['thermometer_{0}'.format(prt)]['d{0}'.format(i)] = old_coeffs['d'][prt][i]
-    for i, ch in enumerate(['3b', '4', '5']):
-        new_coeffs['channel_{0}'.format(ch)] = {}
-        new_coeffs['channel_{0}'.format(ch)]['space_radiance'] = old_coeffs['n_s'][i]
-        new_coeffs['channel_{0}'.format(ch)]['centroid_wavenumber'] = old_coeffs['c_wn'][i]
-        new_coeffs['channel_{0}'.format(ch)]['to_eff_blackbody_intercept'] = old_coeffs['a'][i]
-        new_coeffs['channel_{0}'.format(ch)]['to_eff_blackbody_slope'] = old_coeffs['b'][i]
-        for j in range(3):
-            new_coeffs['channel_{0}'.format(ch)]['b{0}'.format(j)] = old_coeffs[
-                'b{0}'.format(j)][i]
-            # revert to original definition of the linear coefficient (not including +1)
-            if j == 1:
-                new_coeffs['channel_{0}'.format(ch)]['b{0}'.format(j)] -= 1
-    return new_coeffs
 
 
 class Calibrator(object):
@@ -219,9 +51,15 @@ class Calibrator(object):
     version_hashs = {
         '4c17c81a9619bed06e30d0988b69805d': 'PATMOS-x, v2017r1'  # version information
     }
-    fields = 'ah al bh bl ch cl c_s c_dark l_date d n_s c_wn a b b0 b1 b2'.split()
+    fields = [
+        "dark_count", "gain_switch", "s0", "s1", "s2", "b",#"b0", "b1", "b2",
+        "centroid_wavenumber", "space_radiance", "to_eff_blackbody_intercept",
+        "to_eff_blackbody_slope", "date_of_launch", "d", "spacecraft"
+    ]
+    
     Calibrator = namedtuple('Calibrator', fields)
     default_coeffs = None
+    _version = None
 
     def __new__(cls, spacecraft, custom_coeffs=None):
         """Creates a namedtuple for calibration coefficients of a given spacecraft
@@ -235,32 +73,68 @@ class Calibrator(object):
         """
         if cls.default_coeffs is None:
             cls.load_defaults()
-        custom_coeffs = custom_coeffs or {}
-        customs = {key: cls.parse(value) for key, value in custom_coeffs.items()}
-        defaults = cls.default_coeffs[spacecraft]
-        spacecraft_coeffs = {}  # dict.fromkeys(cls.fields)
-        spacecraft_coeffs.update(defaults)
-        spacecraft_coeffs.update(customs)
         if custom_coeffs:
             LOG.info('Using following custom coefficients "%s".', customs)
-        # Note: The follwoing conversion from new to old coefficient names should
-        #       disappear in a future version.
-        #       The commit intorducing this comment contains everything to convert
-        #       new to old names and vice versa
-        _spacecraft_coeffs = dict.fromkeys(cls.fields)
-        _spacecraft_coeffs.update({
-            key: cls.parse(value)  # parse lists to arrays
-            for key, value in new2old_coeffs(spacecraft_coeffs).items()
-        })
-        calibrator = cls.Calibrator(**_spacecraft_coeffs)
+        customs = custom_coeffs or {}
+        defaults = cls.default_coeffs[spacecraft]
+        coeffs = defaults.copy()
+        coeffs.update(customs)
+
+        # transpose the coefficient order from channel - coeff to coeff - channel
+        # and store as arrays for vectorized calls of calibration functions
+        arraycoeffs = dict.fromkeys(cls.fields)
+        # visible channels
+        for key in ("dark_count", "gain_switch", "s0", "s1", "s2"):
+            arraycoeffs[key] = np.array([
+                coeffs[channel][key]
+                for channel in ('channel_1', 'channel_2', 'channel_3a')
+            ], dtype=float)
+        # thermal channels
+        for key in ("centroid_wavenumber", "space_radiance",
+                    "to_eff_blackbody_intercept", "to_eff_blackbody_slope"):
+            arraycoeffs[key] = np.array([
+                coeffs[channel][key]
+                for channel in ('channel_3b', 'channel_4', 'channel_5')
+            ], dtype=float)
+        arraycoeffs["b"] = np.array([
+            [
+                coeffs[channel][key]
+                for key in ("b0", "b1", "b2")
+            ]
+            for channel in ('channel_3b', 'channel_4', 'channel_5')
+        ], dtype=float)
+        # thermometers
+        # Note, that "thermometer_0" does not exists, and is filled with zeros to
+        # account for the PRT reset every fifth scanline
+        arraycoeffs["d"] = np.array([
+            [
+                coeffs.get("thermometer_{0}".format(t), {}).get("d{0}".format(d), 0.0)
+                for t in range(5)
+            ]
+            for d in range(5)
+        ], dtype=float)
+        # parse date of launch
+        date_of_launch_str = coeffs["date_of_launch"].replace('Z', '+00:00')
+        if sys.version_info.major < 3:
+            # Note that here any time information is lost
+            import dateutil.parser
+            date_of_launch = dateutil.parser.parse(date_of_launch_str)
+        else:
+            date_of_launch = dt.datetime.fromisoformat(
+                date_of_launch_str).astimezone(dt.timezone.utc)
+        # remove time zone information (easier to handle in calculations)
+        arraycoeffs["date_of_launch"] = date_of_launch.replace(tzinfo=None)
+        arraycoeffs["spacecraft"] = spacecraft
+        # create namedtuple
+        calibrator = cls.Calibrator(**arraycoeffs)
         return calibrator
 
-    @staticmethod
-    def parse(value):
-        """Cast lists to numpy arrays."""
-        if isinstance(value, list):
-            value = np.asarray(value)
-        return value
+    @classmethod
+    def get_version(cls):
+        """Retrun the default calibration coefficients version."""
+        if cls.default_coeffs is None:
+            cls.load_defaults()
+        return cls._version
 
     @classmethod
     def load_defaults(cls):
@@ -286,11 +160,40 @@ class Calibrator(object):
             digest = md5_hash.hexdigest()
             version = cls.version_hashs.get(digest)
             if version is None:
-                warnings.warn("Unknown calibration coefficients version!", RuntimeWarning)
-                LOG.warning("Unknown calibration coefficients version!")
+                warning = "Unknown default calibration coefficients version!"
+                warnings.warn(warning, RuntimeWarning)
+                LOG.warning(warning)
             else:
-                LOG.info('Using calibration coefficients version "%s".', version)
+                LOG.info('Using default calibration coefficients version "%s".', version)
             cls.default_coeffs = json.loads(content)
+            cls._version = version
+            
+    @staticmethod
+    def date2float(date, decimals=5):
+        """Convert date to year float.
+
+        Argument
+            date (datetime.datetime) - date
+            decimals (int or None) - rounding precision if None, do not round (default=5)
+
+        Return
+            date_float (float) - date as year
+
+        Note
+            rounding to the 5th decimal reproduces the original float values from patmos-x
+
+        Example:
+            date2float('2000-07-02') == 2000.5
+            because the 2nd of July was the middle day of the leap year 2000
+        """
+        year = date.year
+        days_in_year = (dt.datetime(year+1, 1, 1) - dt.datetime(year, 1, 1)).days
+        diff = date - dt.datetime(year, 1, 1)
+        seconds = diff.total_seconds()
+        date_float = date.year + seconds/(days_in_year*24*3600)
+        if decimals is not None:
+            date_float = round(date_float, decimals)
+        return date_float
 
 
 def calibrate_solar(counts, chan, year, jday, spacecraft, corr=1, custom_coeffs=None):
@@ -316,13 +219,6 @@ def calibrate_solar(counts, chan, year, jday, spacecraft, corr=1, custom_coeffs=
         "Deriving an inter-sensor consistent calibration for the AVHRR solar reflectance data record.",
         International Journal of Remote Sensing, 31:6493 - 6517.
     """
-    if corr != 1:
-        warnings.warn(
-            "Using the 'corr' argument is depricated in favor of making the units"
-            " of the function result clear. Please make any unit conversion outside this function.",
-            DeprecationWarning
-        )
-
     # get the calibration coefficients for this spacecraft
     cal = Calibrator(spacecraft, custom_coeffs=custom_coeffs)
 
@@ -330,44 +226,93 @@ def calibrate_solar(counts, chan, year, jday, spacecraft, corr=1, custom_coeffs=
     # S(t) = S_0*(100 + S_1*t + S_2*t^2) / 100,
     # where t is the time since launch expressed as years, S(t) is the calibration slope
     # and S_0, S_1 and S_2 are the coefficients of the quadratic fit.
-    # See section "Fitting of Calibration Slope Equations" in PATMOS-x documentation
+    # See also section "Fitting of Calibration Slope Equations" in PATMOS-x documentation
     # (CDRP-ATBD-0184 Rev. 2 03/29/2018 page 19)
 
     # Note that the this implementation does not take leap years into account!
-    t = (year + jday / 365.0) - cal.l_date
+    # Using datetime objects would include it automatically
+    # sensing_date = dt.strptime('{0}.{1}'.format(year, jday), '%Y.%j')
+    # delta = sensing_date - cal.date_of_launch
+    # t = delta.total_seconds() / 31557600  # divided by seconds of a Julian year
+    l_date = Calibrator.date2float(cal.date_of_launch)
+    t = (year + jday / 365.0) - l_date
 
+    # Note: splitting the calibration slope is needed to reproduce old results and may disappear in future, 
+    #       because actually there is only one set of slope parameters defined for single-gain counts
+    #       as described in Heidinger et al. 2010. See Step 2 for more information.
+    # Note that in case of a single-gain instrument, all gain_switch parameters are set to NaN.
+    if np.isnan(cal.gain_switch).all():
+        glow = ghigh = np.ones(3)
+    else:
+        glow = np.array([0.5, 0.5, 0.25])
+        ghigh = np.array([1.5, 1.5, 1.75])
+    # especially the rounding to three digits is crutial to exectly reproduce the original PATMOS-x values.
+    al, bl, cl = np.round(glow*cal.s0, 3), cal.s1, cal.s2
+    ah, bh, ch = np.round(ghigh*cal.s0, 3), cal.s1, cal.s2
+    
     # apply slope equation for low and high gain coefficients
-    stl = (cal.al[chan] * (100.0 + cal.bl[chan] * t
-                           + cal.cl[chan] * t * t)) / 100.0
-    sth = (cal.ah[chan] * (100.0 + cal.bh[chan] * t
-                           + cal.ch[chan] * t * t)) / 100.0
+    stl = (al[chan] * (100.0 + bl[chan] * t + cl[chan] * t * t)) / 100.0
+    sth = (ah[chan] * (100.0 + bh[chan] * t + ch[chan] * t * t)) / 100.0
 
     # Step 2. Calculate the scaled radiance using equation (1) in Heidinger et al 2010
     # R_cal = S*(C-D),
     # where R_cal is the value generated from the calibration and is referred to as a
     # scaled radiance, S is the calibration slope, C the measured count and D the dark count.
-    # This equation is only valid for single gain instruments. Starting with the AVHRR/3 series
-    # (from NOAA-15 onwards), the channel-1, 2 and 3a require a dual-gain calibration. The dual-gain
-    # counts have been converted to equivalent single-gain counts determined by a gain switch to be
-    # linearly propotional to radiance (Appendix A in Heidinger et al, 2010).
-    # Long story short: The scaled radiance as function of instrument counts is a continuous piecewise
-    # linear function of two line segments.
+    # This equation is only valid for single-gain instruments. Starting with the AVHRR/3 series
+    # (from NOAA-15 onwards), the channel-1, 2 and 3a require a dual-gain calibration. 
+    # The conversion for channel-1 and 2 is given in the appendix, equation (A1) and (A2).
+    # In general, these equations can be written as
+    # C(C_dg) = D + G_low*(C_dg-D),            if C_dg <= B_dg
+    # C(C_dg) = C(B_dg) + G_high*(C_dg-B_dg),  otherwise
+    # where C_dg is the measured dual-gain counts, B_dg is the dual-gain switch and G_low/high
+    # are the gain factors for the low and high count region.
+    # Quote from the book "Remote Sensing Time Series: Revealing Land Surface Dynamics":
+    # > Another change in design of the AVHRR/3 instrument was the introduction of a dual-gain feature
+    # > for the reflective channels 1, 2 and 3A. In order to improve the radiometric resolution of the
+    # > instrument for low reflectance targets, the dynamic range of the instrument was divided equally
+    # > in two ranges, i.e. nominally from 0 to 500 counts and from 500 to 1,000 counts. For channels 1
+    # > and 2 half of the available Digital Number (DN) range is assigned to the low albedo range from
+    # > 0 to 25% with the other half to the high albedo range from 26 to 100%. This allows for an increase 
+    # > in the radiometric resolution for dark targets. For channel 3A, the split between low and high 
+    # > albedo range is set at 12.5% albedo (Rao and Sullivan 2001)”.
+    # The gain factors are given by the ratio of the fraction of albedo range to the fraction of count range
+    # for the given count region. From the information given by the book quote, we get
+    # G_low = 25% / 50% = 0.5 for channel-1 and 2
+    # G_low = 12.5% / 50% = 0.25 for channel-3a
+    # G_high = (100% - 25%) / (100% - 50%) = 1.5 for channel-1 and 2
+    # G_high = (100% - 12.5%) / (100% - 50%) = 1.75 for channel-3a
+    # Inserting the converted dual-gain counts into equation (1) yields the scaled radiance equation, which
+    # is a continuous piecewise linear function of two line segments.
     #            R_cal
-    #            ^           *
-    #            |          *             The scaled radiance R_cal is given by
-    #            |         *              R_cal = S_l*(C - D)                 if C <= C_s
-    # R_cal(C_s) |--------*               R_cal = R_cal(C_s) + S_h*(C - C_s)  if C > C_s
-    #            |     *  |               where S_l and S_h are the low and high gain slopes,
-    #          0 +--*-------------> C     D is the dark count, C_s is the gain switch.
-    #            *  D    C_s
-    # Note, that the implementation allows for an additional correction factor corr which defaults to one. (depricated)
-    if cal.c_s is not None:
-        r_cal = np.where(counts <= cal.c_s[chan],
-                         (counts - cal.c_dark[chan]) * stl * corr,
-                         ((cal.c_s[chan] - cal.c_dark[chan]) * stl
-                          + (counts - cal.c_s[chan]) * sth) * corr)
+    #            ^           *         R_cal = S*G_low*(C_dg-D),                        if C_dg <= B_dg
+    #            |          *          R_cal = S*G_low*(B_dg-D) + S*G_high*(C_dg-B_dg), otherwise
+    #            |         *
+    # R_cal(B_dg)|--------*
+    #            |     *  |
+    #          0 +--*-------------> C_dg
+    #            *  D    B_dg
+    # Note, that in the former implementation, there was a distinction beteen low and high gain slopes
+    # given by S_low/high = S*G_low/high. which only affects S0 in equation (6) in Heidinger et al 2010.
+    # Furthermore, the implementation allows for an additional correction factor corr which defaults to one. (depricated)
+    d = cal.dark_count[chan]
+    b_dg = cal.gain_switch[chan]
+    # Note that in case of a single-gain instrument, all gain_switch parameters are set to NaN.
+    if not np.isnan(cal.gain_switch).all():
+        r_cal = np.where(
+            counts <= b_dg,
+            (counts - d)*stl,
+            (b_dg - d)*stl + (counts - b_dg)*sth
+        )
     else:
-        r_cal = (counts - cal.c_dark[chan]) * stl * corr
+        r_cal = stl*(counts - d)
+    # apply depricated correction
+    if corr != 1:
+        warnings.warn(
+            "Using the 'corr' argument is depricated in favor of making the units"
+            " of the function result clear. Please make any unit conversion outside this function.",
+            DeprecationWarning
+        )
+        r_cal *= corr
 
     # Mask negative scaled radiances
     r_cal[r_cal < 0] = np.nan
@@ -456,11 +401,9 @@ def calibrate_thermal(counts, prt, ict, space, line_numbers, channel, spacecraft
         prt[ifix] = np.interp(ifix[0], inofix[0], prt[inofix])
 
     # calculate PRT temperature using equation (7.1.2.4-1) KLM Guide
-    tprt = (cal.d[iprt, 0] + prt *
-            (cal.d[iprt, 1] + prt *
-             (cal.d[iprt, 2] + prt *
-              (cal.d[iprt, 3] + prt *
-               (cal.d[iprt, 4])))))
+    # Tprt = d0 + d1*Cprt + d2*Cprt^2 + d3*Cprt^3 + d4*Cprt^4
+    # Note: First dimension of cal.d are the five coefficient indicees
+    tprt = np.polynomial.polynomial.polyval(prt, cal.d[:, iprt], tensor=False)
 
     # Note: the KLM Guide proposes to calculate the mean temperature using equation (7.1.2.4-2).
     # PyGAC follows the smoothing approach by Trishchenko (2002), i.e.
@@ -522,13 +465,24 @@ def calibrate_thermal(counts, prt, ict, space, line_numbers, channel, spacecraft
     # TsBB = A + B*TBB    (7.1.2.4-3)
     # NBB = c1*nu_e^3/(exp(c2*nu_e/TsBB) - 1)    (7.1.2.4-3)
     # where the constants of the Planck function are defined as c1 = 2*h*c^2, c2 = h*c/k_B.
+    # constatns
     c1 = 1.1910427e-5  # mW/m^2/sr/cm^{-4}
     c2 = 1.4387752  # cm K
-
+    # coefficients
+    A = cal.to_eff_blackbody_intercept[chan]
+    B = cal.to_eff_blackbody_slope[chan]
+    nu_c = cal.centroid_wavenumber[chan]
+    nS = cal.space_radiance[chan]
+    b = cal.b[chan, 0:3]  # the second index are the three polynomial coefficients
+    # variables
     tBB = new_tprt
-    tsBB = cal.a[chan] + cal.b[chan] * tBB
-    nBB_num = c1 * cal.c_wn[chan] ** 3
-    nBB = nBB_num / (np.exp((c2 * cal.c_wn[chan]) / tsBB) - 1.0)
+    cS = new_space 
+    cE = counts.astype(float)
+    cBB = new_ict
+
+    tsBB = A + B*tBB
+    nBB_num = c1 * nu_c**3
+    nBB = nBB_num / (np.exp((c2 * nu_c) / tsBB) - 1.0)
 
     # Step 3. Output from the two in-orbit calibration targets is used to compute a linear estimate of
     # the Earth scene radiance NE. Each scanline, the AVHRR views the internal blackbody target and
@@ -540,7 +494,7 @@ def calibrate_thermal(counts, prt, ict, space, line_numbers, channel, spacecraft
     # lines to obtain a set of all four PRT measurements. The average blackbody count CBB and the
     # average space count CS, together with blackbody radiance NBB and space radiance NS, explained
     # in the next paragraph, are used to compute the linear radiance estimate NLIN,
-    # NLIN = NS + (NBB - NS)*(CS - CE)/(CS -CBB)    (7.1.2.4-5)
+    # NLIN = NS + (NBB - NS)*(CS - CE)/(CS - CBB)    (7.1.2.4-5)
     # where CE is the AVHRR count output when it views one of the reference Earth targets.
     # While the detector in channel 3B has a linear response, the Mercury-Cadmium-Telluride detectors used
     # for channels 4 and 5 have a nonlinear response to incoming radiance. Pre-launch laboratory measurements show that:
@@ -555,24 +509,19 @@ def calibrate_thermal(counts, prt, ict, space, line_numbers, channel, spacecraft
     # Finally, the Earth scene radiance is obtained by adding NCOR to NLIN
     # NE = NLIN + NCOR
 
-    # Note: For channel 3B, the correction coefficients are set to zero to use the same equation.
-    Nlin = (cal.n_s[chan] +
-            (((nBB - cal.n_s[chan])
-              * (new_space - counts.astype(float)))
-             / (new_space - new_ict)))
-    Ncor = cal.b0[chan] + Nlin * (cal.b1[chan] + cal.b2[chan] * Nlin)
+    # Note: For channel 3B, the non-linear correction coefficients are set to zero to use the same equation.
+    Nlin = nS + (nBB - nS)*(cS - cE)/(cS - cBB)
+    Ncor = np.polynomial.polynomial.polyval(Nlin, b[0:3], tensor=False)
     Ne = Nlin + Ncor
 
     # Step 4. Data users often convert the computed Earth scene radiance value NE into an equivalent
     # blackbody temperature TE. This temperature is defined by simple inverting the steps used to
     # calculate the radiance NE sensed by an AVHRR channel from an emitting blackbody at a
     # temperature TE. The two-step process is:
-    # TsE = c2*nu_c / ln(1 + (c1*nu_c/NE))    (7.1.2.4-8)
+    # TsE = c2*nu_c / ln(1 + (c1*nu_c^3/NE))    (7.1.2.4-8)
     # TE = (TsE - A)/B    (7.1.2.4-9)
-
-    tsE = ((c2 * cal.c_wn[chan])
-           / np.log(1.0 + nBB_num / Ne))
-    bt = (tsE - cal.a[chan]) / cal.b[chan]
+    tsE = c2*nu_c / np.log(1.0 + nBB_num / Ne)
+    bt = (tsE - A) / B
 
     # Why do we do this on channel 3b?
     if chan == 0:
