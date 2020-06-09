@@ -186,6 +186,7 @@ class TestCalibrationCoefficientsHandling(unittest.TestCase):
         with self.assertWarnsRegex(DeprecationWarning, message):
             calibrate_solar(counts, channel, year, jday, spacecraft_id, corr=corr)
 
+
 def suite():
     """The suite for test_slerp
     """
