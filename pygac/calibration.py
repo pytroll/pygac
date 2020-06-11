@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 
 # Copyright (c) 2014-2015, 2019 Pytroll Developers
 
@@ -7,6 +6,7 @@
 
 #   Martin Raspaud <martin.raspaud@smhi.se>
 #   Abhay Devasthale <abhay.devasthale@smhi.se>
+#   Carlos Horn <carlos.horn@external.eumetsat.int>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -24,480 +24,393 @@
 """Calibration coefficients and generic calibration functions
 """
 from __future__ import division
+import sys
+import logging
 import numpy as np
+import json
+import hashlib
+import warnings
+import datetime as dt
+from collections import namedtuple
+from pkg_resources import resource_filename
 
-coeffs = {
-    'metopb': {'ah': np.array([0.166, 0.183, 0.201]),
-               'al': np.array([0.055, 0.061, 0.029]),
-               'bh': np.array([2.019, 1.476, 1.748]),
-               'bl': np.array([2.019, 1.476, 1.748]),
-               'ch': np.array([-0.201, -0.137, -0.033]),
-               'cl': np.array([-0.201, -0.137, -0.033]),
-               'c_dark': np.array([39.70, 40.00, 40.30]),
-               'c_s': np.array([501.12, 500.82, 501.32]),
-               'l_date': 2012.77,
-               'd': np.array([[0, 0, 0, 0, 0],  # reset prt
-                              [276.6194, 0.050919, 1.471E-06, 0.0, 0.0],
-                              [276.6511, 0.050892, 1.489E-06, 0.0, 0.0],
-                              [276.6597, 0.050845, 1.521E-06, 0.0, 0.0],
-                              [276.3685, 0.050992, 1.482E-06, 0.0, 0.0]]),
-               'n_s': np.array([0.0, -4.98, -3.40]),
-               'c_wn': np.array([2664.3384, 933.71521, 839.72764]),
-               'a': np.array([1.7711318, 0.51860807, 0.40059787]),
-               'b': np.array([1.0 / 1.0029931,
-                              1.0 / 1.0013778,
-                              1.0 / 1.0011702]),
-               'b0': np.array([0.0, 5.44, 3.84]),
-               'b1': np.array([1 - 0.0, 1 - 0.10152, 1 - 0.06249]),
-               'b2': np.array([0.0, 0.00046964, 0.00025239]),
-               },
-    'metopa': {'ah': np.array([0.169, 0.199, 0.213]),
-               'al': np.array([0.056, 0.066, 0.030]),
-               'bh': np.array([0.609, 0.980, -0.016]),
-               'bl': np.array([0.609, 0.980, -0.016]),
-               'ch': np.array([-0.029, -0.016, -0.033]),
-               'cl': np.array([-0.029, -0.016, -0.033]),
-               'c_dark': np.array([40.43, 39.75, 41.8]),
-               'c_s': np.array([501.0, 500.0, 502.0]),
-               'l_date': 2006.7995,
-               'd': np.array([[0, 0, 0, 0, 0],  # reset prt
-                              [276.6194, 0.050919, 1.471E-06, 0.0, 0.0],
-                              [276.6511, 0.050892, 1.489E-06, 0.0, 0.0],
-                              [276.6597, 0.050845, 1.521E-06, 0.0, 0.0],
-                              [276.3685, 0.050992, 1.482E-06, 0.0, 0.0]]),
-               'n_s': np.array([0.0, -4.98, -3.40]),
-               'c_wn': np.array([2687.0392, 927.27630, 837.80762]),
-               'a': np.array([2.0653147, 0.56503332, 0.38472766]),
-               'b': np.array([1.0 / 1.0034418,
-                              1.0 / 1.0015090,
-                              1.0 / 1.0011264]),
-               'b0': np.array([0.0, 5.44, 3.84]),
-               'b1': np.array([1 - 0.0, 1 - 0.10152, 1 - 0.06249]),
-               'b2': np.array([0.0, 0.00046964, 0.00025239]),
-               },
-    'tirosn': {'ah': np.array([0.115, 0.133, 0.1]),
-               'al': np.array([0.115, 0.133, 0.1]),
-               'bh': np.array([5.110, 0.717, 0.0]),
-               'bl': np.array([5.110, 0.717, 0.0]),
-               'ch': np.array([0.0, 0.0, 0.0]),
-               'cl': np.array([0.0, 0.0, 0.0]),
-               'c_dark': np.array([39.44, 39.40, 37.51]),
-               'l_date': 1978.783,
-               'd': np.array([[0, 0, 0, 0, 0],  # reset prt
-                              [277.659, 0.051275, 1.363e-06, 0, 0],
-                              [276.659, 0.051275, 1.363e-06, 0, 0],
-                              [276.659, 0.051275, 1.363e-06, 0, 0],
-                              [276.659, 0.051275, 1.363e-06, 0, 0]]),
-               'n_s': np.array([-0.0039, -8.130, -8.130]),
-               'c_wn': np.array([2655.7409, 913.0537, 913.0537]),
-               'a': np.array([1.6485446, 0.53135445, 0.53135445]),
-               'b': np.array([1.0 / 1.0020894,
-                              1.0 / 1.0014343,
-                              1.0 / 1.0014343]),
-               'b1': np.array([1.0 - 0.015, 1.0 - 0.131942, 1.0 - 0.131942]),
-               'b2': np.array([0.011, 0.000673193, 0.000673193]),
-               'b0': np.array([0.00195, 6.13, 6.13]),
-               },
-    'noaa6': {'ah': np.array([0.133, 0.128, 0.10]),
-              'al': np.array([0.133, 0.128, 0.10]),
-              'bh': np.array([0.900, 0.699, 0.0]),
-              'bl': np.array([0.900, 0.699, 0.0]),
-              'ch': np.array([0.0, 0.0, 0.0]),
-              'cl': np.array([0.0, 0.0, 0.0]),
-              'c_dark': np.array([39.44, 39.40, 37.51]),
-              'l_date': 1979.490,
-              'd': np.array([[0, 0, 0, 0, 0],  # reset prt
-                             [277.659, 0.051275, 1.363e-06, 0, 0],
-                             [276.659, 0.051275, 1.363e-06, 0, 0],
-                             [276.659, 0.051275, 1.363e-06, 0, 0],
-                             [276.659, 0.051275, 1.363e-06, 0, 0]]),
-              'n_s': np.array([0.0, -3.26, -3.26]),
-              'c_wn': np.array([2671.5433, 913.46088, 913.46088]),
-              'a': np.array([1.76671100, 0.50395970, 0.50395970]),
-              'b': np.array([1.0 / 1.0024428,
-                             1.0 / 1.0013592,
-                             1.0 / 1.0013592]),
-              'b1': np.array([1.0, 1.0 - 0.03964, 1.0 - 0.03964]),
-              'b2': np.array([0.0, 0.00016925, 0.00016925]),
-              'b0': np.array([0.0, 2.24, 2.24]),
-              },
-    'noaa7': {'ah': np.array([0.115, 0.127, 0.10]),
-              'al': np.array([0.115, 0.127, 0.10]),
-              'bh': np.array([3.792, 2.685, 0.0]),
-              'bl': np.array([3.972, 2.685, 0.0]),
-              'ch': np.array([-0.269, -0.101, 0.0]),
-              'cl': np.array([-0.269, -0.101, 0.0]),
-              'c_dark': np.array([36.0, 37.0, 39.0]),
-              'l_date': 1981.4764,
-              'd': np.array([[0, 0, 0, 0, 0],  # reset prt
-                             [277.099, 5.048E-2, 2.823E-6, 0, 0],
-                             [276.734, 5.069E-2, 2.493E-6, 0, 0],
-                             [276.876, 5.148E-2, 1.040E-6, 0, 0],
-                             [276.160, 5.128E-2, 1.414E-6, 0, 0]]),
-              'n_s': np.array([0.0, -5.16, -4.28]),
-              'c_wn': np.array([2684.5233, 928.23757, 841.52137]),
-              'a': np.array([1.94882690, 0.52807997, 0.40557027]),
-              'b': np.array([1.0 / 1.0029260,
-                             1.0 / 1.0014039,
-                             1.0 / 1.0011789]),
-              'b1': np.array([1.0, 0.89783, 0.93683]),
-              'b2': np.array([0.0, 0.0004819, 0.0002425]),
-              'b0': np.array([0.0, 5.25, 3.93]),
-              },
-    'noaa8': {'ah': np.array([0.119, 0.136, 0.10]),
-              'al': np.array([0.119, 0.136, 0.10]),
-              'bh': np.array([6.065, 7.248, 0.0]),
-              'bl': np.array([6.065, 7.248, 0.0]),
-              'ch': np.array([0.0, 0.0, 0.0]),
-              'cl': np.array([0.0, 0.0, 0.0]),
-              'c_dark': np.array([39.44, 39.40, 37.51]),
-              'l_date': 1983.241,
-              'd': np.array([[0, 0, 0, 0, 0],  # reset prt
-                             [276.659, 0.051275, 1.363e-06, 0, 0],
-                             [276.659, 0.051275, 1.363e-06, 0, 0],
-                             [276.659, 0.051275, 1.363e-06, 0, 0],
-                             [276.659, 0.051275, 1.363e-06, 0, 0]]),
-              'n_s': np.array([0.0, -3.26, -3.26]),
-              'c_wn': np.array([2651.3776, 915.30330, 915.30330]),
-              'a': np.array([1.76641050, 0.50017997, 0.50017997]),
-              'b': np.array([1.0 / 1.0024260,
-                             1.0 / 1.0013460,
-                             1.0 / 1.0013460]),
-              'b1': np.array([1.0, 1.0 - 0.03964, 1.0 - 0.03964]),
-              'b2': np.array([0.0, 0.00016925, 0.00016925]),
-              'b0': np.array([0.0, 2.24, 2.24]),
-              },
-    'noaa9': {'ah': np.array([0.108, 0.122, 0.10]),
-              'al': np.array([0.108, 0.122, 0.10]),
-              'bh': np.array([4.255, 0.310, 0.0]),
-              'bl': np.array([4.255, 0.310, 0.0]),
-              'ch': np.array([0.640, 0.642, 0.0]),
-              'cl': np.array([0.640, 0.642, 0.0]),
-              'c_dark': np.array([38.0, 40.0, 38.0]),
-              'l_date': 1984.9480,
-              'd': np.array([[0, 0, 0, 0, 0],  # reset prt
-                             [277.018000, 0.051280, 0.0, 0, 0],
-                             [276.750000, 0.051280, 0.0, 0, 0],
-                             [276.862000, 0.051280, 0.0, 0, 0],
-                             [276.546000, 0.051280, 0.0, 0, 0]]),
 
-              'n_s': np.array([0.0, -5.530, -3.06]),
-              'c_wn': np.array([2690.0451, 930.50230, 845.75000]),
-              'a': np.array([1.8832662, 0.5115335, 0.3882150]),
-              'b': np.array([1.0 / 1.0028978,
-                             1.0 / 1.0013570,
-                             1.0 / 1.0011210]),
-              'b1': np.array([1.0, 0.88643, 0.95311]),
-              'b2': np.array([0.0, 0.0006033, 0.0002198]),
-              'b0': np.array([0.0, 5.24, 2.42]),
-              },
-    'noaa10': {'ah': np.array([0.111, 0.137, 0.10]),
-               'al': np.array([0.111, 0.137, 0.10]),
-               'bh': np.array([6.087, 0.119, 0.0]),
-               'bl': np.array([6.087, 0.119, 0.0]),
-               'ch': np.array([-1.039, 0.123, 0.0]),
-               'cl': np.array([-1.039, 0.123, 0.0]),
-               'c_dark': np.array([39.44, 39.40, 37.51]),
-               'l_date': 1986.712,
-               'd': np.array([[0, 0, 0, 0, 0],  # reset prt
-                              [276.659, 0.051275, 1.363e-06, 0, 0],
-                              [276.659, 0.051275, 1.363e-06, 0, 0],
-                              [276.659, 0.051275, 1.363e-06, 0, 0],
-                              [276.659, 0.051275, 1.363e-06, 0, 0]]),
-               'n_s': np.array([0.0, -7.27, -7.29]),
-               'c_wn': np.array([2672.6164, 910.49626, 910.49626]),
-               'a': np.array([1.7986926, 0.45707063, 0.45707063]),
-               'b': np.array([1.0 / 1.0026326,
-                              1.0 / 1.0012272,
-                              1.0 / 1.0012272]),
-               'b1': np.array([1.0, 1.0 - 0.1157, 1.0 - 0.1157]),
-               'b2': np.array([0.0, 0.0005885, 0.0005882]),
-               'b0': np.array([0.0, 5.76, 5.76]),
-               },
-    'noaa11': {'ah': np.array([0.110, 0.118, 0.0]),
-               'al': np.array([0.110, 0.118, 0.0]),
-               'bh': np.array([0.632, -0.037, 0.0]),
-               'bl': np.array([0.632, -0.037, 0.0]),
-               'ch': np.array([-0.044, 0.072, 0.0]),
-               'cl': np.array([-0.044, 0.072, 0.0]),
-               'c_dark': np.array([40.0, 40.0, 40.0]),
-               'l_date': 1988.7310,
-               'd': np.array([[0, 0, 0, 0, 0],  # reset prt
-                              [276.597, 0.051275, 1.363e-06, 0, 0],
-                              [276.597, 0.051275, 1.363e-06, 0, 0],
-                              [276.597, 0.051275, 1.363e-06, 0, 0],
-                              [276.597, 0.051275, 1.363e-06, 0, 0]]),
-               'n_s': np.array([0.0, -8.055, -3.51]),
-               'c_wn': np.array([2680.05, 927.462, 840.746]),
-               'a': np.array([1.738973, 0.321199, 0.048652]),
-               'b': np.array([1.0 / 1.003354,
-                              1.0 / 1.001213,
-                              1.0 / 1.000664]),
-               'b1': np.array([1.0, 0.84120, 0.94598]),
-               'b2': np.array([0.0, 0.0008739, 0.0002504]),
-               'b0': np.array([0.0, 7.21, 2.92]),
-               },
-    'noaa12': {'ah': np.array([0.121, 0.148, 0.10]),
-               'al': np.array([0.121, 0.148, 0.10]),
-               'bh': np.array([2.032, 1.323, 0.0]),
-               'bl': np.array([2.032, 1.323, 0.0]),
-               'ch': np.array([-0.032, -0.008, 0.0]),
-               'cl': np.array([-0.032, -0.008, 0.0]),
-               'c_dark': np.array([41.0, 40.0, 40.0]),
-               'l_date': 1991.3669,
-               'd': np.array([[0, 0, 0, 0, 0],  # reset prt
-                              [276.597, 0.051275, 1.363e-06, 0, 0],
-                              [276.597, 0.051275, 1.363e-06, 0, 0],
-                              [276.597, 0.051275, 1.363e-06, 0, 0],
-                              [276.597, 0.051275, 1.363e-06, 0, 0]]),
-               'n_s': np.array([0.0, -5.510, -2.51]),
-               'c_wn': np.array([2651.7708, 922.36261, 838.02678]),
-               'a': np.array([1.90527390, 0.63404209, 0.41086587]),
-               'b': np.array([1.0 / 1.0030100,
-                              1.0 / 1.0017076,
-                              1.0 / 1.0012010]),
-               'b1': np.array([1.0, 0.88929, 0.96299]),
-               'b2': np.array([0.0, 0.0005968, 0.0001775]),
-               'b0': np.array([0.0, 5.11, 1.91]),
-               },
-    'noaa14': {'ah': np.array([0.121, 0.152, 0.10]),
-               'al': np.array([0.121, 0.152, 0.10]),
-               'bh': np.array([3.555, 0.254, 0.0]),
-               'bl': np.array([3.555, 0.254, 0.0]),
-               'ch': np.array([-0.339, 0.201, 0.0]),
-               'cl': np.array([-0.339, 0.201, 0.0]),
-               'c_dark': np.array([41.0, 41.0, 39.0]),
-               'l_date': 1994.9966,
-               'd': np.array([[0, 0, 0, 0, 0],  # reset prt
-                              [276.597, 0.051275, 1.363e-06, 0, 0],
-                              [276.597, 0.051275, 1.363e-06, 0, 0],
-                              [276.597, 0.051275, 1.363e-06, 0, 0],
-                              [276.597, 0.051275, 1.363e-06, 0, 0]]),
-               'n_s': np.array([0.0069, -4.05, -2.29]),
-               'c_wn': np.array([2654.25, 928.349, 833.040]),
-               'a': np.array([1.885330, 0.308384, 0.022171]),
-               'b': np.array([1.0 / 1.003839, 1.0 / 1.001443, 1.0 / 1.000538]),
-               'b1': np.array([1.00359, 0.92378, 0.96194]),
-               'b2': np.array([0.0, 0.0003822, 0.0001742]),
-               'b0': np.array([-0.0031, 3.72, 2.00]),
-               },
-    'noaa15': {'ah': np.array([0.179, 0.206, 0.175]),
-               'al': np.array([0.060, 0.069, 0.025]),
-               'bh': np.array([-0.069, 0.339, 0.0]),
-               'bl': np.array([-0.069, 0.339, 0.0]),
-               'ch': np.array([0.002, -0.010, 0.0]),
-               'cl': np.array([0.002, -0.010, 0.0]),
-               'c_dark': np.array([39.0, 40.0, 39.0]),
-               'c_s': np.array([500.0, 500.0, 500.0]),
-               'l_date': 1998.3641,
-               'd': np.array([[0, 0, 0, 0, 0],  # reset prt
-                              [276.60157, 0.051045, 1.36328E-06, 0.0, 0.0],
-                              [276.62531, 0.050909, 1.47266E-06, 0.0, 0.0],
-                              [276.67413, 0.050907, 1.47656E-06, 0.0, 0.0],
-                              [276.59258, 0.050966, 1.47656E-06, 0.0, 0.0]]),
-               'n_s': np.array([0.0, -4.50, -3.61]),
-               'c_wn': np.array([2695.9743, 925.4075, 839.8979]),
-               'a': np.array([1.624481, 0.338243, 0.304856]),
-               'b': np.array([1.0 / 1.001989,
-                              1.0 / 1.001283,
-                              1.0 / 1.000977]),
-               'b0': np.array([0.0, 4.76, 3.83]),
-               'b1': np.array([1 - 0.0, 1 - 0.0932, 1 - 0.0659]),
-               'b2': np.array([0.0, 0.0004524, 0.0002811]),
-               },
-    'noaa16': {'ah': np.array([0.165, 0.179, 0.187]),
-               'al': np.array([0.055, 0.060, 0.027]),
-               'bh': np.array([0.839, 0.786, 0.290]),
-               'bl': np.array([0.839, 0.786, 0.290]),
-               'ch': np.array([-0.051, -0.031, -0.294]),
-               'cl': np.array([-0.051, -0.031, -0.294]),
-               'c_dark': np.array([39.3, 38.9, 38.4]),
-               'c_s': np.array([498.96, 500.17, 499.43]),
-               'l_date': 2000.7228,
-               'd': np.array([[0, 0, 0, 0, 0],  # reset prt
-                              [276.355, 5.562E-02, -1.590E-05,
-                                  2.486E-08, -1.199E-11],
-                              [276.142, 5.605E-02, -1.707E-05,
-                                  2.595E-08, -1.224E-11],
-                              [275.996, 5.486E-02, -1.223E-05,
-                                  1.862E-08, -0.853E-11],
-                              [276.132, 5.494E-02, -1.344E-05,
-                                  2.112E-08, -1.001E-11]]),
-               'n_s': np.array([0.0, -2.467, -2.009]),
-               'c_wn': np.array([2681.2540, 922.34790, 834.61814]),
-               'a': np.array([1.6774586, 0.55636216, 0.41430789]),
-               'b': np.array([1.0 / 1.0017316,
-                              1.0 / 1.0014921,
-                              1.0 / 1.0012166]),
-               'b0': np.array([0.0, 2.96, 2.25]),
-               'b1': np.array([1 - 0.0, 1 - 0.05411, 1 - 0.03665]),
-               'b2': np.array([0.0, 0.00024532, 0.00014854]),
-               },
-    'noaa17': {'ah': np.array([0.172, 0.210, 0.209]),
-               'al': np.array([0.057, 0.070, 0.030]),
-               'bh': np.array([1.007, 1.474, 2.787]),
-               'bl': np.array([1.007, 1.474, 2.787]),
-               'ch': np.array([-0.044, -0.118, -0.292]),
-               'cl': np.array([-0.044, -0.118, -0.292]),
-               'c_dark': np.array([39.99, 39.09, 42.09]),
-               'c_s': np.array([501.12, 500.73, 501.37]),
-               'l_date': 2002.47912,
-               'd': np.array([[0, 0, 0, 0, 0],  # reset prt
-                              [276.628, 0.05098, 1.371E-06, 0.0, 0.0],
-                              [276.538, 0.05098, 1.371E-06, 0.0, 0.0],
-                              [276.761, 0.05097, 1.369E-06, 0.0, 0.0],
-                              [276.660, 0.05100, 1.348E-06, 0.0, 0.0]]),
-               'n_s': np.array([0.0, -8.55, -3.97]),
-               'c_wn': np.array([2669.1414, 928.29959, 840.20289]),
-               'a': np.array([1.70002941, 0.56634758, 0.37264803]),
-               'b': np.array([1.0 / 1.0026724,
-                              1.0 / 1.0015205,
-                              1.0 / 1.0010841]),
-               'b0': np.array([0.0, 8.22, 4.31]),
-               'b1': np.array([1 - 0.0, 1 - 0.15795, 1 - 0.07318]),
-               'b2': np.array([0.0, 0.00075579, 0.00030976]),
-               },
-    'noaa18': {'ah': np.array([0.171, 0.192, 0.175]),
-               'al': np.array([0.057, 0.064, 0.025]),
-               'bh': np.array([0.603, 0.632, 0.0]),
-               'bl': np.array([0.603, 0.632, 0.0]),
-               'ch': np.array([0.0, 0.045, 0.0]),
-               'cl': np.array([0.0, 0.045, 0.0]),
-               'c_dark': np.array([39.44, 39.40, 37.51]),
-               'c_s': np.array([500.54, 500.40, 500.56]),
-               'l_date': 2005.3833,
-               'd': np.array([[0, 0, 0, 0, 0],  # reset prt
-                              [276.601, 0.05090, 1.657E-06, 0.0, 0.0],
-                              [276.683, 0.05101, 1.482E-06, 0.0, 0.0],
-                              [276.565, 0.05117, 1.313E-06, 0.0, 0.0],
-                              [276.615, 0.05103, 1.484E-06, 0.0, 0.0]]),
-               'n_s': np.array([0.0, -5.53, -2.22]),
-               'c_wn': np.array([2660.6468, 928.73452, 834.08306]),
-               'a': np.array([1.7222650, 0.54696239, 0.39938376]),
-               'b': np.array([1.0 / 1.0028633,
-                              1.0 / 1.0014581,
-                              1.0 / 1.0011724]),
-               'b0': np.array([0.0, 5.82, 2.67]),
-               'b1': np.array([1 - 0.0, 1 - 0.11069, 1 - 0.04360]),
-               'b2': np.array([0.0, 0.00052337, 0.00017715]),
-               },
-    'noaa19': {'ah': np.array([0.162, 0.183, 0.175]),
-               'al': np.array([0.054, 0.061, 0.025]),
-               'bh': np.array([0.626, 0.950, 0.0]),
-               'bl': np.array([0.626, 0.950, 0.0]),
-               'ch': np.array([-0.044, -0.039, 0.0]),
-               'cl': np.array([-0.044, -0.039, 0.0]),
-               'c_dark': np.array([38.8, 39.00, 39.4]),
-               'c_s': np.array([496.43, 500.37, 496.11]),
-               'l_date': 2009.096,
-               'd': np.array([[0, 0, 0, 0, 0],  # reset prt
-                              [276.6067, 0.051111, 1.405783e-06, 0, 0],
-                              [276.6119, 0.051090, 1.496037e-06, 0, 0],
-                              [276.6311, 0.051033, 1.496990e-06, 0, 0],
-                              [276.6268, 0.051058, 1.493110e-06, 0, 0]]),
-               'n_s': np.array([0.0, -5.49, -3.39]),
-               'c_wn': np.array([2670.2425, 927.92374, 831.28619]),
-               'a': np.array([1.6863857, 0.39419031, 0.26364620]),
-               'b': np.array([1.0 / 1.0025955,
-                              1.0 / 1.0013299,
-                              1.0 / 1.0009546]),
-               'b0': np.array([0.0, 5.70, 3.58]),
-               'b1': np.array([1 - 0.0, 1 - 0.11187, 1 - 0.05991]),
-               'b2': np.array([0.0, 0.00054668, 0.00024985])}}
+import pygac.configuration
 
-"""Source Patmos-X Coeffs: Version Tag 'y2017r1_sbaf'
-https://cimss.ssec.wisc.edu/patmosx/avhrr_cal.html"""
+LOG = logging.getLogger(__name__)
 
 
 class Calibrator(object):
+    """Factory class to create namedtuples holding the calibration coefficients.
 
-    def __init__(self, spacecraft):
-        self.ah = None
-        self.al = None
-        self.bh = None
-        self.bl = None
-        self.ch = None
-        self.cl = None
-        self.c_s = None
-        self.c_dark = None
-        self.l_date = None
-        self.d = None
-        self.n_s = None
-        self.c_wn = None
-        self.a = None
-        self.b = None
-        self.b0 = None
-        self.b1 = None
-        self.b2 = None
-        self.__dict__.update(coeffs[spacecraft])
+    Attributes:
+        fields: coefficient names
+        Calibrator: namedtuple constructor
+        default_coeffs: dictonary containing default values for all spacecrafts
+    """
+    version_hashs = {
+        'ee643f5737a5a1c91ef97833b7ec868c': 'PATMOS-x, v2017r1'  # version information
+    }
+    fields = [
+        "dark_count", "gain_switch", "s0", "s1", "s2", "b",  # "b0", "b1", "b2",
+        "centroid_wavenumber", "space_radiance", "to_eff_blackbody_intercept",
+        "to_eff_blackbody_slope", "date_of_launch", "d", "spacecraft"
+    ]
+
+    Calibrator = namedtuple('Calibrator', fields)
+    default_coeffs = None
+    _version = None
+
+    def __new__(cls, spacecraft, custom_coeffs=None):
+        """Creates a namedtuple for calibration coefficients of a given spacecraft
+
+        Args:
+            spacecraft (str): spacecraft name in pygac convention
+            custom_coeffs (dict): custom coefficients (optional)
+
+        Returns:
+            calibrator (namedtuple): calibration coefficients
+        """
+        if cls.default_coeffs is None:
+            cls.load_defaults()
+        if custom_coeffs:
+            LOG.info('Using following custom coefficients "%s".', custom_coeffs)
+        customs = custom_coeffs or {}
+        defaults = cls.default_coeffs[spacecraft]
+        coeffs = defaults.copy()
+        coeffs.update(customs)
+
+        # transpose the coefficient order from channel - coeff to coeff - channel
+        # and store as arrays for vectorized calls of calibration functions
+        arraycoeffs = dict.fromkeys(cls.fields)
+        # visible channels
+        for key in ("dark_count", "gain_switch", "s0", "s1", "s2"):
+            arraycoeffs[key] = np.array([
+                coeffs[channel][key]
+                for channel in ('channel_1', 'channel_2', 'channel_3a')
+            ], dtype=float)
+        # thermal channels
+        for key in ("centroid_wavenumber", "space_radiance",
+                    "to_eff_blackbody_intercept", "to_eff_blackbody_slope"):
+            arraycoeffs[key] = np.array([
+                coeffs[channel][key]
+                for channel in ('channel_3b', 'channel_4', 'channel_5')
+            ], dtype=float)
+        arraycoeffs["b"] = np.array([
+            [
+                coeffs[channel][key]
+                for key in ("b0", "b1", "b2")
+            ]
+            for channel in ('channel_3b', 'channel_4', 'channel_5')
+        ], dtype=float)
+        # thermometers
+        # Note, that "thermometer_0" does not exists, and is filled with zeros to
+        # account for the PRT reset every fifth scanline
+        arraycoeffs["d"] = np.array([
+            [
+                coeffs.get("thermometer_{0}".format(t), {}).get("d{0}".format(d), 0.0)
+                for t in range(5)
+            ]
+            for d in range(5)
+        ], dtype=float)
+        # parse date of launch
+        date_of_launch_str = coeffs["date_of_launch"].replace('Z', '+00:00')
+        if sys.version_info.major < 3:
+            # Note that here any time information is lost
+            import dateutil.parser
+            date_of_launch = dateutil.parser.parse(date_of_launch_str)
+        else:
+            date_of_launch = dt.datetime.fromisoformat(
+                date_of_launch_str).astimezone(dt.timezone.utc)
+        # remove time zone information (easier to handle in calculations)
+        arraycoeffs["date_of_launch"] = date_of_launch.replace(tzinfo=None)
+        arraycoeffs["spacecraft"] = spacecraft
+        # create namedtuple
+        calibrator = cls.Calibrator(**arraycoeffs)
+        return calibrator
+
+    @classmethod
+    def get_version(cls):
+        """Return the default calibration coefficients version."""
+        if cls.default_coeffs is None:
+            cls.load_defaults()
+        return cls._version
+
+    @classmethod
+    def load_defaults(cls):
+        """Read the default coefficients from file.
+
+        Note:
+            The pygac internal defaults are stored in data/calibration.json.
+            The user can provide different defaults via the config file
+            in the section "calibration" as option "coeffs_file", e.g.
+            [calibration]
+            coeffs_file = /path/to/user/default/coeffs.json
+        """
+        # check if the user has set a coefficient file
+        config = pygac.configuration.get_config()
+        coeffs_file = config.get("calibration", "coeffs_file", fallback='')
+        # if no coeffs file has been specified, use the pygac defaults
+        if not coeffs_file:
+            coeffs_file = resource_filename('pygac', 'data/calibration.json')
+        LOG.info('Use default coefficients from "%s"', coeffs_file)
+        with open(coeffs_file, mode='r') as json_file:
+            content = json_file.read()
+            md5_hash = hashlib.md5(content.encode())
+            digest = md5_hash.hexdigest()
+            version = cls.version_hashs.get(digest)
+            if version is None:
+                warning = "Unknown default calibration coefficients version!"
+                warnings.warn(warning, RuntimeWarning)
+                LOG.warning(warning)
+            else:
+                LOG.info('Using default calibration coefficients version "%s".', version)
+            cls.default_coeffs = json.loads(content)
+            cls._version = version
+
+    @staticmethod
+    def date2float(date, decimals=5):
+        """Convert date to year float.
+
+        Argument
+            date (datetime.datetime) - date
+            decimals (int or None) - rounding precision if None, do not round (default=5)
+
+        Return
+            date_float (float) - date as year
+
+        Note
+            rounding to the 5th decimal reproduces the original float values from patmos-x
+
+        Example:
+            date2float('2000-07-02') == 2000.5
+            because the 2nd of July was the middle day of the leap year 2000
+        """
+        year = date.year
+        days_in_year = (dt.datetime(year+1, 1, 1) - dt.datetime(year, 1, 1)).days
+        diff = date - dt.datetime(year, 1, 1)
+        seconds = diff.total_seconds()
+        date_float = date.year + seconds/(days_in_year*24*3600)
+        if decimals is not None:
+            date_float = round(date_float, decimals)
+        return date_float
 
 
-def calibrate_solar(counts, chan, year, jday, spacecraft, corr=1):
-    """Do the solar calibration and return reflectance (between 0 and 100)."""
-    cal = Calibrator(spacecraft)
+def calibrate_solar(counts, chan, year, jday, spacecraft, corr=1, custom_coeffs=None):
+    """Do the solar calibration and return scaled radiance.
 
-    t = (year + jday / 365.0) - cal.l_date
-    stl = (cal.al[chan] * (100.0 + cal.bl[chan] * t
-                           + cal.cl[chan] * t * t)) / 100.0
-    sth = (cal.ah[chan] * (100.0 + cal.bh[chan] * t
-                           + cal.ch[chan] * t * t)) / 100.0
-    if cal.c_s is not None:
-        refl = np.where(counts <= cal.c_s[chan],
-                        (counts - cal.c_dark[chan]) * stl * corr,
-                        ((cal.c_s[chan] - cal.c_dark[chan]) * stl
-                         + (counts - cal.c_s[chan]) * sth) * corr)
+    Arguments:
+        counts (array) - raw counts for the given channels (options 1, 2[, 3A if available & active])
+        chan (array) - pygac internal channel index array
+        year (int) - year
+        jday (int) - day of year
+        spacecraft (str) - pygac internal spacecraft name
+
+    Optionals:
+        corr (float) - depricated - reflectance correction multiplier (default = 1)
+        custom_coeffs (dict) - custom calibration coefficients (default = None)
+
+    Returns:
+        r_cal (array) - scaled radiance
+
+    Note:
+        This function and documentation follows the time-dependent solar calibration as described in:
+        Heidinger, A.K., W.C. Straka III, C.C. Molling, J.T. Sullivan, and X. Wu, (2010).
+        "Deriving an inter-sensor consistent calibration for the AVHRR solar reflectance data record.",
+        International Journal of Remote Sensing, 31:6493 - 6517.
+    """
+    # get the calibration coefficients for this spacecraft
+    cal = Calibrator(spacecraft, custom_coeffs=custom_coeffs)
+
+    # Step 1. Obtain the calibration slope using equation (6) in Heidinger et al 2010
+    # S(t) = S_0*(100 + S_1*t + S_2*t^2) / 100,
+    # where t is the time since launch expressed as years, S(t) is the calibration slope
+    # and S_0, S_1 and S_2 are the coefficients of the quadratic fit.
+    # See also section "Fitting of Calibration Slope Equations" in PATMOS-x documentation
+    # (CDRP-ATBD-0184 Rev. 2 03/29/2018 page 19)
+
+    # Note that the this implementation does not take leap years into account!
+    # Using datetime objects would include it automatically
+    # sensing_date = dt.strptime('{0}.{1}'.format(year, jday), '%Y.%j')
+    # delta = sensing_date - cal.date_of_launch
+    # t = delta.total_seconds() / 31557600  # divided by seconds of a Julian year
+    l_date = Calibrator.date2float(cal.date_of_launch)
+    t = (year + jday / 365.0) - l_date
+
+    # Note: splitting the calibration slope is needed to reproduce old results and may disappear in future,
+    #       because actually there is only one set of slope parameters defined for single-gain counts
+    #       as described in Heidinger et al. 2010. See Step 2 for more information.
+    # Note that in case of a single-gain instrument, all gain_switch parameters are set to NaN.
+    if np.isnan(cal.gain_switch).all():
+        glow = ghigh = np.ones(3)
     else:
-        refl = (counts - cal.c_dark[chan]) * stl * corr
+        glow = np.array([0.5, 0.5, 0.25])
+        ghigh = np.array([1.5, 1.5, 1.75])
+    # especially the rounding to three digits is crutial to exectly reproduce the original PATMOS-x values.
+    al, bl, cl = np.round(glow*cal.s0, 3), cal.s1, cal.s2
+    ah, bh, ch = np.round(ghigh*cal.s0, 3), cal.s1, cal.s2
 
-    # Mask negative reflectances
-    refl[refl < 0] = np.nan
+    # apply slope equation for low and high gain coefficients
+    stl = (al[chan] * (100.0 + bl[chan] * t + cl[chan] * t * t)) / 100.0
+    sth = (ah[chan] * (100.0 + bh[chan] * t + ch[chan] * t * t)) / 100.0
 
-    return refl
+    # Step 2. Calculate the scaled radiance using equation (1) in Heidinger et al 2010
+    # R_cal = S*(C-D),
+    # where R_cal is the value generated from the calibration and is referred to as a
+    # scaled radiance, S is the calibration slope, C the measured count and D the dark count.
+    # This equation is only valid for single-gain instruments. Starting with the AVHRR/3 series
+    # (from NOAA-15 onwards), the channel-1, 2 and 3a require a dual-gain calibration.
+    # The conversion for channel-1 and 2 is given in the appendix, equation (A1) and (A2).
+    # In general, these equations can be written as
+    # C(C_dg) = D + G_low*(C_dg-D),            if C_dg <= B_dg
+    # C(C_dg) = C(B_dg) + G_high*(C_dg-B_dg),  otherwise
+    # where C_dg is the measured dual-gain counts, B_dg is the dual-gain switch and G_low/high
+    # are the gain factors for the low and high count region.
+    # Quote from the book "Remote Sensing Time Series: Revealing Land Surface Dynamics":
+    # > Another change in design of the AVHRR/3 instrument was the introduction of a dual-gain feature
+    # > for the reflective channels 1, 2 and 3A. In order to improve the radiometric resolution of the
+    # > instrument for low reflectance targets, the dynamic range of the instrument was divided equally
+    # > in two ranges, i.e. nominally from 0 to 500 counts and from 500 to 1,000 counts. For channels 1
+    # > and 2 half of the available Digital Number (DN) range is assigned to the low albedo range from
+    # > 0 to 25% with the other half to the high albedo range from 26 to 100%. This allows for an increase
+    # > in the radiometric resolution for dark targets. For channel 3A, the split between low and high
+    # > albedo range is set at 12.5% albedo (Rao and Sullivan 2001).
+    # The gain factors are given by the ratio of the fraction of albedo range to the fraction of count range
+    # for the given count region. From the information given by the book quote, we get
+    # G_low = 25% / 50% = 0.5 for channel-1 and 2
+    # G_low = 12.5% / 50% = 0.25 for channel-3a
+    # G_high = (100% - 25%) / (100% - 50%) = 1.5 for channel-1 and 2
+    # G_high = (100% - 12.5%) / (100% - 50%) = 1.75 for channel-3a
+    # Inserting the converted dual-gain counts into equation (1) yields the scaled radiance equation, which
+    # is a continuous piecewise linear function of two line segments.
+    #            R_cal
+    #            ^           *         R_cal = S*G_low*(C_dg-D),                        if C_dg <= B_dg
+    #            |          *          R_cal = S*G_low*(B_dg-D) + S*G_high*(C_dg-B_dg), otherwise
+    #            |         *
+    # R_cal(B_dg)|--------*
+    #            |     *  |
+    #          0 +--*-------------> C_dg
+    #            *  D    B_dg
+    # Note, that in the former implementation, there was a distinction beteen low and high gain slopes
+    # given by S_low/high = S*G_low/high. which only affects S0 in equation (6) in Heidinger et al 2010.
+    # Furthermore, the implementation allows for an additional correction factor corr which defaults to 1. (depricated)
+    d = cal.dark_count[chan]
+    b_dg = cal.gain_switch[chan]
+    # Note that in case of a single-gain instrument, all gain_switch parameters are set to NaN.
+    if not np.isnan(cal.gain_switch).all():
+        r_cal = np.where(
+            counts <= b_dg,
+            (counts - d)*stl,
+            (b_dg - d)*stl + (counts - b_dg)*sth
+        )
+    else:
+        r_cal = stl*(counts - d)
+    # apply depricated correction
+    if corr != 1:
+        warnings.warn(
+            "Using the 'corr' argument is depricated in favor of making the units"
+            " of the function result clear. Please make any unit conversion outside this function.",
+            DeprecationWarning
+        )
+        r_cal *= corr
+
+    # Mask negative scaled radiances
+    r_cal[r_cal < 0] = np.nan
+
+    return r_cal
 
 
-def calibrate_thermal(counts, prt, ict, space, line_numbers, channel, spacecraft):
-    """Do the thermal calibration and return brightness temperatures (K)."""
-    cal = Calibrator(spacecraft)
+def calibrate_thermal(counts, prt, ict, space, line_numbers, channel, spacecraft, custom_coeffs=None):
+    """Do the thermal calibration and return brightness temperatures (K).
 
+    Arguments:
+        counts (array) - counts for the given channel (options: 3B (if active), 4, 5)
+        prt (array) - counts of the Platinum Resistance Thermometers (PRT)
+        ict (array) - counts of the In-orbit Calibration Targets (ICT)
+        space (array) - counts of cold space
+        line_numbers (array) - line number index
+        channel (array) - pygac internal channel index array
+        spacecraft (str) - pygac internal spacecraft name
+
+    Optionals:
+        custom_coeffs (dict) - custom calibration coefficients (default = None)
+
+    Note:
+        This function and documentation follows steps 1 to 4 from the  KLM User's Guide
+        (Robel, J. (2009). NOAA KLM user's guide with NOAA-N,-P supplement. NOAA KLM Users
+        Guide - August 2014 Revision) section 7.1.2.4 "Steps to Calibrate the AVHRR Thermal Channels",
+        and the smoothing approach by Trishchenko (2002).
+        The correction method for the non-linear response of the Mercury-Cadmium-Telluride detectors used
+        for channels 4 and 5 is based on Walton et al. (1998)
+    """
+    # get the calibration coefficients for this spacecraft
+    cal = Calibrator(spacecraft, custom_coeffs=custom_coeffs)
+
+    # Shift channel index by three to obtain thermal channels [3b, 4, 5].
     chan = channel - 3
 
     lines, columns = counts.shape[:2]
 
+    # Step 1. The temperature of the internal blackbody target is measured by four platinum resistance
+    # thermometers (PRT)s. In each scanline, data words 18, 19 and 20 in the HRPT minor frame format contain
+    # three readings from one of the four PRTs. (See Section 4.1.3) A different PRT is sampled each scanline;
+    # every fifth scanline all three PRT values are set equal to 0 to indicate that a set of four PRTs has
+    # just been sampled. The count value CPRT of each PRT is converted to temperature TPRT by the formula
+    # T_PRT = d0 + d1*C_PRT + d2*C_PRT^2 + d3*C_PRT^3 + d4*C_PRT^4    (7.1.2.4-1)
+    # The coefficients d0, d1, d2, d3 and d4 vary slightly for each PRT. Values for the coefficients are
+    # found in Appendix D, in Table D.1-8 for NOAA-15 (coefficients d3 and d4 are 0 for NOAA-15),
+    # Table D.2-9 for NOAA-16, Table D.3-3 for NOAA-17 and Table D.4-3 for NOAA-18. To
+    # calculate the internal blackbody temperature TBB, NESDIS uses the simple average
+    # T_BB = (T_PRT1 + T_PRT2 + T_PRT3 + T_PRT4)/4    (7.1.2.4-2)
+
+    # Find the corresponding PRT values for a given line number
+    # Note that the prt values are the average value of the three readings from one of the four
+    # PRTs. See reader.get_telemetry implementations.
+    prt_threshold = 50  # empirically found and set by Abhay Devasthale
     offset = 0
 
     for i, prt_val in enumerate(prt):
-        if prt_val < 50:
+        # According to the KLM Guide the fill value between PRT measurments is 0, but we search
+        # for the first measurment gap using the threshold. Is this on purpose?
+        if prt_val < prt_threshold:
             offset = i
             break
 
+    # get the PRT index, iprt equals to 0 corresponds to the measurement gaps
     iprt = (line_numbers - line_numbers[0] + 5 - offset) % 5
 
-    ifix = np.where(np.logical_and(iprt == 1, prt < 50))
+    # fill measured values below threshold by interpolation
+    ifix = np.where(np.logical_and(iprt == 1, prt < prt_threshold))
     if len(ifix[0]):
-        inofix = np.where(np.logical_and(iprt == 1, prt > 50))
+        inofix = np.where(np.logical_and(iprt == 1, prt > prt_threshold))
         prt[ifix] = np.interp(ifix[0], inofix[0], prt[inofix])
 
-    ifix = np.where(np.logical_and(iprt == 2, prt < 50))
+    ifix = np.where(np.logical_and(iprt == 2, prt < prt_threshold))
     if len(ifix[0]):
-        inofix = np.where(np.logical_and(iprt == 2, prt > 50))
+        inofix = np.where(np.logical_and(iprt == 2, prt > prt_threshold))
         prt[ifix] = np.interp(ifix[0], inofix[0], prt[inofix])
 
-    ifix = np.where(np.logical_and(iprt == 3, prt < 50))
+    ifix = np.where(np.logical_and(iprt == 3, prt < prt_threshold))
     if len(ifix[0]):
-        inofix = np.where(np.logical_and(iprt == 3, prt > 50))
+        inofix = np.where(np.logical_and(iprt == 3, prt > prt_threshold))
         prt[ifix] = np.interp(ifix[0], inofix[0], prt[inofix])
 
-    ifix = np.where(np.logical_and(iprt == 4, prt < 50))
+    ifix = np.where(np.logical_and(iprt == 4, prt < prt_threshold))
     if len(ifix[0]):
-        inofix = np.where(np.logical_and(iprt == 4, prt > 50))
+        inofix = np.where(np.logical_and(iprt == 4, prt > prt_threshold))
         prt[ifix] = np.interp(ifix[0], inofix[0], prt[inofix])
 
-    tprt = (cal.d[iprt, 0] + prt *
-            (cal.d[iprt, 1] + prt *
-             (cal.d[iprt, 2] + prt *
-              (cal.d[iprt, 3] + prt *
-               (cal.d[iprt, 4])))))
+    # calculate PRT temperature using equation (7.1.2.4-1) KLM Guide
+    # Tprt = d0 + d1*Cprt + d2*Cprt^2 + d3*Cprt^3 + d4*Cprt^4
+    # Note: First dimension of cal.d are the five coefficient indicees
+    tprt = np.polynomial.polynomial.polyval(prt, cal.d[:, iprt], tensor=False)
 
+    # Note: the KLM Guide proposes to calculate the mean temperature using equation (7.1.2.4-2).
+    # PyGAC follows the smoothing approach by Trishchenko (2002), i.e.
+    # filling the zeros that mark a complete set of thermometer measurements
+    # by interpolation, and then using a weighting function (so far only equal
+    # weighting) to convolve the temperatures to calculate a moving average of a given window size.
+    # The same averaging technique is applied for ICTs and Space counts.
     zeros = iprt == 0
     nonzeros = np.logical_not(zeros)
 
@@ -505,14 +418,17 @@ def calibrate_thermal(counts, prt, ict, space, line_numbers, channel, spacecraft
                             (nonzeros).nonzero()[0],
                             tprt[nonzeros])
 
+    # Thresholds to flag missing/wrong data for interpolation
+    ict_threshold = 100
+    space_threshold = 100
     if channel == 3:
-        zeros = ict < 100
+        zeros = ict < ict_threshold
         nonzeros = np.logical_not(zeros)
 
         ict[zeros] = np.interp((zeros).nonzero()[0],
                                (nonzeros).nonzero()[0],
                                ict[nonzeros])
-        zeros = space < 100
+        zeros = space < space_threshold
         nonzeros = np.logical_not(zeros)
 
         space[zeros] = np.interp((zeros).nonzero()[0],
@@ -521,7 +437,7 @@ def calibrate_thermal(counts, prt, ict, space, line_numbers, channel, spacecraft
 
     # convolving and smoothing PRT, ICT and SPACE values
     if lines > 51:
-        wlength = 51
+        wlength = 51  # empirically found and set by Abhay Devasthale
     else:
         wlength = 3
 
@@ -536,30 +452,78 @@ def calibrate_thermal(counts, prt, ict, space, line_numbers, channel, spacecraft
     space_convolved[0:(wlength - 1) // 2] = space_convolved[(wlength - 1) // 2]
     tprt_convolved[-(wlength - 1) // 2:] = tprt_convolved[-((wlength + 1) // 2)]
     ict_convolved[-(wlength - 1) // 2:] = ict_convolved[-((wlength + 1) // 2)]
-    space_convolved[-(wlength - 1) // 2:] = \
-        space_convolved[-((wlength + 1) // 2)]
+    space_convolved[-(wlength - 1) // 2:] = space_convolved[-((wlength + 1) // 2)]
 
     new_tprt = np.transpose(np.tile(tprt_convolved, (columns, 1)))
     new_ict = np.transpose(np.tile(ict_convolved, (columns, 1)))
     new_space = np.transpose(np.tile(space_convolved, (columns, 1)))
 
-    # calibrating thermal channel
-
+    # Step 2. The radiance NBB sensed in each thermal AVHRR channel from the internal blackbody
+    # at temperature TBB is the weighted mean of the Planck function over the spectral response of the
+    # channel. [...]. Each thermal channel has one equation, which uses a centroid wavenumber labmda_c and an
+    # "effective" blackbody temperature TBB*. The two steps are:
+    # TsBB = A + B*TBB    (7.1.2.4-3)
+    # NBB = c1*nu_e^3/(exp(c2*nu_e/TsBB) - 1)    (7.1.2.4-3)
+    # where the constants of the Planck function are defined as c1 = 2*h*c^2, c2 = h*c/k_B.
+    # constatns
+    c1 = 1.1910427e-5  # mW/m^2/sr/cm^{-4}
+    c2 = 1.4387752  # cm K
+    # coefficients
+    A = cal.to_eff_blackbody_intercept[chan]
+    B = cal.to_eff_blackbody_slope[chan]
+    nu_c = cal.centroid_wavenumber[chan]
+    nS = cal.space_radiance[chan]
+    b = cal.b[chan, 0:3]  # the second index are the three polynomial coefficients
+    # variables
     tBB = new_tprt
-    tsBB = cal.a[chan] + cal.b[chan] * tBB
-    nBB_num = (1.1910427 * 0.000010) * cal.c_wn[chan] ** 3
-    nBB = nBB_num / (np.exp((1.4387752 * cal.c_wn[chan]) / tsBB) - 1.0)
+    cS = new_space
+    cE = counts.astype(float)
+    cBB = new_ict
 
-    Nlin = (cal.n_s[chan] +
-            (((nBB - cal.n_s[chan])
-              * (new_space - counts.astype(float)))
-             / (new_space - new_ict)))
-    Ncor = cal.b0[chan] + Nlin * (cal.b1[chan] + cal.b2[chan] * Nlin)
-    Ne = Ncor
-    tsE = ((1.4387752 * cal.c_wn[chan])
-           / np.log(1.0 + nBB_num / Ne))
-    bt = (tsE - cal.a[chan]) / cal.b[chan]
+    tsBB = A + B*tBB
+    nBB_num = c1 * nu_c**3
+    nBB = nBB_num / (np.exp((c2 * nu_c) / tsBB) - 1.0)
 
+    # Step 3. Output from the two in-orbit calibration targets is used to compute a linear estimate of
+    # the Earth scene radiance NE. Each scanline, the AVHRR views the internal blackbody target and
+    # outputs 10 count values for each of the three thermal channel detectors; these are found in words
+    # 23 to 52 in the HRPT data stream. When the AVHRR views cold space, 10 counts from each of
+    # the five channel sensors are output and placed into words 52 to 102. (Table 4.1.3-1 describes
+    # how these data are multiplexed.) Count values for each channel are averaged together to smooth
+    # our random noise; often counts from five consecutive scanlines are averaged because it takes five
+    # lines to obtain a set of all four PRT measurements. The average blackbody count CBB and the
+    # average space count CS, together with blackbody radiance NBB and space radiance NS, explained
+    # in the next paragraph, are used to compute the linear radiance estimate NLIN,
+    # NLIN = NS + (NBB - NS)*(CS - CE)/(CS - CBB)    (7.1.2.4-5)
+    # where CE is the AVHRR count output when it views one of the reference Earth targets.
+    # While the detector in channel 3B has a linear response, the Mercury-Cadmium-Telluride detectors used
+    # for channels 4 and 5 have a nonlinear response to incoming radiance. Pre-launch laboratory measurements show that:
+    #     a. scene radiance is a slightly nonlinear (quadratic) function of AVHRR output count,
+    #     b. the nonlinearity depends on the AVHRR operating temperature.
+    # It is assumed that the nonlinear response will persist in orbit. For the NOAA KLM series of
+    # satellites, NESDIS uses a radiance-based nonlinear correction method. In this method, the linear
+    # radiance estimate is first computed using a non-zero radiance of space, the NS term in Equation
+    # 7.1.2.4-5. Then, the linear radiance value is input into a quadratic equation to generate the
+    # nonlinear radiance correction NCOR:
+    # NCOR = b0 + b1*NLIN + b2*NLIN^2    (7.1.2.4-6)
+    # Finally, the Earth scene radiance is obtained by adding NCOR to NLIN
+    # NE = NLIN + NCOR
+
+    # Note: For channel 3B, the non-linear correction coefficients are set to zero to use the same equation.
+    Nlin = nS + (nBB - nS)*(cS - cE)/(cS - cBB)
+    Ncor = np.polynomial.polynomial.polyval(Nlin, b[0:3], tensor=False)
+    Ne = Nlin + Ncor
+
+    # Step 4. Data users often convert the computed Earth scene radiance value NE into an equivalent
+    # blackbody temperature TE. This temperature is defined by simple inverting the steps used to
+    # calculate the radiance NE sensed by an AVHRR channel from an emitting blackbody at a
+    # temperature TE. The two-step process is:
+    # TsE = c2*nu_c / ln(1 + (c1*nu_c^3/NE))    (7.1.2.4-8)
+    # TE = (TsE - A)/B    (7.1.2.4-9)
+    tsE = c2*nu_c / np.log(1.0 + nBB_num / Ne)
+    bt = (tsE - A) / B
+
+    # Why do we do this on channel 3b?
     if chan == 0:
         bt = np.where((counts - new_space) >= 0, 0.0, bt)
 

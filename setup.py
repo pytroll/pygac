@@ -95,6 +95,7 @@ if __name__ == '__main__':
           license='GPLv3',
 
           packages=['pygac'],
+          package_data={'pygac': ['data/calibration.json']},
           cmdclass={'build_ext': build_ext},
           ext_modules=extensions,
 

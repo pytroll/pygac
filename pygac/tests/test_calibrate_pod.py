@@ -25,12 +25,17 @@
 
 
 import unittest
-
+try:
+    import mock
+except ImportError:
+    from unittest import mock
 import numpy as np
 
 from pygac.calibration import calibrate_solar, calibrate_thermal
+from pygac.configuration import _config
 
 
+@mock.patch('pygac.configuration.get_config', mock.Mock(return_value=_config))
 class TestGenericCalibration(unittest.TestCase):
 
     def test_calibration_vis(self):
