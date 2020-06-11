@@ -131,7 +131,7 @@ class Calibrator(object):
 
     @classmethod
     def get_version(cls):
-        """Retrun the default calibration coefficients version."""
+        """Return the default calibration coefficients version."""
         if cls.default_coeffs is None:
             cls.load_defaults()
         return cls._version
