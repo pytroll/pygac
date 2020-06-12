@@ -58,7 +58,7 @@
             "dark_count": 41.8,
             "gain_switch": 502.0,
             "s0": 0.1217142857142857,
-            "s1": -0.016,
+            "s1": 1.224,
             "s2": -0.033
         },
         "channel_3b": {
@@ -72,7 +72,7 @@
         },
         "channel_4": {
             "b0": 5.44,
-            "b1": -0.10152000000000005,
+            "b1": -0.10152,
             "b2": 0.00046964,
             "centroid_wavenumber": 927.2763,
             "space_radiance": -4.98,
@@ -81,7 +81,7 @@
         },
         "channel_5": {
             "b0": 3.84,
-            "b1": -0.062490000000000046,
+            "b1": -0.06249,
             "b2": 0.00025239,
             "centroid_wavenumber": 837.80762,
             "space_radiance": -3.4,
@@ -151,7 +151,7 @@
         },
         "channel_4": {
             "b0": 5.44,
-            "b1": -0.10152000000000005,
+            "b1": -0.10152,
             "b2": 0.00046964,
             "centroid_wavenumber": 933.71521,
             "space_radiance": -4.98,
@@ -160,7 +160,7 @@
         },
         "channel_5": {
             "b0": 3.84,
-            "b1": -0.062490000000000046,
+            "b1": -0.06249,
             "b2": 0.00025239,
             "centroid_wavenumber": 839.72764,
             "space_radiance": -3.4,
@@ -230,16 +230,16 @@
         },
         "channel_4": {
             "b0": 5.76,
-            "b1": -0.11570000000000003,
-            "b2": 0.0005885,
+            "b1": -0.1157,
+            "b2": 0.0005882,
             "centroid_wavenumber": 910.49626,
-            "space_radiance": -7.27,
+            "space_radiance": -7.29,
             "to_eff_blackbody_intercept": 0.45707063,
             "to_eff_blackbody_slope": 0.9987743041739178
         },
         "channel_5": {
             "b0": 5.76,
-            "b1": -0.11570000000000003,
+            "b1": -0.1157,
             "b2": 0.0005882,
             "centroid_wavenumber": 910.49626,
             "space_radiance": -7.29,
@@ -309,7 +309,7 @@
         },
         "channel_4": {
             "b0": 7.21,
-            "b1": -0.15880000000000005,
+            "b1": -0.1588,
             "b2": 0.0008739,
             "centroid_wavenumber": 927.462,
             "space_radiance": -8.055,
@@ -318,7 +318,7 @@
         },
         "channel_5": {
             "b0": 2.92,
-            "b1": -0.05401999999999996,
+            "b1": -0.054,
             "b2": 0.0002504,
             "centroid_wavenumber": 840.746,
             "space_radiance": -3.51,
@@ -388,7 +388,7 @@
         },
         "channel_4": {
             "b0": 5.11,
-            "b1": -0.11070999999999998,
+            "b1": -0.1107,
             "b2": 0.0005968,
             "centroid_wavenumber": 922.36261,
             "space_radiance": -5.51,
@@ -397,7 +397,7 @@
         },
         "channel_5": {
             "b0": 1.91,
-            "b1": -0.03700999999999999,
+            "b1": -0.037,
             "b2": 0.0001775,
             "centroid_wavenumber": 838.02678,
             "space_radiance": -2.51,
@@ -458,7 +458,7 @@
         },
         "channel_3b": {
             "b0": -0.0031,
-            "b1": 0.003589999999999982,
+            "b1": 0.00359,
             "b2": 0.0,
             "centroid_wavenumber": 2654.25,
             "space_radiance": 0.0069,
@@ -467,7 +467,7 @@
         },
         "channel_4": {
             "b0": 3.72,
-            "b1": -0.07621999999999995,
+            "b1": -0.07622,
             "b2": 0.0003822,
             "centroid_wavenumber": 928.349,
             "space_radiance": -4.05,
@@ -476,11 +476,11 @@
         },
         "channel_5": {
             "b0": 2.0,
-            "b1": -0.03805999999999998,
+            "b1": -0.03806,
             "b2": 0.0001742,
             "centroid_wavenumber": 833.04,
             "space_radiance": -2.29,
-            "to_eff_blackbody_intercept": 0.022171,
+            "to_eff_blackbody_intercept": -0.022171,
             "to_eff_blackbody_slope": 0.9994622892883629
         },
         "date_of_launch": "1994-12-30T18:12:57.599991Z",
@@ -546,7 +546,7 @@
         },
         "channel_4": {
             "b0": 4.76,
-            "b1": -0.09319999999999995,
+            "b1": -0.0932,
             "b2": 0.0004524,
             "centroid_wavenumber": 925.4075,
             "space_radiance": -4.5,
@@ -555,7 +555,7 @@
         },
         "channel_5": {
             "b0": 3.83,
-            "b1": -0.06589999999999996,
+            "b1": -0.0659,
             "b2": 0.0002811,
             "centroid_wavenumber": 839.8979,
             "space_radiance": -3.61,
@@ -625,7 +625,7 @@
         },
         "channel_4": {
             "b0": 2.96,
-            "b1": -0.05410999999999999,
+            "b1": -0.05411,
             "b2": 0.00024532,
             "centroid_wavenumber": 922.3479,
             "space_radiance": -2.467,
@@ -634,7 +634,7 @@
         },
         "channel_5": {
             "b0": 2.25,
-            "b1": -0.03664999999999996,
+            "b1": -0.03665,
             "b2": 0.00014854,
             "centroid_wavenumber": 834.61814,
             "space_radiance": -2.009,
@@ -699,12 +699,12 @@
             "b2": 0.0,
             "centroid_wavenumber": 2669.1414,
             "space_radiance": 0.0,
-            "to_eff_blackbody_intercept": 1.70002941,
+            "to_eff_blackbody_intercept": 1.7002941,
             "to_eff_blackbody_slope": 0.997334722687091
         },
         "channel_4": {
             "b0": 8.22,
-            "b1": -0.15795000000000003,
+            "b1": -0.15795,
             "b2": 0.00075579,
             "centroid_wavenumber": 928.29959,
             "space_radiance": -8.55,
@@ -713,7 +713,7 @@
         },
         "channel_5": {
             "b0": 4.31,
-            "b1": -0.07318000000000002,
+            "b1": -0.07318,
             "b2": 0.00030976,
             "centroid_wavenumber": 840.20289,
             "space_radiance": -3.97,
@@ -756,7 +756,7 @@
             "gain_switch": 500.54,
             "s0": 0.114,
             "s1": 0.603,
-            "s2": 0.0
+            "s2": -0.0
         },
         "channel_2": {
             "dark_count": 39.4,
@@ -783,7 +783,7 @@
         },
         "channel_4": {
             "b0": 5.82,
-            "b1": -0.11068999999999996,
+            "b1": -0.11069,
             "b2": 0.00052337,
             "centroid_wavenumber": 928.73452,
             "space_radiance": -5.53,
@@ -792,7 +792,7 @@
         },
         "channel_5": {
             "b0": 2.67,
-            "b1": -0.04359999999999997,
+            "b1": -0.0436,
             "b2": 0.00017715,
             "centroid_wavenumber": 834.08306,
             "space_radiance": -2.22,
@@ -862,7 +862,7 @@
         },
         "channel_4": {
             "b0": 5.7,
-            "b1": -0.11187000000000002,
+            "b1": -0.11187,
             "b2": 0.00054668,
             "centroid_wavenumber": 927.92374,
             "space_radiance": -5.49,
@@ -871,7 +871,7 @@
         },
         "channel_5": {
             "b0": 3.58,
-            "b1": -0.05991000000000002,
+            "b1": -0.05991,
             "b2": 0.00024985,
             "centroid_wavenumber": 831.28619,
             "space_radiance": -3.39,
@@ -912,7 +912,7 @@
         "channel_1": {
             "dark_count": 39.44,
             "gain_switch": null,
-            "s0": 0.133,
+            "s0": 0.113,
             "s1": 0.9,
             "s2": 0.0
         },
@@ -941,7 +941,7 @@
         },
         "channel_4": {
             "b0": 2.24,
-            "b1": -0.03964000000000001,
+            "b1": -0.03964,
             "b2": 0.00016925,
             "centroid_wavenumber": 913.46088,
             "space_radiance": -3.26,
@@ -950,7 +950,7 @@
         },
         "channel_5": {
             "b0": 2.24,
-            "b1": -0.03964000000000001,
+            "b1": -0.03964,
             "b2": 0.00016925,
             "centroid_wavenumber": 913.46088,
             "space_radiance": -3.26,
@@ -959,7 +959,7 @@
         },
         "date_of_launch": "1979-06-28T20:23:59.999992Z",
         "thermometer_1": {
-            "d0": 277.659,
+            "d0": 276.659,
             "d1": 0.051275,
             "d2": 1.363e-06,
             "d3": 0.0,
@@ -1020,7 +1020,7 @@
         },
         "channel_4": {
             "b0": 5.25,
-            "b1": -0.10216999999999998,
+            "b1": -0.10217,
             "b2": 0.0004819,
             "centroid_wavenumber": 928.23757,
             "space_radiance": -5.16,
@@ -1029,7 +1029,7 @@
         },
         "channel_5": {
             "b0": 3.93,
-            "b1": -0.06316999999999995,
+            "b1": -0.06317,
             "b2": 0.0002425,
             "centroid_wavenumber": 841.52137,
             "space_radiance": -4.28,
@@ -1094,12 +1094,12 @@
             "b2": 0.0,
             "centroid_wavenumber": 2651.3776,
             "space_radiance": 0.0,
-            "to_eff_blackbody_intercept": 1.7664105,
+            "to_eff_blackbody_intercept": 1.7764105,
             "to_eff_blackbody_slope": 0.9975798712323902
         },
         "channel_4": {
             "b0": 2.24,
-            "b1": -0.03964000000000001,
+            "b1": -0.03964,
             "b2": 0.00016925,
             "centroid_wavenumber": 915.3033,
             "space_radiance": -3.26,
@@ -1108,7 +1108,7 @@
         },
         "channel_5": {
             "b0": 2.24,
-            "b1": -0.03964000000000001,
+            "b1": -0.03964,
             "b2": 0.00016925,
             "centroid_wavenumber": 915.3033,
             "space_radiance": -3.26,
@@ -1178,7 +1178,7 @@
         },
         "channel_4": {
             "b0": 5.24,
-            "b1": -0.11356999999999995,
+            "b1": -0.1136,
             "b2": 0.0006033,
             "centroid_wavenumber": 930.5023,
             "space_radiance": -5.53,
@@ -1187,7 +1187,7 @@
         },
         "channel_5": {
             "b0": 2.42,
-            "b1": -0.04688999999999999,
+            "b1": -0.0469,
             "b2": 0.0002198,
             "centroid_wavenumber": 845.75,
             "space_radiance": -3.06,
@@ -1248,7 +1248,7 @@
         },
         "channel_3b": {
             "b0": 0.00195,
-            "b1": -0.015000000000000013,
+            "b1": -0.015,
             "b2": 0.011,
             "centroid_wavenumber": 2655.7409,
             "space_radiance": -0.0039,
@@ -1259,7 +1259,7 @@
             "b0": 6.13,
             "b1": -0.131942,
             "b2": 0.000673193,
-            "centroid_wavenumber": 913.0537,
+            "centroid_wavenumber": 913.05397,
             "space_radiance": -8.13,
             "to_eff_blackbody_intercept": 0.53135445,
             "to_eff_blackbody_slope": 0.9985677542700504
@@ -1268,14 +1268,14 @@
             "b0": 6.13,
             "b1": -0.131942,
             "b2": 0.000673193,
-            "centroid_wavenumber": 913.0537,
+            "centroid_wavenumber": 913.05397,
             "space_radiance": -8.13,
             "to_eff_blackbody_intercept": 0.53135445,
             "to_eff_blackbody_slope": 0.9985677542700504
         },
         "date_of_launch": "1978-10-13T19:04:47.999992Z",
         "thermometer_1": {
-            "d0": 277.659,
+            "d0": 276.659,
             "d1": 0.051275,
             "d2": 1.363e-06,
             "d3": 0.0,
