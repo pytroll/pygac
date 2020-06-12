@@ -104,9 +104,9 @@ class TestGenericCalibration(unittest.TestCase):
                                 channel=3,
                                 spacecraft=spacecraft_id)
 
-        expected_ch3 = np.array([[298.36772477, 305.24899954, 293.23847375],
-                                 [296.96053595, 306.49432811, 294.48914038],
-                                 [295.47715016, 305.10182601, 305.83036782]])
+        expected_ch3 = np.array([[298.36742 , 305.248478, 293.238328],
+                                 [296.960275, 306.493766, 294.488956],
+                                 [295.476935, 305.101309, 305.829827]])
 
         np.testing.assert_allclose(expected_ch3, ch3)
 
@@ -118,9 +118,9 @@ class TestGenericCalibration(unittest.TestCase):
                                 channel=4,
                                 spacecraft=spacecraft_id)
 
-        expected_ch4 = np.array([[326.57669548, 275.34893211, 197.68844955],
-                                 [323.01324859, 313.20717645, 249.3633716],
-                                 [304.58097221, 293.57932356, 264.0630027]])
+        expected_ch4 = np.array([[326.576534, 275.348988, 197.688755],
+                                 [323.013104, 313.207077, 249.36352 ],
+                                 [304.58091 , 293.579308, 264.0631  ]])
 
         np.testing.assert_allclose(expected_ch4, ch4)
 
@@ -132,9 +132,9 @@ class TestGenericCalibration(unittest.TestCase):
                                 channel=5,
                                 spacecraft=spacecraft_id)
 
-        expected_ch5 = np.array([[326.96168274, 272.09013413, 188.26784127],
-                                 [323.15638147, 312.67331324, 244.18437795],
-                                 [303.43940924, 291.64944851, 259.97304154]])
+        expected_ch5 = np.array([[326.96161 , 272.090164, 188.267991],
+                                 [323.156317, 312.673269, 244.184452],
+                                 [303.439383, 291.649444, 259.973091]])
 
         np.testing.assert_allclose(expected_ch5, ch5)
 
