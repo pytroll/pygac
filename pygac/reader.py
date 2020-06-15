@@ -532,10 +532,8 @@ class Reader(six.with_metaclass(ABCMeta)):
         if 'sun_earth_distance_correction_factor' not in self.meta_data:
             self.meta_data['sun_earth_distance_correction_factor'] = (
                 self.get_sun_earth_distance_correction())
-        if 'midnight_scanline' not in self.meta_data:
-            self.meta_data['midnight_scanline'] = self.get_midnight_scanline()
-        if 'missing_scanlines' not in self.meta_data:
-            self.meta_data['missing_scanlines'] = self.get_miss_lines()
+        if 'gac_header' not in self.meta_data:
+            self.meta_data['gac_header'] = self.head
 
     def get_calibrated_channels(self):
         """Calibrate and return the channels."""
