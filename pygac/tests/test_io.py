@@ -150,11 +150,12 @@ class TestIO(unittest.TestCase):
         self.assertRaises(ValueError, gac_io.check_user_scanlines,
                           110, 120, None, None, 100)
 
+    @mock.patch('pygac.gac_io.avhrrGAC_io')
     @mock.patch('pygac.gac_io.strip_invalid_lat')
     @mock.patch('pygac.gac_io.slice_channel')
     @mock.patch('pygac.gac_io.check_user_scanlines')
     def test_save_gac(self, check_user_scanlines, slice_channel,
-                      strip_invalid_lat):
+                      strip_invalid_lat, avhrr_gac_io):
         """Test saving."""
         # Test scanline selection
         mm = mock.MagicMock()
@@ -187,6 +188,35 @@ class TestIO(unittest.TestCase):
                                          start_line='start', end_line='end',
                                          first_valid_lat=mock.ANY,
                                          last_valid_lat=mock.ANY)
+        expected_args = [
+            mock.ANY,
+            mock.ANY,
+            mock.ANY,
+            mock.ANY,
+            mock.ANY,
+            mock.ANY,
+            mock.ANY,
+            mock.ANY,
+            mock.ANY,
+            mock.ANY,
+            mock.ANY,
+            mock.ANY,
+            mock.ANY,
+            mock.ANY,
+            mock.ANY,
+            mock.ANY,
+            mock.ANY,
+            mock.ANY,
+            mock.ANY,
+            mock.ANY,
+            'start',
+            'end',
+            mock.ANY,
+            mock.ANY,
+            mock.ANY,
+            mock.ANY
+        ]
+        avhrr_gac_io.assert_called_with(*expected_args)
 
 
 def suite():
