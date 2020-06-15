@@ -148,8 +148,11 @@ class Calibrator(object):
             coeffs_file = /path/to/user/default/coeffs.json
         """
         # check if the user has set a coefficient file
-        config = pygac.configuration.get_config()
-        coeffs_file = config.get("calibration", "coeffs_file", fallback='')
+        try:
+            config = pygac.configuration.get_config()
+            coeffs_file = config.get("calibration", "coeffs_file", fallback='')
+        except KeyError:
+            coeffs_file = ''
         # if no coeffs file has been specified, use the pygac defaults
         if not coeffs_file:
             coeffs_file = resource_filename('pygac', 'data/calibration.json')
