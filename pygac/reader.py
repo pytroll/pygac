@@ -590,7 +590,6 @@ class Reader(six.with_metaclass(ABCMeta)):
         """
         if self.lons is None and self.lats is None:
             self.lons, self.lats = self._get_lonlat()
-            self.update_meta_data()
 
             # Interpolate from every eighth pixel to all pixels.
             if self.interpolate_coords:
@@ -1044,41 +1043,6 @@ class Reader(six.with_metaclass(ABCMeta)):
         except KeyError:
             # Platform is not affected at all
             return False
-
-    def get_midnight_scanline(self):
-        """Find the scanline where the UTC date increases by one day.
-
-        Returns:
-            int: The midnight scanline if it exists and is unique.
-                 None, else.
-
-        """
-        self.get_times()
-        d0 = np.datetime64(datetime.date(1970, 1, 1), 'D')
-        days = (self.utcs.astype('datetime64[D]') - d0).astype(int)
-        incr = np.where(np.diff(days) == 1)[0]
-        if len(incr) != 1:
-            if len(incr) > 1:
-                LOG.warning('Unable to determine midnight scanline: '
-                            'UTC date increases more than once. ')
-            return None
-        else:
-            return incr[0]
-
-    def get_miss_lines(self):
-        """Find missing scanlines.
-
-        I.e. scanlines which were dropped for some reason or were never recorded.
-
-        Returns:
-            Indices of missing scanlines
-
-        """
-        # Compare scanline number against the ideal case (1, 2, 3, ...) and
-        # find the missing line numbers.
-        ideal = set(range(1, self.scans['scan_line_number'][-1] + 1))
-        missing = sorted(ideal.difference(set(self.scans['scan_line_number'])))
-        return np.array(missing, dtype=int)
 
     def mask_tsm_pixels(self, channels):
         """Mask pixels affected by the scan motor issue."""

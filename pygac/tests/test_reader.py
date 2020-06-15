@@ -137,13 +137,10 @@ class TestGacReader(unittest.TestCase):
         """Test scanline timestamp estimation."""
         self.assertEqual(self.reader.lineno2msec(12345), 6172000)
 
-    @mock.patch('pygac.reader.Reader.update_meta_data')
     @mock.patch('pygac.gac_reader.GACReader._get_lonlat')
     @mock.patch('pygac.gac_reader.GACReader._get_corrupt_mask')
     @mock.patch('pygac.gac_reader.GACReader._adjust_clock_drift')
-    def test_get_lonlat(self, adjust_clockdrift,
-                        get_corrupt_mask, get_lonlat,
-                        update_meta_data):
+    def test_get_lonlat(self, adjust_clockdrift, get_corrupt_mask, get_lonlat):
         """Test common lon/lat computation."""
         lon_i = np.array([np.nan, 1, 2, 3, -180.1, 180.1])
         lat_i = np.array([1, 2, 3, np.nan, -90.1, 90.1])
@@ -158,7 +155,6 @@ class TestGacReader(unittest.TestCase):
         # Default
         lons, lats = self.reader.get_lonlat()
         get_lonlat.assert_called()
-        update_meta_data.assert_called()
         adjust_clockdrift.assert_called()
         numpy.testing.assert_array_equal(lons, lons_exp)
         numpy.testing.assert_array_equal(lats, lats_exp)
@@ -196,12 +192,11 @@ class TestGacReader(unittest.TestCase):
         for method in methods:
             method.asser_not_called()
 
-    @mock.patch('pygac.reader.Reader.update_meta_data')
     @mock.patch('pygac.gac_reader.GACReader._get_corrupt_mask')
     @mock.patch('pygac.gac_reader.GACReader._adjust_clock_drift')
     @mock.patch('pygac.gac_reader.GACReader._get_lonlat')
     def test_interpolate(self, _get_lonlat, _adjust_clock_drift,
-                         _get_corrupt_mask, update_meta_data):
+                         _get_corrupt_mask):
         """Test interpolate method in get_lonlat."""
         self.lons = None
         self.lats = None
@@ -226,35 +221,6 @@ class TestGacReader(unittest.TestCase):
         get_corrupt_mask.reset_mock()
         self.reader.mask
         get_corrupt_mask.assert_not_called()
-
-    def test_midnight_scanline(self):
-        """Test midnight scanline computation."""
-        # Define test cases...
-        # ... midnight scanline exists
-        utcs1 = np.array([-3, -2, -1, 0, 1, 2, 3]).astype('datetime64[ms]')
-        scanline1 = 2
-
-        # ... midnight scanline does not exist
-        utcs2 = np.array([1, 2, 3]).astype('datetime64[ms]')
-        scanline2 = None
-
-        for utcs, scanline in zip((utcs1, utcs2), (scanline1, scanline2)):
-            self.reader.utcs = utcs
-            self.reader.times = utcs.astype(datetime.datetime)
-            self.assertEqual(self.reader.get_midnight_scanline(), scanline,
-                             msg='Incorrect midnight scanline')
-
-    def test_miss_lines(self):
-        """Test detection of missing scanlines."""
-        lines = [2, 4, 5, 6, 10, 11, 12]
-        miss_lines_ref = [1, 3, 7, 8, 9]
-        self.reader.scans = np.zeros(
-            len(lines), dtype=[('scan_line_number', 'i2')])
-        self.reader.scans['scan_line_number'] = lines
-        miss_lines = self.reader.get_miss_lines()
-        self.assertTrue((miss_lines == miss_lines_ref).all(),
-                        msg='Missing scanlines not detected correctly')
-        self.assertEqual(miss_lines.dtype, int)
 
     def test_tle2datetime64(self, *mocks):
         """Test conversion from TLE timestamps to datetime64."""

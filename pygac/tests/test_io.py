@@ -55,30 +55,6 @@ class TestIO(unittest.TestCase):
             scanline = utils._update_scanline(**t)
             self.assertEqual(scanline, scanline_exp)
 
-    def test_update_missing_scanlines(self):
-        """Test updating the missing scanlines."""
-        qual_flags = np.array([[1, 2, 4, 5, 6, 8, 9, 11, 12]]).transpose()
-        miss_lines = np.array([3, 7, 10])
-        test_data = [{'start_line': 0, 'end_line': 8,
-                      'miss_lines_exp': [3, 7, 10]},
-                     {'start_line': 3, 'end_line': 6,
-                      'miss_lines_exp': [1, 2, 3, 4, 7, 10, 11, 12]}]
-        for t in test_data:
-            miss_lines_exp = t.pop('miss_lines_exp')
-            miss_lines = utils._update_missing_scanlines(
-                miss_lines=miss_lines, qual_flags=qual_flags, **t)
-            numpy.testing.assert_array_equal(miss_lines, miss_lines_exp)
-
-        # If intersection of miss_lines and qual_flags is not empty
-        # (here: extra "1" in miss_lines), make sure that items are
-        # not added twice.
-        miss_lines = utils._update_missing_scanlines(
-            miss_lines=np.array([1, 3, 7, 10]),
-            qual_flags=qual_flags,
-            start_line=3, end_line=6)
-        numpy.testing.assert_array_equal(miss_lines,
-                                         [1, 2, 3, 4, 7, 10, 11, 12])
-
     def test_slice(self):
         """Test slices."""
         ch = np.array([[1, 2, 3, 4, 5]]).transpose()
@@ -120,10 +96,8 @@ class TestIO(unittest.TestCase):
         """
         # Define test data
         ch = np.array([[1, 2, 3, 4, 5, 6, 7, 8, 9, 10]]).transpose()
-        miss_lines = np.array([1, 4, 11, 12])  # never recorded
         qualflags = np.array(
             [[2, 3, 5, 6, 7, 8, 9, 10, 13, 14]]).transpose()  # scanline number
-        midn_line = 3
         first_valid_lat = 2
         last_valid_lat = 7
         start_line = 1
@@ -131,25 +105,16 @@ class TestIO(unittest.TestCase):
 
         # Without lat stripping
         sliced_ref = np.array([[2, 3, 4, 5]]).transpose()
-        sliced, miss_lines_new, midn_line_new = utils.slice_channel(
-            ch, start_line=start_line, end_line=end_line,
-            miss_lines=miss_lines, midnight_scanline=midn_line,
-            qual_flags=qualflags)
+        sliced = utils.slice_channel(
+            ch, start_line=start_line, end_line=end_line)
         numpy.testing.assert_array_equal(sliced, sliced_ref)
-        numpy.testing.assert_array_equal(miss_lines_new, miss_lines)
-        self.assertEqual(midn_line_new, 2)
 
         # With lat stripping
         sliced_ref = np.array([[4, 5, 6, 7]]).transpose()
-        miss_lines_ref = np.array([1, 2, 3, 4, 11, 12, 13, 14])
-        sliced, miss_lines_new, midn_line_new = utils.slice_channel(
+        sliced = utils.slice_channel(
             ch, start_line=start_line, end_line=end_line,
-            first_valid_lat=first_valid_lat, last_valid_lat=last_valid_lat,
-            miss_lines=miss_lines, midnight_scanline=midn_line,
-            qual_flags=qualflags)
+            first_valid_lat=first_valid_lat, last_valid_lat=last_valid_lat)
         numpy.testing.assert_array_equal(sliced, sliced_ref)
-        numpy.testing.assert_array_equal(miss_lines_new, miss_lines_ref)
-        self.assertEqual(midn_line_new, 0)
 
     def test_check_user_scanlines(self):
         """Check the scanlines."""
@@ -186,10 +151,9 @@ class TestIO(unittest.TestCase):
                           110, 120, None, None, 100)
 
     @mock.patch('pygac.gac_io.strip_invalid_lat')
-    @mock.patch('pygac.gac_io.avhrrGAC_io')
     @mock.patch('pygac.gac_io.slice_channel')
     @mock.patch('pygac.gac_io.check_user_scanlines')
-    def test_save_gac(self, check_user_scanlines, slice_channel, avhrr_gac_io,
+    def test_save_gac(self, check_user_scanlines, slice_channel,
                       strip_invalid_lat):
         """Test saving."""
         # Test scanline selection
@@ -214,7 +178,7 @@ class TestIO(unittest.TestCase):
             gac_file=mm,
             meta_data=mm
         )
-        slice_channel.return_value = mm, 'miss', 'midnight'
+        slice_channel.return_value = mm
         strip_invalid_lat.return_value = 0, 0
         check_user_scanlines.return_value = 'start', 'end'
 
@@ -223,37 +187,6 @@ class TestIO(unittest.TestCase):
                                          start_line='start', end_line='end',
                                          first_valid_lat=mock.ANY,
                                          last_valid_lat=mock.ANY)
-        expected_args = [
-            mock.ANY,
-            mock.ANY,
-            mock.ANY,
-            mock.ANY,
-            mock.ANY,
-            mock.ANY,
-            mock.ANY,
-            mock.ANY,
-            mock.ANY,
-            mock.ANY,
-            mock.ANY,
-            mock.ANY,
-            mock.ANY,
-            mock.ANY,
-            mock.ANY,
-            mock.ANY,
-            mock.ANY,
-            mock.ANY,
-            mock.ANY,
-            mock.ANY,
-            mock.ANY,
-            mock.ANY,
-            mock.ANY,
-            mock.ANY,
-            mock.ANY,
-            mock.ANY,
-            'midnight',
-            'miss'
-        ]
-        avhrr_gac_io.assert_called_with(*expected_args)
 
 
 def suite():

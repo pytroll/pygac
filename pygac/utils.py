@@ -190,9 +190,7 @@ def strip_invalid_lat(lats):
     return min(no_wrong_lat[0]), max(no_wrong_lat[0])
 
 
-def slice_channel(ch, start_line, end_line, first_valid_lat=None,
-                  last_valid_lat=None, midnight_scanline=None,
-                  miss_lines=None, qual_flags=None):
+def slice_channel(ch, start_line, end_line, first_valid_lat=None, last_valid_lat=None):
     """Slice channel data using user-defined start/end line.
 
     If valid_lat_start/end are given, strip scanlines with invalid
@@ -206,39 +204,19 @@ def slice_channel(ch, start_line, end_line, first_valid_lat=None,
         end_line: User-defined end line (after stripping, if enabled)
         first_valid_lat: First scanline with valid latitudes
         last_valid_lat: Last scanline with valid latitudes.
-        midnight_scanline: If given, update midnight scanline to the new
-            scanline range.
-        miss_lines: If given, update list of missing lines with the ones
-            that have been stripped due to invalid coordinates
-        qual_flags: Quality flags, needed to updated missing lines.
     """
     if first_valid_lat is not None and last_valid_lat is not None:
-        # Strip invalid coordinates and update midnight scanline as well as
-        # user-defined start/end lines
-        ch, updated = _slice(ch,
-                             start_line=first_valid_lat,
-                             end_line=last_valid_lat,
-                             update=[midnight_scanline])
-        midnight_scanline = updated[0]
+        # Strip invalid coordinates
+        ch = _slice(ch, start_line=first_valid_lat, end_line=last_valid_lat)
 
         # Reset user-defined end line, if it has been removed
         end_line = min(end_line, ch.shape[0] - 1)
         start_line = min(start_line, ch.shape[0] - 1)
 
-        # Update missing scanlines
-        if miss_lines is not None:
-            miss_lines = _update_missing_scanlines(
-                miss_lines=miss_lines,
-                qual_flags=qual_flags,
-                start_line=first_valid_lat,
-                end_line=last_valid_lat)
-
     # Slice data using user-defined start/end lines
-    ch_slc, updated = _slice(ch, start_line=start_line, end_line=end_line,
-                             update=[midnight_scanline])
-    midnight_scanline = updated[0]
+    ch_slc = _slice(ch, start_line=start_line, end_line=end_line)
 
-    return ch_slc, miss_lines, midnight_scanline
+    return ch_slc
 
 
 def _slice(ch, start_line, end_line, update=None):
@@ -274,22 +252,6 @@ def _update_scanline(scanline, new_start_line, new_end_line):
     if scanline < 0 or scanline >= num_lines:
         scanline = None
     return scanline
-
-
-def _update_missing_scanlines(miss_lines, qual_flags, start_line, end_line):
-    """Add scanlines excluded by slicing to the list of missing scanlines.
-
-    Args:
-        miss_lines: List of missing scanlines
-        qual_flags: Quality flags
-        start_line: New start line of the slice
-        end_line: New end line of the slice
-    """
-    return np.sort(np.unique(
-        qual_flags[0:start_line, 0].tolist() +
-        miss_lines.tolist() +
-        qual_flags[end_line + 1:, 0].tolist()
-    ))
 
 
 def plot_correct_times_thresh(res, filename=None):
