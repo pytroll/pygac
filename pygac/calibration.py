@@ -58,7 +58,7 @@ class Calibrator(object):
     ]
 
     Calibrator = namedtuple('Calibrator', fields)
-    default_coeffs = None
+    coeffs = None
     _version = None
 
     def __new__(cls, spacecraft, custom_coeffs=None):
@@ -66,19 +66,19 @@ class Calibrator(object):
 
         Args:
             spacecraft (str): spacecraft name in pygac convention
-            custom_coeffs (dict): custom coefficients (optional)
+            custom_coeffs (dict or str): custom coefficients (optional). Either dictionary holding
+                the coefficients or path to a file.
 
         Returns:
             calibrator (namedtuple): calibration coefficients
         """
-        if cls.default_coeffs is None:
-            cls.load_defaults()
-        if custom_coeffs:
+        if cls.coeffs is None:
+            cls.load_coeffs(custom_coeffs)
+        coeffs = cls.coeffs[spacecraft].copy()
+        if isinstance(custom_coeffs, dict):
             LOG.info('Using following custom coefficients "%s".', custom_coeffs)
-        customs = custom_coeffs or {}
-        defaults = cls.default_coeffs[spacecraft]
-        coeffs = defaults.copy()
-        coeffs.update(customs)
+            coeffs.update(custom_coeffs)
+            cls._version = None
 
         # transpose the coefficient order from channel - coeff to coeff - channel
         # and store as arrays for vectorized calls of calibration functions
@@ -130,46 +130,56 @@ class Calibrator(object):
         return calibrator
 
     @classmethod
-    def get_version(cls):
-        """Return the default calibration coefficients version."""
-        if cls.default_coeffs is None:
-            cls.load_defaults()
-        return cls._version
-
-    @classmethod
-    def load_defaults(cls):
-        """Read the default coefficients from file.
+    def load_coeffs(cls, custom_coeffs):
+        """Load calibration coefficients.
 
         Note:
             The pygac internal defaults are stored in data/calibration.json.
-            The user can provide different defaults via the config file
-            in the section "calibration" as option "coeffs_file", e.g.
+            The user can provide custom coefficients via the "calibration" reader
+            argument or via the config file in section "calibration" as option
+            "coeffs_file", e.g.
+
             [calibration]
             coeffs_file = /path/to/user/default/coeffs.json
+
+            Priority: Reader kwargs, config file, internal defaults.
         """
-        # check if the user has set a coefficient file
-        try:
-            config = pygac.configuration.get_config()
-            coeffs_file = config.get("calibration", "coeffs_file", fallback='')
-        except KeyError:
-            coeffs_file = ''
-        # if no coeffs file has been specified, use the pygac defaults
+        # Did user specify a custom coefficient file?
+        coeffs_file = ''
+        if isinstance(custom_coeffs, str):
+            coeffs_file = custom_coeffs
+        else:
+            try:
+                config = pygac.configuration.get_config()
+                coeffs_file = config.get("calibration", "coeffs_file", fallback='')
+            except KeyError:
+                pass
         if not coeffs_file:
+            # Fallback to pygac internal defaults
             coeffs_file = resource_filename('pygac', 'data/calibration.json')
-        LOG.info('Use default coefficients from "%s"', coeffs_file)
+
+        cls.coeffs, cls._version = cls.read_coeffs(coeffs_file)
+
+    @classmethod
+    def read_coeffs(cls, coeffs_file):
+        """Read calibration coefficients from a json file.
+
+        Returns:
+            Coefficients, corresponding version number (if any)
+        """
+        LOG.info('Reading calibration coefficients from {}'.format(coeffs_file))
         with open(coeffs_file, mode='r') as json_file:
             content = json_file.read()
             md5_hash = hashlib.md5(content.encode())
             digest = md5_hash.hexdigest()
             version = cls.version_hashs.get(digest)
             if version is None:
-                warning = "Unknown default calibration coefficients version!"
+                warning = "Unknown calibration coefficients version!"
                 warnings.warn(warning, RuntimeWarning)
                 LOG.warning(warning)
             else:
-                LOG.info('Using default calibration coefficients version "%s".', version)
-            cls.default_coeffs = json.loads(content)
-            cls._version = version
+                LOG.info('Identified calibration coefficients version "%s".', version)
+            return json.loads(content), version
 
     @staticmethod
     def date2float(date, decimals=5):
@@ -211,7 +221,8 @@ def calibrate_solar(counts, chan, year, jday, spacecraft, corr=1, custom_coeffs=
 
     Optionals:
         corr (float) - depricated - reflectance correction multiplier (default = 1)
-        custom_coeffs (dict) - custom calibration coefficients (default = None)
+        custom_coeffs (dict or str) - Custom calibration coefficients. Either dictionary holding
+            the coefficients or path to a file (default = None).
 
     Returns:
         r_cal (array) - scaled radiance
@@ -336,7 +347,8 @@ def calibrate_thermal(counts, prt, ict, space, line_numbers, channel, spacecraft
         spacecraft (str) - pygac internal spacecraft name
 
     Optionals:
-        custom_coeffs (dict) - custom calibration coefficients (default = None)
+        custom_coeffs (dict or str) - Custom calibration coefficients. Either dictionary holding
+            the coefficients or path to a file (default = None).
 
     Note:
         This function and documentation follows steps 1 to 4 from the  KLM User's Guide

@@ -102,7 +102,8 @@ class Reader(six.with_metaclass(ABCMeta)):
             tle_thresh: Maximum number of days between observation and nearest
                 TLE
             creation_site: The three-letter identifier of the creation site (eg 'NSS')
-            calibration: dictionary with satellite specific calibration coefficients
+            calibration: Custom calibration coefficients. Either dictionary with satellite
+                specific calibration coefficients, or path to coefficient file.
             filename: GAC/LAC filename
 
         """

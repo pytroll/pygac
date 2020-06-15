@@ -123,14 +123,14 @@ class TestCalibrationCoefficientsHandling(unittest.TestCase):
     @mock.patch('pygac.calibration.open', mock.mock_open(read_data=user_json_file))
     def test_user_coefficients_file(self):
         # reset coefficients
-        Calibrator.default_coeffs = None
+        Calibrator.coeffs = None
         Calibrator._version = None
 
         if sys.version_info.major < 3:
             cal = Calibrator('noaa19')
         else:
             with self.assertWarnsRegex(RuntimeWarning,
-                                       "Unknown default calibration coefficients version!"):
+                                       "Unknown calibration coefficients version!"):
                 cal = Calibrator('noaa19')
 
         self.assertEqual(cal.dark_count[0], 0)
@@ -148,7 +148,7 @@ class TestCalibrationCoefficientsHandling(unittest.TestCase):
         np.testing.assert_allclose(scaled_radiance, counts)
 
         # re-reset coefficients
-        Calibrator.default_coeffs = None
+        Calibrator.coeffs = None
         Calibrator._version = None
 
     def test_custom_coefficients(self):
