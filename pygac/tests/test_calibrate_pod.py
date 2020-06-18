@@ -106,9 +106,9 @@ class TestGenericCalibration(unittest.TestCase):
                                 channel=3,
                                 spacecraft=spacecraft_id)
 
-        expected_ch3 = np.array([[298.28524223, 305.16852862, 293.16212655],
-                                 [296.87900835, 306.41526012, 294.41059746],
-                                 [295.39720547, 305.02120845, 305.75051609]])
+        expected_ch3 = np.array([[298.28466, 305.167571, 293.16182],
+                                 [296.878502, 306.414234, 294.410224],
+                                 [295.396779, 305.020259, 305.749526]])
 
         np.testing.assert_allclose(expected_ch3, ch3)
 
@@ -120,9 +120,9 @@ class TestGenericCalibration(unittest.TestCase):
                                 channel=4,
                                 spacecraft=spacecraft_id)
 
-        expected_ch4 = np.array([[325.828192, 275.414762, 196.214464],
-                                 [322.359634, 312.785138, 249.380531],
-                                 [304.326858, 293.490837, 264.147945]])
+        expected_ch4 = np.array([[325.828062, 275.414804, 196.214709],
+                                 [322.359517, 312.785057, 249.380649],
+                                 [304.326806, 293.490822, 264.148021]])
 
         np.testing.assert_allclose(expected_ch4, ch4)
 
@@ -134,9 +134,9 @@ class TestGenericCalibration(unittest.TestCase):
                                 channel=5,
                                 spacecraft=spacecraft_id)
 
-        expected_ch5 = np.array([[326.47287181,  272.14169523,  187.40907142],
-                                 [322.72885806,  312.39588991,  244.22910864],
-                                 [303.27173737,  291.59183911,  260.0459766]])
+        expected_ch5 = np.array([[326.460316, 272.146547, 187.434456],
+                                 [322.717606, 312.388155, 244.241633],
+                                 [303.267012, 291.590832, 260.05426]])
 
         np.testing.assert_allclose(expected_ch5, ch5)
 
