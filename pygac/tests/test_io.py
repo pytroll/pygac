@@ -227,7 +227,7 @@ class TestIO(unittest.TestCase):
                                          start_line='start', end_line='end',
                                          first_valid_lat=mock.ANY,
                                          last_valid_lat=mock.ANY
-                                        )
+                                         )
         expected_args = [
             mock.ANY,
             mock.ANY,
