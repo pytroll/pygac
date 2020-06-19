@@ -100,7 +100,7 @@ class Reader(six.with_metaclass(ABCMeta)):
             tle_thresh: Maximum number of days between observation and nearest
                 TLE
             creation_site: The three-letter identifier of the creation site (eg 'NSS')
-            custom_calibration: dictionary with a subset of user defined satellite specific 
+            custom_calibration: dictionary with a subset of user defined satellite specific
                                 calibration coefficients
             calibration_file: path to json file containing default calibrations
 
@@ -239,7 +239,7 @@ class Reader(six.with_metaclass(ABCMeta)):
         # each child class which implements this method, should call the
         # super method to enter into the method resolution order.
         # See https://docs.python.org/3/library/functions.html#super
-        # second use case “diamond diagrams”.
+        # second use case "diamond diagrams".
         # Check if the data set name matches the pattern
         LOG.debug("validate header")
         data_set_name = header['data_set_name'].decode(errors='ignore')

@@ -86,12 +86,12 @@ def process_file(filename, start_line, end_line, fileobj=None):
 
     # reader specific values
     config = get_config()
-    tle_dir = conf.get('tle', 'tledir', raw=True)
-    tle_name = conf.get('tle', 'tlename', raw=True)
+    tle_dir = config.get('tle', 'tledir', raw=True)
+    tle_name = config.get('tle', 'tlename', raw=True)
     coeffs_file = config.get("calibration", "coeffs_file", fallback='')
     # output specific values
-    output_dir = conf.get('output', 'output_dir', raw=True)
-    output_file_prefix = conf.get('output', 'output_file_prefix', raw=True)
+    output_dir = config.get('output', 'output_dir', raw=True)
+    output_file_prefix = config.get('output', 'output_file_prefix', raw=True)
     avhrr_dir = os.environ.get('SM_AVHRR_DIR')
     qual_dir = os.environ.get('SM_AVHRR_DIR')
     sunsatangles_dir = os.environ.get('SM_SUNSATANGLES_DIR')
