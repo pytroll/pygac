@@ -35,8 +35,6 @@ from collections import namedtuple
 from pkg_resources import resource_filename
 
 
-import pygac.configuration
-
 LOG = logging.getLogger(__name__)
 
 
@@ -54,25 +52,28 @@ class Calibrator(object):
     fields = [
         "dark_count", "gain_switch", "s0", "s1", "s2", "b",  # "b0", "b1", "b2",
         "centroid_wavenumber", "space_radiance", "to_eff_blackbody_intercept",
-        "to_eff_blackbody_slope", "date_of_launch", "d", "spacecraft"
+        "to_eff_blackbody_slope", "date_of_launch", "d", "spacecraft", "version"
     ]
 
     Calibrator = namedtuple('Calibrator', fields)
     default_coeffs = None
-    _version = None
+    default_file = None
+    default_version = None
 
-    def __new__(cls, spacecraft, custom_coeffs=None):
+    def __new__(cls, spacecraft, custom_coeffs=None, default_file=None):
         """Creates a namedtuple for calibration coefficients of a given spacecraft
 
         Args:
             spacecraft (str): spacecraft name in pygac convention
             custom_coeffs (dict): custom coefficients (optional)
+            default_file (str): path to a default coefficents file (optional)
 
         Returns:
             calibrator (namedtuple): calibration coefficients
         """
-        if cls.default_coeffs is None:
-            cls.load_defaults()
+        if cls.default_coeffs is None or cls.default_file != default_file:
+            self.default_file = default_file
+            cls.default_coeffs, cls.default_version = cls.read_coeffs(default_file)
         if custom_coeffs:
             LOG.info('Using following custom coefficients "%s".', custom_coeffs)
         customs = custom_coeffs or {}
@@ -125,38 +126,30 @@ class Calibrator(object):
         # remove time zone information (easier to handle in calculations)
         arraycoeffs["date_of_launch"] = date_of_launch.replace(tzinfo=None)
         arraycoeffs["spacecraft"] = spacecraft
+        arraycoeffs["version"] = self.defaut_version
+        if custom_coeffs:
+            arraycoeffs["version"] = None
         # create namedtuple
         calibrator = cls.Calibrator(**arraycoeffs)
         return calibrator
 
     @classmethod
-    def get_version(cls):
-        """Return the default calibration coefficients version."""
-        if cls.default_coeffs is None:
-            cls.load_defaults()
-        return cls._version
-
-    @classmethod
-    def load_defaults(cls):
-        """Read the default coefficients from file.
-
-        Note:
-            The pygac internal defaults are stored in data/calibration.json.
-            The user can provide different defaults via the config file
-            in the section "calibration" as option "coeffs_file", e.g.
-            [calibration]
-            coeffs_file = /path/to/user/default/coeffs.json
+    def read_coeffs(cls, coeffs_file):
+        """Read calibration coefficients for all satellites from file.
+        Argument
+            coeffs_file (str): path to coefficients file
+        Returns
+            coeffs (dict): dictionary containing coefficients for all satellites
+            version (str): version of the coefficients (None if unknown)
         """
-        # check if the user has set a coefficient file
-        config = pygac.configuration.get_config()
-        coeffs_file = config.get("calibration", "coeffs_file", fallback='')
-        # if no coeffs file has been specified, use the pygac defaults
-        if not coeffs_file:
+        if coeffs_file is None:
+            LOG.debug("Read PyGAC internal calibration coefficients.")
             coeffs_file = resource_filename('pygac', 'data/calibration.json')
-        LOG.info('Use default coefficients from "%s"', coeffs_file)
-        with open(coeffs_file, mode='r') as json_file:
+        else:
+            LOG.info('Read calibration coefficients from "%s"', coeffs_file)
+        with open(coeffs_file, mode='rb') as json_file:
             content = json_file.read()
-            md5_hash = hashlib.md5(content.encode())
+            md5_hash = hashlib.md5(content)
             digest = md5_hash.hexdigest()
             version = cls.version_hashs.get(digest)
             if version is None:
@@ -164,9 +157,9 @@ class Calibrator(object):
                 warnings.warn(warning, RuntimeWarning)
                 LOG.warning(warning)
             else:
-                LOG.info('Using default calibration coefficients version "%s".', version)
-            cls.default_coeffs = json.loads(content)
-            cls._version = version
+                LOG.info('Identified calibration coefficients version "%s".', version)
+            coeffs = json.loads(content)
+        return coeffs, version
 
     @staticmethod
     def date2float(date, decimals=5):
@@ -196,7 +189,7 @@ class Calibrator(object):
         return date_float
 
 
-def calibrate_solar(counts, chan, year, jday, spacecraft, corr=1, custom_coeffs=None):
+def calibrate_solar(counts, chan, year, jday, cal, corr=1):
     """Do the solar calibration and return scaled radiance.
 
     Arguments:
@@ -204,11 +197,10 @@ def calibrate_solar(counts, chan, year, jday, spacecraft, corr=1, custom_coeffs=
         chan (array) - pygac internal channel index array
         year (int) - year
         jday (int) - day of year
-        spacecraft (str) - pygac internal spacecraft name
+        cal (namedtuple) - spacecraft specific calibration coefficients, see Calibrator
 
-    Optionals:
+    Optional:
         corr (float) - depricated - reflectance correction multiplier (default = 1)
-        custom_coeffs (dict) - custom calibration coefficients (default = None)
 
     Returns:
         r_cal (array) - scaled radiance
@@ -219,9 +211,6 @@ def calibrate_solar(counts, chan, year, jday, spacecraft, corr=1, custom_coeffs=
         "Deriving an inter-sensor consistent calibration for the AVHRR solar reflectance data record.",
         International Journal of Remote Sensing, 31:6493 - 6517.
     """
-    # get the calibration coefficients for this spacecraft
-    cal = Calibrator(spacecraft, custom_coeffs=custom_coeffs)
-
     # Step 1. Obtain the calibration slope using equation (6) in Heidinger et al 2010
     # S(t) = S_0*(100 + S_1*t + S_2*t^2) / 100,
     # where t is the time since launch expressed as years, S(t) is the calibration slope
@@ -320,7 +309,7 @@ def calibrate_solar(counts, chan, year, jday, spacecraft, corr=1, custom_coeffs=
     return r_cal
 
 
-def calibrate_thermal(counts, prt, ict, space, line_numbers, channel, spacecraft, custom_coeffs=None):
+def calibrate_thermal(counts, prt, ict, space, line_numbers, channel, cal):
     """Do the thermal calibration and return brightness temperatures (K).
 
     Arguments:
@@ -330,10 +319,7 @@ def calibrate_thermal(counts, prt, ict, space, line_numbers, channel, spacecraft
         space (array) - counts of cold space
         line_numbers (array) - line number index
         channel (array) - pygac internal channel index array
-        spacecraft (str) - pygac internal spacecraft name
-
-    Optionals:
-        custom_coeffs (dict) - custom calibration coefficients (default = None)
+        cal (namedtuple) - spacecraft specific calibration coefficients, see Calibrator
 
     Note:
         This function and documentation follows steps 1 to 4 from the  KLM User's Guide
@@ -343,9 +329,6 @@ def calibrate_thermal(counts, prt, ict, space, line_numbers, channel, spacecraft
         The correction method for the non-linear response of the Mercury-Cadmium-Telluride detectors used
         for channels 4 and 5 is based on Walton et al. (1998)
     """
-    # get the calibration coefficients for this spacecraft
-    cal = Calibrator(spacecraft, custom_coeffs=custom_coeffs)
-
     # Shift channel index by three to obtain thermal channels [3b, 4, 5].
     chan = channel - 3
 

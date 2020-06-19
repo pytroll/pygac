@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 
 # Copyright (c) 2012, 2014 Abhay Devasthale
 
@@ -34,7 +33,6 @@ import time
 import h5py
 import numpy as np
 
-from pygac.configuration import get_config
 from pygac.utils import slice_channel, strip_invalid_lat, check_user_scanlines
 
 LOG = logging.getLogger(__name__)
@@ -44,19 +42,6 @@ MISSING_DATA = -32001
 MISSING_DATA_LATLON = -999999
 
 
-def read_config():
-    """Read output dir etc from config file."""
-    conf = get_config()
-    OUTDIR = conf.get('output', 'output_dir', raw=True)
-    OUTPUT_FILE_PREFIX = conf.get('output', 'output_file_prefix', raw=True)
-
-    SUNSATANGLES_DIR = os.environ.get('SM_SUNSATANGLES_DIR', OUTDIR)
-    AVHRR_DIR = os.environ.get('SM_AVHRR_DIR', OUTDIR)
-    QUAL_DIR = os.environ.get('SM_AVHRR_DIR', OUTDIR)
-
-    return OUTPUT_FILE_PREFIX, SUNSATANGLES_DIR, AVHRR_DIR, QUAL_DIR
-
-
 def save_gac(satellite_name,
              xutcs,
              lats, lons,
@@ -64,7 +49,8 @@ def save_gac(satellite_name,
              bt3, bt4, bt5,
              sun_zen, sat_zen, sun_azi, sat_azi, rel_azi,
              qual_flags, start_line, end_line,
-             gac_file, meta_data):
+             gac_file, meta_data,
+             output_file_prefix, avhrr_dir, qual_dir, sunsatangles_dir):
 
     midnight_scanline = meta_data['midnight_scanline']
     miss_lines = meta_data['missing_scanlines']
@@ -215,11 +201,7 @@ def avhrrGAC_io(satellite_name, xutcs, startdate, enddate, starttime, endtime,
                 arrSZA, arrSTZ, arrSAA, arrSTA, arrRAA, qual_flags,
                 start_line, end_line, total_number_of_scan_lines,
                 last_scan_line_number, corr, gac_file, midnight_scanline,
-                miss_lines):
-    import os
-
-    # Read output dir etc from config file
-    OUTPUT_FILE_PREFIX, SUNSATANGLES_DIR, AVHRR_DIR, QUAL_DIR = read_config()
+                miss_lines, output_file_prefix, avhrr_dir, qual_dir, sunsatangles_dir):
 
     # Calculate start and end time in sec1970
     t_obj = time.strptime(startdate + starttime[0:6], "%Y%m%d%H%M%S")
@@ -227,9 +209,9 @@ def avhrrGAC_io(satellite_name, xutcs, startdate, enddate, starttime, endtime,
     t_obj = time.strptime(enddate + endtime[0:6], "%Y%m%d%H%M%S")
     endtime_sec1970 = calendar.timegm(t_obj)
 
-    LOG.info('Output file prefix = ' + str(OUTPUT_FILE_PREFIX))
-    LOG.info('AVHRR data will be written to ' + str(AVHRR_DIR))
-    ofn = os.path.join(AVHRR_DIR, (OUTPUT_FILE_PREFIX + '_avhrr_' +
+    LOG.info('Output file prefix = ' + str(output_file_prefix))
+    LOG.info('AVHRR data will be written to ' + str(avhrr_dir))
+    ofn = os.path.join(avhrr_dir, (output_file_prefix + '_avhrr_' +
                                    satellite_name + '_99999_' +
                                    startdate + 'T' + starttime + 'Z_' +
                                    enddate + 'T' + endtime + 'Z.h5'))
@@ -438,9 +420,9 @@ def avhrrGAC_io(satellite_name, xutcs, startdate, enddate, starttime, endtime,
     fout.close()
 
     LOG.info('Sun and Satellite viewing angles will be ' +
-             'written to ' + str(SUNSATANGLES_DIR))
-    ofn = os.path.join(SUNSATANGLES_DIR,
-                       (OUTPUT_FILE_PREFIX + '_sunsatangles_' +
+             'written to ' + str(sunsatangles_dir))
+    ofn = os.path.join(sunsatangles_dir,
+                       (output_file_prefix + '_sunsatangles_' +
                         satellite_name + '_99999_' + startdate +
                         'T' + starttime + 'Z_' +
                         enddate + 'T' + endtime + 'Z.h5'))
@@ -602,9 +584,9 @@ def avhrrGAC_io(satellite_name, xutcs, startdate, enddate, starttime, endtime,
     fout.close()
 
     LOG.info('Quality flags will be ' +
-             'written to ' + str(QUAL_DIR))
-    ofn = os.path.join(QUAL_DIR,
-                       (OUTPUT_FILE_PREFIX + '_qualflags_' +
+             'written to ' + str(qual_dir))
+    ofn = os.path.join(qual_dir,
+                       (output_file_prefix + '_qualflags_' +
                         satellite_name + '_99999_' + startdate +
                         'T' + starttime + 'Z_' +
                         enddate + 'T' + endtime + 'Z.h5'))

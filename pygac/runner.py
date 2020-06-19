@@ -29,12 +29,14 @@ Functions:
 
 import datetime
 import logging
+import os
 
 from pygac.gac_klm import GACKLMReader
 from pygac.gac_pod import GACPODReader
 from pygac.lac_klm import LACKLMReader
 from pygac.lac_pod import LACPODReader
 from pygac.utils import file_opener
+from pygac.configuration import get_config
 
 
 LOG = logging.getLogger(__name__)
@@ -69,20 +71,45 @@ def process_file(filename, start_line, end_line, fileobj=None):
     config file. The three files contain the avhrr data, quality flags,
     and sunsatangles.
 
-       Args:
-            filename (str): Path to GAC/LAC file
-            start_line (int): First scanline to be processed (0-based)
-            end_line (int): Last scanline to be processed (0-based),
-                            set to 0 for the last available scanline
-            fileobj: An open file object to read from. (optional)
+    Argsuments
+        filename (str): Path to GAC/LAC file
+        start_line (int): First scanline to be processed (0-based)
+        end_line (int): Last scanline to be processed (0-based),
+                        set to 0 for the last available scanline
+        fileobj: An open file object to read from. (optional)
+
+    Note
+        This function expects an initialized config file.
     """
     tic = datetime.datetime.now()
     LOG.info("Process file: %s", str(filename))
+
+    # reader specific values
+    config = get_config()
+    tle_dir = conf.get('tle', 'tledir', raw=True)
+    tle_name = conf.get('tle', 'tlename', raw=True)
+    coeffs_file = config.get("calibration", "coeffs_file", fallback='')
+    # output specific values
+    output_dir = conf.get('output', 'output_dir', raw=True)
+    output_file_prefix = conf.get('output', 'output_file_prefix', raw=True)
+    avhrr_dir =  = os.environ.get('SM_AVHRR_DIR')
+    qual_dir = os.environ.get('SM_AVHRR_DIR')
+    sunsatangles_dir =os.environ.get('SM_SUNSATANGLES_DIR')
+
     # Keep the file open while searching for the reader class and later
     # creation of the instance.
     with file_opener(fileobj or filename) as open_file:
         reader_cls = get_reader_class(filename, fileobj=open_file)
-        reader = reader_cls()
+        reader = reader_cls(
+            tle_dir=tle_dir, tle_name=tle_name,
+            calibration_file=coeffs_file
+        )
         reader.read(filename, fileobj=fileobj)
-        reader.save(start_line, end_line)
+        reader.save(
+            start_line, end_line,
+            output_file_prefix=output_file_prefix,
+            output_dir=output_dir,
+            avhrr_dir=avhrr_dir, qual_dir=qual_dir,
+            sunsatangles_dir=sunsatangles_dir
+        )
     LOG.info("Processing took: %s", str(datetime.datetime.now() - tic))

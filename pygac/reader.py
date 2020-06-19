@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 
 # Copyright (c) 2014, 2019 Pygac Developers
 
@@ -35,13 +34,12 @@ import six
 import types
 import warnings
 
-from pygac.configuration import get_config
 from pygac.utils import (centered_modulus,
                          calculate_sun_earth_distance_correction,
                          get_absolute_azimuth_angle_diff)
 from pyorbital.orbital import Orbital
 from pyorbital import astronomy
-from pygac.calibration import calibrate_solar, calibrate_thermal
+from pygac.calibration import Calibrator, calibrate_solar, calibrate_thermal
 from pygac import gac_io
 
 LOG = logging.getLogger(__name__)
@@ -89,7 +87,7 @@ class Reader(six.with_metaclass(ABCMeta)):
 
     def __init__(self, interpolate_coords=True, adjust_clock_drift=True,
                  tle_dir=None, tle_name=None, tle_thresh=7, creation_site=None,
-                 calibration=None):
+                 custom_calibration=None, calibration_file=None):
         """Init the reader.
 
         Args:
@@ -102,8 +100,9 @@ class Reader(six.with_metaclass(ABCMeta)):
             tle_thresh: Maximum number of days between observation and nearest
                 TLE
             creation_site: The three-letter identifier of the creation site (eg 'NSS')
-            calibration: dictionary with satellite specific calibration coefficients
-            filename: GAC/LAC filename
+            custom_calibration: dictionary with a subset of user defined satellite specific 
+                                calibration coefficients
+            calibration_file: path to json file containing default calibrations
 
         """
         self.meta_data = {}
@@ -113,7 +112,8 @@ class Reader(six.with_metaclass(ABCMeta)):
         self.tle_name = tle_name
         self.tle_thresh = tle_thresh
         self.creation_site = (creation_site or 'NSS').encode('utf-8')
-        self.calibration = calibration
+        self.custom_calibration = custom_calibration
+        self.calibration_file = calibration_file
         self.head = None
         self.scans = None
         self.spacecraft_name = None
@@ -142,6 +142,19 @@ class Reader(six.with_metaclass(ABCMeta)):
                 self._filename = match.group()
             else:
                 self._filename = os.path.basename(filepath)
+
+    @property
+    def calibration(self):
+        """Get the property 'calibration'."""
+        if self.spacecraft_name is None:
+            calibration = None
+        else:
+            calibration = Calibrator(
+                self.spacecraft_name,
+                custom_coeffs=self.custom_calibration
+                defaults_file=self.calibration_file
+            )
+        return calibration
 
     @abstractmethod
     def read(self, filename, fileobj=None):
@@ -305,8 +318,12 @@ class Reader(six.with_metaclass(ABCMeta)):
         assert channels.shape[-1] == 6
         return channels
 
-    def save(self, start_line, end_line):
+    def save(self, start_line, end_line, output_file_prefix="PyGAC", output_dir="./",
+             avhrr_dir=None, qual_dir=None, sunsatangles_dir=None):
         """Convert the Reader instance content into hdf5 files"""
+        avhrr_dir = avhrr_dir or output_dir
+        qual_dir = qual_dir or output_dir
+        sunsatangles_dir = sunsatangles_dir or output_dir
         self.get_lonlat()
         channels = self._get_calibrated_channels_uniform_shape()
         sat_azi, sat_zen, sun_azi, sun_zen, rel_azi = self.get_angles()
@@ -322,7 +339,8 @@ class Reader(six.with_metaclass(ABCMeta)):
             channels[:, :, 4], channels[:, :, 5],
             sun_zen, sat_zen, sun_azi, sat_azi, rel_azi,
             qual_flags, start_line, end_line,
-            self.filename, self.meta_data
+            self.filename, self.meta_data,
+            output_file_prefix, avhrr_dir, qual_dir, sunsatangles_dir
         )
 
     @abstractmethod
@@ -547,6 +565,7 @@ class Reader(six.with_metaclass(ABCMeta)):
         jday = delta.days + 1
 
         corr = self.meta_data['sun_earth_distance_correction_factor']
+        calibration_coeffs = self.calibration
 
         # how many reflective channels are there ?
         tot_ref = channels.shape[2] - 3
@@ -555,9 +574,8 @@ class Reader(six.with_metaclass(ABCMeta)):
             channels[:, :, 0:tot_ref],
             np.arange(tot_ref),
             year, jday,
-            self.spacecraft_name,
-            corr,
-            custom_coeffs=self.calibration
+            calibration_coeffs,
+            corr
         )
         prt, ict, space = self.get_telemetry()
         for chan in [3, 4, 5]:
@@ -568,8 +586,7 @@ class Reader(six.with_metaclass(ABCMeta)):
                 space[:, chan - 3],
                 self.scans["scan_line_number"],
                 chan,
-                self.spacecraft_name,
-                custom_coeffs=self.calibration
+                calibration_coeffs
             )
 
         # Mask out corrupt values
@@ -664,13 +681,10 @@ class Reader(six.with_metaclass(ABCMeta)):
     def get_tle_file(self):
         """Find TLE file for the current satellite."""
         tle_dir, tle_name = self.tle_dir, self.tle_name
-
-        # If user didn't specify TLE dir/name, try config file
-        if tle_dir is None or tle_name is None:
-            conf = get_config()
-            tle_dir = conf.get('tle', 'tledir', raw=True)
-            tle_name = conf.get('tle', 'tlename', raw=True)
-
+        if tle_dir is None:
+            raise RuntimeError("TLE directory not specified!")
+        if tle_name is None:
+            raise RuntimeError("TLE name not specified!")
         values = {"satname": self.spacecraft_name, }
         tle_filename = os.path.join(tle_dir, tle_name % values)
         LOG.info('TLE filename = ' + str(tle_filename))
