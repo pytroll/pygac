@@ -146,11 +146,11 @@ class Calibrator(object):
             coeffs (dict): dictionary containing coefficients for all satellites
             version (str): version of the coefficients (None if unknown)
         """
-        if coeffs_file is None:
+        if coeffs_file:
+            LOG.info('Read calibration coefficients from "%s"', coeffs_file)
+        else:
             LOG.debug("Read PyGAC internal calibration coefficients.")
             coeffs_file = resource_filename('pygac', 'data/calibration.json')
-        else:
-            LOG.info('Read calibration coefficients from "%s"', coeffs_file)
         with open(coeffs_file, mode='rb') as json_file:
             content = json_file.read()
             md5_hash = hashlib.md5(content)
