@@ -47,7 +47,7 @@ class Calibrator(object):
         default_coeffs: dictonary containing default values for all spacecrafts
     """
     version_hashs = {
-        'ee643f5737a5a1c91ef97833b7ec868c': 'PATMOS-x, v2017r1'  # version information
+        '963af9b66268475ed500ad7b37da33c5': 'PATMOS-x, v2017r1'  # version information
     }
     fields = [
         "dark_count", "gain_switch", "s0", "s1", "s2", "b",  # "b0", "b1", "b2",
@@ -60,20 +60,24 @@ class Calibrator(object):
     default_file = None
     default_version = None
 
-    def __new__(cls, spacecraft, custom_coeffs=None, default_file=None):
+    def __new__(cls, spacecraft, custom_coeffs=None, coeffs_file=None):
         """Creates a namedtuple for calibration coefficients of a given spacecraft
 
         Args:
             spacecraft (str): spacecraft name in pygac convention
             custom_coeffs (dict): custom coefficients (optional)
-            default_file (str): path to a default coefficents file (optional)
+            coeffs_file (str): path to coefficents file (optional)
 
         Returns:
             calibrator (namedtuple): calibration coefficients
+
+        Note:
+            The coefficients in coeffs_file serve as default values if no custom_coeffs
+            are given. If omitted, Calibrator uses the PyGAC internal defaults.
         """
-        if cls.default_coeffs is None or cls.default_file != default_file:
-            self.default_file = default_file
-            cls.default_coeffs, cls.default_version = cls.read_coeffs(default_file)
+        if cls.default_coeffs is None or cls.default_file != coeffs_file:
+            cls.default_file = coeffs_file
+            cls.default_coeffs, cls.default_version = cls.read_coeffs(coeffs_file)
         if custom_coeffs:
             LOG.info('Using following custom coefficients "%s".', custom_coeffs)
         customs = custom_coeffs or {}
@@ -126,7 +130,7 @@ class Calibrator(object):
         # remove time zone information (easier to handle in calculations)
         arraycoeffs["date_of_launch"] = date_of_launch.replace(tzinfo=None)
         arraycoeffs["spacecraft"] = spacecraft
-        arraycoeffs["version"] = self.defaut_version
+        arraycoeffs["version"] = cls.default_version
         if custom_coeffs:
             arraycoeffs["version"] = None
         # create namedtuple
@@ -153,7 +157,7 @@ class Calibrator(object):
             digest = md5_hash.hexdigest()
             version = cls.version_hashs.get(digest)
             if version is None:
-                warning = "Unknown default calibration coefficients version!"
+                warning = "Unknown calibration coefficients version!"
                 warnings.warn(warning, RuntimeWarning)
                 LOG.warning(warning)
             else:

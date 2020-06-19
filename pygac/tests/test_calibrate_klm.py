@@ -31,11 +31,9 @@ except ImportError:
     from unittest import mock
 import numpy as np
 
-from pygac.calibration import calibrate_solar, calibrate_thermal
-from pygac.configuration import _config
+from pygac.calibration import Calibrator, calibrate_solar, calibrate_thermal
 
 
-@mock.patch('pygac.configuration.get_config', mock.Mock(return_value=_config))
 class TestGenericCalibration(unittest.TestCase):
 
     def test_calibration_vis(self):
@@ -49,23 +47,21 @@ class TestGenericCalibration(unittest.TestCase):
         year = 2010
         jday = 1
         spacecraft_id = "noaa19"
+        cal = Calibrator(spacecraft_id)
         corr = 1
         channel = 0
 
-        ref1 = calibrate_solar(counts[:, channel::5], channel, year, jday,
-                               spacecraft_id, corr)
+        ref1 = calibrate_solar(counts[:, channel::5], channel, year, jday, cal, corr)
 
         channel = 1
 
-        ref2 = calibrate_solar(counts[:, channel::5], channel, year, jday,
-                               spacecraft_id, corr)
+        ref2 = calibrate_solar(counts[:, channel::5], channel, year, jday, cal, corr)
 
         channel = 2
 
         data = np.ma.array(counts[:, channel::5], mask=True)
 
-        ref3 = calibrate_solar(data, channel, year, jday,
-                               spacecraft_id, corr)
+        ref3 = calibrate_solar(data, channel, year, jday, cal, corr)
 
         expected = (np.array([[np.nan, 27.37909518, 110.60103456],
                               [0.11943135, 6.03671211, 57.99695154]]),
@@ -96,13 +92,14 @@ class TestGenericCalibration(unittest.TestCase):
                                  [986.3,  992.3,  988.9]])
 
         spacecraft_id = "noaa19"
+        cal = Calibrator(spacecraft_id)
         ch3 = calibrate_thermal(counts[:, 2::5],
                                 prt_counts,
                                 ict_counts[:, 0],
                                 space_counts[:, 0],
                                 line_numbers=np.array([1, 2, 3]),
                                 channel=3,
-                                spacecraft=spacecraft_id)
+                                cal=cal)
 
         expected_ch3 = np.array([[298.36742, 305.248478, 293.238328],
                                  [296.960275, 306.493766, 294.488956],
@@ -116,7 +113,7 @@ class TestGenericCalibration(unittest.TestCase):
                                 space_counts[:, 1],
                                 line_numbers=np.array([1, 2, 3]),
                                 channel=4,
-                                spacecraft=spacecraft_id)
+                                cal=cal)
 
         expected_ch4 = np.array([[326.576534, 275.348988, 197.688755],
                                  [323.013104, 313.207077, 249.36352],
@@ -130,7 +127,7 @@ class TestGenericCalibration(unittest.TestCase):
                                 space_counts[:, 2],
                                 line_numbers=np.array([1, 2, 3]),
                                 channel=5,
-                                spacecraft=spacecraft_id)
+                                cal=cal)
 
         expected_ch5 = np.array([[326.96161, 272.090164, 188.267991],
                                  [323.156317, 312.673269, 244.184452],

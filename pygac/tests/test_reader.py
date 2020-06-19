@@ -338,21 +338,8 @@ class TestGacReader(unittest.TestCase):
         np.testing.assert_allclose(sun_zenith, expected_sun_zenith, atol=0.01)
         np.testing.assert_allclose(rel_azi, expected_rel_azi, atol=0.01)
 
-    @mock.patch('pygac.reader.get_config')
-    def test_get_tle_file(self, get_config):
+    def test_get_tle_file(self):
         """Test get_tle_file."""
-        # Use TLE name/dir from config file
-        class MockConfigParser(object):
-            def get(self, section, option, **kwargs):
-                if option == 'tledir':
-                    return 'path/to/TLEs'
-                elif option == 'tlename':
-                    return 'tle_file.txt'
-        get_config.return_value = MockConfigParser()
-        tle_file = self.reader.get_tle_file()
-        self.assertEqual(tle_file, 'path/to/TLEs/tle_file.txt')
-
-        # Use TLE name/dir from reader instanciation
         self.reader.tle_dir = '/tle/dir'
         self.reader.tle_name = 'tle_%(satname)s.txt'
         self.reader.spacecraft_name = 'ISS'

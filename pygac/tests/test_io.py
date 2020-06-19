@@ -212,7 +212,11 @@ class TestIO(unittest.TestCase):
             rel_azi=mm,
             qual_flags=mm,
             gac_file=mm,
-            meta_data=mm
+            meta_data=mm,
+            output_file_prefix=mm,
+            avhrr_dir=mm,
+            qual_dir=mm,
+            sunsatangles_dir=mm
         )
         slice_channel.return_value = mm, 'miss', 'midnight'
         strip_invalid_lat.return_value = 0, 0
@@ -222,7 +226,8 @@ class TestIO(unittest.TestCase):
         slice_channel.assert_called_with(mock.ANY,
                                          start_line='start', end_line='end',
                                          first_valid_lat=mock.ANY,
-                                         last_valid_lat=mock.ANY)
+                                         last_valid_lat=mock.ANY
+                                        )
         expected_args = [
             mock.ANY,
             mock.ANY,
@@ -251,7 +256,11 @@ class TestIO(unittest.TestCase):
             mock.ANY,
             mock.ANY,
             'midnight',
-            'miss'
+            'miss',
+            mock.ANY,
+            mock.ANY,
+            mock.ANY,
+            mock.ANY
         ]
         avhrr_gac_io.assert_called_with(*expected_args)
 

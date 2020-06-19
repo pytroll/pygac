@@ -92,9 +92,9 @@ def process_file(filename, start_line, end_line, fileobj=None):
     # output specific values
     output_dir = conf.get('output', 'output_dir', raw=True)
     output_file_prefix = conf.get('output', 'output_file_prefix', raw=True)
-    avhrr_dir =  = os.environ.get('SM_AVHRR_DIR')
+    avhrr_dir = os.environ.get('SM_AVHRR_DIR')
     qual_dir = os.environ.get('SM_AVHRR_DIR')
-    sunsatangles_dir =os.environ.get('SM_SUNSATANGLES_DIR')
+    sunsatangles_dir = os.environ.get('SM_SUNSATANGLES_DIR')
 
     # Keep the file open while searching for the reader class and later
     # creation of the instance.

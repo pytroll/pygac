@@ -151,8 +151,8 @@ class Reader(six.with_metaclass(ABCMeta)):
         else:
             calibration = Calibrator(
                 self.spacecraft_name,
-                custom_coeffs=self.custom_calibration
-                defaults_file=self.calibration_file
+                custom_coeffs=self.custom_calibration,
+                coeffs_file=self.calibration_file
             )
         return calibration
 

@@ -193,7 +193,7 @@ def save_gac(satellite_name,
                 sun_zen, sat_zen, sun_azi, sat_azi, rel_azi, qual_flags,
                 start_line, end_line, total_number_of_scan_lines,
                 last_scan_line_number, corr, gac_file, midnight_scanline,
-                miss_lines)
+                miss_lines, output_file_prefix, avhrr_dir, qual_dir, sunsatangles_dir)
 
 
 def avhrrGAC_io(satellite_name, xutcs, startdate, enddate, starttime, endtime,
