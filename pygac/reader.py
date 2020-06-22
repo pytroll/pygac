@@ -146,14 +146,11 @@ class Reader(six.with_metaclass(ABCMeta)):
     @property
     def calibration(self):
         """Get the property 'calibration'."""
-        if self.spacecraft_name is None:
-            calibration = None
-        else:
-            calibration = Calibrator(
-                self.spacecraft_name,
-                custom_coeffs=self.custom_calibration,
-                coeffs_file=self.calibration_file
-            )
+        calibration = Calibrator(
+            self.spacecraft_name,
+            custom_coeffs=self.custom_calibration,
+            coeffs_file=self.calibration_file
+        )
         return calibration
 
     @abstractmethod
