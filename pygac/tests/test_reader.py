@@ -427,6 +427,31 @@ class TestGacReader(unittest.TestCase):
         corr = self.reader.get_sun_earth_distance_correction()
         numpy.testing.assert_almost_equal(corr, 0.96660494, decimal=7)
 
+    @mock.patch('pygac.reader.Reader.get_sun_earth_distance_correction')
+    @mock.patch('pygac.reader.Reader.get_midnight_scanline')
+    @mock.patch('pygac.reader.Reader.get_miss_lines')
+    @mock.patch('pygac.reader.Reader.calibration',
+                new_callable=mock.PropertyMock)
+    def test_update_metadata(self,
+                             calibration,
+                             get_miss_lines,
+                             get_midnight_scanline,
+                             get_sun_earth_distance_correction):
+        get_miss_lines.return_value = 'miss_lines'
+        get_midnight_scanline.return_value = 'midn_line'
+        get_sun_earth_distance_correction.return_value = 'factor'
+        self.reader.head = {'foo': 'bar'}
+        calibration.return_value = mock.MagicMock(version='version')
+
+        self.reader.update_meta_data()
+
+        mda_exp = {'midnight_scanline': 'midn_line',
+                   'missing_scanlines': 'miss_lines',
+                   'sun_earth_distance_correction_factor': 'factor',
+                   'gac_header': {'foo': 'bar'},
+                   'calib_coeffs_version': 'version'}
+        self.assertDictEqual(self.reader.meta_data, mda_exp)
+
 
 def suite():
     """Test suite for test_reader."""
