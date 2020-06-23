@@ -30,11 +30,10 @@ except ImportError:
     from unittest import mock
 import numpy as np
 
-from pygac.calibration import calibrate_solar, Calibrator
-from pygac.configuration import _config
+from pygac.calibration import Calibrator, calibrate_solar
 
 # dummy user json file including only noaa19 data with changed channel 1 coefficients
-user_json_file = """{
+user_json_file = b"""{
     "noaa19": {
         "channel_1": {
             "dark_count": 0,
@@ -117,39 +116,25 @@ user_json_file = """{
 }"""
 
 
-@mock.patch('pygac.configuration.get_config', mock.Mock(return_value=_config))
 class TestCalibrationCoefficientsHandling(unittest.TestCase):
 
     @mock.patch('pygac.calibration.open', mock.mock_open(read_data=user_json_file))
     def test_user_coefficients_file(self):
-        # reset coefficients
-        Calibrator.default_coeffs = None
-        Calibrator._version = None
-
         if sys.version_info.major < 3:
-            cal = Calibrator('noaa19')
+            cal = Calibrator('noaa19', coeffs_file="/path/to/unknow/defaults.json")
         else:
             with self.assertWarnsRegex(RuntimeWarning,
-                                       "Unknown default calibration coefficients version!"):
-                cal = Calibrator('noaa19')
+                                       "Unknown calibration coefficients version!"):
+                cal = Calibrator('noaa19', coeffs_file="/path/to/unknow/defaults.json")
 
         self.assertEqual(cal.dark_count[0], 0)
         self.assertEqual(cal.gain_switch[0], 1000)
         self.assertEqual(cal.s0[0], 2)
         self.assertEqual(cal.s1[0], 0)
         self.assertEqual(cal.s2[0], 0)
-        # The coefficients are choosen to preserve the counts of channel 1 if counts are less than 1000
-        counts = np.arange(10)
-        year = 2010
-        jday = 1
-        spacecraft_id = "noaa19"
-        channel = 0
-        scaled_radiance = calibrate_solar(counts, channel, year, jday, spacecraft_id)
-        np.testing.assert_allclose(scaled_radiance, counts)
-
-        # re-reset coefficients
-        Calibrator.default_coeffs = None
-        Calibrator._version = None
+        # check that the version is set to None if an unknown file is used
+        if sys.version_info.major > 2:
+            self.assertIsNone(cal.version)
 
     def test_custom_coefficients(self):
         custom_coeffs = {
@@ -167,9 +152,12 @@ class TestCalibrationCoefficientsHandling(unittest.TestCase):
         jday = 1
         spacecraft_id = "noaa19"
         channel = 0
-        scaled_radiance = calibrate_solar(counts, channel, year, jday, spacecraft_id,
-                                          custom_coeffs=custom_coeffs)
+        cal = Calibrator(spacecraft_id, custom_coeffs=custom_coeffs)
+        scaled_radiance = calibrate_solar(counts, channel, year, jday, cal)
         np.testing.assert_allclose(scaled_radiance, counts)
+        # check that the version is set to None if custom coeffs are used
+        if sys.version_info.major > 2:
+            self.assertIsNone(cal.version)
 
     @unittest.skipIf(sys.version_info.major < 3, "Skipped in python2!")
     def test_vis_deprecation_warning(self):
@@ -183,9 +171,11 @@ class TestCalibrationCoefficientsHandling(unittest.TestCase):
             "Using the 'corr' argument is depricated in favor of making the units"
             " of the function result clear. Please make any unit conversion outside this function."
         )
+        cal = Calibrator(spacecraft_id)
         with self.assertWarnsRegex(DeprecationWarning, message):
-            calibrate_solar(counts, channel, year, jday, spacecraft_id, corr=corr)
-
+            calibrate_solar(counts, channel, year, jday, cal, corr=corr)
+        # check that the version is set in this case
+        self.assertIsNotNone(cal.version)
 
 def suite():
     """The suite for test_slerp
