@@ -78,6 +78,16 @@ if __name__ == '__main__':
         from Cython.Build import cythonize
         extensions = cythonize(extensions)
 
+    requirements = ['docutils>=0.3',
+                    'numpy>=1.8.0',
+                    'pyorbital>=v0.3.2',
+                    'h5py>=2.0.1',
+                    'scipy>=0.8.0',
+                    'python-geotiepoints>=1.1.8']
+    if sys.version_info < (3, 7):
+        # To parse ISO timestamps in calibration.py
+        requirements.append('python-dateutil>=2.8.0')
+
     setup(name='pygac',
           version=version.__version__,
           description='NOAA AVHRR GAC/LAC reader and calibration',
@@ -101,12 +111,7 @@ if __name__ == '__main__':
 
           # Project should use reStructuredText, so ensure that the docutils get
           # installed or upgraded on the target machine
-          install_requires=['docutils>=0.3',
-                            'numpy>=1.8.0',
-                            'pyorbital>=v0.3.2',
-                            'h5py>=2.0.1',
-                            'scipy>=0.8.0',
-                            'python-geotiepoints>=1.1.8'],
+          install_requires=requirements,
           scripts=[os.path.join('bin', item) for item in os.listdir('bin')],
           data_files=[('etc', ['etc/pygac.cfg.template']),
                       ('gapfilled_tles', ['gapfilled_tles/TLE_noaa16.txt'])],
