@@ -723,6 +723,18 @@ class Reader(six.with_metaclass(ABCMeta)):
         self.tle_lines = tle1, tle2
         return tle1, tle2
 
+    def get_sat_angles_without_tle(self):
+        """Get satellite angles using lat/lon from data to approximate satellite postition instead of TLE."""
+        from pyorbital.orbital import get_observer_look as get_observer_look_no_tle
+        sat_alt = 850.0  # km  TIROS-N OSCAR
+        sat_azi, sat_elev = get_observer_look_no_tle(
+            self.lons[:, 204][:, np.newaxis],
+            self.lats[:, 204][:, np.newaxis],  # approximate satellite position
+            sat_alt,  # approximate satellite altitude
+            self.times[:, np.newaxis],
+            self.lons, self.lats, 0)
+        return sat_azi, sat_elev
+
     def get_angles(self):
         """Get azimuth and zenith angles.
 
@@ -751,14 +763,7 @@ class Reader(six.with_metaclass(ABCMeta)):
             sat_azi, sat_elev = orb.get_observer_look(self.times[:, np.newaxis],
                                                       self.lons, self.lats, 0)
         except IndexError:
-            from pyorbital.orbital import get_observer_look as get_observer_look_no_tle
-            sat_alt = 850.0  # km  TIROS-N OSCAR
-            sat_azi, sat_elev = get_observer_look_no_tle(
-                self.lons[:, 204][:, np.newaxis],
-                self.lats[:, 204][:, np.newaxis],  # approximate satellite position
-                sat_alt,  # approximate satellite altitude
-                self.times[:, np.newaxis],
-                self.lons, self.lats, 0)
+            sat_azi, sat_elev = self.get_sat_angles_without_tle()
 
         sat_zenith = 90 - sat_elev
         sun_zenith = astronomy.sun_zenith_angle(self.times[:, np.newaxis],
