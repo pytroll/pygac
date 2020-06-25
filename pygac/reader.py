@@ -551,6 +551,9 @@ class Reader(six.with_metaclass(ABCMeta)):
             self.meta_data['midnight_scanline'] = self.get_midnight_scanline()
         if 'missing_scanlines' not in self.meta_data:
             self.meta_data['missing_scanlines'] = self.get_miss_lines()
+        if 'gac_header' not in self.meta_data:
+            self.meta_data['gac_header'] = self.head.copy()
+        self.meta_data['calib_coeffs_version'] = self.calibration.version
 
     def get_calibrated_channels(self):
         """Calibrate and return the channels."""

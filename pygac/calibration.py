@@ -120,11 +120,12 @@ class Calibrator(object):
         ], dtype=float)
         # parse date of launch
         date_of_launch_str = coeffs["date_of_launch"].replace('Z', '+00:00')
-        if sys.version_info.major < 3:
+        if sys.version_info < (3, 7):
             # Note that here any time information is lost
             import dateutil.parser
             date_of_launch = dateutil.parser.parse(date_of_launch_str)
         else:
+            # datetime.fromisoformat() was introduced in Python-3.7
             date_of_launch = dt.datetime.fromisoformat(
                 date_of_launch_str).astimezone(dt.timezone.utc)
         # remove time zone information (easier to handle in calculations)
