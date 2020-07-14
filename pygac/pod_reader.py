@@ -36,6 +36,11 @@ http://www.ncdc.noaa.gov/oa/pod-guide/ncdc/docs/podug/html/c3/sec3-1.htm
 
 import datetime
 import logging
+try:
+    from enum import IntFlag
+except ImportError:
+    # python version < 3.6
+    from enum import Enum as IntFlag
 
 import numpy as np
 
@@ -44,6 +49,44 @@ from pygac.reader import Reader, ReaderError
 from pygac.utils import file_opener
 
 LOG = logging.getLogger(__name__)
+
+
+class POD_QualityIndicator(IntFlag):
+    """Quality Indicators
+
+    Source:
+        POD guide Table 3.1.2.1-2. Format of quality indicators.
+    """
+    # POD guide Table 3.1.2.1-2. Format of quality indicators.
+    FATAL_FLAG = 2**0  # Data should not be used for product generation
+    TIME_ERROR = 2**1  # A time sequence error was detected while Processing 
+                       # this frame
+    DATA_GAP = 2**2  # A gap precedes this frame
+    DATA_JITTER = 2**3  # Resync occurred on this frame
+    CALIBRATION = 2**4  # Insufficient data for calibration
+    NO_EARTH_LOCATION = 2**5  # Earth location data not available
+    ASCEND_DESCEND = 2**6  # AVHRR Earth location indication of Ascending (=0) 
+                           # or descending (=1) data
+    PSEUDO_NOISE = 2**7  # Pseudo Noise (P/N) occurred (=1) on the frame,
+                         # data not used for calibration computations
+    BIT_SYNC_STATUS = 2**8  # Drop lock during frame
+    SYNC_ERROR = 2**9  # Frame Sync word error greater than zero
+    FRAME_SYNC_LOCK = 2**10  # Frame Sync previously dropped lock
+    FLYWHEELING = 2**11  # Flywheeling detected during this frame
+    BIT_SLIPPAGE = 2**12  # Bit slippage detected during this frame
+    # Solar BlackBody Contamination (SBBC) indicator
+    # 0 = no correction
+    # 1 = solar contamination corrected
+    CH_3_SBBC = 2**13  # Channel 3 solar blackbody contamination
+    CH_4_SBBC = 2**14  # Channel 4 solar blackbody contamination
+    CH_5_SBBC = 2**15  # Channel 4 solar blackbody contamination
+    # TIP Parity
+    TIP_PARITY_1 = 2**16  # In first minor frame
+    TIP_PARITY_2 = 2**17  # In second minor frame
+    TIP_PARITY_3 = 2**18  # In third minor frame
+    TIP_PARITY_4 = 2**19  # In fourth minor frame
+    TIP_PARITY_5 = 2**20  # In fifth minor frame
+
 
 # common header
 header0 = np.dtype([("noaa_spacecraft_identification_code", ">u1"),
@@ -186,6 +229,8 @@ class PODReader(Reader):
                         }
 
     tsm_affected_intervals = TSM_AFFECTED_INTERVALS_POD
+    
+    QFlag = POD_QualityIndicator
 
     def correct_scan_line_numbers(self):
         """Correct the scan line numbers."""

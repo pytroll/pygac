@@ -642,10 +642,21 @@ class Reader(six.with_metaclass(ABCMeta)):
             self._mask = self._get_corrupt_mask()
         return self._mask
 
-    @abstractmethod
-    def _get_corrupt_mask(self):
-        """KLM/POD specific readout of corrupt scanline mask."""
-        raise NotImplementedError
+    def _get_corrupt_mask(self, flags=None):
+        """Readout of corrupt scanline mask.
+
+        Args:
+            flags (QFlag.flag): An "ORed" bitmask that defines corrupt values.
+                                Defauts to (QFlag.FATAL_FLAG | QFlag.CALIBRATION
+                                | QFlag.NO_EARTH_LOCATION)
+
+        Note:
+            The Quality flags mapping (QFlag) is KLM/POD specific.
+        """
+        QFlag = self.QFlag
+        if flags is None:
+            flags = QFlag.FATAL_FLAG | QFlag.CALIBRATION | QFlag.NO_EARTH_LOCATION
+        return (self.scans['quality_indicators'] & flags.value).astype(bool)
 
     @abstractmethod
     def postproc(self, channels):
