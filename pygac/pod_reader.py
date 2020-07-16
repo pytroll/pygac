@@ -60,15 +60,15 @@ class POD_QualityIndicator(IntFlag):
     # POD guide Table 3.1.2.1-2. Format of quality indicators.
     FATAL_FLAG = 2**0  # Data should not be used for product generation
     TIME_ERROR = 2**1  # A time sequence error was detected while Processing
-                 # this frame
+           # this frame
     DATA_GAP = 2**2  # A gap precedes this frame
     DATA_JITTER = 2**3  # Resync occurred on this frame
     CALIBRATION = 2**4  # Insufficient data for calibration
     NO_EARTH_LOCATION = 2**5  # Earth location data not available
     ASCEND_DESCEND = 2**6  # AVHRR Earth location indication of Ascending (=0)
-                     # or descending (=1) data
+               # or descending (=1) data
     PSEUDO_NOISE = 2**7  # Pseudo Noise (P/N) occurred (=1) on the frame,
-                   # data not used for calibration computations
+             # data not used for calibration computations
     BIT_SYNC_STATUS = 2**8  # Drop lock during frame
     SYNC_ERROR = 2**9  # Frame Sync word error greater than zero
     FRAME_SYNC_LOCK = 2**10  # Frame Sync previously dropped lock
