@@ -231,6 +231,7 @@ class PODReader(Reader):
     tsm_affected_intervals = TSM_AFFECTED_INTERVALS_POD
 
     QFlag = POD_QualityIndicator
+    _quality_indicators_key = "quality_indicators"
 
     def correct_scan_line_numbers(self):
         """Correct the scan line numbers."""

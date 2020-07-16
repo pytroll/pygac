@@ -629,6 +629,7 @@ class KLMReader(Reader):
     tsm_affected_intervals = TSM_AFFECTED_INTERVALS_KLM
 
     QFlag = KLM_QualityIndicator
+    _quality_indicators_key = "quality_indicator_bit_field"
 
     def read(self, filename, fileobj=None):
         """Read the data.
