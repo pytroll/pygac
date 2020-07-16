@@ -36,8 +36,8 @@ import logging
 try:
     from enum import IntFlag
 except ImportError:
-    # python version < 3.6
-    from enum import Enum as IntFlag
+    # python version < 3.6, use a simple object without nice representation
+    IntFlag = object
 
 import numpy as np
 
@@ -87,6 +87,10 @@ class KLM_QualityIndicator(IntFlag):
     CH_4_RS_ANOMALY = 2**27
     CH_5_RS = 2**28
     CH_5_RS_ANOMALY = 2**29
+    # using same name as for POD
+    CH_3_CONTAMINATION = 2**24  # Channel 3 solar blackbody contamination
+    CH_4_CONTAMINATION = 2**26  # Channel 4 solar blackbody contamination
+    CH_5_CONTAMINATION = 2**28  # Channel 5 solar blackbody contamination
     DATA_JITTER = 2**30  # Resync occurred on this frame
     PSEUDO_NOISE = 2**31  # Pseudo noise occurred on this frame
 
@@ -785,32 +789,6 @@ class KLMReader(Reader):
         2: Transition (No data)
         """
         return self.scans["scan_line_bit_field"][:] & 3
-
-    def _get_corrupt_mask(self):
-        """Get mask for corrupt scanlines."""
-        mask = ((self.scans["quality_indicator_bit_field"] >> 31) |
-                ((self.scans["quality_indicator_bit_field"] << 3) >> 31) |
-                ((self.scans["quality_indicator_bit_field"] << 4) >> 31))
-        return mask.astype(bool)
-
-    def get_qual_flags(self):
-        """Read quality flags."""
-        number_of_scans = self.scans["telemetry"].shape[0]
-        qual_flags = np.zeros((int(number_of_scans), 7))
-        qual_flags[:, 0] = self.scans["scan_line_number"]
-        qual_flags[:, 1] = (self.scans["quality_indicator_bit_field"] >> 31)
-        qual_flags[:, 2] = (
-            (self.scans["quality_indicator_bit_field"] << 3) >> 31)
-        qual_flags[:, 3] = (
-            (self.scans["quality_indicator_bit_field"] << 4) >> 31)
-        qual_flags[:, 4] = (
-            (self.scans["quality_indicator_bit_field"] << 24) >> 30)
-        qual_flags[:, 5] = (
-            (self.scans["quality_indicator_bit_field"] << 26) >> 30)
-        qual_flags[:, 6] = (
-            (self.scans["quality_indicator_bit_field"] << 28) >> 30)
-
-        return qual_flags
 
     def postproc(self, channels):
         """Apply KLM specific postprocessing.

@@ -39,8 +39,8 @@ import logging
 try:
     from enum import IntFlag
 except ImportError:
-    # python version < 3.6
-    from enum import Enum as IntFlag
+    # python version < 3.6, use a simple object without nice representation
+    IntFlag = object
 
 import numpy as np
 
@@ -74,12 +74,12 @@ class POD_QualityIndicator(IntFlag):
     FRAME_SYNC_LOCK = 2**10  # Frame Sync previously dropped lock
     FLYWHEELING = 2**11  # Flywheeling detected during this frame
     BIT_SLIPPAGE = 2**12  # Bit slippage detected during this frame
-    # Solar BlackBody Contamination (SBBC) indicator
+    # Solar blackbody contamination indicator
     # 0 = no correction
     # 1 = solar contamination corrected
-    CH_3_SBBC = 2**13  # Channel 3 solar blackbody contamination
-    CH_4_SBBC = 2**14  # Channel 4 solar blackbody contamination
-    CH_5_SBBC = 2**15  # Channel 4 solar blackbody contamination
+    CH_3_CONTAMINATION = 2**13  # Channel 3 solar blackbody contamination
+    CH_4_CONTAMINATION = 2**14  # Channel 4 solar blackbody contamination
+    CH_5_CONTAMINATION = 2**15  # Channel 5 solar blackbody contamination
     # TIP Parity
     TIP_PARITY_1 = 2**16  # In first minor frame
     TIP_PARITY_2 = 2**17  # In second minor frame
@@ -523,27 +523,6 @@ class PODReader(Reader):
         space_counts[:, 2] = np.mean(decode_tele[:, 56:102:5], axis=1)
 
         return prt_counts, ict_counts, space_counts
-
-    def _get_corrupt_mask(self):
-        """Get mask for corrupt scanlines."""
-        mask = ((self.scans["quality_indicators"] >> 31) |
-                ((self.scans["quality_indicators"] << 4) >> 31) |
-                ((self.scans["quality_indicators"] << 5) >> 31))
-        return mask.astype(bool)
-
-    def get_qual_flags(self):
-        """Read quality flags."""
-        number_of_scans = self.scans["telemetry"].shape[0]
-        qual_flags = np.zeros((int(number_of_scans), 7))
-        qual_flags[:, 0] = self.scans["scan_line_number"]
-        qual_flags[:, 1] = (self.scans["quality_indicators"] >> 31)
-        qual_flags[:, 2] = ((self.scans["quality_indicators"] << 4) >> 31)
-        qual_flags[:, 3] = ((self.scans["quality_indicators"] << 5) >> 31)
-        qual_flags[:, 4] = ((self.scans["quality_indicators"] << 13) >> 31)
-        qual_flags[:, 5] = ((self.scans["quality_indicators"] << 14) >> 31)
-        qual_flags[:, 6] = ((self.scans["quality_indicators"] << 15) >> 31)
-
-        return qual_flags
 
     def postproc(self, channels):
         """No POD specific postprocessing to be done."""
