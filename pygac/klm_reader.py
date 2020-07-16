@@ -627,7 +627,7 @@ class KLMReader(Reader):
                            }
 
     tsm_affected_intervals = TSM_AFFECTED_INTERVALS_KLM
-    
+
     QFlag = KLM_QualityIndicator
 
     def read(self, filename, fileobj=None):
