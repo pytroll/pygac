@@ -33,6 +33,11 @@ http://www.ncdc.noaa.gov/oa/pod-guide/ncdc/docs/klm/html/c8/sec83142-1.htm
 
 import datetime
 import logging
+try:
+    from enum import IntFlag
+except ImportError:
+    # python version < 3.6, use a simple object without nice representation
+    IntFlag = object
 
 import numpy as np
 
@@ -41,6 +46,54 @@ from pygac.reader import Reader, ReaderError
 from pygac.utils import file_opener
 
 LOG = logging.getLogger(__name__)
+
+
+class KLM_QualityIndicator(IntFlag):
+    """Quality Indicators.
+
+    Source:
+        KLM guide
+        Table 8.3.1.3.3.1-1. Format of packed LAC/HRPT Data Sets (Version 2, pre-April 28, 2005).
+        Table 8.3.1.3.3.2-1. Format of LAC/HRPT Data Record for NOAA-N (Version 5, post-November 14,
+                             2006, all spacecraft).
+        Table 8.3.1.4.3.1-1. Format of packed GAC Data Record for NOAA KLM (Version 2, pre-April 28, 2005).
+        Table 8.3.1.4.3.2-1. Format of GAC Data Record for NOAA-N (Version 4, post-January 25, 2006,
+                             all spacecraft).
+
+    Note:
+        Table 8.3.1.3.3.1-1. and Table 8.3.1.4.3.1-1. define bit: 21 as
+        "frame sync word not valid"
+        Table 8.3.1.3.3.2-1. and Table 8.3.1.4.3.2-1. define bit: 21 as
+        "flywheeling detected during this frame"
+    """
+    FATAL_FLAG = 2**0  # Data should not be used for product generation
+    TIME_ERROR = 2**1  # Time sequence error detected within this scan
+    DATA_GAP = 2**2  # Data gap precedes this scan
+    CALIBRATION = 2**3  # Insufficient data for calibration
+    NO_EARTH_LOCATION = 2**4  # Earth location data not available
+    CLOCK_UPDATE = 2**5  # First good time following a clock update (nominally 0)
+    INSTRUMENT_CHANGE = 2**6  # Instrument status changed with this scan
+    BIT_SYNC_STATUS = 2**7  # Sync lock dropped during this frame
+    SYNC_ERROR = 2**8  # Frame sync word error greater than zero
+    FRAME_SYNC_LOCK = 2**9  # Frame sync previously dropped lock
+    SYNC_INVALID = 2**10  # Frame sync word not valid
+    FLYWHEELING = 2**10  # Flywheeling detected during this frame
+    BIT_SLIPPAGE = 2**11  # Bit slippage detected during this frame
+    # Note: 2**12 to 2**22 are not defined for KLMs
+    TIP_PARITY = 2**23  # TIP parity error detected
+    # Reflected Sunlight (RS) detected (solar blackbody contamination)
+    CH_3B_RS = 2**24
+    CH_3_CONTAMINATION = 2**24  # POD compatible alias
+    CH_3B_RS_ANOMALY = 2**25
+    CH_4_RS = 2**26
+    CH_4_CONTAMINATION = 2**26  # POD compatible alias
+    CH_4_RS_ANOMALY = 2**27
+    CH_5_RS = 2**28
+    CH_5_CONTAMINATION = 2**28  # POD compatible alias
+    CH_5_RS_ANOMALY = 2**29
+    DATA_JITTER = 2**30  # Resync occurred on this frame
+    PSEUDO_NOISE = 2**31  # Pseudo noise occurred on this frame
+
 
 # GAC header object
 
@@ -575,6 +628,9 @@ class KLMReader(Reader):
 
     tsm_affected_intervals = TSM_AFFECTED_INTERVALS_KLM
 
+    QFlag = KLM_QualityIndicator
+    _quality_indicators_key = "quality_indicator_bit_field"
+
     def read(self, filename, fileobj=None):
         """Read the data.
 
@@ -734,32 +790,6 @@ class KLMReader(Reader):
         2: Transition (No data)
         """
         return self.scans["scan_line_bit_field"][:] & 3
-
-    def _get_corrupt_mask(self):
-        """Get mask for corrupt scanlines."""
-        mask = ((self.scans["quality_indicator_bit_field"] >> 31) |
-                ((self.scans["quality_indicator_bit_field"] << 3) >> 31) |
-                ((self.scans["quality_indicator_bit_field"] << 4) >> 31))
-        return mask.astype(bool)
-
-    def get_qual_flags(self):
-        """Read quality flags."""
-        number_of_scans = self.scans["telemetry"].shape[0]
-        qual_flags = np.zeros((int(number_of_scans), 7))
-        qual_flags[:, 0] = self.scans["scan_line_number"]
-        qual_flags[:, 1] = (self.scans["quality_indicator_bit_field"] >> 31)
-        qual_flags[:, 2] = (
-            (self.scans["quality_indicator_bit_field"] << 3) >> 31)
-        qual_flags[:, 3] = (
-            (self.scans["quality_indicator_bit_field"] << 4) >> 31)
-        qual_flags[:, 4] = (
-            (self.scans["quality_indicator_bit_field"] << 24) >> 30)
-        qual_flags[:, 5] = (
-            (self.scans["quality_indicator_bit_field"] << 26) >> 30)
-        qual_flags[:, 6] = (
-            (self.scans["quality_indicator_bit_field"] << 28) >> 30)
-
-        return qual_flags
 
     def postproc(self, channels):
         """Apply KLM specific postprocessing.

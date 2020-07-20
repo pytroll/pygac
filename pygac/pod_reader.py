@@ -36,6 +36,11 @@ http://www.ncdc.noaa.gov/oa/pod-guide/ncdc/docs/podug/html/c3/sec3-1.htm
 
 import datetime
 import logging
+try:
+    from enum import IntFlag
+except ImportError:
+    # python version < 3.6, use a simple object without nice representation
+    IntFlag = object
 
 import numpy as np
 
@@ -44,6 +49,46 @@ from pygac.reader import Reader, ReaderError
 from pygac.utils import file_opener
 
 LOG = logging.getLogger(__name__)
+
+
+class POD_QualityIndicator(IntFlag):
+    """Quality Indicators.
+
+    Source:
+        POD guide Table 3.1.2.1-2. Format of quality indicators.
+    """
+    # POD guide Table 3.1.2.1-2. Format of quality indicators.
+    FATAL_FLAG = 2**0  # Data should not be used for product generation
+    TIME_ERROR = 2**1  # A time sequence error was detected while Processing
+    # this frame
+    DATA_GAP = 2**2  # A gap precedes this frame
+    DATA_JITTER = 2**3  # Resync occurred on this frame
+    CALIBRATION = 2**4  # Insufficient data for calibration
+    NO_EARTH_LOCATION = 2**5  # Earth location data not available
+    ASCEND_DESCEND = 2**6  # AVHRR Earth location indication of Ascending (=0)
+    # or descending (=1) data
+    PSEUDO_NOISE = 2**7  # Pseudo Noise (P/N) occurred (=1) on the frame,
+    # data not used for calibration computations
+    BIT_SYNC_STATUS = 2**8  # Drop lock during frame
+    SYNC_ERROR = 2**9  # Frame Sync word error greater than zero
+    FRAME_SYNC_LOCK = 2**10  # Frame Sync previously dropped lock
+    FLYWHEELING = 2**11  # Flywheeling detected during this frame
+    BIT_SLIPPAGE = 2**12  # Bit slippage detected during this frame
+    # Solar blackbody contamination indicator
+    # 0 = no correction
+    # 1 = solar contamination corrected
+    CH_3_CONTAMINATION = 2**13  # Channel 3 solar blackbody contamination
+    CH_4_CONTAMINATION = 2**14  # Channel 4 solar blackbody contamination
+    CH_5_CONTAMINATION = 2**15  # Channel 5 solar blackbody contamination
+    # TIP Parity
+    TIP_PARITY_1 = 2**16  # In first minor frame
+    TIP_PARITY_2 = 2**17  # In second minor frame
+    TIP_PARITY_3 = 2**18  # In third minor frame
+    TIP_PARITY_4 = 2**19  # In fourth minor frame
+    TIP_PARITY_5 = 2**20  # In fifth minor frame
+    # Note: 2**21 to 2**23, and 2**30 to 2**31 are spare bits. 2**24 to 2**29 define
+    #       "SYNC ERRORS - Number of bit errors in frame sync" (6 bit integer?)
+
 
 # common header
 header0 = np.dtype([("noaa_spacecraft_identification_code", ">u1"),
@@ -186,6 +231,9 @@ class PODReader(Reader):
                         }
 
     tsm_affected_intervals = TSM_AFFECTED_INTERVALS_POD
+
+    QFlag = POD_QualityIndicator
+    _quality_indicators_key = "quality_indicators"
 
     def correct_scan_line_numbers(self):
         """Correct the scan line numbers."""
@@ -478,27 +526,6 @@ class PODReader(Reader):
         space_counts[:, 2] = np.mean(decode_tele[:, 56:102:5], axis=1)
 
         return prt_counts, ict_counts, space_counts
-
-    def _get_corrupt_mask(self):
-        """Get mask for corrupt scanlines."""
-        mask = ((self.scans["quality_indicators"] >> 31) |
-                ((self.scans["quality_indicators"] << 4) >> 31) |
-                ((self.scans["quality_indicators"] << 5) >> 31))
-        return mask.astype(bool)
-
-    def get_qual_flags(self):
-        """Read quality flags."""
-        number_of_scans = self.scans["telemetry"].shape[0]
-        qual_flags = np.zeros((int(number_of_scans), 7))
-        qual_flags[:, 0] = self.scans["scan_line_number"]
-        qual_flags[:, 1] = (self.scans["quality_indicators"] >> 31)
-        qual_flags[:, 2] = ((self.scans["quality_indicators"] << 4) >> 31)
-        qual_flags[:, 3] = ((self.scans["quality_indicators"] << 5) >> 31)
-        qual_flags[:, 4] = ((self.scans["quality_indicators"] << 13) >> 31)
-        qual_flags[:, 5] = ((self.scans["quality_indicators"] << 14) >> 31)
-        qual_flags[:, 6] = ((self.scans["quality_indicators"] << 15) >> 31)
-
-        return qual_flags
 
     def postproc(self, channels):
         """No POD specific postprocessing to be done."""

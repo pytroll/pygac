@@ -642,10 +642,34 @@ class Reader(six.with_metaclass(ABCMeta)):
             self._mask = self._get_corrupt_mask()
         return self._mask
 
-    @abstractmethod
-    def _get_corrupt_mask(self):
-        """KLM/POD specific readout of corrupt scanline mask."""
-        raise NotImplementedError
+    def _get_corrupt_mask(self, flags=None):
+        """Readout of corrupt scanline mask.
+
+        Args:
+            flags (QFlag.flag): An "ORed" bitmask that defines corrupt values.
+                                Defauts to (QFlag.FATAL_FLAG | QFlag.CALIBRATION
+                                | QFlag.NO_EARTH_LOCATION)
+
+        Note:
+            The Quality flags mapping (QFlag) is KLM/POD specific.
+        """
+        QFlag = self.QFlag
+        if flags is None:
+            flags = QFlag.FATAL_FLAG | QFlag.CALIBRATION | QFlag.NO_EARTH_LOCATION
+        return (self.scans[self._quality_indicators_key] & int(flags)).astype(bool)
+
+    def get_qual_flags(self):
+        """Read quality flags."""
+        number_of_scans = self.scans["telemetry"].shape[0]
+        qual_flags = np.zeros((int(number_of_scans), 7))
+        qual_flags[:, 0] = self.scans["scan_line_number"]
+        qual_flags[:, 1] = self._get_corrupt_mask(flags=self.QFlag.FATAL_FLAG)
+        qual_flags[:, 2] = self._get_corrupt_mask(flags=self.QFlag.CALIBRATION)
+        qual_flags[:, 3] = self._get_corrupt_mask(flags=self.QFlag.NO_EARTH_LOCATION)
+        qual_flags[:, 4] = self._get_corrupt_mask(flags=self.QFlag.CH_3_CONTAMINATION)
+        qual_flags[:, 5] = self._get_corrupt_mask(flags=self.QFlag.CH_4_CONTAMINATION)
+        qual_flags[:, 6] = self._get_corrupt_mask(flags=self.QFlag.CH_5_CONTAMINATION)
+        return qual_flags
 
     @abstractmethod
     def postproc(self, channels):
