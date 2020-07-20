@@ -182,6 +182,26 @@ class TestKLM(unittest.TestCase):
                                        CalledWithArray(ch4),
                                        CalledWithArray(ch5))
 
+    def test_quality_indicators(self):
+        """Test the quality indicator unpacking."""
+        reader = self.reader
+        QFlag = reader.QFlag
+        quality_indicators = np.array([
+            0,  # nothing flagged
+            -1,  # everything flagged
+            QFlag.CALIBRATION | QFlag.NO_EARTH_LOCATION,
+            QFlag.TIME_ERROR | QFlag.DATA_GAP,
+            QFlag.FATAL_FLAG
+        ], dtype=np.uint32)
+        reader.scans = {self.reader._quality_indicators_key: quality_indicators}
+        # test mask, i.e. QFlag.FATAL_FLAG | QFlag.CALIBRATION | QFlag.NO_EARTH_LOCATION
+        expected_mask = np.array([False, True, True, False, True], dtype=bool)
+        numpy.testing.assert_array_equal(reader.mask, expected_mask)
+        # test individual flags
+        self.assertTrue(reader._get_corrupt_mask(flags=QFlag.FATAL_FLAG).any())
+        # count the occurence (everything flagged and last entrance => 2)
+        self.assertEqual(reader._get_corrupt_mask(flags=QFlag.FATAL_FLAG).sum(), 2)
+
 
 if __name__ == '__main__':
     unittest.main()

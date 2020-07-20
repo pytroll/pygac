@@ -52,7 +52,7 @@ LOG = logging.getLogger(__name__)
 
 
 class POD_QualityIndicator(IntFlag):
-    """Quality Indicators
+    """Quality Indicators.
 
     Source:
         POD guide Table 3.1.2.1-2. Format of quality indicators.
@@ -86,6 +86,8 @@ class POD_QualityIndicator(IntFlag):
     TIP_PARITY_3 = 2**18  # In third minor frame
     TIP_PARITY_4 = 2**19  # In fourth minor frame
     TIP_PARITY_5 = 2**20  # In fifth minor frame
+    # Note: 2**21 to 2**23, and 2**30 to 2**31 are spare bits. 2**24 to 2**29 define
+    #       "SYNC ERRORS - Number of bit errors in frame sync" (6 bit integer?)
 
 
 # common header

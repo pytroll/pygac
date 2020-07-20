@@ -49,7 +49,7 @@ LOG = logging.getLogger(__name__)
 
 
 class KLM_QualityIndicator(IntFlag):
-    """Quality Indicators
+    """Quality Indicators.
 
     Source:
         KLM guide
@@ -79,18 +79,18 @@ class KLM_QualityIndicator(IntFlag):
     SYNC_INVALID = 2**10  # Frame sync word not valid
     FLYWHEELING = 2**10  # Flywheeling detected during this frame
     BIT_SLIPPAGE = 2**11  # Bit slippage detected during this frame
+    # Note: 2**12 to 2**22 are not defined for KLMs
     TIP_PARITY = 2**23  # TIP parity error detected
-    # Reflected Sunlight (RS) detected
+    # Reflected Sunlight (RS) detected (solar blackbody contamination)
     CH_3B_RS = 2**24
+    CH_3_CONTAMINATION = 2**24  # POD compatible alias
     CH_3B_RS_ANOMALY = 2**25
     CH_4_RS = 2**26
+    CH_4_CONTAMINATION = 2**26  # POD compatible alias
     CH_4_RS_ANOMALY = 2**27
     CH_5_RS = 2**28
+    CH_5_CONTAMINATION = 2**28  # POD compatible alias
     CH_5_RS_ANOMALY = 2**29
-    # using same name as for POD
-    CH_3_CONTAMINATION = 2**24  # Channel 3 solar blackbody contamination
-    CH_4_CONTAMINATION = 2**26  # Channel 4 solar blackbody contamination
-    CH_5_CONTAMINATION = 2**28  # Channel 5 solar blackbody contamination
     DATA_JITTER = 2**30  # Resync occurred on this frame
     PSEUDO_NOISE = 2**31  # Pseudo noise occurred on this frame
 
