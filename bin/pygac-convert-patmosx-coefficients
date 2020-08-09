@@ -19,7 +19,7 @@
 
 """Convert PATMOS-x calibration file tarballs to PyGAC calibration json format.
 
-The official tarballs are availible on the PATMOS-x webpage "https://cimss.ssec.wisc.edu/patmosx/avhrr_cal.html".
+The official tarballs are available on the PATMOS-x webpage "https://cimss.ssec.wisc.edu/patmosx/avhrr_cal.html".
 """
 
 import argparse
