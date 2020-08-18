@@ -60,7 +60,7 @@ class TestGacReader(unittest.TestCase):
     def test__read_scanlines(self):
         """Test the scanline extraction."""
         self.reader.scanline_type = np.dtype([
-            ('a', 'S2'), ('b', 'i4')])
+            ('a', 'S2'), ('b', '<i4')])
         # request more scan lines than available
         with self.assertWarnsRegex(RuntimeWarning,
                                    "Unexpected number of scanlines!"):
