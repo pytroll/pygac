@@ -433,8 +433,9 @@ class PODReader(Reader):
             LOG.info("Adjusting for clock drift of %s to %s",
                      str(min(offsets)),
                      str(max(offsets)))
-            self.times = (self.utcs +
-                          offsets.astype('timedelta64[s]')).astype(datetime.datetime)
+            self.times = (
+                self.utcs + (1000*offsets).astype('timedelta64[ms]')
+            ).astype(datetime.datetime)
             offsets *= -2
 
             int_offsets = np.floor(offsets).astype(np.int)
