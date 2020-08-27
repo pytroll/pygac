@@ -443,13 +443,14 @@ class PODReader(Reader):
             line_indices = (self.scans["scan_line_number"]
                             + int_offsets)
 
-            missed = sorted((set(line_indices) |
-                             set(line_indices + 1))
-                            - set(self.scans["scan_line_number"]))
+            missed = sorted(
+                (set(range(line_indices.min(), self.scans["scan_line_number"].max() + 1))
+                 | set(line_indices + 1))
+                - set(self.scans["scan_line_number"])
+            )
 
             min_idx = min(line_indices)
-            max_idx = max(max(line_indices),
-                          max(self.scans["scan_line_number"] - min_idx)) + 1
+            max_idx = max(line_indices.max(), self.scans["scan_line_number"].max()) + 1
             idx_len = max_idx - min_idx + 2
 
             complete_lons = np.full((idx_len, self.lats.shape[1]), np.nan,
