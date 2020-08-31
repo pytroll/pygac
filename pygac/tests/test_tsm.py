@@ -20,7 +20,9 @@
 
 """Test TSM module."""
 
-
+import sys
+if sys.version_info < (3,):
+    from __future__ import division
 import unittest
 import pygac.correct_tsm_issue as tsm
 
