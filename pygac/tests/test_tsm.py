@@ -66,26 +66,26 @@ class TSMTest(unittest.TestCase):
         numpy.testing.assert_array_equal(idx[0], noise_rows_exp.ravel())
         numpy.testing.assert_array_equal(idx[1], noise_cols_exp.ravel())
 
-    def test_mean_filter(self):
-        """Test gridbox mean filter."""
+    def test_std_filter(self):
+        """Test standard deviation filter."""
         # Define test data
-        data = np.array(
-            [[1, 2, 2, 1],
-             [2, np.nan, np.nan, 1],
-             [1, 1, 2, 2],
-             [2, 2, 1, np.nan]]
-        )
+        data = np.array([
+            [2., 2., 2., 2.],
+            [2., np.nan, np.nan, 2.],
+            [np.nan, 3., 3., np.nan],
+            [3., 2., 2., 3.],
+        ])
 
         # Define reference
-        filtered_ref = np.array(
-            [[5/3., 7/4., 6/4., 4/3.],
-             [7/5., 11/7., 11/7., 8/5.],
-             [8/5., 11/7., 9/6., 6/4.],
-             [6/4., 9/6., 8/5., 5/3.]]
-        )
+        filtered_ref = np.sqrt(np.array([
+            [0., 0., 0., 0.],
+            [0.1875, 2/9, 2/9, 0.1875],
+            [0.25, 0.25, 0.25, 0.25],
+            [2/9, 0.24, 0.24, 2/9]
+        ]))
 
-        # Apply mean and compare results against reference
-        filtered = tsm.mean_filter(data=data, box_size=3, fill_value=-999)
+        # Apply filter and compare results against reference
+        filtered = tsm.std_filter(data=data, box_size=3)
         numpy.testing.assert_array_equal(filtered, filtered_ref)
 
 
