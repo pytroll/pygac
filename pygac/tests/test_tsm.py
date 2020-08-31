@@ -20,9 +20,6 @@
 
 """Test TSM module."""
 
-import sys
-if sys.version_info < (3,):
-    from __future__ import division
 import unittest
 import pygac.correct_tsm_issue as tsm
 
@@ -81,9 +78,9 @@ class TSMTest(unittest.TestCase):
         # Define reference
         filtered_ref = np.sqrt(np.array([
             [0., 0., 0., 0.],
-            [0.1875, 2/9, 2/9, 0.1875],
+            [0.1875, 2./9., 2./9., 0.1875],
             [0.25, 0.25, 0.25, 0.25],
-            [2/9, 0.24, 0.24, 2/9]
+            [2./9., 0.24, 0.24, 2./9.]
         ]))
 
         # Apply filter and compare results against reference
