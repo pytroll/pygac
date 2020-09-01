@@ -121,11 +121,15 @@ class Reader(six.with_metaclass(ABCMeta)):
         self.utcs = None
         self.lats = None
         self.lons = None
-        self.times = None
         self.tle_lines = None
         self.filename = None
         self._mask = None
 
+    @property
+    def times(self):
+        """The UTCs as datetime.datetime"""
+        return self.to_datetime(self.utcs)
+        
     @property
     def filename(self):
         """Get the property 'filename'."""
@@ -418,9 +422,6 @@ class Reader(six.with_metaclass(ABCMeta)):
             self.utcs = self.to_datetime64(year=year, jday=jday, msec=msec)
             self.correct_times_thresh()
 
-            # Convert timestamps to datetime objects
-            self.times = self.to_datetime(self.utcs)
-
         return self.utcs
 
     @staticmethod
@@ -436,8 +437,8 @@ class Reader(six.with_metaclass(ABCMeta)):
             numpy.datetime64: Converted timestamps
 
         """
-        return (((year - 1970).astype('datetime64[Y]')
-                 + (jday - 1).astype('timedelta64[D]')).astype('datetime64[ms]')
+        return (year.astype(str).astype('datetime64[Y]')
+                + (jday - 1).astype('timedelta64[D]')
                 + msec.astype('timedelta64[ms]'))
 
     @staticmethod
@@ -558,10 +559,11 @@ class Reader(six.with_metaclass(ABCMeta)):
     def get_calibrated_channels(self):
         """Calibrate and return the channels."""
         channels = self.get_counts()
+        times = self.times
         self.get_times()
         self.update_meta_data()
-        year = self.times[0].year
-        delta = self.times[0].date() - datetime.date(year, 1, 1)
+        year = times[0].year
+        delta = times[0].date() - datetime.date(year, 1, 1)
         jday = delta.days + 1
 
         corr = self.meta_data['sun_earth_distance_correction_factor']
@@ -731,7 +733,7 @@ class Reader(six.with_metaclass(ABCMeta)):
             return self.tle_lines
         self.get_times()
         tle_data = self.read_tle_file(self.get_tle_file())
-        sdate = np.datetime64(self.times[0], '[ms]')
+        sdate = self.utcs[0]
         dates = self.tle2datetime64(
             np.array([float(line[18:32]) for line in tle_data[::2]]))
 
@@ -790,18 +792,19 @@ class Reader(six.with_metaclass(ABCMeta)):
         self.get_times()
         self.get_lonlat()
         tle1, tle2 = self.get_tle_lines()
+        times = self.times
         orb = Orbital(self.spacecrafts_orbital[self.spacecraft_id],
                       line1=tle1, line2=tle2)
 
-        sat_azi, sat_elev = orb.get_observer_look(self.times[:, np.newaxis],
+        sat_azi, sat_elev = orb.get_observer_look(times[:, np.newaxis],
                                                   self.lons, self.lats, 0)
 
         sat_zenith = 90 - sat_elev
 
-        sun_zenith = astronomy.sun_zenith_angle(self.times[:, np.newaxis],
+        sun_zenith = astronomy.sun_zenith_angle(times[:, np.newaxis],
                                                 self.lons, self.lats)
 
-        alt, sun_azi = astronomy.get_alt_az(self.times[:, np.newaxis],
+        alt, sun_azi = astronomy.get_alt_az(times[:, np.newaxis],
                                             self.lons, self.lats)
         del alt
         sun_azi = np.rad2deg(sun_azi)
@@ -1071,8 +1074,7 @@ class Reader(six.with_metaclass(ABCMeta)):
 
         """
         self.get_times()
-        ts = self.times[0]
-        te = self.times[-1]
+        ts, te = self.to_datetime(self.utcs[[0, -1]])
         try:
             for interval in self.tsm_affected_intervals[self.spacecraft_id]:
                 if ts >= interval[0] and te <= interval[1]:
