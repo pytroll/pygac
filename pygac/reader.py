@@ -130,7 +130,7 @@ class Reader(six.with_metaclass(ABCMeta)):
     def times(self):
         """The UTCs as datetime.datetime"""
         return self.to_datetime(self.utcs)
-        
+
     @property
     def filename(self):
         """Get the property 'filename'."""
