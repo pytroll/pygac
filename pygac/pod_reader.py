@@ -506,8 +506,9 @@ class PODReader(Reader):
 
             missed_lons, missed_lats = pos_time[:2]
 
-            missed_lons = lons.reshape(-1, width)
-            missed_lats = lats.reshape(-1, width)
+            pixels_per_line = self.lats.shape[1]
+            missed_lons = lons.reshape(-1, pixels_per_line)
+            missed_lats = lats.reshape(-1, pixels_per_line)
 
             # end: compute lonlat
             #####################
@@ -518,9 +519,9 @@ class PODReader(Reader):
         # create arrays of lats and lons for interpolation. The locations
         # correspond to not yet corrected utcs, i.e. the difference from
         # one line to the other should be
-        complete_lons = np.full((num_lines, self.lats.shape[1]), np.nan,
+        complete_lons = np.full((num_lines, pixels_per_line), np.nan,
                                 dtype=np.float)
-        complete_lats = np.full((num_lines, self.lats.shape[1]), np.nan,
+        complete_lats = np.full((num_lines, pixels_per_line), np.nan,
                                 dtype=np.float)
 
         complete_lons[scan_lines - min_idx] = self.lons
