@@ -436,8 +436,8 @@ class PODReader(Reader):
         missed_lons, missed_lats = pos_time[:2]
 
         pixels_per_line = self.lats.shape[1]
-        missed_lons = lons.reshape(-1, pixels_per_line)
-        missed_lats = lats.reshape(-1, pixels_per_line)
+        missed_lons = missed_lons.reshape(-1, pixels_per_line)
+        missed_lats = missed_lats.reshape(-1, pixels_per_line)
 
         toc = datetime.datetime.now()
         LOG.warning("Computation of geolocation: %s", str(toc - tic))
@@ -486,7 +486,7 @@ class PODReader(Reader):
                        + self.utcs[0])
         # calculate the missing geo locations
         try:
-            missed_lons, missed_lats = self._compute_missing_lonlat()
+            missed_lons, missed_lats = self._compute_missing_lonlat(missed_utcs)
         except IndexError as err:
             LOG.warning('Cannot perform clock drift correction: %s', str(err))
             return
@@ -500,17 +500,17 @@ class PODReader(Reader):
         complete_lats = np.full((num_lines, pixels_per_line), np.nan,
                                 dtype=np.float)
 
-        complete_lons[scan_lines - min_idx] = self.lons
-        complete_lats[scan_lines - min_idx] = self.lats
-        complete_lons[missed_lines - min_idx] = missed_lons
-        complete_lats[missed_lines - min_idx] = missed_lats
+        complete_lons[scan_lines - min_line] = self.lons
+        complete_lats[scan_lines - min_line] = self.lats
+        complete_lons[missed_lines - min_line] = missed_lons
+        complete_lats[missed_lines - min_line] = missed_lats
 
         # perform the slerp interpolation to the corrected utc times
         slerp_t = shifted_lines - shifted_lines_floor  # in [0, 1)
-        slerp_res = slerp(complete_lons[shifted_lines_floor - min_idx, :],
-                          complete_lats[shifted_lines_floor - min_idx, :],
-                          complete_lons[shifted_lines_floor - min_idx + 1, :],
-                          complete_lats[shifted_lines_floor - min_idx + 1, :],
+        slerp_res = slerp(complete_lons[shifted_lines_floor - min_line, :],
+                          complete_lats[shifted_lines_floor - min_line, :],
+                          complete_lons[shifted_lines_floor - min_line + 1, :],
+                          complete_lats[shifted_lines_floor - min_line + 1, :],
                           slerp_t[:, np.newaxis, np.newaxis])
 
         # set corrected values
