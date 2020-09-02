@@ -804,7 +804,7 @@ class KLMReader(Reader):
 
     def _adjust_clock_drift(self):
         """Clock drift correction is only applied to POD satellites."""
-        pass
+        LOG.info("No clock drift info available for %s", self.spacecraft_name)
 
     def get_tsm_pixels(self, channels):
         """Determine pixels affected by the scan motor issue.
