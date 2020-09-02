@@ -417,6 +417,33 @@ class PODReader(Reader):
     def _get_times(self):
         return self.decode_timestamps(self.scans["time_code"])
 
+    def _compute_missing_lonlat(self, missed_utcs):
+        """compute lon lat values using pyorbital"""
+        tic = datetime.datetime.now()
+
+        # TODO: Are we sure all satellites have this scan width in degrees ?
+        # TODO: Does this also work for LAC?
+        sgeom = avhrr_gac(missed_utcs.astype(datetime.datetime),
+                          self.scan_points, 55.385)
+        t0 = missed_utcs[0].astype(datetime.datetime)
+        s_times = sgeom.times(t0)
+        tle1, tle2 = self.get_tle_lines()
+
+        rpy = self.get_attitude_coeffs()
+        pixels_pos = compute_pixels((tle1, tle2), sgeom, s_times, rpy)
+        pos_time = get_lonlatalt(pixels_pos, s_times)
+
+        missed_lons, missed_lats = pos_time[:2]
+
+        pixels_per_line = self.lats.shape[1]
+        missed_lons = lons.reshape(-1, pixels_per_line)
+        missed_lats = lats.reshape(-1, pixels_per_line)
+
+        toc = datetime.datetime.now()
+        LOG.warning("Computation of geolocation: %s", str(toc - tic))
+
+        return missed_lons, missed_lats
+
     def _adjust_clock_drift(self):
         """Adjust the geolocation to compensate for the clock error."""
         tic = datetime.datetime.now()
@@ -454,71 +481,20 @@ class PODReader(Reader):
         min_line = min(scan_lines.min(), shifted_lines_floor.min())
         max_line = max(scan_lines.max(), shifted_lines_floor.max()+1)
         num_lines = max_line - min_line + 1
-        missed_lines = np.setdiff1d(np.arange(min_line, max_line+1),
-                                    scan_lines)
+        missed_lines = np.setdiff1d(np.arange(min_line, max_line+1), scan_lines)
         missed_utcs = ((missed_lines - scan_lines[0])*np.timedelta64(scan_rate, "ms")
                        + self.utcs[0])
-
+        # calculate the missing geo locations
         try:
-            #####################
-            # begin: compute lonlat
-            # input missed utcs
-            # output missed lons and lats
-            # TODO: export into separate method
-
-            _tic = datetime.datetime.now()
-
-            # other methods could be interessted in attitude too
-            # get_attitude -> should become a routine or property of Reader
-            if "constant_yaw_attitude_error" in self.head.dtype.fields:
-                rpy = np.deg2rad([self.head["constant_roll_attitude_error"] / 1e3,
-                                  self.head["constant_pitch_attitude_error"] / 1e3,
-                                  self.head["constant_yaw_attitude_error"] / 1e3])
-            else:
-                try:
-                    # This needs to be checked thoroughly first
-                    # rpy_spacecraft = rpy_coeffs[self.spacecraft_name]
-                    # rpy = [rpy_spacecraft['roll'],
-                    #        rpy_spacecraft['pitch'],
-                    #        rpy_spacecraft['yaw']]
-                    # LOG.debug("Using static attitude correction")
-                    raise KeyError
-                except KeyError:
-                    LOG.debug("Not applying attitude correction")
-                    rpy = [0, 0, 0]
-
-            LOG.info("Using rpy: %s", str(rpy))
-
-            # TODO: Are we sure all satellites have this scan width in degrees ?
-            # TODO: Does this also work for LAC?
-            sgeom = avhrr_gac(missed_utcs.astype(datetime.datetime),
-                              self.scan_points, 55.385)
-            t0 = missed_utcs[0].astype(datetime.datetime)
-            s_times = sgeom.times(t0)
-            tle1, tle2 = self.get_tle_lines()
-
-            pixels_pos = compute_pixels((tle1, tle2), sgeom, s_times, rpy)
-            pos_time = get_lonlatalt(pixels_pos, s_times)
-
-            _toc = datetime.datetime.now()
-
-            LOG.warning("Computation of geolocation: %s", str(_toc - _tic))
-
-            missed_lons, missed_lats = pos_time[:2]
-
-            pixels_per_line = self.lats.shape[1]
-            missed_lons = lons.reshape(-1, pixels_per_line)
-            missed_lats = lats.reshape(-1, pixels_per_line)
-
-            # end: compute lonlat
-            #####################
-        except:
+            missed_lons, missed_lats = self._compute_missing_lonlat()
+        except IndexError as err:
             LOG.warning('Cannot perform clock drift correction: %s', str(err))
             return
 
-        # create arrays of lats and lons for interpolation. The locations
-        # correspond to not yet corrected utcs, i.e. the difference from
-        # one line to the other should be
+        # create arrays of lons and lats for interpolation. The locations
+        # correspond to not yet corrected utcs, i.e. the time difference from
+        # one line to the other should be equal to the scan rate.
+        pixels_per_line = self.lats.shape[1]
         complete_lons = np.full((num_lines, pixels_per_line), np.nan,
                                 dtype=np.float)
         complete_lats = np.full((num_lines, pixels_per_line), np.nan,
@@ -530,7 +506,7 @@ class PODReader(Reader):
         complete_lats[missed_lines - min_idx] = missed_lats
 
         # perform the slerp interpolation to the corrected utc times
-        slerp_t = shifted_lines - shifted_lines_floor
+        slerp_t = shifted_lines - shifted_lines_floor  # in [0, 1)
         slerp_res = slerp(complete_lons[shifted_lines_floor - min_idx, :],
                           complete_lats[shifted_lines_floor - min_idx, :],
                           complete_lons[shifted_lines_floor - min_idx + 1, :],

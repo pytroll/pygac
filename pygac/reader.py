@@ -124,6 +124,7 @@ class Reader(six.with_metaclass(ABCMeta)):
         self.tle_lines = None
         self.filename = None
         self._mask = None
+        self._rpy = None
 
     @property
     def times(self):
@@ -1066,6 +1067,29 @@ class Reader(six.with_metaclass(ABCMeta)):
         Channel selection is POD/KLM specific.
         """
         raise NotImplementedError
+
+    def get_attitude_coeffs(self):
+        """Return the roll, pitch, yaw values"""
+        if self._rpy is None:
+            if "constant_yaw_attitude_error" in self.head.dtype.fields:
+                rpy = np.deg2rad([self.head["constant_roll_attitude_error"] / 1e3,
+                                  self.head["constant_pitch_attitude_error"] / 1e3,
+                                  self.head["constant_yaw_attitude_error"] / 1e3])
+            else:
+                try:
+                    # This needs to be checked thoroughly first
+                    # rpy_spacecraft = rpy_coeffs[self.spacecraft_name]
+                    # rpy = np.array([rpy_spacecraft['roll'],
+                    #                 rpy_spacecraft['pitch'],
+                    #                 rpy_spacecraft['yaw']])
+                    # LOG.debug("Using static attitude correction")
+                    raise KeyError
+                except KeyError:
+                    LOG.debug("Not applying attitude correction")
+                    rpy = np.zeros(3)
+            LOG.info("Using rpy: %s", str(rpy))
+            self._rpy = rpy
+        return self._rpy
 
 
 def inherit_doc(cls):
