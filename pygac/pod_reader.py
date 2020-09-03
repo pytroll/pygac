@@ -421,10 +421,9 @@ class PODReader(Reader):
         """compute lon lat values using pyorbital"""
         tic = datetime.datetime.now()
 
-        # TODO: Are we sure all satellites have this scan width in degrees ?
-        # TODO: Does this also work for LAC?
+        scan_rate = datetime.timedelta(milliseconds=1/self.scan_freq).total_seconds()
         sgeom = avhrr_gac(missed_utcs.astype(datetime.datetime),
-                          self.scan_points, 55.385)
+                          self.scan_points, frequency=scan_rate)
         t0 = missed_utcs[0].astype(datetime.datetime)
         s_times = sgeom.times(t0)
         tle1, tle2 = self.get_tle_lines()
@@ -467,8 +466,8 @@ class PODReader(Reader):
 
         # For the interpolation of geolocations, we need to prepend/append
         # lines. The conversion from offset to line numbers is given by the
-        # scan rate of 0.5 seconds per line.
-        scan_rate = datetime.timedelta(seconds=0.5)
+        # scan rate = 1/scan frequency.
+        scan_rate = datetime.timedelta(milliseconds=1/self.scan_freq)
         offset_lines = offsets / scan_rate.total_seconds()
 
         # To avoid trouble with missing lines, we will construct an
