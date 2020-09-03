@@ -475,7 +475,7 @@ class PODReader(Reader):
         # array that covers the whole interpolation range.
         scan_lines = self.scans["scan_line_number"]
         shifted_lines = scan_lines - offset_lines
-        shifted_lines_floor = shifted_lines.floor().astype(int)
+        shifted_lines_floor = np.floor(shifted_lines).astype(int)
         # compute the line range, note that the max requires a "+1"
         # to cover the interpolation range because of the floor.
         min_line = min(scan_lines.min(), shifted_lines_floor.min())
