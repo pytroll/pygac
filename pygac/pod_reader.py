@@ -484,11 +484,7 @@ class PODReader(Reader):
         missed_utcs = ((missed_lines - scan_lines[0])*np.timedelta64(scan_rate, "ms")
                        + self.utcs[0])
         # calculate the missing geo locations
-        try:
-            missed_lons, missed_lats = self._compute_missing_lonlat(missed_utcs)
-        except IndexError as err:
-            LOG.warning('Cannot perform clock drift correction: %s', str(err))
-            return
+        missed_lons, missed_lats = self._compute_missing_lonlat(missed_utcs)
 
         # create arrays of lons and lats for interpolation. The locations
         # correspond to not yet corrected utcs, i.e. the time difference from
