@@ -727,9 +727,10 @@ class Reader(six.with_metaclass(ABCMeta)):
         """Get satellite angles using lat/lon from data to approximate satellite postition instead of TLE."""
         from pyorbital.orbital import get_observer_look as get_observer_look_no_tle
         sat_alt = 850.0  # km  TIROS-N OSCAR
+        mid_column = int(0.5*self.lons.shape[1])
         sat_azi, sat_elev = get_observer_look_no_tle(
-            self.lons[:, 204][:, np.newaxis],
-            self.lats[:, 204][:, np.newaxis],  # approximate satellite position
+            self.lons[:, mid_column][:, np.newaxis],
+            self.lats[:, mid_column][:, np.newaxis],  # approximate satellite position
             sat_alt,  # approximate satellite altitude
             self.times[:, np.newaxis],
             self.lons, self.lats, 0)
