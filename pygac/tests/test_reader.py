@@ -240,7 +240,6 @@ class TestGacReader(unittest.TestCase):
 
         for utcs, scanline in zip((utcs1, utcs2), (scanline1, scanline2)):
             self.reader.utcs = utcs
-            self.reader.times = utcs.astype(datetime.datetime)
             self.assertEqual(self.reader.get_midnight_scanline(), scanline,
                              msg='Incorrect midnight scanline')
 
@@ -289,7 +288,7 @@ class TestGacReader(unittest.TestCase):
 
         read_tle_file.return_value = tle_data
         for time, tle_idx in expected.items():
-            self.reader.times = [time]
+            self.reader.utcs = np.array([time], dtype='datetime64[ms]')
             self.reader.tle_lines = None
             if tle_idx is None:
                 self.assertRaises(IndexError, self.reader.get_tle_lines)
@@ -318,7 +317,6 @@ class TestGacReader(unittest.TestCase):
              315754371969]).astype('datetime64[ms]')
         self.reader.spacecrafts_orbital = {25: 'tiros n'}
         self.reader.spacecraft_id = 25
-        self.reader.times = self.reader.to_datetime(self.reader.utcs)
         expected_sat_azi = np.array(
             [-76.90, 11.08, 145.33, -50.01, np.nan])[:, np.newaxis]
         expected_sun_azi = np.array(
@@ -423,7 +421,6 @@ class TestGacReader(unittest.TestCase):
         self.reader.utcs = np.array([315748035469, 315748359969,
                                      315751135469, 315754371969,
                                      315754371969]).astype('datetime64[ms]')
-        self.reader.times = self.reader.to_datetime(self.reader.utcs)
         corr = self.reader.get_sun_earth_distance_correction()
         numpy.testing.assert_almost_equal(corr, 0.96660494, decimal=7)
 

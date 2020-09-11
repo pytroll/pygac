@@ -121,10 +121,15 @@ class Reader(six.with_metaclass(ABCMeta)):
         self.utcs = None
         self.lats = None
         self.lons = None
-        self.times = None
         self.tle_lines = None
         self.filename = None
         self._mask = None
+        self._rpy = None
+
+    @property
+    def times(self):
+        """The UTCs as datetime.datetime"""
+        return self.to_datetime(self.utcs)
 
     @property
     def filename(self):
@@ -418,9 +423,6 @@ class Reader(six.with_metaclass(ABCMeta)):
             self.utcs = self.to_datetime64(year=year, jday=jday, msec=msec)
             self.correct_times_thresh()
 
-            # Convert timestamps to datetime objects
-            self.times = self.to_datetime(self.utcs)
-
         return self.utcs
 
     @staticmethod
@@ -436,8 +438,8 @@ class Reader(six.with_metaclass(ABCMeta)):
             numpy.datetime64: Converted timestamps
 
         """
-        return (((year - 1970).astype('datetime64[Y]')
-                 + (jday - 1).astype('timedelta64[D]')).astype('datetime64[ms]')
+        return (year.astype(str).astype('datetime64[Y]')
+                + (jday - 1).astype('timedelta64[D]')
                 + msec.astype('timedelta64[ms]'))
 
     @staticmethod
@@ -468,74 +470,6 @@ class Reader(six.with_metaclass(ABCMeta)):
         """
         return (scan_line_number - 1) / self.scan_freq
 
-    def compute_lonlat(self, width, utcs=None, clock_drift_adjust=True):
-        """Compute lat/lon coordinates.
-
-        Args:
-            width: Number of coordinates per scanlines
-            utcs: Scanline timestamps
-            clock_drift_adjust: If True, adjust clock drift.
-
-        """
-        if utcs is None:
-            utcs = self.get_times()
-
-        # adjusting clock for drift
-        tic = datetime.datetime.now()
-        if clock_drift_adjust:
-            from pygac.clock_offsets_converter import get_offsets
-            try:
-                offset_times, clock_error = get_offsets(self.spacecraft_name)
-            except KeyError:
-                LOG.info("No clock drift info available for %s",
-                         self.spacecraft_name)
-            else:
-                offset_times = np.array(offset_times, dtype='datetime64[ms]')
-                offsets = np.interp(utcs.astype(np.uint64),
-                                    offset_times.astype(np.uint64),
-                                    clock_error)
-                utcs = utcs - (offsets * 1000).astype('timedelta64[ms]')
-
-        t = utcs[0].astype(datetime.datetime)
-
-        if "constant_yaw_attitude_error" in self.head.dtype.fields:
-            rpy = np.deg2rad([self.head["constant_roll_attitude_error"] / 1e3,
-                              self.head["constant_pitch_attitude_error"] / 1e3,
-                              self.head["constant_yaw_attitude_error"] / 1e3])
-        else:
-            try:
-                # This needs to be checked thoroughly first
-                # rpy_spacecraft = rpy_coeffs[self.spacecraft_name]
-                # rpy = [rpy_spacecraft['roll'],
-                #        rpy_spacecraft['pitch'],
-                #        rpy_spacecraft['yaw']]
-                # LOG.debug("Using static attitude correction")
-                raise KeyError
-            except KeyError:
-                LOG.debug("Not applying attitude correction")
-                rpy = [0, 0, 0]
-
-        LOG.info("Using rpy: %s", str(rpy))
-
-        from pyorbital.geoloc_instrument_definitions import avhrr_gac
-        from pyorbital.geoloc import compute_pixels, get_lonlatalt
-        # TODO: Are we sure all satellites have this scan width in degrees ?
-        sgeom = avhrr_gac(utcs.astype(datetime.datetime),
-                          self.scan_points, 55.385)
-        s_times = sgeom.times(t)
-        tle1, tle2 = self.get_tle_lines()
-
-        pixels_pos = compute_pixels((tle1, tle2), sgeom, s_times, rpy)
-        pos_time = get_lonlatalt(pixels_pos, s_times)
-
-        toc = datetime.datetime.now()
-
-        LOG.warning("Computation of geolocation: %s", str(toc - tic))
-
-        lons, lats = pos_time[:2]
-
-        return lons.reshape(-1, width), lats.reshape(-1, width)
-
     def get_sun_earth_distance_correction(self):
         """Get the julian day and the sun-earth distance correction."""
         self.get_times()
@@ -558,10 +492,11 @@ class Reader(six.with_metaclass(ABCMeta)):
     def get_calibrated_channels(self):
         """Calibrate and return the channels."""
         channels = self.get_counts()
+        times = self.times
         self.get_times()
         self.update_meta_data()
-        year = self.times[0].year
-        delta = self.times[0].date() - datetime.date(year, 1, 1)
+        year = times[0].year
+        delta = times[0].date() - datetime.date(year, 1, 1)
         jday = delta.days + 1
 
         corr = self.meta_data['sun_earth_distance_correction_factor']
@@ -731,7 +666,7 @@ class Reader(six.with_metaclass(ABCMeta)):
             return self.tle_lines
         self.get_times()
         tle_data = self.read_tle_file(self.get_tle_file())
-        sdate = np.datetime64(self.times[0], '[ms]')
+        sdate = self.utcs[0]
         dates = self.tle2datetime64(
             np.array([float(line[18:32]) for line in tle_data[::2]]))
 
@@ -790,18 +725,19 @@ class Reader(six.with_metaclass(ABCMeta)):
         self.get_times()
         self.get_lonlat()
         tle1, tle2 = self.get_tle_lines()
+        times = self.times
         orb = Orbital(self.spacecrafts_orbital[self.spacecraft_id],
                       line1=tle1, line2=tle2)
 
-        sat_azi, sat_elev = orb.get_observer_look(self.times[:, np.newaxis],
+        sat_azi, sat_elev = orb.get_observer_look(times[:, np.newaxis],
                                                   self.lons, self.lats, 0)
 
         sat_zenith = 90 - sat_elev
 
-        sun_zenith = astronomy.sun_zenith_angle(self.times[:, np.newaxis],
+        sun_zenith = astronomy.sun_zenith_angle(times[:, np.newaxis],
                                                 self.lons, self.lats)
 
-        alt, sun_azi = astronomy.get_alt_az(self.times[:, np.newaxis],
+        alt, sun_azi = astronomy.get_alt_az(times[:, np.newaxis],
                                             self.lons, self.lats)
         del alt
         sun_azi = np.rad2deg(sun_azi)
@@ -1071,8 +1007,7 @@ class Reader(six.with_metaclass(ABCMeta)):
 
         """
         self.get_times()
-        ts = self.times[0]
-        te = self.times[-1]
+        ts, te = self.to_datetime(self.utcs[[0, -1]])
         try:
             for interval in self.tsm_affected_intervals[self.spacecraft_id]:
                 if ts >= interval[0] and te <= interval[1]:
@@ -1132,6 +1067,29 @@ class Reader(six.with_metaclass(ABCMeta)):
         Channel selection is POD/KLM specific.
         """
         raise NotImplementedError
+
+    def get_attitude_coeffs(self):
+        """Return the roll, pitch, yaw values"""
+        if self._rpy is None:
+            if "constant_yaw_attitude_error" in self.head.dtype.fields:
+                rpy = np.deg2rad([self.head["constant_roll_attitude_error"] / 1e3,
+                                  self.head["constant_pitch_attitude_error"] / 1e3,
+                                  self.head["constant_yaw_attitude_error"] / 1e3])
+            else:
+                try:
+                    # This needs to be checked thoroughly first
+                    # rpy_spacecraft = rpy_coeffs[self.spacecraft_name]
+                    # rpy = np.array([rpy_spacecraft['roll'],
+                    #                 rpy_spacecraft['pitch'],
+                    #                 rpy_spacecraft['yaw']])
+                    # LOG.debug("Using static attitude correction")
+                    raise KeyError
+                except KeyError:
+                    LOG.debug("Not applying attitude correction")
+                    rpy = np.zeros(3)
+            LOG.info("Using rpy: %s", str(rpy))
+            self._rpy = rpy
+        return self._rpy
 
 
 def inherit_doc(cls):

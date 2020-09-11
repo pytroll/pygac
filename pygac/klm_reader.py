@@ -803,7 +803,11 @@ class KLMReader(Reader):
         channels[:, :, 3][switch == 2] = np.nan
 
     def _adjust_clock_drift(self):
-        """Clock drift correction is only applied to POD satellites."""
+        """Adjust the geolocation to compensate for the clock error.
+        Note:
+            Clock drift correction is only applied to POD satellites.
+            On the KLM series, the clock is updated daily.
+        """
         pass
 
     def get_tsm_pixels(self, channels):
