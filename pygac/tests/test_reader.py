@@ -397,7 +397,7 @@ class TestGacReader(unittest.TestCase):
             def get(self, section, option, **kwargs):
                 if option == 'tledir':
                     return 'path/to/TLEs'
-                elif option == 'tlename':
+                if option == 'tlename':
                     return 'tle_file.txt'
         get_config.return_value = MockConfigParser()
         tle_file = self.reader.get_tle_file()
