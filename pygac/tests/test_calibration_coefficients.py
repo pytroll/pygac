@@ -22,6 +22,7 @@
 """Test function for the calibration coeffictions handling.
 """
 
+from collections import defaultdict
 import sys
 import unittest
 try:
@@ -176,6 +177,28 @@ class TestCalibrationCoefficientsHandling(unittest.TestCase):
             calibrate_solar(counts, channel, year, jday, cal, corr=corr)
         # check that the version is set in this case
         self.assertIsNotNone(cal.version)
+
+    def test_default_coeffs(self):
+        """Test identification of default coefficients."""
+        _, version = Calibrator.read_coeffs(None)
+        self.assertIsNotNone(version)
+
+    def test_read_coeffs_warnings(self):
+        """Test warnings issued by Calibrator.read_coeffs."""
+        version_dicts = [
+            # Non-nominal coefficients
+            {'name': 'v123',
+             'status': 'provisional'},
+            # Unknown coefficients
+            {'name': None,
+             'status': None}
+        ]
+        with mock.patch.object(Calibrator, 'version_hashs') as version_hashs:
+            for version_dict in version_dicts:
+                version_hashs.get.return_value = version_dict
+                with self.assertWarns(RuntimeWarning):
+                    Calibrator.read_coeffs(None)
+
 
 def suite():
     """The suite for test_slerp

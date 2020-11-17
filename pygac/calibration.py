@@ -47,8 +47,14 @@ class Calibrator(object):
         default_coeffs: dictonary containing default values for all spacecrafts
     """
     version_hashs = {
-        '963af9b66268475ed500ad7b37da33c5': 'PATMOS-x, v2017r1',  # version information
-        '87ae8f270e63d17178b0e764c5869f4f': 'PATMOS-x, v2017r1, with provisional coefficients for MetOp-C'
+        '963af9b66268475ed500ad7b37da33c5': {
+            'name': 'PATMOS-x, v2017r1',
+            'status': 'nominal'
+        },
+        '87ae8f270e63d17178b0e764c5869f4f': {
+            'name': 'PATMOS-x, v2017r1, with provisional coefficients for MetOp-C',
+            'status': 'provisional'
+        }
     }
     fields = [
         "dark_count", "gain_switch", "s0", "s1", "s2", "b",  # "b0", "b1", "b2",
@@ -157,13 +163,23 @@ class Calibrator(object):
             content = json_file.read()
             md5_hash = hashlib.md5(content)
             digest = md5_hash.hexdigest()
-            version = cls.version_hashs.get(digest)
+            version_dict = cls.version_hashs.get(
+                digest,
+                {'name': None, 'status': None}
+            )
+            version = version_dict['name']
+            status = version_dict['status']
             if version is None:
                 warning = "Unknown calibration coefficients version!"
                 warnings.warn(warning, RuntimeWarning)
                 LOG.warning(warning)
             else:
-                LOG.info('Identified calibration coefficients version "%s".', version)
+                LOG.info('Identified calibration coefficients version "%s".',
+                         version)
+                if status != 'nominal':
+                    warning = 'Using {} calibration coefficients'.format(status)
+                    warnings.warn(warning, RuntimeWarning)
+                    LOG.warning(warning)
             coeffs = json.loads(content)
         return coeffs, version
 
