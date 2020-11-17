@@ -616,6 +616,7 @@ class KLMReader(Reader):
                         8: 'noaa19',
                         12: 'metopa',
                         11: 'metopb',
+                        13: 'metopc',
                         }
     spacecrafts_orbital = {4: 'noaa 15',
                            2: 'noaa 16',
@@ -624,6 +625,7 @@ class KLMReader(Reader):
                            8: 'noaa 19',
                            12: 'metop 02',
                            11: 'metop 01',
+                           13: 'metop 03',
                            }
 
     tsm_affected_intervals = TSM_AFFECTED_INTERVALS_KLM

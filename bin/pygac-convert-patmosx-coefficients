@@ -109,7 +109,7 @@ class PatmosxReader:
 
 class Translator:
     """Translate PATMOS-x coefficients to PyGAC format."""
-    sat_names = {"m01": "metopb", "m02": "metopa", "n05": "tirosn"}
+    sat_names = {"m01": "metopb", "m02": "metopa", "n05": "tirosn", "m03": "metopc"}
     sat_names.update({"n{0:02d}".format(i): "noaa{0}".format(i) for i in range(6,20)})
     description = {
         "visible": {

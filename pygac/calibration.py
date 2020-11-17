@@ -24,6 +24,7 @@
 """Calibration coefficients and generic calibration functions
 """
 from __future__ import division
+from enum import Enum
 import sys
 import logging
 import numpy as np
@@ -38,6 +39,13 @@ from pkg_resources import resource_filename
 LOG = logging.getLogger(__name__)
 
 
+class CoeffStatus(Enum):
+    """Indicates the status of calibration coefficients."""
+    NOMINAL = 'nominal'
+    PROVISIONAL = 'provisional'
+    EXPERIMENTAL = 'experimental'
+
+
 class Calibrator(object):
     """Factory class to create namedtuples holding the calibration coefficients.
 
@@ -47,7 +55,14 @@ class Calibrator(object):
         default_coeffs: dictonary containing default values for all spacecrafts
     """
     version_hashs = {
-        '963af9b66268475ed500ad7b37da33c5': 'PATMOS-x, v2017r1'  # version information
+        '963af9b66268475ed500ad7b37da33c5': {
+            'name': 'PATMOS-x, v2017r1',
+            'status': CoeffStatus.NOMINAL
+        },
+        '87ae8f270e63d17178b0e764c5869f4f': {
+            'name': 'PATMOS-x, v2017r1, with provisional coefficients for MetOp-C',
+            'status': CoeffStatus.PROVISIONAL
+        }
     }
     fields = [
         "dark_count", "gain_switch", "s0", "s1", "s2", "b",  # "b0", "b1", "b2",
@@ -154,17 +169,33 @@ class Calibrator(object):
             coeffs_file = resource_filename('pygac', 'data/calibration.json')
         with open(coeffs_file, mode='rb') as json_file:
             content = json_file.read()
-            md5_hash = hashlib.md5(content)
-            digest = md5_hash.hexdigest()
-            version = cls.version_hashs.get(digest)
-            if version is None:
-                warning = "Unknown calibration coefficients version!"
+            coeffs = json.loads(content)
+            version = cls._get_coeffs_version(content)
+        return coeffs, version
+
+    @classmethod
+    def _get_coeffs_version(cls, coeff_file_content):
+        """Determine coefficient version."""
+        md5_hash = hashlib.md5(coeff_file_content)
+        digest = md5_hash.hexdigest()
+        version_dict = cls.version_hashs.get(
+            digest,
+            {'name': None, 'status': None}
+        )
+        version = version_dict['name']
+        status = version_dict['status']
+        if version is None:
+            warning = "Unknown calibration coefficients version!"
+            warnings.warn(warning, RuntimeWarning)
+            LOG.warning(warning)
+        else:
+            LOG.info('Identified calibration coefficients version "%s".',
+                     version)
+            if status != CoeffStatus.NOMINAL:
+                warning = 'Using {} calibration coefficients'.format(status)
                 warnings.warn(warning, RuntimeWarning)
                 LOG.warning(warning)
-            else:
-                LOG.info('Identified calibration coefficients version "%s".', version)
-            coeffs = json.loads(content)
-        return coeffs, version
+        return version
 
     @staticmethod
     def date2float(date, decimals=5):

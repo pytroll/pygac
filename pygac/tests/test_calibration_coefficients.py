@@ -30,7 +30,7 @@ except ImportError:
     from unittest import mock
 import numpy as np
 
-from pygac.calibration import Calibrator, calibrate_solar
+from pygac.calibration import Calibrator, calibrate_solar, CoeffStatus
 
 # dummy user json file including only noaa19 data with changed channel 1 coefficients
 user_json_file = b"""{
@@ -176,6 +176,29 @@ class TestCalibrationCoefficientsHandling(unittest.TestCase):
             calibrate_solar(counts, channel, year, jday, cal, corr=corr)
         # check that the version is set in this case
         self.assertIsNotNone(cal.version)
+
+    def test_default_coeffs(self):
+        """Test identification of default coefficients."""
+        _, version = Calibrator.read_coeffs(None)
+        self.assertIsNotNone(version)
+
+    @unittest.skipIf(sys.version_info.major < 3, "Skipped in python2!")
+    def test_read_coeffs_warnings(self):
+        """Test warnings issued by Calibrator.read_coeffs."""
+        version_dicts = [
+            # Non-nominal coefficients
+            {'name': 'v123',
+             'status': CoeffStatus.PROVISIONAL},
+            # Unknown coefficients
+            {'name': None,
+             'status': None}
+        ]
+        with mock.patch.object(Calibrator, 'version_hashs') as version_hashs:
+            for version_dict in version_dicts:
+                version_hashs.get.return_value = version_dict
+                with self.assertWarns(RuntimeWarning):
+                    Calibrator.read_coeffs(None)
+
 
 def suite():
     """The suite for test_slerp

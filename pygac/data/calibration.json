@@ -197,6 +197,85 @@
             "d4": 0.0
         }
     },
+    "metopc": {
+        "channel_1": {
+            "dark_count": 40.41,
+            "gain_switch": 498.68,
+            "s0": 0.10699999999916181,
+            "s1": 0.0,
+            "s2": -0.0
+        },
+        "channel_2": {
+            "dark_count": 40.94,
+            "gain_switch": 500.01,
+            "s0": 0.10633333333441988,
+            "s1": 0.0,
+            "s2": -0.0
+        },
+        "channel_3a": {
+            "dark_count": 40.57,
+            "gain_switch": 498.72,
+            "s0": 0.1032,
+            "s1": 0.0,
+            "s2": -0.0
+        },
+        "channel_3b": {
+            "b0": 0.0,
+            "b1": 0.0,
+            "b2": 0.0,
+            "centroid_wavenumber": 2707.6457,
+            "space_radiance": 0.0,
+            "to_eff_blackbody_intercept": 1.7824614096281413,
+            "to_eff_blackbody_slope": 0.9976376937050757
+        },
+        "channel_4": {
+            "b0": 6.58,
+            "b1": -0.13203,
+            "b2": 0.00065922,
+            "centroid_wavenumber": 931.89092,
+            "space_radiance": -6.27,
+            "to_eff_blackbody_intercept": 0.5647288036150199,
+            "to_eff_blackbody_slope": 0.9984918778676688
+        },
+        "channel_5": {
+            "b0": 3.23,
+            "b1": -0.05692,
+            "b2": 0.00024963,
+            "centroid_wavenumber": 832.69445,
+            "space_radiance": -2.55,
+            "to_eff_blackbody_intercept": 0.391621708386672,
+            "to_eff_blackbody_slope": 0.9988509218994469
+        },
+        "date_of_launch": "2018-11-06T18:54:35.423996Z",
+        "thermometer_1": {
+            "d0": 276.5862,
+            "d1": 0.051051,
+            "d2": 1.474208e-06,
+            "d3": 0.0,
+            "d4": 0.0
+        },
+        "thermometer_2": {
+            "d0": 276.6136,
+            "d1": 0.051029,
+            "d2": 1.472138e-06,
+            "d3": 0.0,
+            "d4": 0.0
+        },
+        "thermometer_3": {
+            "d0": 276.5975,
+            "d1": 0.051065,
+            "d2": 1.469268e-06,
+            "d3": 0.0,
+            "d4": 0.0
+        },
+        "thermometer_4": {
+            "d0": 276.4595,
+            "d1": 0.05099,
+            "d2": 1.506223e-06,
+            "d3": 0.0,
+            "d4": 0.0
+        }
+    },
     "noaa10": {
         "channel_1": {
             "dark_count": 39.44,
@@ -1304,3 +1383,4 @@
         }
     }
 }
+
