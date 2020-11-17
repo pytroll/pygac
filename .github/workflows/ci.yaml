@@ -43,10 +43,10 @@ jobs:
       - name: Run unit tests
         shell: bash -l {0}
         run: |
-          coverage run --source=pygac setup.py test
+          pytest --cov=pygac --cov-report=xml pygac
 
       - name: Upload unittest coverage
-        uses: coverallsapp/github-action@master
+        uses: codecov/codecov-action@v1
         with:
-          path-to-lcov: .coverage
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          file: ./coverage.xml
+          env_vars: OS,PYTHON_VERSION
