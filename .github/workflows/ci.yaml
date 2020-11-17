@@ -12,10 +12,6 @@ jobs:
         os: ["ubuntu-latest"]
         python-version: ["3.7", "3.8"]
         experimental: [false]
-        include:
-          - python-version: "3.8"
-            os: "ubuntu-latest"
-            experimental: true
 
     env:
       PYTHON_VERSION: ${{ matrix.python-version }}
