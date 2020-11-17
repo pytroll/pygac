@@ -24,7 +24,6 @@
 """Test the GAC KLM reader.
 """
 
-import os
 import datetime as dt
 import numpy as np
 import numpy.testing
