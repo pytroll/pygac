@@ -1,24 +1,24 @@
-#language: python
-#python:
-#  - "2.7_with_system_site_packages"
-#  - "3.7"
-## command to install dependencies, e.g.
-#install:
-#  - pip install -r requirements.txt
-#  - pip install .
-#  - pip install coveralls
-## command to run tests, e.g. python setup.py test
-#env: PYGAC_CONFIG_FILE=etc/pygac.cfg.template
-#script: coverage run --source=pygac setup.py test
-#before_install:
-#  - sudo apt-get install -qq python-numpy python-h5py python-scipy libhdf5-serial-dev
-#after_success: coveralls
-#deploy:
-#  provider: pypi
-#  user: adybbroe
-#  password:
-#    secure: FznD38SHxuj1RoFXUqLstF//O3+pypF84hCOHO8A3Poa+ygh7X4a+9aimCeiuY9d+5tbE0ZlyG7LMcCOFA3JCvH7lUChmQbbn3pcFvJdJzzYQgxYNfvCL9YtjRF/n648bVdpN265hm07rmOe7DHbysw4q8hMlxtUH87MYctRg90=
-#  on:
-#    tags: true
-#    repo: pytroll/pygac
-#    branch: master
+language: python
+python:
+  - "2.7_with_system_site_packages"
+  - "3.7"
+# command to install dependencies, e.g.
+install:
+  - pip install -r requirements.txt
+  - pip install .
+  - pip install coveralls
+# command to run tests, e.g. python setup.py test
+env: PYGAC_CONFIG_FILE=etc/pygac.cfg.template
+script: coverage run --source=pygac setup.py test
+before_install:
+  - sudo apt-get install -qq python-numpy python-h5py python-scipy libhdf5-serial-dev
+after_success: coveralls
+deploy:
+  provider: pypi
+  user: adybbroe
+  password:
+    secure: FznD38SHxuj1RoFXUqLstF//O3+pypF84hCOHO8A3Poa+ygh7X4a+9aimCeiuY9d+5tbE0ZlyG7LMcCOFA3JCvH7lUChmQbbn3pcFvJdJzzYQgxYNfvCL9YtjRF/n648bVdpN265hm07rmOe7DHbysw4q8hMlxtUH87MYctRg90=
+  on:
+    tags: true
+    repo: pytroll/pygac
+    branch: master

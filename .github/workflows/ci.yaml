@@ -43,7 +43,8 @@ jobs:
       - name: Run unit tests
         shell: bash -l {0}
         run: |
-          pytest --cov=pygac --cov-report=xml pygac
+          coverage run --source=pygac setup.py test
+          coverage xml
 
       - name: Upload unittest coverage
         uses: codecov/codecov-action@v1
