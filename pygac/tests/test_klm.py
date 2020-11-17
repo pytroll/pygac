@@ -28,6 +28,7 @@ import datetime as dt
 import numpy as np
 import numpy.testing
 import unittest
+import subprocess as sp
 import sys
 try:
     from unittest import mock
