@@ -46,6 +46,6 @@ jobs:
           coverage run --source=pygac setup.py test
       - name: Upload unittest coverage
         uses: coverallsapp/github-action@master
-        path-to-lcov: .coverage
         with:
+          path-to-lcov: .coverage
           github-token: ${{ secrets.GITHUB_TOKEN }}
