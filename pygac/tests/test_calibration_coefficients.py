@@ -182,6 +182,7 @@ class TestCalibrationCoefficientsHandling(unittest.TestCase):
         _, version = Calibrator.read_coeffs(None)
         self.assertIsNotNone(version)
 
+    @unittest.skipIf(sys.version_info.major < 3, "Skipped in python2!")
     def test_read_coeffs_warnings(self):
         """Test warnings issued by Calibrator.read_coeffs."""
         version_dicts = [
