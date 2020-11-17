@@ -24,6 +24,7 @@
 """Calibration coefficients and generic calibration functions
 """
 from __future__ import division
+from enum import Enum
 import sys
 import logging
 import numpy as np
@@ -38,6 +39,13 @@ from pkg_resources import resource_filename
 LOG = logging.getLogger(__name__)
 
 
+class CoeffStatus(Enum):
+    """Indicates the status of calibration coefficients."""
+    NOMINAL = 'nominal'
+    PROVISIONAL = 'provisional'
+    EXPERIMENTAL = 'experimental'
+
+
 class Calibrator(object):
     """Factory class to create namedtuples holding the calibration coefficients.
 
@@ -49,11 +57,11 @@ class Calibrator(object):
     version_hashs = {
         '963af9b66268475ed500ad7b37da33c5': {
             'name': 'PATMOS-x, v2017r1',
-            'status': 'nominal'
+            'status': CoeffStatus.NOMINAL
         },
         '87ae8f270e63d17178b0e764c5869f4f': {
             'name': 'PATMOS-x, v2017r1, with provisional coefficients for MetOp-C',
-            'status': 'provisional'
+            'status': CoeffStatus.PROVISIONAL
         }
     }
     fields = [
@@ -183,7 +191,7 @@ class Calibrator(object):
         else:
             LOG.info('Identified calibration coefficients version "%s".',
                      version)
-            if status != 'nominal':
+            if status != CoeffStatus.NOMINAL:
                 warning = 'Using {} calibration coefficients'.format(status)
                 warnings.warn(warning, RuntimeWarning)
                 LOG.warning(warning)

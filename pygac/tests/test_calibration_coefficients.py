@@ -30,7 +30,7 @@ except ImportError:
     from unittest import mock
 import numpy as np
 
-from pygac.calibration import Calibrator, calibrate_solar
+from pygac.calibration import Calibrator, calibrate_solar, CoeffStatus
 
 # dummy user json file including only noaa19 data with changed channel 1 coefficients
 user_json_file = b"""{
@@ -188,7 +188,7 @@ class TestCalibrationCoefficientsHandling(unittest.TestCase):
         version_dicts = [
             # Non-nominal coefficients
             {'name': 'v123',
-             'status': 'provisional'},
+             'status': CoeffStatus.PROVISIONAL},
             # Unknown coefficients
             {'name': None,
              'status': None}
