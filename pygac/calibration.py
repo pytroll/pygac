@@ -161,27 +161,33 @@ class Calibrator(object):
             coeffs_file = resource_filename('pygac', 'data/calibration.json')
         with open(coeffs_file, mode='rb') as json_file:
             content = json_file.read()
-            md5_hash = hashlib.md5(content)
-            digest = md5_hash.hexdigest()
-            version_dict = cls.version_hashs.get(
-                digest,
-                {'name': None, 'status': None}
-            )
-            version = version_dict['name']
-            status = version_dict['status']
-            if version is None:
-                warning = "Unknown calibration coefficients version!"
+            coeffs = json.loads(content)
+            version = cls._get_coeffs_version(content)
+        return coeffs, version
+
+    @classmethod
+    def _get_coeffs_version(cls, coeff_file_content):
+        """Determine coefficient version."""
+        md5_hash = hashlib.md5(coeff_file_content)
+        digest = md5_hash.hexdigest()
+        version_dict = cls.version_hashs.get(
+            digest,
+            {'name': None, 'status': None}
+        )
+        version = version_dict['name']
+        status = version_dict['status']
+        if version is None:
+            warning = "Unknown calibration coefficients version!"
+            warnings.warn(warning, RuntimeWarning)
+            LOG.warning(warning)
+        else:
+            LOG.info('Identified calibration coefficients version "%s".',
+                     version)
+            if status != 'nominal':
+                warning = 'Using {} calibration coefficients'.format(status)
                 warnings.warn(warning, RuntimeWarning)
                 LOG.warning(warning)
-            else:
-                LOG.info('Identified calibration coefficients version "%s".',
-                         version)
-                if status != 'nominal':
-                    warning = 'Using {} calibration coefficients'.format(status)
-                    warnings.warn(warning, RuntimeWarning)
-                    LOG.warning(warning)
-            coeffs = json.loads(content)
-        return coeffs, version
+        return version
 
     @staticmethod
     def date2float(date, decimals=5):
