@@ -1,6 +1,6 @@
 name: test-environment
 channels:
-  - conda-forge,defaults
+  - conda-forge
 dependencies:
   - numpy
   - scipy
