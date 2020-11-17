@@ -1,0 +1,19 @@
+name: pygac
+channels:
+  - conda-forge
+dependencies:
+  - numpy
+  - scipy
+  - bottleneck
+  - python-dateutil
+  - hdf5
+  - h5py
+  - coveralls
+  - pip
+  - pip:
+    - docutils
+    - pyorbital
+    - python-geotiepoints
+    - trollimage
+    - pyspectral
+    - pyorbital
