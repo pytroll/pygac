@@ -167,5 +167,13 @@ class TestKLM(unittest.TestCase):
         self.assertEqual(reader._get_corrupt_mask(flags=QFlag.FATAL_FLAG).sum(), 2)
 
 
+def suite():
+    """Test suite for test_pod."""
+    loader = unittest.TestLoader()
+    mysuite = unittest.TestSuite()
+    mysuite.addTest(loader.loadTestsFromTestCase(TestKLM))
+    return mysuite
+
+
 if __name__ == '__main__':
     unittest.main()
