@@ -22,7 +22,6 @@
 """Test function for the calibration coeffictions handling.
 """
 
-from collections import defaultdict
 import sys
 import unittest
 try:
