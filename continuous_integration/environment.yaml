@@ -1,6 +1,6 @@
-name: pygac
+name: test-environment
 channels:
-  - conda-forge
+  - conda-forge,defaults
 dependencies:
   - numpy
   - scipy

@@ -34,7 +34,7 @@ jobs:
           mamba-version: "*"
           channels: conda-forge,defaults
           environment-file: continuous_integration/environment.yaml
-          activate-environment: pygac
+          activate-environment: test-environment
 
       - name: Install pygac
         shell: bash -l {0}
@@ -46,5 +46,6 @@ jobs:
           coverage run --source=pygac setup.py test
       - name: Upload unittest coverage
         uses: coverallsapp/github-action@master
+        path-to-lcov: .coverage
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
