@@ -174,7 +174,7 @@ class TestPOD(unittest.TestCase):
         # default mask is QFlag.FATAL_FLAG | QFlag.CALIBRATION | QFlag.NO_EARTH_LOCATION
         expected_mask = np.array([False, True, True, False], dtype=bool)
         numpy.testing.assert_array_equal(reader.mask, expected_mask)
-        
+
         # test individual flags
         expected_mask = np.array([False, False, False, True], dtype=bool)
         numpy.testing.assert_array_equal(
