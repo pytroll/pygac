@@ -66,33 +66,33 @@ class KLM_QualityIndicator(IntFlag):
         Table 8.3.1.3.3.2-1. and Table 8.3.1.4.3.2-1. define bit: 21 as
         "flywheeling detected during this frame"
     """
-    FATAL_FLAG = 2**0  # Data should not be used for product generation
-    TIME_ERROR = 2**1  # Time sequence error detected within this scan
-    DATA_GAP = 2**2  # Data gap precedes this scan
-    CALIBRATION = 2**3  # Insufficient data for calibration
-    NO_EARTH_LOCATION = 2**4  # Earth location data not available
-    CLOCK_UPDATE = 2**5  # First good time following a clock update (nominally 0)
-    INSTRUMENT_CHANGE = 2**6  # Instrument status changed with this scan
-    BIT_SYNC_STATUS = 2**7  # Sync lock dropped during this frame
-    SYNC_ERROR = 2**8  # Frame sync word error greater than zero
-    FRAME_SYNC_LOCK = 2**9  # Frame sync previously dropped lock
-    SYNC_INVALID = 2**10  # Frame sync word not valid
-    FLYWHEELING = 2**10  # Flywheeling detected during this frame
-    BIT_SLIPPAGE = 2**11  # Bit slippage detected during this frame
-    # Note: 2**12 to 2**22 are not defined for KLMs
-    TIP_PARITY = 2**23  # TIP parity error detected
+    FATAL_FLAG = 2**31  # Data should not be used for product generation
+    TIME_ERROR = 2**30  # Time sequence error detected within this scan
+    DATA_GAP = 2**29  # Data gap precedes this scan
+    CALIBRATION = 2**28  # Insufficient data for calibration
+    NO_EARTH_LOCATION = 2**27  # Earth location data not available
+    CLOCK_UPDATE = 2**26  # First good time following a clock update (nominally 0)
+    INSTRUMENT_CHANGE = 2**25  # Instrument status changed with this scan
+    BIT_SYNC_STATUS = 2**24  # Sync lock dropped during this frame
+    SYNC_ERROR = 2**23  # Frame sync word error greater than zero
+    FRAME_SYNC_LOCK = 2**22  # Frame sync previously dropped lock
+    SYNC_INVALID = 2**21  # Frame sync word not valid
+    FLYWHEELING = 2**21  # Flywheeling detected during this frame
+    BIT_SLIPPAGE = 2**20  # Bit slippage detected during this frame
+    # Note: Bit 19 - 9 are not defined for KLMs
+    TIP_PARITY = 2**8  # TIP parity error detected
     # Reflected Sunlight (RS) detected (solar blackbody contamination)
-    CH_3B_RS = 2**24
-    CH_3_CONTAMINATION = 2**24  # POD compatible alias
-    CH_3B_RS_ANOMALY = 2**25
-    CH_4_RS = 2**26
-    CH_4_CONTAMINATION = 2**26  # POD compatible alias
-    CH_4_RS_ANOMALY = 2**27
-    CH_5_RS = 2**28
-    CH_5_CONTAMINATION = 2**28  # POD compatible alias
-    CH_5_RS_ANOMALY = 2**29
-    DATA_JITTER = 2**30  # Resync occurred on this frame
-    PSEUDO_NOISE = 2**31  # Pseudo noise occurred on this frame
+    CH_3B_RS = 2**7
+    CH_3_CONTAMINATION = 2**7  # POD compatible alias
+    CH_3B_RS_ANOMALY = 2**6
+    CH_4_RS = 2**5
+    CH_4_CONTAMINATION = 2**5  # POD compatible alias
+    CH_4_RS_ANOMALY = 2**4
+    CH_5_RS = 2**3
+    CH_5_CONTAMINATION = 2**3  # POD compatible alias
+    CH_5_RS_ANOMALY = 2**2
+    DATA_JITTER = 2**1  # Resync occurred on this frame
+    PSEUDO_NOISE = 2**0  # Pseudo noise occurred on this frame
 
 
 # GAC header object
