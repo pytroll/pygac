@@ -155,7 +155,7 @@ class TestPOD(unittest.TestCase):
         QFlag = reader.QFlag
         quality_indicators = np.array([
             1,  # 00...001
-            QFlag.FATAL_FLAG,
+            QFlag.FATAL_FLAG,  # 100...00
             QFlag.CALIBRATION | QFlag.NO_EARTH_LOCATION,
             QFlag.TIME_ERROR | QFlag.DATA_GAP,
         ], dtype='>u4')
@@ -166,7 +166,7 @@ class TestPOD(unittest.TestCase):
         self.assertEqual(bits[0][-1], 1)  # the last bit is filled
         # The fatal flag fills only the first bit
         self.assertEqual(bits[1].sum(), 1)  # only one bit is filled
-        self.assertEqual(bits[1][0], 1)  # only one bit is filled
+        self.assertEqual(bits[1][0], 1)  # the first bit is filled
 
         # setup reader and test
         reader.scans = {self.reader._quality_indicators_key: quality_indicators}
