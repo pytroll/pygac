@@ -83,14 +83,14 @@ class KLM_QualityIndicator(IntFlag):
     TIP_PARITY = 2**8  # TIP parity error detected
     # Reflected Sunlight (RS) detected (solar blackbody contamination)
     CH_3B_RS = 2**7
-    CH_3_CONTAMINATION = 2**7  # POD compatible alias
     CH_3B_RS_ANOMALY = 2**6
+    CH_3_CONTAMINATION = CH_3B_RS | CH_3B_RS_ANOMALY  # POD compatible alias
     CH_4_RS = 2**5
-    CH_4_CONTAMINATION = 2**5  # POD compatible alias
     CH_4_RS_ANOMALY = 2**4
+    CH_4_CONTAMINATION = CH_4_RS | CH_4_RS_ANOMALY  # POD compatible alias
     CH_5_RS = 2**3
-    CH_5_CONTAMINATION = 2**3  # POD compatible alias
     CH_5_RS_ANOMALY = 2**2
+    CH_5_CONTAMINATION = CH_5_RS | CH_5_RS_ANOMALY  # POD compatible alias
     DATA_JITTER = 2**1  # Resync occurred on this frame
     PSEUDO_NOISE = 2**0  # Pseudo noise occurred on this frame
 
