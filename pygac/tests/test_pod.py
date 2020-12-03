@@ -154,20 +154,40 @@ class TestPOD(unittest.TestCase):
         reader = self.reader
         QFlag = reader.QFlag
         quality_indicators = np.array([
-            0,  # nothing flagged
-            -1,  # everything flagged
+            1,  # 00...001
+            QFlag.FATAL_FLAG,  # 100...00
             QFlag.CALIBRATION | QFlag.NO_EARTH_LOCATION,
             QFlag.TIME_ERROR | QFlag.DATA_GAP,
-            QFlag.FATAL_FLAG
-        ], dtype=np.uint32)
+        ], dtype='>u4')
+        # check if the bits look as expected
+        bits = np.unpackbits(quality_indicators.view(np.uint8)).reshape((-1, 32))
+        # For a big endian integer, the number 1 fills only the last of the 32 bits
+        self.assertEqual(bits[0].sum(), 1)  # only one bit is filled
+        self.assertEqual(bits[0][-1], 1)  # the last bit is filled
+        # The fatal flag fills only the first bit
+        self.assertEqual(bits[1].sum(), 1)  # only one bit is filled
+        self.assertEqual(bits[1][0], 1)  # the first bit is filled
+
+        # setup reader and test
         reader.scans = {self.reader._quality_indicators_key: quality_indicators}
-        # test mask, i.e. QFlag.FATAL_FLAG | QFlag.CALIBRATION | QFlag.NO_EARTH_LOCATION
-        expected_mask = np.array([False, True, True, False, True], dtype=bool)
+
+        # default mask is QFlag.FATAL_FLAG | QFlag.CALIBRATION | QFlag.NO_EARTH_LOCATION
+        expected_mask = np.array([False, True, True, False], dtype=bool)
         numpy.testing.assert_array_equal(reader.mask, expected_mask)
+
         # test individual flags
-        self.assertTrue(reader._get_corrupt_mask(flags=QFlag.FATAL_FLAG).any())
-        # count the occurence (everything flagged and last entrance => 2)
-        self.assertEqual(reader._get_corrupt_mask(flags=QFlag.FATAL_FLAG).sum(), 2)
+        expected_mask = np.array([False, False, False, True], dtype=bool)
+        numpy.testing.assert_array_equal(
+            reader._get_corrupt_mask(flags=QFlag.TIME_ERROR),
+            expected_mask
+        )
+        # test combination of flags
+        expected_mask = np.array([False, False, True, True], dtype=bool)
+        flags = QFlag.DATA_GAP | QFlag.NO_EARTH_LOCATION
+        numpy.testing.assert_array_equal(
+            reader._get_corrupt_mask(flags=flags),
+            expected_mask
+        )
 
     @mock.patch('pygac.pod_reader.get_lonlatalt')
     @mock.patch('pygac.pod_reader.compute_pixels')
