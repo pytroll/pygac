@@ -56,16 +56,19 @@ def _file_opener(file):
         file - path to file or file object
     """
     close = False
+    exit = False
     # open file if necessary
     if is_file_object(file):
         open_file = file
     elif hasattr(file, 'open'):
+        try:
+            _open_file = file.open(mode='rb')
+        except TypeError:
+            _open_file = file.open()
         # use __enter__ to set the fileobject into context, this
         # is needed to access the actual file object in fsspec
-        try:
-            open_file = file.open(mode='rb').__enter__()
-        except TypeError:
-            open_file = file.open().__enter__()
+        open_file = _open_file.__enter__()
+        exit = True
     else:
         open_file = open(file, mode='rb')
         close = True
@@ -82,7 +85,9 @@ def _file_opener(file):
         yield file_object
     finally:
         if close:
-            file_object.close()
+            open_file.close()
+        if exit:
+            _open_file.__exit__(None, None, None)
 
 
 @contextmanager

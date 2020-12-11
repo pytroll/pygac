@@ -104,13 +104,13 @@ class TestUtils(unittest.TestCase):
         class RawBytes(os.PathLike):
             def __init__(self, filename, raw_bytes):
                 self.filename = str(filename)
-                self.file_object = io.BytesIO(raw_bytes)
+                self.raw_bytes = raw_bytes
 
             def __fspath__(self):
                 return self.filename
 
             def open(self):
-                return self.file_object
+                return io.BytesIO(self.raw_bytes)
 
         filename = '/path/to/file'
         file_bytes = b'TestTestTest'
@@ -118,6 +118,19 @@ class TestUtils(unittest.TestCase):
         with file_opener(test_pathlike) as f:
             content = f.read()
         self.assertEqual(content, file_bytes)
+        
+        # test with lazy loading open method (open only in context)
+        class RawBytesLazy(RawBytes):
+            def open(self):
+                self.lazy_opener_mock = mock.MagicMock()
+                self.lazy_opener_mock.__enter__.return_value = io.BytesIO(self.raw_bytes)
+                return self.lazy_opener_mock
+            
+        test_pathlike = RawBytesLazy(filename, file_bytes)
+        with file_opener(test_pathlike) as f:
+            content = f.read()
+        self.assertEqual(content, file_bytes)
+        test_pathlike.lazy_opener_mock.__exit__.assert_called_once_with(None, None, None)
 
     def test_calculate_sun_earth_distance_correction(self):
         """Test function for the sun distance corretction."""
