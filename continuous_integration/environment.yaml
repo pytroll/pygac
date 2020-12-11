@@ -1,0 +1,20 @@
+name: test-environment
+channels:
+  - conda-forge
+dependencies:
+  - numpy
+  - scipy
+  - bottleneck
+  - python-dateutil
+  - hdf5
+  - h5py
+  - pytest
+  - pytest-cov
+  - pip
+  - pip:
+    - docutils
+    - pyorbital
+    - python-geotiepoints
+    - trollimage
+    - pyspectral
+    - pyorbital
