@@ -58,9 +58,11 @@ class TestGacReader(unittest.TestCase):
         self.assertEqual(self.reader.filename, filename)
         self.reader.filename = None
         self.assertIsNone(self.reader.filename)
+
         class TestPath(os.PathLike):
             def __init__(self, path):
                 self.path = str(path)
+
             def __fspath__(self):
                 return self.path
         self.reader.filename = TestPath(filepath)

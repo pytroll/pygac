@@ -118,14 +118,14 @@ class TestUtils(unittest.TestCase):
         with file_opener(test_pathlike) as f:
             content = f.read()
         self.assertEqual(content, file_bytes)
-        
+
         # test with lazy loading open method (open only in context)
         class RawBytesLazy(RawBytes):
             def open(self):
                 self.lazy_opener_mock = mock.MagicMock()
                 self.lazy_opener_mock.__enter__.return_value = io.BytesIO(self.raw_bytes)
                 return self.lazy_opener_mock
-            
+
         test_pathlike = RawBytesLazy(filename, file_bytes)
         with file_opener(test_pathlike) as f:
             content = f.read()
