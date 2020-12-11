@@ -28,6 +28,7 @@ import io
 import gzip
 import sys
 import numpy as np
+import os
 try:
     from unittest import mock
 except ImportError:
@@ -35,10 +36,6 @@ except ImportError:
 
 from pygac.utils import (is_file_object, file_opener,
                          calculate_sun_earth_distance_correction)
-
-
-def _raise_OSError(*args, **kwargs):
-    raise OSError
 
 
 class TestUtils(unittest.TestCase):
@@ -68,7 +65,7 @@ class TestUtils(unittest.TestCase):
         self.assertTrue(is_file_object(duck))
 
     @mock.patch('pygac.utils.open', mock.mock_open(read_data='file content'))
-    @mock.patch('pygac.utils.gzip.open', _raise_OSError)
+    @mock.patch('pygac.utils.gzip.open', mock.MagicMock(side_effect=OSError))
     def test_file_opener_1(self):
         """Test if a file is redirected correctly through file_opener."""
         with file_opener('path/to/file') as f:
@@ -97,6 +94,30 @@ class TestUtils(unittest.TestCase):
             with file_opener(f) as g:
                 message = g.read()
         self.assertEqual(message, gzip_message_decoded)
+
+    @unittest.skipIf(sys.version_info.major < 3, "Not supported in python2!")
+    @mock.patch('pygac.utils.open', mock.MagicMock(side_effect=FileNotFoundError))
+    @mock.patch('pygac.utils.gzip.open', mock.MagicMock(side_effect=OSError))
+    def test_file_opener_3(self):
+        """Test file_opener with PathLike object"""
+        # prepare test
+        class RawBytes(os.PathLike):
+            def __init__(self, filename, raw_bytes):
+                self.filename = str(filename)
+                self.file_object = io.BytesIO(raw_bytes)
+
+            def __fspath__(self):
+                return self.filename
+
+            def open(self):
+                return self.file_object
+
+        filename = '/path/to/file'
+        file_bytes = b'TestTestTest'
+        test_pathlike = RawBytes(filename, file_bytes)
+        with file_opener(test_pathlike) as f:
+            content = f.read()
+        self.assertEqual(content, file_bytes)
 
     def test_calculate_sun_earth_distance_correction(self):
         """Test function for the sun distance corretction."""
