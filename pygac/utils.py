@@ -22,7 +22,6 @@
 import gzip
 import io
 import logging
-import sys
 
 from contextlib import contextmanager, nullcontext
 

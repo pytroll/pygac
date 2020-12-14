@@ -23,16 +23,13 @@
 """Test pygac.utils module
 """
 
-import unittest
-import io
 import gzip
-import sys
-import numpy as np
+import io
 import os
-try:
-    from unittest import mock
-except ImportError:
-    import mock
+import unittest
+from unittest import mock
+
+import numpy as np
 
 from pygac.utils import file_opener, calculate_sun_earth_distance_correction
 
