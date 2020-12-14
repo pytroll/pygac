@@ -34,35 +34,13 @@ try:
 except ImportError:
     import mock
 
-from pygac.utils import (is_file_object, file_opener,
-                         calculate_sun_earth_distance_correction)
+from pygac.utils import file_opener, calculate_sun_earth_distance_correction
 
 
 class TestUtils(unittest.TestCase):
     """Test pygac.utils functions"""
 
     longMessage = True
-
-    def test_is_file_object(self):
-        """Test is_file_object function."""
-        # true test
-        with io.BytesIO(b'file content') as fileobj:
-            self.assertTrue(is_file_object(fileobj))
-        # false test
-        self.assertFalse(is_file_object("test.txt"))
-        # duck type test
-
-        class Duck(object):
-            def read(self, n):
-                return n*b'\00'
-
-            def seekable(self):
-                return True
-
-            def close(self):
-                pass
-        duck = Duck()
-        self.assertTrue(is_file_object(duck))
 
     @mock.patch('pygac.utils.open', mock.mock_open(read_data='file content'))
     @mock.patch('pygac.utils.gzip.open', mock.MagicMock(side_effect=OSError))
@@ -72,7 +50,6 @@ class TestUtils(unittest.TestCase):
             content = f.read()
         self.assertEqual(content, 'file content')
 
-    @unittest.skipIf(sys.version_info.major < 3, "Not supported in python2!")
     def test_file_opener_2(self):
         """Test file_opener with file objects and compression"""
         # prepare test
@@ -95,7 +72,6 @@ class TestUtils(unittest.TestCase):
                 message = g.read()
         self.assertEqual(message, gzip_message_decoded)
 
-    @unittest.skipIf(sys.version_info.major < 3, "Not supported in python2!")
     @mock.patch('pygac.utils.open', mock.MagicMock(side_effect=FileNotFoundError))
     @mock.patch('pygac.utils.gzip.open', mock.MagicMock(side_effect=OSError))
     def test_file_opener_3(self):
