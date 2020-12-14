@@ -39,13 +39,12 @@ class TestUtils(unittest.TestCase):
 
     longMessage = True
 
-    @mock.patch('pygac.utils.open', mock.mock_open(read_data='file content'))
-    @mock.patch('pygac.utils.gzip.open', mock.MagicMock(side_effect=OSError))
+    @mock.patch('pygac.utils.open', mock.MagicMock(return_value=io.BytesIO(b'file content')))
     def test_file_opener_1(self):
         """Test if a file is redirected correctly through file_opener."""
         with file_opener('path/to/file') as f:
             content = f.read()
-        self.assertEqual(content, 'file content')
+        self.assertEqual(content, b'file content')
 
     def test_file_opener_2(self):
         """Test file_opener with file objects and compression"""
@@ -70,7 +69,6 @@ class TestUtils(unittest.TestCase):
         self.assertEqual(message, gzip_message_decoded)
 
     @mock.patch('pygac.utils.open', mock.MagicMock(side_effect=FileNotFoundError))
-    @mock.patch('pygac.utils.gzip.open', mock.MagicMock(side_effect=OSError))
     def test_file_opener_3(self):
         """Test file_opener with PathLike object"""
         # prepare test

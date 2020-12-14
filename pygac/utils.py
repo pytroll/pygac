@@ -33,13 +33,14 @@ LOG = logging.getLogger(__name__)
 def gzip_inspected(open_file):
     """Try to gzip decompress the file object if applicable."""
     try:
-        file_object = gzip.open(open_file)
-        file_object.read(1)
+        file_object = gzip.GzipFile(mode='rb', fileobj=open_file)
+        file_object.read1()
     except OSError:
         file_object = open_file
     finally:
         file_object.seek(0)
     return file_object
+
 
 @contextmanager
 def file_opener(file):
@@ -56,6 +57,7 @@ def file_opener(file):
     # set open_file into context in case of lazy loding in __enter__ method.
     with open_file as file_object:
         yield gzip_inspected(file_object)
+
 
 def get_absolute_azimuth_angle_diff(sat_azi, sun_azi):
     """Calculates absolute azimuth difference angle. """
