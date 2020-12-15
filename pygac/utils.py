@@ -34,7 +34,7 @@ def gzip_inspected(open_file):
     """Try to gzip decompress the file object if applicable."""
     try:
         file_object = gzip.GzipFile(mode='rb', fileobj=open_file)
-        file_object.read1()
+        file_object.read(1)
     except OSError:
         file_object = open_file
     finally:
@@ -54,7 +54,7 @@ def file_opener(file):
             open_file = file.open()
     else:
         open_file = open(file, mode='rb')
-    # set open_file into context in case of lazy loding in __enter__ method.
+    # set open_file into context in case of lazy loading in __enter__ method.
     with open_file as file_object:
         yield gzip_inspected(file_object)
 
