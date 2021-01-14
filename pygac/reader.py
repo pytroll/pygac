@@ -142,6 +142,7 @@ class Reader(six.with_metaclass(ABCMeta)):
         if filepath is None:
             self._filename = None
         else:
+            filepath = os.fspath(filepath)
             match = self.data_set_pattern.search(filepath)
             if match:
                 self._filename = match.group()

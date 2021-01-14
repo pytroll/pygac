@@ -23,6 +23,7 @@
 import datetime
 import unittest
 import sys
+import os
 try:
     import mock
 except ImportError:
@@ -54,6 +55,17 @@ class TestGacReader(unittest.TestCase):
         filename = 'NSS.GHRR.TN.D80001.S0332.E0526.B0627173.WI'
         filepath = '/path/to/' + filename + '.gz'
         self.reader.filename = filepath
+        self.assertEqual(self.reader.filename, filename)
+        self.reader.filename = None
+        self.assertIsNone(self.reader.filename)
+
+        class TestPath(os.PathLike):
+            def __init__(self, path):
+                self.path = str(path)
+
+            def __fspath__(self):
+                return self.path
+        self.reader.filename = TestPath(filepath)
         self.assertEqual(self.reader.filename, filename)
 
     @unittest.skipIf(sys.version_info.major < 3, "Skipped in python2!")

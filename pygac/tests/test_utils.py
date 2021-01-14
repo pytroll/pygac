@@ -23,22 +23,15 @@
 """Test pygac.utils module
 """
 
-import unittest
-import io
 import gzip
-import sys
+import io
+import os
+import unittest
+from unittest import mock
+
 import numpy as np
-try:
-    from unittest import mock
-except ImportError:
-    import mock
 
-from pygac.utils import (is_file_object, file_opener,
-                         calculate_sun_earth_distance_correction)
-
-
-def _raise_OSError(*args, **kwargs):
-    raise OSError
+from pygac.utils import file_opener, calculate_sun_earth_distance_correction
 
 
 class TestUtils(unittest.TestCase):
@@ -46,36 +39,13 @@ class TestUtils(unittest.TestCase):
 
     longMessage = True
 
-    def test_is_file_object(self):
-        """Test is_file_object function."""
-        # true test
-        with io.BytesIO(b'file content') as fileobj:
-            self.assertTrue(is_file_object(fileobj))
-        # false test
-        self.assertFalse(is_file_object("test.txt"))
-        # duck type test
-
-        class Duck(object):
-            def read(self, n):
-                return n*b'\00'
-
-            def seekable(self):
-                return True
-
-            def close(self):
-                pass
-        duck = Duck()
-        self.assertTrue(is_file_object(duck))
-
-    @mock.patch('pygac.utils.open', mock.mock_open(read_data='file content'))
-    @mock.patch('pygac.utils.gzip.open', _raise_OSError)
+    @mock.patch('pygac.utils.open', mock.MagicMock(return_value=io.BytesIO(b'file content')))
     def test_file_opener_1(self):
         """Test if a file is redirected correctly through file_opener."""
         with file_opener('path/to/file') as f:
             content = f.read()
-        self.assertEqual(content, 'file content')
+        self.assertEqual(content, b'file content')
 
-    @unittest.skipIf(sys.version_info.major < 3, "Not supported in python2!")
     def test_file_opener_2(self):
         """Test file_opener with file objects and compression"""
         # prepare test
@@ -97,6 +67,41 @@ class TestUtils(unittest.TestCase):
             with file_opener(f) as g:
                 message = g.read()
         self.assertEqual(message, gzip_message_decoded)
+
+    @mock.patch('pygac.utils.open', mock.MagicMock(side_effect=FileNotFoundError))
+    def test_file_opener_3(self):
+        """Test file_opener with PathLike object"""
+        # prepare test
+        class RawBytes(os.PathLike):
+            def __init__(self, filename, raw_bytes):
+                self.filename = str(filename)
+                self.raw_bytes = raw_bytes
+
+            def __fspath__(self):
+                return self.filename
+
+            def open(self):
+                return io.BytesIO(self.raw_bytes)
+
+        filename = '/path/to/file'
+        file_bytes = b'TestTestTest'
+        test_pathlike = RawBytes(filename, file_bytes)
+        with file_opener(test_pathlike) as f:
+            content = f.read()
+        self.assertEqual(content, file_bytes)
+
+        # test with lazy loading open method (open only in context)
+        class RawBytesLazy(RawBytes):
+            def open(self):
+                self.lazy_opener_mock = mock.MagicMock()
+                self.lazy_opener_mock.__enter__.return_value = io.BytesIO(self.raw_bytes)
+                return self.lazy_opener_mock
+
+        test_pathlike = RawBytesLazy(filename, file_bytes)
+        with file_opener(test_pathlike) as f:
+            content = f.read()
+        self.assertEqual(content, file_bytes)
+        test_pathlike.lazy_opener_mock.__exit__.assert_called_once_with(None, None, None)
 
     def test_calculate_sun_earth_distance_correction(self):
         """Test function for the sun distance corretction."""
