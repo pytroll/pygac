@@ -734,6 +734,8 @@ class Reader(six.with_metaclass(ABCMeta)):
             sat_alt,  # approximate satellite altitude
             self.times[:, np.newaxis],
             self.lons, self.lats, 0)
+        # Sometimes the get_observer_look_not_tle returns nodata instead of 90.
+        sat_elev[:, mid_column] = 90
         return sat_azi, sat_elev
 
     def get_angles(self):
