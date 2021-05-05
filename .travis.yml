@@ -21,4 +21,4 @@ deploy:
   on:
     tags: true
     repo: pytroll/pygac
-    branch: master
+    branch: main
