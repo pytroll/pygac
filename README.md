@@ -1,8 +1,8 @@
 pygac
 =====
 
-[![Build Status](https://travis-ci.org/adybbroe/pygac.png?branch=feature-clock)](https://travis-ci.org/pytroll/pygac)
-[![Coverage Status](https://coveralls.io/repos/adybbroe/pygac/badge.png?branch=feature-clock)](https://coveralls.io/r/pytroll/pygac?branch=develop)
+[![Build](https://github.com/pytroll/pygac/actions/workflows/ci.yaml/badge.svg)](https://github.com/pytroll/pygac/actions/workflows/ci.yaml)
+[![Coverage](https://codecov.io/gh/pytroll/pygac/branch/main/graph/badge.svg?token=DQMgf2LxuM)](https://codecov.io/gh/pytroll/pygac)
 
 
 A python package to read, calibrate and navigate NOAA and Metop AVHRR GAC and LAC data.
