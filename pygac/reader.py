@@ -34,6 +34,7 @@ import re
 import six
 import types
 import warnings
+import pyorbital
 
 from pygac.configuration import get_config
 from pygac.utils import (centered_modulus,
@@ -43,6 +44,7 @@ from pyorbital.orbital import Orbital
 from pyorbital import astronomy
 from pygac.calibration import calibrate_solar, calibrate_thermal
 from pygac import gac_io
+from distutils.version import LooseVersion
 
 LOG = logging.getLogger(__name__)
 
@@ -734,8 +736,9 @@ class Reader(six.with_metaclass(ABCMeta)):
             sat_alt,  # approximate satellite altitude
             self.times[:, np.newaxis],
             self.lons, self.lats, 0)
-        # Sometimes the get_observer_look_not_tle returns nodata instead of 90.
-        sat_elev[:, mid_column] = 90
+        # Sometimes (pyorbital <= 1.6.1) the get_observer_look_not_tle returns nodata instead of 90.
+        if LooseVersion(pyorbital.__version__) <= LooseVersion('1.6.1'):
+            sat_elev[:, mid_column] = 90
         return sat_azi, sat_elev
 
     def get_angles(self):
