@@ -298,14 +298,15 @@ class TestGacReader(unittest.TestCase):
                 self.assertEqual(tle1, tle_data[tle_idx])
                 self.assertEqual(tle2, tle_data[tle_idx + 1])
 
-    def test_get_sat_angles_without_tle_trigger_pyobital_bug(self):
-        """Test the get satellite angles without tle."""
+    def test_get_sat_angles_without_tle_at_nadir(self):
+        """Test that the get satellite angles without tle at nadir."""
         rng = np.random.RandomState(125)
         self.reader.lons = rng.rand(100, 409) * 90
         self.reader.lats = rng.rand(100, 409) * 90
         self.reader.times = np.array([datetime.datetime(1980, 1, 3, 11, 47, 15, 469000) for date in range(100)])
         sat_azi, sat_elev = self.reader.get_sat_angles_without_tle()
         self.assertEqual(np.sum(np.isnan(sat_elev)), 0)
+        np.testing.assert_allclose(sat_elev[:, 204], 90., atol=0.01)
 
     def test_get_sat_angles_without_tle(self):
         """Test the get satellite angles without tle."""
