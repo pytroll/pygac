@@ -298,6 +298,15 @@ class TestGacReader(unittest.TestCase):
                 self.assertEqual(tle1, tle_data[tle_idx])
                 self.assertEqual(tle2, tle_data[tle_idx + 1])
 
+    def test_get_sat_angles_without_tle_trigger_pyobital_bug(self):
+        """Test the get satellite angles without tle."""
+        rng = np.random.RandomState(125)
+        self.reader.lons = rng.rand(100, 409) * 90
+        self.reader.lats = rng.rand(100, 409) * 90
+        self.reader.times = np.array([datetime.datetime(1980, 1, 3, 11, 47, 15, 469000) for date in range(100)])
+        sat_azi, sat_elev = self.reader.get_sat_angles_without_tle()
+        self.assertEqual(np.sum(np.isnan(sat_elev)), 0)
+
     def test_get_sat_angles_without_tle(self):
         """Test the get satellite angles without tle."""
         # Test data correspond to columns 0:2, 201:208 and 407:409. Extracted like this:
