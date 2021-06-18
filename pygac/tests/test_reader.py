@@ -31,7 +31,6 @@ except ImportError:
 import numpy as np
 import numpy.testing
 from pygac.gac_reader import GACReader, ReaderError
-from pygac.configuration import get_config
 
 
 class TestGacReader(unittest.TestCase):
@@ -413,18 +412,6 @@ class TestGacReader(unittest.TestCase):
 
     def test_get_tle_file(self):
         """Test get_tle_file."""
-        # Use TLE name/dir from config file
-        class MockConfigParser(object):
-            def get(self, section, option, **kwargs):
-                if option == 'tledir':
-                    return 'path/to/TLEs'
-                if option == 'tlename':
-                    return 'tle_file.txt'
-        get_config.return_value = MockConfigParser()
-        tle_file = self.reader.get_tle_file()
-        self.assertEqual(tle_file, 'path/to/TLEs/tle_file.txt')
-
-        # Use TLE name/dir from reader instanciation
         self.reader.tle_dir = '/tle/dir'
         self.reader.tle_name = 'tle_%(satname)s.txt'
         self.reader.spacecraft_name = 'ISS'
