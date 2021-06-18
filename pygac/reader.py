@@ -745,18 +745,18 @@ class Reader(six.with_metaclass(ABCMeta)):
         """
         self.get_times()
         self.get_lonlat()
-
+        times = self.times
         try:
             tle1, tle2 = self.get_tle_lines()
             orb = Orbital(self.spacecrafts_orbital[self.spacecraft_id],
                           line1=tle1, line2=tle2)
-            sat_azi, sat_elev = orb.get_observer_look(self.times[:, np.newaxis],
+            sat_azi, sat_elev = orb.get_observer_look(times[:, np.newaxis],
                                                       self.lons, self.lats, 0)
         except IndexError:
             sat_azi, sat_elev = self.get_sat_angles_without_tle()
 
         sat_zenith = 90 - sat_elev
-        sun_zenith = astronomy.sun_zenith_angle(self.times[:, np.newaxis],
+        sun_zenith = astronomy.sun_zenith_angle(times[:, np.newaxis],
                                                 self.lons, self.lats)
 
         alt, sun_azi = astronomy.get_alt_az(times[:, np.newaxis],
