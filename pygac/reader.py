@@ -728,6 +728,7 @@ class Reader(six.with_metaclass(ABCMeta)):
     def get_sat_angles_without_tle(self):
         """Get satellite angles using lat/lon from data to approximate satellite postition instead of TLE."""
         from pyorbital.orbital import get_observer_look as get_observer_look_no_tle
+        LOG.warning('Approximating satellite height to 850km (TIROS-N OSCAR)!')
         sat_alt = 850.0  # km  TIROS-N OSCAR
         mid_column = int(0.5*self.lons.shape[1])
         sat_azi, sat_elev = get_observer_look_no_tle(
@@ -739,6 +740,7 @@ class Reader(six.with_metaclass(ABCMeta)):
         # Sometimes (pyorbital <= 1.6.1) the get_observer_look_not_tle returns nodata instead of 90.
         # Problem solved with https://github.com/pytroll/pyorbital/pull/77
         if LooseVersion(pyorbital.__version__) <= LooseVersion('1.6.1'):
+            pass
             sat_elev[:, mid_column] = 90
         return sat_azi, sat_elev
 
