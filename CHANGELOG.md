@@ -1,3 +1,33 @@
+## Version 1.4.0 (2020/08/06)
+
+### Issues Closed
+
+* [Issue 66](https://github.com/pytroll/pygac/issues/66) - Typos in calibration coefficients ([PR 67](https://github.com/pytroll/pygac/pull/67))
+* [Issue 62](https://github.com/pytroll/pygac/issues/62) - Computation of Earth scene radiance ([PR 58](https://github.com/pytroll/pygac/pull/58))
+* [Issue 60](https://github.com/pytroll/pygac/issues/60) - Improve readability of quality indicators bit unpacking ([PR 72](https://github.com/pytroll/pygac/pull/72))
+* [Issue 57](https://github.com/pytroll/pygac/issues/57) - channel 4 BT to radiance conversion ([PR 67](https://github.com/pytroll/pygac/pull/67))
+* [Issue 54](https://github.com/pytroll/pygac/issues/54) - Function check_file_version should not be part of pygac-run ([PR 55](https://github.com/pytroll/pygac/pull/55))
+* [Issue 47](https://github.com/pytroll/pygac/issues/47) - Fix reading of renamed files
+
+In this release 6 issues were closed.
+
+### Pull Requests Merged
+
+#### Bugs fixed
+
+* [PR 73](https://github.com/pytroll/pygac/pull/73) - Fix azimuth encoding
+* [PR 67](https://github.com/pytroll/pygac/pull/67) - Correct coefficients ([66](https://github.com/pytroll/pygac/issues/66), [57](https://github.com/pytroll/pygac/issues/57))
+
+#### Features added
+
+* [PR 72](https://github.com/pytroll/pygac/pull/72) - Quality indicators ([60](https://github.com/pytroll/pygac/issues/60))
+* [PR 71](https://github.com/pytroll/pygac/pull/71) - Expose new metadata
+* [PR 70](https://github.com/pytroll/pygac/pull/70) - Remove config dependency from reader class
+* [PR 58](https://github.com/pytroll/pygac/pull/58) - export coefficients to json file ([62](https://github.com/pytroll/pygac/issues/62))
+* [PR 55](https://github.com/pytroll/pygac/pull/55) - Refactor gac-run ([54](https://github.com/pytroll/pygac/issues/54))
+
+In this release 7 pull requests were closed.
+
 ## Version v1.3.1 (2020/02/07)
 
 ### Issues Closed

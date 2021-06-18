@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 
 # Copyright (c) 2014, 2019 Pygac Developers
 
@@ -36,13 +35,12 @@ import types
 import warnings
 import pyorbital
 
-from pygac.configuration import get_config
 from pygac.utils import (centered_modulus,
                          calculate_sun_earth_distance_correction,
                          get_absolute_azimuth_angle_diff)
 from pyorbital.orbital import Orbital
 from pyorbital import astronomy
-from pygac.calibration import calibrate_solar, calibrate_thermal
+from pygac.calibration import Calibrator, calibrate_solar, calibrate_thermal
 from pygac import gac_io
 from distutils.version import LooseVersion
 
@@ -90,7 +88,8 @@ class Reader(six.with_metaclass(ABCMeta)):
         r'\w{3}\.\w{4}\.\w{2}.D\d{5}\.S\d{4}\.E\d{4}\.B\d{7}\.\w{2}')
 
     def __init__(self, interpolate_coords=True, adjust_clock_drift=True,
-                 tle_dir=None, tle_name=None, tle_thresh=7, creation_site=None):
+                 tle_dir=None, tle_name=None, tle_thresh=7, creation_site=None,
+                 custom_calibration=None, calibration_file=None):
         """Init the reader.
 
         Args:
@@ -103,7 +102,9 @@ class Reader(six.with_metaclass(ABCMeta)):
             tle_thresh: Maximum number of days between observation and nearest
                 TLE
             creation_site: The three-letter identifier of the creation site (eg 'NSS')
-            filename: GAC/LAC filename
+            custom_calibration: dictionary with a subset of user defined satellite specific
+                                calibration coefficients
+            calibration_file: path to json file containing default calibrations
 
         """
         self.meta_data = {}
@@ -113,6 +114,8 @@ class Reader(six.with_metaclass(ABCMeta)):
         self.tle_name = tle_name
         self.tle_thresh = tle_thresh
         self.creation_site = (creation_site or 'NSS').encode('utf-8')
+        self.custom_calibration = custom_calibration
+        self.calibration_file = calibration_file
         self.head = None
         self.scans = None
         self.spacecraft_name = None
@@ -120,10 +123,15 @@ class Reader(six.with_metaclass(ABCMeta)):
         self.utcs = None
         self.lats = None
         self.lons = None
-        self.times = None
         self.tle_lines = None
         self.filename = None
         self._mask = None
+        self._rpy = None
+
+    @property
+    def times(self):
+        """The UTCs as datetime.datetime"""
+        return self.to_datetime(self.utcs)
 
     @property
     def filename(self):
@@ -136,11 +144,22 @@ class Reader(six.with_metaclass(ABCMeta)):
         if filepath is None:
             self._filename = None
         else:
+            filepath = os.fspath(filepath)
             match = self.data_set_pattern.search(filepath)
             if match:
                 self._filename = match.group()
             else:
                 self._filename = os.path.basename(filepath)
+
+    @property
+    def calibration(self):
+        """Get the property 'calibration'."""
+        calibration = Calibrator(
+            self.spacecraft_name,
+            custom_coeffs=self.custom_calibration,
+            coeffs_file=self.calibration_file
+        )
+        return calibration
 
     @abstractmethod
     def read(self, filename, fileobj=None):
@@ -225,7 +244,7 @@ class Reader(six.with_metaclass(ABCMeta)):
         # each child class which implements this method, should call the
         # super method to enter into the method resolution order.
         # See https://docs.python.org/3/library/functions.html#super
-        # second use case “diamond diagrams”.
+        # second use case "diamond diagrams".
         # Check if the data set name matches the pattern
         LOG.debug("validate header")
         data_set_name = header['data_set_name'].decode(errors='ignore')
@@ -304,8 +323,12 @@ class Reader(six.with_metaclass(ABCMeta)):
         assert channels.shape[-1] == 6
         return channels
 
-    def save(self, start_line, end_line):
+    def save(self, start_line, end_line, output_file_prefix="PyGAC", output_dir="./",
+             avhrr_dir=None, qual_dir=None, sunsatangles_dir=None):
         """Convert the Reader instance content into hdf5 files"""
+        avhrr_dir = avhrr_dir or output_dir
+        qual_dir = qual_dir or output_dir
+        sunsatangles_dir = sunsatangles_dir or output_dir
         self.get_lonlat()
         channels = self._get_calibrated_channels_uniform_shape()
         sat_azi, sat_zen, sun_azi, sun_zen, rel_azi = self.get_angles()
@@ -321,7 +344,8 @@ class Reader(six.with_metaclass(ABCMeta)):
             channels[:, :, 4], channels[:, :, 5],
             sun_zen, sat_zen, sun_azi, sat_azi, rel_azi,
             qual_flags, start_line, end_line,
-            self.filename, self.meta_data
+            self.filename, self.meta_data,
+            output_file_prefix, avhrr_dir, qual_dir, sunsatangles_dir
         )
 
     @abstractmethod
@@ -402,9 +426,6 @@ class Reader(six.with_metaclass(ABCMeta)):
             self.utcs = self.to_datetime64(year=year, jday=jday, msec=msec)
             self.correct_times_thresh()
 
-            # Convert timestamps to datetime objects
-            self.times = self.to_datetime(self.utcs)
-
         return self.utcs
 
     @staticmethod
@@ -420,8 +441,8 @@ class Reader(six.with_metaclass(ABCMeta)):
             numpy.datetime64: Converted timestamps
 
         """
-        return (((year - 1970).astype('datetime64[Y]')
-                 + (jday - 1).astype('timedelta64[D]')).astype('datetime64[ms]')
+        return (year.astype(str).astype('datetime64[Y]')
+                + (jday - 1).astype('timedelta64[D]')
                 + msec.astype('timedelta64[ms]'))
 
     @staticmethod
@@ -452,74 +473,6 @@ class Reader(six.with_metaclass(ABCMeta)):
         """
         return (scan_line_number - 1) / self.scan_freq
 
-    def compute_lonlat(self, width, utcs=None, clock_drift_adjust=True):
-        """Compute lat/lon coordinates.
-
-        Args:
-            width: Number of coordinates per scanlines
-            utcs: Scanline timestamps
-            clock_drift_adjust: If True, adjust clock drift.
-
-        """
-        if utcs is None:
-            utcs = self.get_times()
-
-        # adjusting clock for drift
-        tic = datetime.datetime.now()
-        if clock_drift_adjust:
-            from pygac.clock_offsets_converter import get_offsets
-            try:
-                offset_times, clock_error = get_offsets(self.spacecraft_name)
-            except KeyError:
-                LOG.info("No clock drift info available for %s",
-                         self.spacecraft_name)
-            else:
-                offset_times = np.array(offset_times, dtype='datetime64[ms]')
-                offsets = np.interp(utcs.astype(np.uint64),
-                                    offset_times.astype(np.uint64),
-                                    clock_error)
-                utcs = utcs - (offsets * 1000).astype('timedelta64[ms]')
-
-        t = utcs[0].astype(datetime.datetime)
-
-        if "constant_yaw_attitude_error" in self.head.dtype.fields:
-            rpy = np.deg2rad([self.head["constant_roll_attitude_error"] / 1e3,
-                              self.head["constant_pitch_attitude_error"] / 1e3,
-                              self.head["constant_yaw_attitude_error"] / 1e3])
-        else:
-            try:
-                # This needs to be checked thoroughly first
-                # rpy_spacecraft = rpy_coeffs[self.spacecraft_name]
-                # rpy = [rpy_spacecraft['roll'],
-                #        rpy_spacecraft['pitch'],
-                #        rpy_spacecraft['yaw']]
-                # LOG.debug("Using static attitude correction")
-                raise KeyError
-            except KeyError:
-                LOG.debug("Not applying attitude correction")
-                rpy = [0, 0, 0]
-
-        LOG.info("Using rpy: %s", str(rpy))
-
-        from pyorbital.geoloc_instrument_definitions import avhrr_gac
-        from pyorbital.geoloc import compute_pixels, get_lonlatalt
-        # TODO: Are we sure all satellites have this scan width in degrees ?
-        sgeom = avhrr_gac(utcs.astype(datetime.datetime),
-                          self.scan_points, 55.385)
-        s_times = sgeom.times(t)
-        tle1, tle2 = self.get_tle_lines()
-
-        pixels_pos = compute_pixels((tle1, tle2), sgeom, s_times, rpy)
-        pos_time = get_lonlatalt(pixels_pos, s_times)
-
-        toc = datetime.datetime.now()
-
-        LOG.warning("Computation of geolocation: %s", str(toc - tic))
-
-        lons, lats = pos_time[:2]
-
-        return lons.reshape(-1, width), lats.reshape(-1, width)
-
     def get_sun_earth_distance_correction(self):
         """Get the julian day and the sun-earth distance correction."""
         self.get_times()
@@ -535,26 +488,33 @@ class Reader(six.with_metaclass(ABCMeta)):
             self.meta_data['midnight_scanline'] = self.get_midnight_scanline()
         if 'missing_scanlines' not in self.meta_data:
             self.meta_data['missing_scanlines'] = self.get_miss_lines()
+        if 'gac_header' not in self.meta_data:
+            self.meta_data['gac_header'] = self.head.copy()
+        self.meta_data['calib_coeffs_version'] = self.calibration.version
 
     def get_calibrated_channels(self):
         """Calibrate and return the channels."""
         channels = self.get_counts()
+        times = self.times
         self.get_times()
         self.update_meta_data()
-        year = self.times[0].year
-        delta = self.times[0].date() - datetime.date(year, 1, 1)
+        year = times[0].year
+        delta = times[0].date() - datetime.date(year, 1, 1)
         jday = delta.days + 1
 
         corr = self.meta_data['sun_earth_distance_correction_factor']
+        calibration_coeffs = self.calibration
 
         # how many reflective channels are there ?
         tot_ref = channels.shape[2] - 3
 
-        channels[:, :, 0:tot_ref] = calibrate_solar(channels[:, :, 0:tot_ref],
-                                                    np.arange(tot_ref),
-                                                    year, jday,
-                                                    self.spacecraft_name,
-                                                    corr)
+        channels[:, :, 0:tot_ref] = calibrate_solar(
+            channels[:, :, 0:tot_ref],
+            np.arange(tot_ref),
+            year, jday,
+            calibration_coeffs,
+            corr
+        )
         prt, ict, space = self.get_telemetry()
         for chan in [3, 4, 5]:
             channels[:, :, chan - 6] = calibrate_thermal(
@@ -564,7 +524,8 @@ class Reader(six.with_metaclass(ABCMeta)):
                 space[:, chan - 3],
                 self.scans["scan_line_number"],
                 chan,
-                self.spacecraft_name)
+                calibration_coeffs
+            )
 
         # Mask out corrupt values
         channels[self.mask] = np.nan
@@ -619,10 +580,34 @@ class Reader(six.with_metaclass(ABCMeta)):
             self._mask = self._get_corrupt_mask()
         return self._mask
 
-    @abstractmethod
-    def _get_corrupt_mask(self):
-        """KLM/POD specific readout of corrupt scanline mask."""
-        raise NotImplementedError
+    def _get_corrupt_mask(self, flags=None):
+        """Readout of corrupt scanline mask.
+
+        Args:
+            flags (QFlag.flag): An "ORed" bitmask that defines corrupt values.
+                                Defauts to (QFlag.FATAL_FLAG | QFlag.CALIBRATION
+                                | QFlag.NO_EARTH_LOCATION)
+
+        Note:
+            The Quality flags mapping (QFlag) is KLM/POD specific.
+        """
+        QFlag = self.QFlag
+        if flags is None:
+            flags = QFlag.FATAL_FLAG | QFlag.CALIBRATION | QFlag.NO_EARTH_LOCATION
+        return (self.scans[self._quality_indicators_key] & int(flags)).astype(bool)
+
+    def get_qual_flags(self):
+        """Read quality flags."""
+        number_of_scans = self.scans["telemetry"].shape[0]
+        qual_flags = np.zeros((int(number_of_scans), 7))
+        qual_flags[:, 0] = self.scans["scan_line_number"]
+        qual_flags[:, 1] = self._get_corrupt_mask(flags=self.QFlag.FATAL_FLAG)
+        qual_flags[:, 2] = self._get_corrupt_mask(flags=self.QFlag.CALIBRATION)
+        qual_flags[:, 3] = self._get_corrupt_mask(flags=self.QFlag.NO_EARTH_LOCATION)
+        qual_flags[:, 4] = self._get_corrupt_mask(flags=self.QFlag.CH_3_CONTAMINATION)
+        qual_flags[:, 5] = self._get_corrupt_mask(flags=self.QFlag.CH_4_CONTAMINATION)
+        qual_flags[:, 6] = self._get_corrupt_mask(flags=self.QFlag.CH_5_CONTAMINATION)
+        return qual_flags
 
     @abstractmethod
     def postproc(self, channels):
@@ -658,13 +643,10 @@ class Reader(six.with_metaclass(ABCMeta)):
     def get_tle_file(self):
         """Find TLE file for the current satellite."""
         tle_dir, tle_name = self.tle_dir, self.tle_name
-
-        # If user didn't specify TLE dir/name, try config file
-        if tle_dir is None or tle_name is None:
-            conf = get_config()
-            tle_dir = conf.get('tle', 'tledir', raw=True)
-            tle_name = conf.get('tle', 'tlename', raw=True)
-
+        if tle_dir is None:
+            raise RuntimeError("TLE directory not specified!")
+        if tle_name is None:
+            raise RuntimeError("TLE name not specified!")
         values = {"satname": self.spacecraft_name, }
         tle_filename = os.path.join(tle_dir, tle_name % values)
         LOG.info('TLE filename = ' + str(tle_filename))
@@ -687,7 +669,7 @@ class Reader(six.with_metaclass(ABCMeta)):
             return self.tle_lines
         self.get_times()
         tle_data = self.read_tle_file(self.get_tle_file())
-        sdate = np.datetime64(self.times[0], '[ms]')
+        sdate = self.utcs[0]
         dates = self.tle2datetime64(
             np.array([float(line[18:32]) for line in tle_data[::2]]))
 
@@ -777,7 +759,7 @@ class Reader(six.with_metaclass(ABCMeta)):
         sun_zenith = astronomy.sun_zenith_angle(self.times[:, np.newaxis],
                                                 self.lons, self.lats)
 
-        alt, sun_azi = astronomy.get_alt_az(self.times[:, np.newaxis],
+        alt, sun_azi = astronomy.get_alt_az(times[:, np.newaxis],
                                             self.lons, self.lats)
         del alt
         sun_azi = np.rad2deg(sun_azi)
@@ -1047,8 +1029,7 @@ class Reader(six.with_metaclass(ABCMeta)):
 
         """
         self.get_times()
-        ts = self.times[0]
-        te = self.times[-1]
+        ts, te = self.to_datetime(self.utcs[[0, -1]])
         try:
             for interval in self.tsm_affected_intervals[self.spacecraft_id]:
                 if ts >= interval[0] and te <= interval[1]:
@@ -1108,6 +1089,29 @@ class Reader(six.with_metaclass(ABCMeta)):
         Channel selection is POD/KLM specific.
         """
         raise NotImplementedError
+
+    def get_attitude_coeffs(self):
+        """Return the roll, pitch, yaw values"""
+        if self._rpy is None:
+            if "constant_yaw_attitude_error" in self.head.dtype.fields:
+                rpy = np.deg2rad([self.head["constant_roll_attitude_error"] / 1e3,
+                                  self.head["constant_pitch_attitude_error"] / 1e3,
+                                  self.head["constant_yaw_attitude_error"] / 1e3])
+            else:
+                try:
+                    # This needs to be checked thoroughly first
+                    # rpy_spacecraft = rpy_coeffs[self.spacecraft_name]
+                    # rpy = np.array([rpy_spacecraft['roll'],
+                    #                 rpy_spacecraft['pitch'],
+                    #                 rpy_spacecraft['yaw']])
+                    # LOG.debug("Using static attitude correction")
+                    raise KeyError
+                except KeyError:
+                    LOG.debug("Not applying attitude correction")
+                    rpy = np.zeros(3)
+            LOG.info("Using rpy: %s", str(rpy))
+            self._rpy = rpy
+        return self._rpy
 
 
 def inherit_doc(cls):

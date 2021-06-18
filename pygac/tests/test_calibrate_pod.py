@@ -25,10 +25,13 @@
 
 
 import unittest
-
+try:
+    import mock
+except ImportError:
+    from unittest import mock
 import numpy as np
 
-from pygac.calibration import calibrate_solar, calibrate_thermal
+from pygac.calibration import Calibrator, calibrate_solar, calibrate_thermal
 
 
 class TestGenericCalibration(unittest.TestCase):
@@ -44,24 +47,22 @@ class TestGenericCalibration(unittest.TestCase):
         year = 1997
         jday = 196
         spacecraft_id = "noaa14"
+        cal = Calibrator(spacecraft_id)
         corr = 1
 
         channel = 0
 
-        ref1 = calibrate_solar(counts[:, channel::5], channel, year, jday,
-                               spacecraft_id, corr)
+        ref1 = calibrate_solar(counts[:, channel::5], channel, year, jday, cal, corr)
 
         channel = 1
 
-        ref2 = calibrate_solar(counts[:, channel::5], channel, year, jday,
-                               spacecraft_id, corr)
+        ref2 = calibrate_solar(counts[:, channel::5], channel, year, jday, cal, corr)
 
         channel = 2
 
         data = np.ma.array(counts[:, channel::5], mask=True)
 
-        ref3 = calibrate_solar(data, channel, year, jday,
-                               spacecraft_id, corr)
+        ref3 = calibrate_solar(data, channel, year, jday, cal, corr)
 
         expected = (np.array([[np.nan, 60.891074, 126.953364],
                               [0., 14.091565, 85.195791]]),
@@ -93,17 +94,18 @@ class TestGenericCalibration(unittest.TestCase):
                                  [986.3,  992.3,  988.9]])
 
         spacecraft_id = "noaa14"
+        cal = Calibrator(spacecraft_id)
         ch3 = calibrate_thermal(counts[:, 2::5],
                                 prt_counts,
                                 ict_counts[:, 0],
                                 space_counts[:, 0],
                                 line_numbers=np.array([1, 2, 3]),
                                 channel=3,
-                                spacecraft=spacecraft_id)
+                                cal=cal)
 
-        expected_ch3 = np.array([[298.28524223, 305.16852862, 293.16212655],
-                                 [296.87900835, 306.41526012, 294.41059746],
-                                 [295.39720547, 305.02120845, 305.75051609]])
+        expected_ch3 = np.array([[298.28466, 305.167571, 293.16182],
+                                 [296.878502, 306.414234, 294.410224],
+                                 [295.396779, 305.020259, 305.749526]])
 
         np.testing.assert_allclose(expected_ch3, ch3)
 
@@ -113,11 +115,11 @@ class TestGenericCalibration(unittest.TestCase):
                                 space_counts[:, 1],
                                 line_numbers=np.array([1, 2, 3]),
                                 channel=4,
-                                spacecraft=spacecraft_id)
+                                cal=cal)
 
-        expected_ch4 = np.array([[325.828192, 275.414762, 196.214464],
-                                 [322.359634, 312.785138, 249.380531],
-                                 [304.326858, 293.490837, 264.147945]])
+        expected_ch4 = np.array([[325.828062, 275.414804, 196.214709],
+                                 [322.359517, 312.785057, 249.380649],
+                                 [304.326806, 293.490822, 264.148021]])
 
         np.testing.assert_allclose(expected_ch4, ch4)
 
@@ -127,11 +129,11 @@ class TestGenericCalibration(unittest.TestCase):
                                 space_counts[:, 2],
                                 line_numbers=np.array([1, 2, 3]),
                                 channel=5,
-                                spacecraft=spacecraft_id)
+                                cal=cal)
 
-        expected_ch5 = np.array([[326.47287181,  272.14169523,  187.40907142],
-                                 [322.72885806,  312.39588991,  244.22910864],
-                                 [303.27173737,  291.59183911,  260.0459766]])
+        expected_ch5 = np.array([[326.460316, 272.146547, 187.434456],
+                                 [322.717606, 312.388155, 244.241633],
+                                 [303.267012, 291.590832, 260.05426]])
 
         np.testing.assert_allclose(expected_ch5, ch5)
 

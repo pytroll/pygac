@@ -1,0 +1,1386 @@
+{
+    "description": {
+        "thermal": {
+            "channels": [
+                "3b",
+                "4",
+                "5"
+            ],
+            "coefficients": {
+                "b0": "constant non-linear radiance correction coefficient [mW m^{-2} sr cm^{-1}]",
+                "b1": "linear non-linear radiance correction coefficient []",
+                "b2": "quadratic non-linear radiance correction coefficient [(mW^{-1} m^2 sr^{-1} cm)]",
+                "centroid_wavenumber": "centroid wavenumber [cm^{-1}]",
+                "d0": "constant thermometer counts to temperature conversion coefficient [K]",
+                "d1": "linear thermometer counts to temperature conversion coefficient [K]",
+                "d2": "quadratic thermometer counts to temperature conversion coefficient [K]",
+                "d3": "cubic thermometer counts to temperature conversion coefficient [K]",
+                "d4": "quartic thermometer counts to temperature conversion coefficient [K]",
+                "space_radiance": "radiance of space [mW m^{-2} sr cm^{-1}]",
+                "to_eff_blackbody_intercept": "thermal channel temperature to effective blackbody temperature intercept [K]",
+                "to_eff_blackbody_slope": "thermal channel temperature to effective blackbody temperature slope []"
+            },
+            "method": "Goodrum, G., Kidwell, K.B. and W. Winston, 2000: NOAA KLM User's Guide. U.S. Department of Commerce, National Oceanic and Atmospheric Administration, National Environmental Satellite, Data and Information Service; Walton, C. C., J. T. Sullivan, C. R. N. Rao, and M. P. Weinreb, 1998: Corrections for detector nonlinearities and calibration inconsistencies of the infrared channels of the Advanced Very High Resolution Radiometer. J. Geophys. Res., 103, 3323-3337; Trishchenko, A.P., 2002: Removing Unwanted Fluctuations in the AVHRR Thermal Calibration Data Using Robust Techniques. Journal of Atmospheric and Oceanic Technology, 19:1939-1954"
+        },
+        "visible": {
+            "channels": [
+                "1",
+                "2",
+                "3a"
+            ],
+            "coefficients": {
+                "dark_count": "instrument counts under dark conditions []",
+                "date_of_launch": "timestamp of launch date [UTC]",
+                "gain_switch": "dual-gain switch count, set to 'null' for single-gain instruments []",
+                "s0": "single-gain calibration slope at launch date [%]",
+                "s1": "linear single-gain calibration slope parameter [% years^{-1}]",
+                "s2": "quadratic single-gain calibration slope parameter [% years^{-2}]"
+            },
+            "method": "Heidinger, A.K., W.C. Straka III, C.C. Molling, J.T. Sullivan, and X. Wu, 2010: Deriving an inter-sensor consistent calibration for the AVHRR solar reflectance data record. International Journal of Remote Sensing, 31:6493-6517"
+        }
+    },
+    "metopa": {
+        "channel_1": {
+            "dark_count": 40.43,
+            "gain_switch": 501.0,
+            "s0": 0.11266666666666668,
+            "s1": 0.609,
+            "s2": -0.029
+        },
+        "channel_2": {
+            "dark_count": 39.75,
+            "gain_switch": 500.0,
+            "s0": 0.13266666666666668,
+            "s1": 0.98,
+            "s2": -0.016
+        },
+        "channel_3a": {
+            "dark_count": 41.8,
+            "gain_switch": 502.0,
+            "s0": 0.1217142857142857,
+            "s1": 1.224,
+            "s2": -0.033
+        },
+        "channel_3b": {
+            "b0": 0.0,
+            "b1": 0.0,
+            "b2": 0.0,
+            "centroid_wavenumber": 2687.0392,
+            "space_radiance": 0.0,
+            "to_eff_blackbody_intercept": 2.0582306816399316,
+            "to_eff_blackbody_slope": 0.9965700053555672
+        },
+        "channel_4": {
+            "b0": 5.44,
+            "b1": -0.10152,
+            "b2": 0.00046964,
+            "centroid_wavenumber": 927.2763,
+            "space_radiance": -4.98,
+            "to_eff_blackbody_intercept": 0.564181969408163,
+            "to_eff_blackbody_slope": 0.998493273650062
+        },
+        "channel_5": {
+            "b0": 3.84,
+            "b1": -0.06249,
+            "b2": 0.00025239,
+            "centroid_wavenumber": 837.80762,
+            "space_radiance": -3.4,
+            "to_eff_blackbody_intercept": 0.3842947903481519,
+            "to_eff_blackbody_slope": 0.9988748673494177
+        },
+        "date_of_launch": "2006-10-19T19:37:12.000000Z",
+        "thermometer_1": {
+            "d0": 276.6194,
+            "d1": 0.050919,
+            "d2": 1.471e-06,
+            "d3": 0.0,
+            "d4": 0.0
+        },
+        "thermometer_2": {
+            "d0": 276.6511,
+            "d1": 0.050892,
+            "d2": 1.489e-06,
+            "d3": 0.0,
+            "d4": 0.0
+        },
+        "thermometer_3": {
+            "d0": 276.6597,
+            "d1": 0.050845,
+            "d2": 1.521e-06,
+            "d3": 0.0,
+            "d4": 0.0
+        },
+        "thermometer_4": {
+            "d0": 276.3685,
+            "d1": 0.050992,
+            "d2": 1.482e-06,
+            "d3": 0.0,
+            "d4": 0.0
+        }
+    },
+    "metopb": {
+        "channel_1": {
+            "dark_count": 39.7,
+            "gain_switch": 501.12,
+            "s0": 0.11066666666666668,
+            "s1": 2.019,
+            "s2": -0.201
+        },
+        "channel_2": {
+            "dark_count": 40.0,
+            "gain_switch": 500.82,
+            "s0": 0.122,
+            "s1": 1.476,
+            "s2": -0.137
+        },
+        "channel_3a": {
+            "dark_count": 40.3,
+            "gain_switch": 501.32,
+            "s0": 0.11485714285714287,
+            "s1": 1.748,
+            "s2": -0.033
+        },
+        "channel_3b": {
+            "b0": 0.0,
+            "b1": 0.0,
+            "b2": 0.0,
+            "centroid_wavenumber": 2664.3384,
+            "space_radiance": 0.0,
+            "to_eff_blackbody_intercept": 1.765846445005454,
+            "to_eff_blackbody_slope": 0.9970158319134996
+        },
+        "channel_4": {
+            "b0": 5.44,
+            "b1": -0.10152,
+            "b2": 0.00046964,
+            "centroid_wavenumber": 933.71521,
+            "space_radiance": -4.98,
+            "to_eff_blackbody_intercept": 0.5178945149373193,
+            "to_eff_blackbody_slope": 0.9986240957209157
+        },
+        "channel_5": {
+            "b0": 3.84,
+            "b1": -0.06249,
+            "b2": 0.00025239,
+            "centroid_wavenumber": 839.72764,
+            "space_radiance": -3.4,
+            "to_eff_blackbody_intercept": 0.40012963829726456,
+            "to_eff_blackbody_slope": 0.9988311677674785
+        },
+        "date_of_launch": "2012-10-08T19:40:48.000000Z",
+        "thermometer_1": {
+            "d0": 276.6194,
+            "d1": 0.050919,
+            "d2": 1.471e-06,
+            "d3": 0.0,
+            "d4": 0.0
+        },
+        "thermometer_2": {
+            "d0": 276.6511,
+            "d1": 0.050892,
+            "d2": 1.489e-06,
+            "d3": 0.0,
+            "d4": 0.0
+        },
+        "thermometer_3": {
+            "d0": 276.6597,
+            "d1": 0.050845,
+            "d2": 1.521e-06,
+            "d3": 0.0,
+            "d4": 0.0
+        },
+        "thermometer_4": {
+            "d0": 276.3685,
+            "d1": 0.050992,
+            "d2": 1.482e-06,
+            "d3": 0.0,
+            "d4": 0.0
+        }
+    },
+    "metopc": {
+        "channel_1": {
+            "dark_count": 40.41,
+            "gain_switch": 498.68,
+            "s0": 0.10699999999916181,
+            "s1": 0.0,
+            "s2": -0.0
+        },
+        "channel_2": {
+            "dark_count": 40.94,
+            "gain_switch": 500.01,
+            "s0": 0.10633333333441988,
+            "s1": 0.0,
+            "s2": -0.0
+        },
+        "channel_3a": {
+            "dark_count": 40.57,
+            "gain_switch": 498.72,
+            "s0": 0.1032,
+            "s1": 0.0,
+            "s2": -0.0
+        },
+        "channel_3b": {
+            "b0": 0.0,
+            "b1": 0.0,
+            "b2": 0.0,
+            "centroid_wavenumber": 2707.6457,
+            "space_radiance": 0.0,
+            "to_eff_blackbody_intercept": 1.7824614096281413,
+            "to_eff_blackbody_slope": 0.9976376937050757
+        },
+        "channel_4": {
+            "b0": 6.58,
+            "b1": -0.13203,
+            "b2": 0.00065922,
+            "centroid_wavenumber": 931.89092,
+            "space_radiance": -6.27,
+            "to_eff_blackbody_intercept": 0.5647288036150199,
+            "to_eff_blackbody_slope": 0.9984918778676688
+        },
+        "channel_5": {
+            "b0": 3.23,
+            "b1": -0.05692,
+            "b2": 0.00024963,
+            "centroid_wavenumber": 832.69445,
+            "space_radiance": -2.55,
+            "to_eff_blackbody_intercept": 0.391621708386672,
+            "to_eff_blackbody_slope": 0.9988509218994469
+        },
+        "date_of_launch": "2018-11-06T18:54:35.423996Z",
+        "thermometer_1": {
+            "d0": 276.5862,
+            "d1": 0.051051,
+            "d2": 1.474208e-06,
+            "d3": 0.0,
+            "d4": 0.0
+        },
+        "thermometer_2": {
+            "d0": 276.6136,
+            "d1": 0.051029,
+            "d2": 1.472138e-06,
+            "d3": 0.0,
+            "d4": 0.0
+        },
+        "thermometer_3": {
+            "d0": 276.5975,
+            "d1": 0.051065,
+            "d2": 1.469268e-06,
+            "d3": 0.0,
+            "d4": 0.0
+        },
+        "thermometer_4": {
+            "d0": 276.4595,
+            "d1": 0.05099,
+            "d2": 1.506223e-06,
+            "d3": 0.0,
+            "d4": 0.0
+        }
+    },
+    "noaa10": {
+        "channel_1": {
+            "dark_count": 39.44,
+            "gain_switch": null,
+            "s0": 0.111,
+            "s1": 6.087,
+            "s2": -1.039
+        },
+        "channel_2": {
+            "dark_count": 39.4,
+            "gain_switch": null,
+            "s0": 0.137,
+            "s1": 0.119,
+            "s2": 0.123
+        },
+        "channel_3a": {
+            "dark_count": 37.51,
+            "gain_switch": null,
+            "s0": 0.1,
+            "s1": 0.0,
+            "s2": 0.0
+        },
+        "channel_3b": {
+            "b0": 0.0,
+            "b1": 0.0,
+            "b2": 0.0,
+            "centroid_wavenumber": 2672.6164,
+            "space_radiance": 0.0,
+            "to_eff_blackbody_intercept": 1.7939697951173739,
+            "to_eff_blackbody_slope": 0.9973743123852146
+        },
+        "channel_4": {
+            "b0": 5.76,
+            "b1": -0.1157,
+            "b2": 0.0005882,
+            "centroid_wavenumber": 910.49626,
+            "space_radiance": -7.29,
+            "to_eff_blackbody_intercept": 0.4565104004365842,
+            "to_eff_blackbody_slope": 0.9987743041739178
+        },
+        "channel_5": {
+            "b0": 5.76,
+            "b1": -0.1157,
+            "b2": 0.0005882,
+            "centroid_wavenumber": 910.49626,
+            "space_radiance": -7.29,
+            "to_eff_blackbody_intercept": 0.4565104004365842,
+            "to_eff_blackbody_slope": 0.9987743041739178
+        },
+        "date_of_launch": "1986-09-17T21:07:12.000000Z",
+        "thermometer_1": {
+            "d0": 276.659,
+            "d1": 0.051275,
+            "d2": 1.363e-06,
+            "d3": 0.0,
+            "d4": 0.0
+        },
+        "thermometer_2": {
+            "d0": 276.659,
+            "d1": 0.051275,
+            "d2": 1.363e-06,
+            "d3": 0.0,
+            "d4": 0.0
+        },
+        "thermometer_3": {
+            "d0": 276.659,
+            "d1": 0.051275,
+            "d2": 1.363e-06,
+            "d3": 0.0,
+            "d4": 0.0
+        },
+        "thermometer_4": {
+            "d0": 276.659,
+            "d1": 0.051275,
+            "d2": 1.363e-06,
+            "d3": 0.0,
+            "d4": 0.0
+        }
+    },
+    "noaa11": {
+        "channel_1": {
+            "dark_count": 40.0,
+            "gain_switch": null,
+            "s0": 0.11,
+            "s1": 0.632,
+            "s2": -0.044
+        },
+        "channel_2": {
+            "dark_count": 40.0,
+            "gain_switch": null,
+            "s0": 0.118,
+            "s1": -0.037,
+            "s2": 0.072
+        },
+        "channel_3a": {
+            "dark_count": 40.0,
+            "gain_switch": null,
+            "s0": 0.0,
+            "s1": 0.0,
+            "s2": 0.0
+        },
+        "channel_3b": {
+            "b0": 0.0,
+            "b1": 0.0,
+            "b2": 0.0,
+            "centroid_wavenumber": 2680.05,
+            "space_radiance": 0.0,
+            "to_eff_blackbody_intercept": 1.7331599814223095,
+            "to_eff_blackbody_slope": 0.9966572117119181
+        },
+        "channel_4": {
+            "b0": 7.21,
+            "b1": -0.1588,
+            "b2": 0.0008739,
+            "centroid_wavenumber": 927.462,
+            "space_radiance": -8.055,
+            "to_eff_blackbody_intercept": 0.3208098576426795,
+            "to_eff_blackbody_slope": 0.9987884695863918
+        },
+        "channel_5": {
+            "b0": 2.92,
+            "b1": -0.054,
+            "b2": 0.0002504,
+            "centroid_wavenumber": 840.746,
+            "space_radiance": -3.51,
+            "to_eff_blackbody_intercept": 0.04861971650823853,
+            "to_eff_blackbody_slope": 0.9993364406034393
+        },
+        "date_of_launch": "1988-09-24T13:06:14.399994Z",
+        "thermometer_1": {
+            "d0": 276.597,
+            "d1": 0.051275,
+            "d2": 1.363e-06,
+            "d3": 0.0,
+            "d4": 0.0
+        },
+        "thermometer_2": {
+            "d0": 276.597,
+            "d1": 0.051275,
+            "d2": 1.363e-06,
+            "d3": 0.0,
+            "d4": 0.0
+        },
+        "thermometer_3": {
+            "d0": 276.597,
+            "d1": 0.051275,
+            "d2": 1.363e-06,
+            "d3": 0.0,
+            "d4": 0.0
+        },
+        "thermometer_4": {
+            "d0": 276.597,
+            "d1": 0.051275,
+            "d2": 1.363e-06,
+            "d3": 0.0,
+            "d4": 0.0
+        }
+    },
+    "noaa12": {
+        "channel_1": {
+            "dark_count": 41.0,
+            "gain_switch": null,
+            "s0": 0.121,
+            "s1": 2.032,
+            "s2": -0.032
+        },
+        "channel_2": {
+            "dark_count": 40.0,
+            "gain_switch": null,
+            "s0": 0.148,
+            "s1": 1.323,
+            "s2": -0.008
+        },
+        "channel_3a": {
+            "dark_count": 40.0,
+            "gain_switch": null,
+            "s0": 0.1,
+            "s1": 0.0,
+            "s2": 0.0
+        },
+        "channel_3b": {
+            "b0": 0.0,
+            "b1": 0.0,
+            "b2": 0.0,
+            "centroid_wavenumber": 2651.7708,
+            "space_radiance": 0.0,
+            "to_eff_blackbody_intercept": 1.8995562357304514,
+            "to_eff_blackbody_slope": 0.9969990329109382
+        },
+        "channel_4": {
+            "b0": 5.11,
+            "b1": -0.1107,
+            "b2": 0.0005968,
+            "centroid_wavenumber": 922.36261,
+            "space_radiance": -5.51,
+            "to_eff_blackbody_intercept": 0.6329612453773935,
+            "to_eff_blackbody_slope": 0.9982953109270609
+        },
+        "channel_5": {
+            "b0": 1.91,
+            "b1": -0.037,
+            "b2": 0.0001775,
+            "centroid_wavenumber": 838.02678,
+            "space_radiance": -2.51,
+            "to_eff_blackbody_intercept": 0.4103730120125729,
+            "to_eff_blackbody_slope": 0.9988004406707545
+        },
+        "date_of_launch": "1991-05-14T22:02:38.400002Z",
+        "thermometer_1": {
+            "d0": 276.597,
+            "d1": 0.051275,
+            "d2": 1.363e-06,
+            "d3": 0.0,
+            "d4": 0.0
+        },
+        "thermometer_2": {
+            "d0": 276.597,
+            "d1": 0.051275,
+            "d2": 1.363e-06,
+            "d3": 0.0,
+            "d4": 0.0
+        },
+        "thermometer_3": {
+            "d0": 276.597,
+            "d1": 0.051275,
+            "d2": 1.363e-06,
+            "d3": 0.0,
+            "d4": 0.0
+        },
+        "thermometer_4": {
+            "d0": 276.597,
+            "d1": 0.051275,
+            "d2": 1.363e-06,
+            "d3": 0.0,
+            "d4": 0.0
+        }
+    },
+    "noaa14": {
+        "channel_1": {
+            "dark_count": 41.0,
+            "gain_switch": null,
+            "s0": 0.121,
+            "s1": 3.555,
+            "s2": -0.339
+        },
+        "channel_2": {
+            "dark_count": 41.0,
+            "gain_switch": null,
+            "s0": 0.152,
+            "s1": 0.254,
+            "s2": 0.201
+        },
+        "channel_3a": {
+            "dark_count": 39.0,
+            "gain_switch": null,
+            "s0": 0.1,
+            "s1": 0.0,
+            "s2": 0.0
+        },
+        "channel_3b": {
+            "b0": -0.0031,
+            "b1": 0.00359,
+            "b2": 0.0,
+            "centroid_wavenumber": 2654.25,
+            "space_radiance": 0.0069,
+            "to_eff_blackbody_intercept": 1.8781198977126812,
+            "to_eff_blackbody_slope": 0.996175681558497
+        },
+        "channel_4": {
+            "b0": 3.72,
+            "b1": -0.07622,
+            "b2": 0.0003822,
+            "centroid_wavenumber": 928.349,
+            "space_radiance": -4.05,
+            "to_eff_blackbody_intercept": 0.30793964309501387,
+            "to_eff_blackbody_slope": 0.9985590792486442
+        },
+        "channel_5": {
+            "b0": 2.0,
+            "b1": -0.03806,
+            "b2": 0.0001742,
+            "centroid_wavenumber": 833.04,
+            "space_radiance": -2.29,
+            "to_eff_blackbody_intercept": -0.022159078415812293,
+            "to_eff_blackbody_slope": 0.9994622892883629
+        },
+        "date_of_launch": "1994-12-30T18:12:57.599991Z",
+        "thermometer_1": {
+            "d0": 276.597,
+            "d1": 0.051275,
+            "d2": 1.363e-06,
+            "d3": 0.0,
+            "d4": 0.0
+        },
+        "thermometer_2": {
+            "d0": 276.597,
+            "d1": 0.051275,
+            "d2": 1.363e-06,
+            "d3": 0.0,
+            "d4": 0.0
+        },
+        "thermometer_3": {
+            "d0": 276.597,
+            "d1": 0.051275,
+            "d2": 1.363e-06,
+            "d3": 0.0,
+            "d4": 0.0
+        },
+        "thermometer_4": {
+            "d0": 276.597,
+            "d1": 0.051275,
+            "d2": 1.363e-06,
+            "d3": 0.0,
+            "d4": 0.0
+        }
+    },
+    "noaa15": {
+        "channel_1": {
+            "dark_count": 39.0,
+            "gain_switch": 500.0,
+            "s0": 0.11933333333333333,
+            "s1": -0.069,
+            "s2": 0.002
+        },
+        "channel_2": {
+            "dark_count": 40.0,
+            "gain_switch": 500.0,
+            "s0": 0.13733333333333334,
+            "s1": 0.339,
+            "s2": -0.01
+        },
+        "channel_3a": {
+            "dark_count": 39.0,
+            "gain_switch": 500.0,
+            "s0": 0.1,
+            "s1": 0.0,
+            "s2": 0.0
+        },
+        "channel_3b": {
+            "b0": 0.0,
+            "b1": 0.0,
+            "b2": 0.0,
+            "centroid_wavenumber": 2695.9743,
+            "space_radiance": 0.0,
+            "to_eff_blackbody_intercept": 1.6212563211771787,
+            "to_eff_blackbody_slope": 0.9980149482678952
+        },
+        "channel_4": {
+            "b0": 4.76,
+            "b1": -0.0932,
+            "b2": 0.0004524,
+            "centroid_wavenumber": 925.4075,
+            "space_radiance": -4.5,
+            "to_eff_blackbody_intercept": 0.3378095902956507,
+            "to_eff_blackbody_slope": 0.9987186439797741
+        },
+        "channel_5": {
+            "b0": 3.83,
+            "b1": -0.0659,
+            "b2": 0.0002811,
+            "centroid_wavenumber": 839.8979,
+            "space_radiance": -3.61,
+            "to_eff_blackbody_intercept": 0.3045584463978693,
+            "to_eff_blackbody_slope": 0.9990239535973354
+        },
+        "date_of_launch": "1998-05-13T21:30:57.600006Z",
+        "thermometer_1": {
+            "d0": 276.60157,
+            "d1": 0.051045,
+            "d2": 1.36328e-06,
+            "d3": 0.0,
+            "d4": 0.0
+        },
+        "thermometer_2": {
+            "d0": 276.62531,
+            "d1": 0.050909,
+            "d2": 1.47266e-06,
+            "d3": 0.0,
+            "d4": 0.0
+        },
+        "thermometer_3": {
+            "d0": 276.67413,
+            "d1": 0.050907,
+            "d2": 1.47656e-06,
+            "d3": 0.0,
+            "d4": 0.0
+        },
+        "thermometer_4": {
+            "d0": 276.59258,
+            "d1": 0.050966,
+            "d2": 1.47656e-06,
+            "d3": 0.0,
+            "d4": 0.0
+        }
+    },
+    "noaa16": {
+        "channel_1": {
+            "dark_count": 39.3,
+            "gain_switch": 498.96,
+            "s0": 0.11,
+            "s1": 0.839,
+            "s2": -0.051
+        },
+        "channel_2": {
+            "dark_count": 38.9,
+            "gain_switch": 500.17,
+            "s0": 0.11933333333333333,
+            "s1": 0.786,
+            "s2": -0.031
+        },
+        "channel_3a": {
+            "dark_count": 38.4,
+            "gain_switch": 499.43,
+            "s0": 0.10685714285714286,
+            "s1": 0.29,
+            "s2": -0.294
+        },
+        "channel_3b": {
+            "b0": 0.0,
+            "b1": 0.0,
+            "b2": 0.0,
+            "centroid_wavenumber": 2681.254,
+            "space_radiance": 0.0,
+            "to_eff_blackbody_intercept": 1.674558933750318,
+            "to_eff_blackbody_slope": 0.9982713932554388
+        },
+        "channel_4": {
+            "b0": 2.96,
+            "b1": -0.05411,
+            "b2": 0.00024532,
+            "centroid_wavenumber": 922.3479,
+            "space_radiance": -2.467,
+            "to_eff_blackbody_intercept": 0.5555332488394067,
+            "to_eff_blackbody_slope": 0.9985101230454039
+        },
+        "channel_5": {
+            "b0": 2.25,
+            "b1": -0.03665,
+            "b2": 0.00014854,
+            "centroid_wavenumber": 834.61814,
+            "space_radiance": -2.009,
+            "to_eff_blackbody_intercept": 0.4138044554994394,
+            "to_eff_blackbody_slope": 0.9987848783170394
+        },
+        "date_of_launch": "2000-09-21T13:04:30.719994Z",
+        "thermometer_1": {
+            "d0": 276.355,
+            "d1": 0.05562,
+            "d2": -1.59e-05,
+            "d3": 2.486e-08,
+            "d4": -1.199e-11
+        },
+        "thermometer_2": {
+            "d0": 276.142,
+            "d1": 0.05605,
+            "d2": -1.707e-05,
+            "d3": 2.595e-08,
+            "d4": -1.224e-11
+        },
+        "thermometer_3": {
+            "d0": 275.996,
+            "d1": 0.05486,
+            "d2": -1.223e-05,
+            "d3": 1.862e-08,
+            "d4": -8.53e-12
+        },
+        "thermometer_4": {
+            "d0": 276.132,
+            "d1": 0.05494,
+            "d2": -1.344e-05,
+            "d3": 2.112e-08,
+            "d4": -1.001e-11
+        }
+    },
+    "noaa17": {
+        "channel_1": {
+            "dark_count": 39.99,
+            "gain_switch": 501.12,
+            "s0": 0.11466666666666665,
+            "s1": 1.007,
+            "s2": -0.044
+        },
+        "channel_2": {
+            "dark_count": 39.09,
+            "gain_switch": 500.73,
+            "s0": 0.14,
+            "s1": 1.474,
+            "s2": -0.118
+        },
+        "channel_3a": {
+            "dark_count": 42.09,
+            "gain_switch": 501.37,
+            "s0": 0.11942857142857143,
+            "s1": 2.787,
+            "s2": -0.292
+        },
+        "channel_3b": {
+            "b0": 0.0,
+            "b1": 0.0,
+            "b2": 0.0,
+            "centroid_wavenumber": 2669.1414,
+            "space_radiance": 0.0,
+            "to_eff_blackbody_intercept": 1.695762344709997,
+            "to_eff_blackbody_slope": 0.997334722687091
+        },
+        "channel_4": {
+            "b0": 8.22,
+            "b1": -0.15795,
+            "b2": 0.00075579,
+            "centroid_wavenumber": 928.29959,
+            "space_radiance": -8.55,
+            "to_eff_blackbody_intercept": 0.5654877558672039,
+            "to_eff_blackbody_slope": 0.9984818084103121
+        },
+        "channel_5": {
+            "b0": 4.31,
+            "b1": -0.07318,
+            "b2": 0.00030976,
+            "centroid_wavenumber": 840.20289,
+            "space_radiance": -3.97,
+            "to_eff_blackbody_intercept": 0.37224447975949276,
+            "to_eff_blackbody_slope": 0.9989170740000766
+        },
+        "date_of_launch": "2002-06-24T21:05:28.319992Z",
+        "thermometer_1": {
+            "d0": 276.628,
+            "d1": 0.05098,
+            "d2": 1.371e-06,
+            "d3": 0.0,
+            "d4": 0.0
+        },
+        "thermometer_2": {
+            "d0": 276.538,
+            "d1": 0.05098,
+            "d2": 1.371e-06,
+            "d3": 0.0,
+            "d4": 0.0
+        },
+        "thermometer_3": {
+            "d0": 276.761,
+            "d1": 0.05097,
+            "d2": 1.369e-06,
+            "d3": 0.0,
+            "d4": 0.0
+        },
+        "thermometer_4": {
+            "d0": 276.66,
+            "d1": 0.051,
+            "d2": 1.348e-06,
+            "d3": 0.0,
+            "d4": 0.0
+        }
+    },
+    "noaa18": {
+        "channel_1": {
+            "dark_count": 39.44,
+            "gain_switch": 500.54,
+            "s0": 0.114,
+            "s1": 0.603,
+            "s2": -0.0
+        },
+        "channel_2": {
+            "dark_count": 39.4,
+            "gain_switch": 500.4,
+            "s0": 0.128,
+            "s1": 0.632,
+            "s2": 0.045
+        },
+        "channel_3a": {
+            "dark_count": 37.51,
+            "gain_switch": 500.56,
+            "s0": 0.1,
+            "s1": 0.0,
+            "s2": 0.0
+        },
+        "channel_3b": {
+            "b0": 0.0,
+            "b1": 0.0,
+            "b2": 0.0,
+            "centroid_wavenumber": 2660.6468,
+            "space_radiance": 0.0,
+            "to_eff_blackbody_intercept": 1.7173477182782537,
+            "to_eff_blackbody_slope": 0.9971448750791857
+        },
+        "channel_4": {
+            "b0": 5.82,
+            "b1": -0.11069,
+            "b2": 0.00052337,
+            "centroid_wavenumber": 928.73452,
+            "space_radiance": -5.53,
+            "to_eff_blackbody_intercept": 0.5461660253184831,
+            "to_eff_blackbody_slope": 0.9985440229601218
+        },
+        "channel_5": {
+            "b0": 2.67,
+            "b1": -0.0436,
+            "b2": 0.00017715,
+            "centroid_wavenumber": 834.08306,
+            "space_radiance": -2.22,
+            "to_eff_blackbody_intercept": 0.3989160707985957,
+            "to_eff_blackbody_slope": 0.9988289729121578
+        },
+        "date_of_launch": "2005-05-20T21:42:28.799988Z",
+        "thermometer_1": {
+            "d0": 276.601,
+            "d1": 0.0509,
+            "d2": 1.657e-06,
+            "d3": 0.0,
+            "d4": 0.0
+        },
+        "thermometer_2": {
+            "d0": 276.683,
+            "d1": 0.05101,
+            "d2": 1.482e-06,
+            "d3": 0.0,
+            "d4": 0.0
+        },
+        "thermometer_3": {
+            "d0": 276.565,
+            "d1": 0.05117,
+            "d2": 1.313e-06,
+            "d3": 0.0,
+            "d4": 0.0
+        },
+        "thermometer_4": {
+            "d0": 276.615,
+            "d1": 0.05103,
+            "d2": 1.484e-06,
+            "d3": 0.0,
+            "d4": 0.0
+        }
+    },
+    "noaa19": {
+        "channel_1": {
+            "dark_count": 38.8,
+            "gain_switch": 496.43,
+            "s0": 0.108,
+            "s1": 0.626,
+            "s2": -0.044
+        },
+        "channel_2": {
+            "dark_count": 39.0,
+            "gain_switch": 500.37,
+            "s0": 0.122,
+            "s1": 0.95,
+            "s2": -0.039
+        },
+        "channel_3a": {
+            "dark_count": 39.4,
+            "gain_switch": 496.11,
+            "s0": 0.1,
+            "s1": 0.0,
+            "s2": 0.0
+        },
+        "channel_3b": {
+            "b0": 0.0,
+            "b1": 0.0,
+            "b2": 0.0,
+            "centroid_wavenumber": 2670.2425,
+            "space_radiance": 0.0,
+            "to_eff_blackbody_intercept": 1.6820200170457578,
+            "to_eff_blackbody_slope": 0.9974112191806167
+        },
+        "channel_4": {
+            "b0": 5.7,
+            "b1": -0.11187,
+            "b2": 0.00054668,
+            "centroid_wavenumber": 927.92374,
+            "space_radiance": -5.49,
+            "to_eff_blackbody_intercept": 0.39366677255917354,
+            "to_eff_blackbody_slope": 0.9986718662850276
+        },
+        "channel_5": {
+            "b0": 3.58,
+            "b1": -0.05991,
+            "b2": 0.00024985,
+            "centroid_wavenumber": 831.28619,
+            "space_radiance": -3.39,
+            "to_eff_blackbody_intercept": 0.2633947633588976,
+            "to_eff_blackbody_slope": 0.9990463103920997
+        },
+        "date_of_launch": "2009-02-05T00:57:36.000000Z",
+        "thermometer_1": {
+            "d0": 276.6067,
+            "d1": 0.051111,
+            "d2": 1.405783e-06,
+            "d3": 0.0,
+            "d4": 0.0
+        },
+        "thermometer_2": {
+            "d0": 276.6119,
+            "d1": 0.05109,
+            "d2": 1.496037e-06,
+            "d3": 0.0,
+            "d4": 0.0
+        },
+        "thermometer_3": {
+            "d0": 276.6311,
+            "d1": 0.051033,
+            "d2": 1.49699e-06,
+            "d3": 0.0,
+            "d4": 0.0
+        },
+        "thermometer_4": {
+            "d0": 276.6268,
+            "d1": 0.051058,
+            "d2": 1.49311e-06,
+            "d3": 0.0,
+            "d4": 0.0
+        }
+    },
+    "noaa6": {
+        "channel_1": {
+            "dark_count": 39.44,
+            "gain_switch": null,
+            "s0": 0.113,
+            "s1": 0.9,
+            "s2": 0.0
+        },
+        "channel_2": {
+            "dark_count": 39.4,
+            "gain_switch": null,
+            "s0": 0.128,
+            "s1": 0.699,
+            "s2": 0.0
+        },
+        "channel_3a": {
+            "dark_count": 37.51,
+            "gain_switch": null,
+            "s0": 0.1,
+            "s1": 0.0,
+            "s2": 0.0
+        },
+        "channel_3b": {
+            "b0": 0.0,
+            "b1": 0.0,
+            "b2": 0.0,
+            "centroid_wavenumber": 2671.5433,
+            "space_radiance": 0.0,
+            "to_eff_blackbody_intercept": 1.7624057951236716,
+            "to_eff_blackbody_slope": 0.9975631527305099
+        },
+        "channel_4": {
+            "b0": 2.24,
+            "b1": -0.03964,
+            "b2": 0.00016925,
+            "centroid_wavenumber": 913.46088,
+            "space_radiance": -3.26,
+            "to_eff_blackbody_intercept": 0.5032756477395923,
+            "to_eff_blackbody_slope": 0.9986426449170288
+        },
+        "channel_5": {
+            "b0": 2.24,
+            "b1": -0.03964,
+            "b2": 0.00016925,
+            "centroid_wavenumber": 913.46088,
+            "space_radiance": -3.26,
+            "to_eff_blackbody_intercept": 0.5032756477395923,
+            "to_eff_blackbody_slope": 0.9986426449170288
+        },
+        "date_of_launch": "1979-06-28T20:23:59.999992Z",
+        "thermometer_1": {
+            "d0": 276.659,
+            "d1": 0.051275,
+            "d2": 1.363e-06,
+            "d3": 0.0,
+            "d4": 0.0
+        },
+        "thermometer_2": {
+            "d0": 276.659,
+            "d1": 0.051275,
+            "d2": 1.363e-06,
+            "d3": 0.0,
+            "d4": 0.0
+        },
+        "thermometer_3": {
+            "d0": 276.659,
+            "d1": 0.051275,
+            "d2": 1.363e-06,
+            "d3": 0.0,
+            "d4": 0.0
+        },
+        "thermometer_4": {
+            "d0": 276.659,
+            "d1": 0.051275,
+            "d2": 1.363e-06,
+            "d3": 0.0,
+            "d4": 0.0
+        }
+    },
+    "noaa7": {
+        "channel_1": {
+            "dark_count": 36.0,
+            "gain_switch": null,
+            "s0": 0.115,
+            "s1": 3.792,
+            "s2": -0.269
+        },
+        "channel_2": {
+            "dark_count": 37.0,
+            "gain_switch": null,
+            "s0": 0.127,
+            "s1": 2.685,
+            "s2": -0.101
+        },
+        "channel_3a": {
+            "dark_count": 39.0,
+            "gain_switch": null,
+            "s0": 0.1,
+            "s1": 0.0,
+            "s2": 0.0
+        },
+        "channel_3b": {
+            "b0": 0.0,
+            "b1": 0.0,
+            "b2": 0.0,
+            "centroid_wavenumber": 2684.5233,
+            "space_radiance": 0.0,
+            "to_eff_blackbody_intercept": 1.9431412686479361,
+            "to_eff_blackbody_slope": 0.9970825364982062
+        },
+        "channel_4": {
+            "b0": 5.25,
+            "b1": -0.10217,
+            "b2": 0.0004819,
+            "centroid_wavenumber": 928.23757,
+            "space_radiance": -5.16,
+            "to_eff_blackbody_intercept": 0.5273396378823769,
+            "to_eff_blackbody_slope": 0.9985980681720933
+        },
+        "channel_5": {
+            "b0": 3.93,
+            "b1": -0.06317,
+            "b2": 0.0002425,
+            "centroid_wavenumber": 841.52137,
+            "space_radiance": -4.28,
+            "to_eff_blackbody_intercept": 0.4050927062086506,
+            "to_eff_blackbody_slope": 0.9988224881686979
+        },
+        "date_of_launch": "1981-06-23T21:15:50.400009Z",
+        "thermometer_1": {
+            "d0": 277.099,
+            "d1": 0.05048,
+            "d2": 2.823e-06,
+            "d3": 0.0,
+            "d4": 0.0
+        },
+        "thermometer_2": {
+            "d0": 276.734,
+            "d1": 0.05069,
+            "d2": 2.493e-06,
+            "d3": 0.0,
+            "d4": 0.0
+        },
+        "thermometer_3": {
+            "d0": 276.876,
+            "d1": 0.05148,
+            "d2": 1.04e-06,
+            "d3": 0.0,
+            "d4": 0.0
+        },
+        "thermometer_4": {
+            "d0": 276.16,
+            "d1": 0.05128,
+            "d2": 1.414e-06,
+            "d3": 0.0,
+            "d4": 0.0
+        }
+    },
+    "noaa8": {
+        "channel_1": {
+            "dark_count": 39.44,
+            "gain_switch": null,
+            "s0": 0.119,
+            "s1": 6.065,
+            "s2": 0.0
+        },
+        "channel_2": {
+            "dark_count": 39.4,
+            "gain_switch": null,
+            "s0": 0.136,
+            "s1": 7.248,
+            "s2": 0.0
+        },
+        "channel_3a": {
+            "dark_count": 37.51,
+            "gain_switch": null,
+            "s0": 0.1,
+            "s1": 0.0,
+            "s2": 0.0
+        },
+        "channel_3b": {
+            "b0": 0.0,
+            "b1": 0.0,
+            "b2": 0.0,
+            "centroid_wavenumber": 2651.3776,
+            "space_radiance": 0.0,
+            "to_eff_blackbody_intercept": 1.7721113578458658,
+            "to_eff_blackbody_slope": 0.9975798712323902
+        },
+        "channel_4": {
+            "b0": 2.24,
+            "b1": -0.03964,
+            "b2": 0.00016925,
+            "centroid_wavenumber": 915.3033,
+            "space_radiance": -3.26,
+            "to_eff_blackbody_intercept": 0.49950763272635035,
+            "to_eff_blackbody_slope": 0.9986558092807081
+        },
+        "channel_5": {
+            "b0": 2.24,
+            "b1": -0.03964,
+            "b2": 0.00016925,
+            "centroid_wavenumber": 915.3033,
+            "space_radiance": -3.26,
+            "to_eff_blackbody_intercept": 0.49950763272635035,
+            "to_eff_blackbody_slope": 0.9986558092807081
+        },
+        "date_of_launch": "1983-03-29T23:09:36.000000Z",
+        "thermometer_1": {
+            "d0": 276.659,
+            "d1": 0.051275,
+            "d2": 1.363e-06,
+            "d3": 0.0,
+            "d4": 0.0
+        },
+        "thermometer_2": {
+            "d0": 276.659,
+            "d1": 0.051275,
+            "d2": 1.363e-06,
+            "d3": 0.0,
+            "d4": 0.0
+        },
+        "thermometer_3": {
+            "d0": 276.659,
+            "d1": 0.051275,
+            "d2": 1.363e-06,
+            "d3": 0.0,
+            "d4": 0.0
+        },
+        "thermometer_4": {
+            "d0": 276.659,
+            "d1": 0.051275,
+            "d2": 1.363e-06,
+            "d3": 0.0,
+            "d4": 0.0
+        }
+    },
+    "noaa9": {
+        "channel_1": {
+            "dark_count": 38.0,
+            "gain_switch": null,
+            "s0": 0.108,
+            "s1": 4.255,
+            "s2": 0.64
+        },
+        "channel_2": {
+            "dark_count": 40.0,
+            "gain_switch": null,
+            "s0": 0.122,
+            "s1": 0.31,
+            "s2": 0.642
+        },
+        "channel_3a": {
+            "dark_count": 38.0,
+            "gain_switch": null,
+            "s0": 0.1,
+            "s1": 0.0,
+            "s2": 0.0
+        },
+        "channel_3b": {
+            "b0": 0.0,
+            "b1": 0.0,
+            "b2": 0.0,
+            "centroid_wavenumber": 2690.0451,
+            "space_radiance": 0.0,
+            "to_eff_blackbody_intercept": 1.8778246397589067,
+            "to_eff_blackbody_slope": 0.9971105729816139
+        },
+        "channel_4": {
+            "b0": 5.24,
+            "b1": -0.1136,
+            "b2": 0.0006033,
+            "centroid_wavenumber": 930.5023,
+            "space_radiance": -5.53,
+            "to_eff_blackbody_intercept": 0.5108402897268406,
+            "to_eff_blackbody_slope": 0.99864483895354
+        },
+        "channel_5": {
+            "b0": 2.42,
+            "b1": -0.0469,
+            "b2": 0.0002198,
+            "centroid_wavenumber": 845.75,
+            "space_radiance": -3.06,
+            "to_eff_blackbody_intercept": 0.3877802982856218,
+            "to_eff_blackbody_slope": 0.9988802552338829
+        },
+        "date_of_launch": "1984-12-12T23:13:55.200005Z",
+        "thermometer_1": {
+            "d0": 277.018,
+            "d1": 0.05128,
+            "d2": 0.0,
+            "d3": 0.0,
+            "d4": 0.0
+        },
+        "thermometer_2": {
+            "d0": 276.75,
+            "d1": 0.05128,
+            "d2": 0.0,
+            "d3": 0.0,
+            "d4": 0.0
+        },
+        "thermometer_3": {
+            "d0": 276.862,
+            "d1": 0.05128,
+            "d2": 0.0,
+            "d3": 0.0,
+            "d4": 0.0
+        },
+        "thermometer_4": {
+            "d0": 276.546,
+            "d1": 0.05128,
+            "d2": 0.0,
+            "d3": 0.0,
+            "d4": 0.0
+        }
+    },
+    "tirosn": {
+        "channel_1": {
+            "dark_count": 39.44,
+            "gain_switch": null,
+            "s0": 0.115,
+            "s1": 5.11,
+            "s2": 0.0
+        },
+        "channel_2": {
+            "dark_count": 39.4,
+            "gain_switch": null,
+            "s0": 0.133,
+            "s1": 0.717,
+            "s2": 0.0
+        },
+        "channel_3a": {
+            "dark_count": 37.51,
+            "gain_switch": null,
+            "s0": 0.1,
+            "s1": 0.0,
+            "s2": 0.0
+        },
+        "channel_3b": {
+            "b0": 0.00195,
+            "b1": -0.015,
+            "b2": 0.011,
+            "centroid_wavenumber": 2655.7409,
+            "space_radiance": -0.0039,
+            "to_eff_blackbody_intercept": 1.645107312780676,
+            "to_eff_blackbody_slope": 0.9979149564899099
+        },
+        "channel_4": {
+            "b0": 6.13,
+            "b1": -0.131942,
+            "b2": 0.000673193,
+            "centroid_wavenumber": 913.05397,
+            "space_radiance": -8.13,
+            "to_eff_blackbody_intercept": 0.5305934198578978,
+            "to_eff_blackbody_slope": 0.9985677542700504
+        },
+        "channel_5": {
+            "b0": 6.13,
+            "b1": -0.131942,
+            "b2": 0.000673193,
+            "centroid_wavenumber": 913.05397,
+            "space_radiance": -8.13,
+            "to_eff_blackbody_intercept": 0.5305934198578978,
+            "to_eff_blackbody_slope": 0.9985677542700504
+        },
+        "date_of_launch": "1978-10-13T19:04:47.999992Z",
+        "thermometer_1": {
+            "d0": 276.659,
+            "d1": 0.051275,
+            "d2": 1.363e-06,
+            "d3": 0.0,
+            "d4": 0.0
+        },
+        "thermometer_2": {
+            "d0": 276.659,
+            "d1": 0.051275,
+            "d2": 1.363e-06,
+            "d3": 0.0,
+            "d4": 0.0
+        },
+        "thermometer_3": {
+            "d0": 276.659,
+            "d1": 0.051275,
+            "d2": 1.363e-06,
+            "d3": 0.0,
+            "d4": 0.0
+        },
+        "thermometer_4": {
+            "d0": 276.659,
+            "d1": 0.051275,
+            "d2": 1.363e-06,
+            "d3": 0.0,
+            "d4": 0.0
+        }
+    }
+}
+

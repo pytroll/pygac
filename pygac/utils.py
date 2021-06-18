@@ -20,100 +20,43 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import gzip
+import io
 import logging
+
+from contextlib import contextmanager, nullcontext
+
 import numpy as np
-import sys
-from contextlib import contextmanager
 
 LOG = logging.getLogger(__name__)
 
 
-def is_file_object(filename):
-    """Check if the input is a file object.
-
-    Args:
-        filename - object to check
-
-    Note:
-        This method only check if the object implements the
-        interface of a file object to allow duck types like
-        gzip.GzipFile instances.
-    """
-    has_close = hasattr(filename, 'close')
-    has_read = hasattr(filename, 'read')
-    if hasattr(filename, 'seekable'):
-        is_seekable = filename.seekable()
-    else:
-        is_seekable = False
-    return has_close and has_read and is_seekable
-
-
-@contextmanager
-def _file_opener(file):
-    """Open a file depending on the input.
-
-    Args:
-        file - path to file or file object
-    """
-    # open file if necessary
-    if is_file_object(file):
-        open_file = file
-        close = False
-    else:
-        open_file = open(file, mode='rb')
-        close = True
-    # check if it is a gzip file
+def gzip_inspected(open_file):
+    """Try to gzip decompress the file object if applicable."""
     try:
-        file_object = gzip.open(open_file)
+        file_object = gzip.GzipFile(mode='rb', fileobj=open_file)
         file_object.read(1)
     except OSError:
         file_object = open_file
     finally:
         file_object.seek(0)
-    # provide file_object with the context
-    try:
-        yield file_object
-    finally:
-        if close:
-            file_object.close()
+    return file_object
 
 
 @contextmanager
-def _file_opener_py2(file):
-    """Open a file depending on the input.
-
-    Args:
-        file - path to file
-    """
-    close = True
-    # check if it is a gzip file
-    try:
-        file_object = gzip.open(file)
-        file_object.read(1)
-    # Note: in python 2, this is an IOError, but we keep the
-    #       OSError for testing.
-    except (OSError, IOError):
-        file_object = open(file, mode='rb')
-    except TypeError:
-        # In python 2 gzip.open cannot handle file objects
-        LOG.debug("Gzip cannot open file objects in python2!")
-        if is_file_object(file):
-            file_object = file
-            close = False
-    finally:
-        file_object.seek(0)
-    # provide file_object with the context
-    try:
-        yield file_object
-    finally:
-        if close:
-            file_object.close()
-
-
-if sys.version_info.major < 3:
-    file_opener = _file_opener_py2
-else:
-    file_opener = _file_opener
+def file_opener(file):
+    if isinstance(file, io.IOBase) and file.seekable():
+        # avoid closing the file using nullcontext
+        open_file = nullcontext(file)
+    elif hasattr(file, 'open'):
+        try:
+            open_file = file.open(mode='rb')
+        except TypeError:
+            open_file = file.open()
+    else:
+        open_file = open(file, mode='rb')
+    # set open_file into context in case of lazy loading in __enter__ method.
+    with open_file as file_object:
+        yield gzip_inspected(file_object)
 
 
 def get_absolute_azimuth_angle_diff(sat_azi, sun_azi):

@@ -24,8 +24,8 @@ an orbit contain corrupt data. This module identifies affected pixels and flags
 them with fill values."""
 
 import numpy as np
+import bottleneck as bn
 import datetime
-from ._filter import _mean_filter
 
 TSM_AFFECTED_INTERVALS_POD = {
     3: [(datetime.datetime(2001, 10, 19, 4, 50), datetime.datetime(2001, 10, 19, 13, 38)),
@@ -376,61 +376,47 @@ TSM_AFFECTED_INTERVALS_KLM = {
 }
 
 
-def mean_filter(data, fill_value, box_size):
-    """Filter a 2D array using an arithmetic mean kernel.
-
-    Compute the arithmetic mean of the valid elements within a box of size
-    (boxsize x boxsize) around each pixel. Masked elements are not taken into
-    account.
+def _rolling_window(array, size):
+    """Create an array view of rolling windows.
 
     Args:
-        data (numpy.ma.core.MaskedArray): 2D array to be filtered
-        box_size (int): Specifies the boxsize. Must be odd.
-        fill_value: Value to fill masked elements with. Must be outside the
-            valid range of the data.
+        array (np.ndarray): 2D array
+        size (tuple): window size
 
     Returns:
-        numpy.ma.core.MaskedArray: The filtered array.
+        windows (np.ndarray): 4D array of rolling windows the first dimensions
+            are the window location on the 2D array, the last two dimensions
+            are the location inside the window.
     """
-    if not box_size % 2 == 1:
-        raise ValueError('Box size must be odd.')
-
-    # Replace masked elements with fill_value
-    filled = np.where(np.isnan(data), fill_value, data)
-
-    # Convert data to double (this is what _mean_filter() is expecting) and
-    # apply mean filter
-    filtered = _mean_filter(data=filled.astype('f8'), box_size=box_size,
-                            fill_value=fill_value)
-
-    # Re-mask fill values
-    return np.where(filtered == fill_value, np.nan, filtered)
+    shape = ((array.shape[0] - size[0] + 1, array.shape[1] - size[1] + 1,)
+             + size)
+    strides = array.strides + array.strides
+    return np.lib.stride_tricks.as_strided(array, shape=shape, strides=strides)
 
 
-def std_filter(data, box_size, fill_value):
+def std_filter(data, box_size):
     """Filter a 2D array using a standard deviation kernel.
 
-    Compute the standard deviation of the valid elements within a box of size
-    (box_size x box_size) around each pixel. Masked values are not taken into
-    account. Since
-
-        std = sqrt( mean(data^2) - mean(data)^2 )
-
-    we can use mean_filter() to compute the standard deviation.
-
     Args:
-        data (np.ma.core.MaskedArray): 2D array to be filtered
+        data (np.ndarray): 2D array to be filtered
         box_size (int): Specifies the boxsize. Must be odd.
-        fill_value: Value indicating invalid/missing data
 
     Returns:
-        np.ma.core.MaskedArray: The filtered array
+        np.ndarray: The filtered array
     """
-    mean_squared = np.square(mean_filter(data, box_size=box_size,
-                                         fill_value=fill_value))
-    squared_mean = mean_filter(np.square(data), box_size=box_size,
-                               fill_value=fill_value)
-    return np.sqrt(squared_mean - mean_squared)
+    size = (box_size, box_size)
+    border = box_size // 2
+    # need to surround the data with NaNs to calculate values at the boundary
+    padded_data = np.pad(
+        data, (border, border),
+        mode='constant',
+        constant_values=np.nan
+    )
+    windows = _rolling_window(padded_data, size)
+    n3, n2, n1, n0 = windows.shape
+    # flatten the windows for bottleneck function call
+    windows = windows.reshape((n3, n2, n1*n0))
+    return bn.nanstd(windows, axis=2)
 
 
 def get_tsm_idx(ch1, ch2, ch4, ch5):
@@ -443,9 +429,11 @@ def get_tsm_idx(ch1, ch2, ch4, ch5):
 
     # standard deviation of abs_d12 and rel_d45
     box_size = 3
-    fill_value = -9999.0
-    std_d12 = std_filter(abs_d12, box_size, fill_value)
-    std_d45 = std_filter(rel_d45, box_size, fill_value)
+    std_d12 = std_filter(abs_d12, box_size)
+    std_d45 = std_filter(rel_d45, box_size)
+    # replace NaNs to avoid "RuntimeWarning: invalid value encountered in greater"
+    std_d12 = np.nan_to_num(std_d12, copy=False)
+    std_d45 = np.nan_to_num(std_d45, copy=False)
 
     # using ch1, ch2, ch4, ch5 in combination
     # all channels seems to be affected throughout the whole orbit,

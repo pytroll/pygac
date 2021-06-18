@@ -23,6 +23,7 @@
 import datetime
 import unittest
 import sys
+import os
 try:
     import mock
 except ImportError:
@@ -30,6 +31,7 @@ except ImportError:
 import numpy as np
 import numpy.testing
 from pygac.gac_reader import GACReader, ReaderError
+from pygac.configuration import get_config
 
 
 class TestGacReader(unittest.TestCase):
@@ -55,12 +57,23 @@ class TestGacReader(unittest.TestCase):
         filepath = '/path/to/' + filename + '.gz'
         self.reader.filename = filepath
         self.assertEqual(self.reader.filename, filename)
+        self.reader.filename = None
+        self.assertIsNone(self.reader.filename)
+
+        class TestPath(os.PathLike):
+            def __init__(self, path):
+                self.path = str(path)
+
+            def __fspath__(self):
+                return self.path
+        self.reader.filename = TestPath(filepath)
+        self.assertEqual(self.reader.filename, filename)
 
     @unittest.skipIf(sys.version_info.major < 3, "Skipped in python2!")
     def test__read_scanlines(self):
         """Test the scanline extraction."""
         self.reader.scanline_type = np.dtype([
-            ('a', 'S2'), ('b', 'i4')])
+            ('a', 'S2'), ('b', '<i4')])
         # request more scan lines than available
         with self.assertWarnsRegex(RuntimeWarning,
                                    "Unexpected number of scanlines!"):
@@ -240,7 +253,6 @@ class TestGacReader(unittest.TestCase):
 
         for utcs, scanline in zip((utcs1, utcs2), (scanline1, scanline2)):
             self.reader.utcs = utcs
-            self.reader.times = utcs.astype(datetime.datetime)
             self.assertEqual(self.reader.get_midnight_scanline(), scanline,
                              msg='Incorrect midnight scanline')
 
@@ -289,7 +301,7 @@ class TestGacReader(unittest.TestCase):
 
         read_tle_file.return_value = tle_data
         for time, tle_idx in expected.items():
-            self.reader.times = [time]
+            self.reader.utcs = np.array([time], dtype='datetime64[ms]')
             self.reader.tle_lines = None
             if tle_idx is None:
                 self.assertRaises(IndexError, self.reader.get_tle_lines)
@@ -379,7 +391,6 @@ class TestGacReader(unittest.TestCase):
              315754371969]).astype('datetime64[ms]')
         self.reader.spacecrafts_orbital = {25: 'tiros n'}
         self.reader.spacecraft_id = 25
-        self.reader.times = self.reader.to_datetime(self.reader.utcs)
         expected_sat_azi = np.array(
             [-76.90, 11.08, 145.33, -50.01, np.nan])[:, np.newaxis]
         expected_sun_azi = np.array(
@@ -399,8 +410,7 @@ class TestGacReader(unittest.TestCase):
         np.testing.assert_allclose(sun_zenith, expected_sun_zenith, atol=0.01)
         np.testing.assert_allclose(rel_azi, expected_rel_azi, atol=0.01)
 
-    @mock.patch('pygac.reader.get_config')
-    def test_get_tle_file(self, get_config):
+    def test_get_tle_file(self):
         """Test get_tle_file."""
         # Use TLE name/dir from config file
         class MockConfigParser(object):
@@ -497,9 +507,33 @@ class TestGacReader(unittest.TestCase):
         self.reader.utcs = np.array([315748035469, 315748359969,
                                      315751135469, 315754371969,
                                      315754371969]).astype('datetime64[ms]')
-        self.reader.times = self.reader.to_datetime(self.reader.utcs)
         corr = self.reader.get_sun_earth_distance_correction()
         numpy.testing.assert_almost_equal(corr, 0.96660494, decimal=7)
+
+    @mock.patch('pygac.reader.Reader.get_sun_earth_distance_correction')
+    @mock.patch('pygac.reader.Reader.get_midnight_scanline')
+    @mock.patch('pygac.reader.Reader.get_miss_lines')
+    @mock.patch('pygac.reader.Reader.calibration',
+                new_callable=mock.PropertyMock)
+    def test_update_metadata(self,
+                             calibration,
+                             get_miss_lines,
+                             get_midnight_scanline,
+                             get_sun_earth_distance_correction):
+        get_miss_lines.return_value = 'miss_lines'
+        get_midnight_scanline.return_value = 'midn_line'
+        get_sun_earth_distance_correction.return_value = 'factor'
+        self.reader.head = {'foo': 'bar'}
+        calibration.return_value = mock.MagicMock(version='version')
+
+        self.reader.update_meta_data()
+
+        mda_exp = {'midnight_scanline': 'midn_line',
+                   'missing_scanlines': 'miss_lines',
+                   'sun_earth_distance_correction_factor': 'factor',
+                   'gac_header': {'foo': 'bar'},
+                   'calib_coeffs_version': 'version'}
+        self.assertDictEqual(self.reader.meta_data, mda_exp)
 
 
 def suite():

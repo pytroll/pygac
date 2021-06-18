@@ -32,4 +32,4 @@ will be processed.
 In Satpy
 ~~~~~~~~
 It is also possible to use pygac as a library in Satpy, see this `example notebook
-<https://github.com/pytroll/pytroll-examples/blob/master/satpy/avhrr_l1b_gaclac.ipynb>`_.
+<https://github.com/pytroll/pytroll-examples/blob/main/satpy/avhrr_l1b_gaclac.ipynb>`_.

@@ -36,14 +36,64 @@ http://www.ncdc.noaa.gov/oa/pod-guide/ncdc/docs/podug/html/c3/sec3-1.htm
 
 import datetime
 import logging
+try:
+    from enum import IntFlag
+except ImportError:
+    # python version < 3.6, use a simple object without nice representation
+    IntFlag = object
 
 import numpy as np
 
+from pyorbital.geoloc_instrument_definitions import avhrr_gac
+from pyorbital.geoloc import compute_pixels, get_lonlatalt
+
+from pygac.clock_offsets_converter import get_offsets
 from pygac.correct_tsm_issue import TSM_AFFECTED_INTERVALS_POD, get_tsm_idx
 from pygac.reader import Reader, ReaderError
+from pygac.slerp import slerp
 from pygac.utils import file_opener
 
 LOG = logging.getLogger(__name__)
+
+
+class POD_QualityIndicator(IntFlag):
+    """Quality Indicators.
+
+    Source:
+        POD guide Table 3.1.2.1-2. Format of quality indicators.
+    """
+    # POD guide Table 3.1.2.1-2. Format of quality indicators.
+    FATAL_FLAG = 2**31  # Data should not be used for product generation
+    TIME_ERROR = 2**30  # A time sequence error was detected while Processing
+    # this frame
+    DATA_GAP = 2**29  # A gap precedes this frame
+    DATA_JITTER = 2**28  # Resync occurred on this frame
+    CALIBRATION = 2**27  # Insufficient data for calibration
+    NO_EARTH_LOCATION = 2**26  # Earth location data not available
+    ASCEND_DESCEND = 2**25  # AVHRR Earth location indication of Ascending (=0)
+    # or descending (=1) data
+    PSEUDO_NOISE = 2**24  # Pseudo Noise (P/N) occurred (=1) on the frame,
+    # data not used for calibration computations
+    BIT_SYNC_STATUS = 2**23  # Drop lock during frame
+    SYNC_ERROR = 2**22  # Frame Sync word error greater than zero
+    FRAME_SYNC_LOCK = 2**21  # Frame Sync previously dropped lock
+    FLYWHEELING = 2**20  # Flywheeling detected during this frame
+    BIT_SLIPPAGE = 2**19  # Bit slippage detected during this frame
+    # Solar blackbody contamination indicator
+    # 0 = no correction
+    # 1 = solar contamination corrected
+    CH_3_CONTAMINATION = 2**18  # Channel 3 solar blackbody contamination
+    CH_4_CONTAMINATION = 2**17  # Channel 4 solar blackbody contamination
+    CH_5_CONTAMINATION = 2**16  # Channel 5 solar blackbody contamination
+    # TIP Parity
+    TIP_PARITY_1 = 2**15  # In first minor frame
+    TIP_PARITY_2 = 2**14  # In second minor frame
+    TIP_PARITY_3 = 2**13  # In third minor frame
+    TIP_PARITY_4 = 2**12  # In fourth minor frame
+    TIP_PARITY_5 = 2**11  # In fifth minor frame
+    # Note: Bit 10 to 8, and 1 to 0 are spare bits. 7 to 2 define
+    #       "SYNC ERRORS - Number of bit errors in frame sync" (6 bit integer?)
+
 
 # common header
 header0 = np.dtype([("noaa_spacecraft_identification_code", ">u1"),
@@ -187,6 +237,9 @@ class PODReader(Reader):
 
     tsm_affected_intervals = TSM_AFFECTED_INTERVALS_POD
 
+    QFlag = POD_QualityIndicator
+    _quality_indicators_key = "quality_indicators"
+
     def correct_scan_line_numbers(self):
         """Correct the scan line numbers."""
         # Perform common corrections first.
@@ -300,7 +353,7 @@ class PODReader(Reader):
 
     @classmethod
     def _validate_header(cls, header):
-        """Check if the header belongs to this reader"""
+        """Check if the header belongs to this reader."""
         # call super to enter the Method Resolution Order (MRO)
         super(PODReader, cls)._validate_header(header)
         LOG.debug("validate header")
@@ -364,79 +417,101 @@ class PODReader(Reader):
     def _get_times(self):
         return self.decode_timestamps(self.scans["time_code"])
 
-    def _adjust_clock_drift(self):
-        """Adjust the geolocation to compensate for the clock error.
+    def _compute_missing_lonlat(self, missed_utcs):
+        """compute lon lat values using pyorbital"""
+        tic = datetime.datetime.now()
 
-        TODO: bad things might happen when scanlines are skipped.
-        """
+        scan_rate = datetime.timedelta(milliseconds=1/self.scan_freq).total_seconds()
+        sgeom = avhrr_gac(missed_utcs.astype(datetime.datetime),
+                          self.scan_points, frequency=scan_rate)
+        t0 = missed_utcs[0].astype(datetime.datetime)
+        s_times = sgeom.times(t0)
+        tle1, tle2 = self.get_tle_lines()
+
+        rpy = self.get_attitude_coeffs()
+        pixels_pos = compute_pixels((tle1, tle2), sgeom, s_times, rpy)
+        pos_time = get_lonlatalt(pixels_pos, s_times)
+
+        missed_lons, missed_lats = pos_time[:2]
+
+        pixels_per_line = self.lats.shape[1]
+        missed_lons = missed_lons.reshape(-1, pixels_per_line)
+        missed_lats = missed_lats.reshape(-1, pixels_per_line)
+
+        toc = datetime.datetime.now()
+        LOG.warning("Computation of geolocation: %s", str(toc - tic))
+
+        return missed_lons, missed_lats
+
+    def _adjust_clock_drift(self):
+        """Adjust the geolocation to compensate for the clock error."""
         tic = datetime.datetime.now()
         self.get_times()
-        from pygac.clock_offsets_converter import get_offsets
         try:
-            offset_times, clock_error = get_offsets(self.spacecraft_name)
+            error_utcs, clock_error = get_offsets(self.spacecraft_name)
         except KeyError:
             LOG.info("No clock drift info available for %s",
                      self.spacecraft_name)
-        else:
-            offset_times = np.array(offset_times, dtype='datetime64[ms]')
-            offsets = np.interp(self.utcs.astype(np.uint64),
-                                offset_times.astype(np.uint64),
-                                clock_error)
-            LOG.info("Adjusting for clock drift of %s to %s",
-                     str(min(offsets)),
-                     str(max(offsets)))
-            self.times = (self.utcs +
-                          offsets.astype('timedelta64[s]')).astype(datetime.datetime)
-            offsets *= -2
+            return
 
-            int_offsets = np.floor(offsets).astype(np.int)
+        error_utcs = np.array(error_utcs, dtype='datetime64[ms]')
+        # interpolate to get the clock offsets at the scan line utcs
+        # the clock_error is given in seconds, so offsets are in seconds, too.
+        offsets = np.interp(self.utcs.astype(np.uint64),
+                            error_utcs.astype(np.uint64),
+                            clock_error)
+        LOG.info("Adjusting for clock drift of %s to %s seconds.",
+                 str(min(offsets)),
+                 str(max(offsets)))
 
-            # filling out missing geolocations with computation from pyorbital.
-            line_indices = (self.scans["scan_line_number"]
-                            + int_offsets)
+        # For the interpolation of geolocations, we need to prepend/append
+        # lines. The conversion from offset to line numbers is given by the
+        # scan rate = 1/scan frequency.
+        scan_rate = datetime.timedelta(milliseconds=1/self.scan_freq)
+        offset_lines = offsets / scan_rate.total_seconds()
 
-            missed = sorted((set(line_indices) |
-                             set(line_indices + 1))
-                            - set(self.scans["scan_line_number"]))
+        # To avoid trouble with missing lines, we will construct an
+        # array that covers the whole interpolation range.
+        scan_lines = self.scans["scan_line_number"]
+        shifted_lines = scan_lines - offset_lines
+        shifted_lines_floor = np.floor(shifted_lines).astype(int)
+        # compute the line range, note that the max requires a "+1"
+        # to cover the interpolation range because of the floor.
+        min_line = min(scan_lines.min(), shifted_lines_floor.min())
+        max_line = max(scan_lines.max(), shifted_lines_floor.max()+1)
+        num_lines = max_line - min_line + 1
+        missed_lines = np.setdiff1d(np.arange(min_line, max_line+1), scan_lines)
+        missed_utcs = ((missed_lines - scan_lines[0])*np.timedelta64(scan_rate, "ms")
+                       + self.utcs[0])
+        # calculate the missing geo locations
+        missed_lons, missed_lats = self._compute_missing_lonlat(missed_utcs)
 
-            min_idx = min(line_indices)
-            max_idx = max(max(line_indices),
-                          max(self.scans["scan_line_number"] - min_idx)) + 1
-            idx_len = max_idx - min_idx + 2
+        # create arrays of lons and lats for interpolation. The locations
+        # correspond to not yet corrected utcs, i.e. the time difference from
+        # one line to the other should be equal to the scan rate.
+        pixels_per_line = self.lats.shape[1]
+        complete_lons = np.full((num_lines, pixels_per_line), np.nan,
+                                dtype=np.float)
+        complete_lats = np.full((num_lines, pixels_per_line), np.nan,
+                                dtype=np.float)
 
-            complete_lons = np.full((idx_len, self.lats.shape[1]), np.nan,
-                                    dtype=np.float)
-            complete_lats = np.full((idx_len, self.lats.shape[1]), np.nan,
-                                    dtype=np.float)
+        complete_lons[scan_lines - min_line] = self.lons
+        complete_lats[scan_lines - min_line] = self.lats
+        complete_lons[missed_lines - min_line] = missed_lons
+        complete_lats[missed_lines - min_line] = missed_lats
 
-            complete_lons[self.scans["scan_line_number"] - min_idx] = self.lons
-            complete_lats[self.scans["scan_line_number"] - min_idx] = self.lats
+        # perform the slerp interpolation to the corrected utc times
+        slerp_t = shifted_lines - shifted_lines_floor  # in [0, 1)
+        slerp_res = slerp(complete_lons[shifted_lines_floor - min_line, :],
+                          complete_lats[shifted_lines_floor - min_line, :],
+                          complete_lons[shifted_lines_floor - min_line + 1, :],
+                          complete_lats[shifted_lines_floor - min_line + 1, :],
+                          slerp_t[:, np.newaxis, np.newaxis])
 
-            missed_utcs = ((np.array(missed) - 1) * np.timedelta64(500, "ms")
-                           + self.utcs[0])
-            try:
-                mlons, mlats = self.compute_lonlat(width=self.lats.shape[1],
-                                                   utcs=missed_utcs,
-                                                   clock_drift_adjust=True)
-            except IndexError as err:
-                LOG.warning(
-                    'Cannot perform clock drift correction: %s', str(err))
-                return
-
-            complete_lons[missed - min_idx] = mlons
-            complete_lats[missed - min_idx] = mlats
-
-            from pygac.slerp import slerp
-            off = offsets - np.floor(offsets)
-            res = slerp(complete_lons[line_indices - min_idx, :],
-                        complete_lats[line_indices - min_idx, :],
-                        complete_lons[line_indices - min_idx + 1, :],
-                        complete_lats[line_indices - min_idx + 1, :],
-                        off[:, np.newaxis, np.newaxis])
-
-            self.lons = res[:, :, 0]
-            self.lats = res[:, :, 1]
-            self.utcs += offsets.astype('timedelta64[s]')
+        # set corrected values
+        self.lons = slerp_res[:, :, 0]
+        self.lats = slerp_res[:, :, 1]
+        self.utcs -= (offsets * 1000).astype('timedelta64[ms]')
 
         toc = datetime.datetime.now()
         LOG.debug("clock drift adjustment took %s", str(toc - tic))
@@ -478,27 +553,6 @@ class PODReader(Reader):
         space_counts[:, 2] = np.mean(decode_tele[:, 56:102:5], axis=1)
 
         return prt_counts, ict_counts, space_counts
-
-    def _get_corrupt_mask(self):
-        """Get mask for corrupt scanlines."""
-        mask = ((self.scans["quality_indicators"] >> 31) |
-                ((self.scans["quality_indicators"] << 4) >> 31) |
-                ((self.scans["quality_indicators"] << 5) >> 31))
-        return mask.astype(bool)
-
-    def get_qual_flags(self):
-        """Read quality flags."""
-        number_of_scans = self.scans["telemetry"].shape[0]
-        qual_flags = np.zeros((int(number_of_scans), 7))
-        qual_flags[:, 0] = self.scans["scan_line_number"]
-        qual_flags[:, 1] = (self.scans["quality_indicators"] >> 31)
-        qual_flags[:, 2] = ((self.scans["quality_indicators"] << 4) >> 31)
-        qual_flags[:, 3] = ((self.scans["quality_indicators"] << 5) >> 31)
-        qual_flags[:, 4] = ((self.scans["quality_indicators"] << 13) >> 31)
-        qual_flags[:, 5] = ((self.scans["quality_indicators"] << 14) >> 31)
-        qual_flags[:, 6] = ((self.scans["quality_indicators"] << 15) >> 31)
-
-        return qual_flags
 
     def postproc(self, channels):
         """No POD specific postprocessing to be done."""
