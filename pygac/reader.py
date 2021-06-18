@@ -33,6 +33,7 @@ import re
 import six
 import types
 import warnings
+import pyorbital
 
 from pygac.utils import (centered_modulus,
                          calculate_sun_earth_distance_correction,
@@ -41,6 +42,7 @@ from pyorbital.orbital import Orbital
 from pyorbital import astronomy
 from pygac.calibration import Calibrator, calibrate_solar, calibrate_thermal
 from pygac import gac_io
+from distutils.version import LooseVersion
 
 LOG = logging.getLogger(__name__)
 
@@ -705,6 +707,24 @@ class Reader(six.with_metaclass(ABCMeta)):
         self.tle_lines = tle1, tle2
         return tle1, tle2
 
+    def get_sat_angles_without_tle(self):
+        """Get satellite angles using lat/lon from data to approximate satellite postition instead of TLE."""
+        from pyorbital.orbital import get_observer_look as get_observer_look_no_tle
+        LOG.warning('Approximating satellite height to 850km (TIROS-N OSCAR)!')
+        sat_alt = 850.0  # km  TIROS-N OSCAR
+        mid_column = int(0.5*self.lons.shape[1])
+        sat_azi, sat_elev = get_observer_look_no_tle(
+            self.lons[:, mid_column][:, np.newaxis],
+            self.lats[:, mid_column][:, np.newaxis],  # approximate satellite position
+            sat_alt,  # approximate satellite altitude
+            self.times[:, np.newaxis],
+            self.lons, self.lats, 0)
+        # Sometimes (pyorbital <= 1.6.1) the get_observer_look_not_tle returns nodata instead of 90.
+        # Problem solved with https://github.com/pytroll/pyorbital/pull/77
+        if LooseVersion(pyorbital.__version__) <= LooseVersion('1.6.1'):
+            sat_elev[:, mid_column] = 90
+        return sat_azi, sat_elev
+
     def get_angles(self):
         """Get azimuth and zenith angles.
 
@@ -725,16 +745,17 @@ class Reader(six.with_metaclass(ABCMeta)):
         """
         self.get_times()
         self.get_lonlat()
-        tle1, tle2 = self.get_tle_lines()
         times = self.times
-        orb = Orbital(self.spacecrafts_orbital[self.spacecraft_id],
-                      line1=tle1, line2=tle2)
-
-        sat_azi, sat_elev = orb.get_observer_look(times[:, np.newaxis],
-                                                  self.lons, self.lats, 0)
+        try:
+            tle1, tle2 = self.get_tle_lines()
+            orb = Orbital(self.spacecrafts_orbital[self.spacecraft_id],
+                          line1=tle1, line2=tle2)
+            sat_azi, sat_elev = orb.get_observer_look(times[:, np.newaxis],
+                                                      self.lons, self.lats, 0)
+        except IndexError:
+            sat_azi, sat_elev = self.get_sat_angles_without_tle()
 
         sat_zenith = 90 - sat_elev
-
         sun_zenith = astronomy.sun_zenith_angle(times[:, np.newaxis],
                                                 self.lons, self.lats)
 
