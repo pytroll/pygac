@@ -740,7 +740,6 @@ class Reader(six.with_metaclass(ABCMeta)):
         # Sometimes (pyorbital <= 1.6.1) the get_observer_look_not_tle returns nodata instead of 90.
         # Problem solved with https://github.com/pytroll/pyorbital/pull/77
         if LooseVersion(pyorbital.__version__) <= LooseVersion('1.6.1'):
-            pass
             sat_elev[:, mid_column] = 90
         return sat_azi, sat_elev
 
