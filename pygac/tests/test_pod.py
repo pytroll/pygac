@@ -284,15 +284,15 @@ class TestPOD(unittest.TestCase):
         # undo changes to clock_offsets_txt
         clock_offsets_txt.pop(sat_name)
 
-    @mock.patch('pygac.clock_offsets_converter.get_offsets')
+    @mock.patch('pygac.pod_reader.get_offsets')
     @mock.patch('pygac.reader.Reader.get_tle_lines')
-    def test__adjust_clock_drift_without_tle(self, get_offsets, get_tle_lines):
+    def test__adjust_clock_drift_without_tle(self, get_tle_lines, get_offsets):
         """Test that clockdrift adjustment can handle missing TLE data."""
         reader = self.reader
         reader.utcs = np.zeros(10, dtype='datetime64[ms]')
         reader.scans = {"scan_line_number": np.arange(10)}
         get_offsets.return_value = np.zeros(10), np.zeros(10)
-        get_tle_lines.side_effect = NoTLEData('foo')
+        get_tle_lines.side_effect = NoTLEData('No TLE data available')
         reader._adjust_clock_drift()  # should pass without errors
 
 
