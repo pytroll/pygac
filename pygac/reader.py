@@ -82,7 +82,6 @@ class ReaderError(ValueError):
 
 class NoTLEData(IndexError):
     """Raised if no TLE data available within time range."""
-    pass
 
 
 class Reader(six.with_metaclass(ABCMeta)):
