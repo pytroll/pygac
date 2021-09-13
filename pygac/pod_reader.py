@@ -49,7 +49,7 @@ from pyorbital.geoloc import compute_pixels, get_lonlatalt
 
 from pygac.clock_offsets_converter import get_offsets
 from pygac.correct_tsm_issue import TSM_AFFECTED_INTERVALS_POD, get_tsm_idx
-from pygac.reader import Reader, ReaderError
+from pygac.reader import Reader, ReaderError, NoTLEData
 from pygac.slerp import slerp
 from pygac.utils import file_opener
 
@@ -484,7 +484,11 @@ class PODReader(Reader):
         missed_utcs = ((missed_lines - scan_lines[0])*np.timedelta64(scan_rate, "ms")
                        + self.utcs[0])
         # calculate the missing geo locations
-        missed_lons, missed_lats = self._compute_missing_lonlat(missed_utcs)
+        try:
+            missed_lons, missed_lats = self._compute_missing_lonlat(missed_utcs)
+        except NoTLEData as err:
+            LOG.warning('Cannot perform clock drift correction: %s', str(err))
+            return
 
         # create arrays of lons and lats for interpolation. The locations
         # correspond to not yet corrected utcs, i.e. the time difference from

@@ -31,6 +31,7 @@ except ImportError:
 import numpy as np
 import numpy.testing
 from pygac.gac_reader import GACReader, ReaderError
+from pygac.reader import NoTLEData
 
 
 class TestGacReader(unittest.TestCase):
@@ -303,25 +304,30 @@ class TestGacReader(unittest.TestCase):
             self.reader.utcs = np.array([time], dtype='datetime64[ms]')
             self.reader.tle_lines = None
             if tle_idx is None:
-                self.assertRaises(IndexError, self.reader.get_tle_lines)
+                self.assertRaises(NoTLEData, self.reader.get_tle_lines)
             else:
                 tle1, tle2 = self.reader.get_tle_lines()
                 self.assertEqual(tle1, tle_data[tle_idx])
                 self.assertEqual(tle2, tle_data[tle_idx + 1])
 
-    def test_get_sat_angles_without_tle_at_nadir(self):
+    @mock.patch('pygac.reader.Reader.get_tle_lines')
+    def test_get_sat_angles_without_tle_at_nadir(self, get_tle_lines):
         """Test that the get satellite angles without tle at nadir."""
+        get_tle_lines.side_effect = NoTLEData('No TLE data available')
         rng = np.random.RandomState(125)
         self.reader.lons = rng.rand(100, 409) * 90
         self.reader.lats = rng.rand(100, 409) * 90
         self.reader.utcs = np.array(
             [numpy.datetime64(datetime.datetime(1980, 1, 3, 11, 47, 15, 469000)) for date in range(100)])
-        sat_azi, sat_elev = self.reader.get_sat_angles_without_tle()
+        sat_azi, sat_elev = self.reader.get_sat_angles()
         self.assertEqual(np.sum(np.isnan(sat_elev)), 0)
         np.testing.assert_allclose(sat_elev[:, 204], 90., atol=0.01)
 
-    def test_get_sat_angles_without_tle(self):
+    @mock.patch('pygac.reader.Reader.get_tle_lines')
+    def test_get_sat_angles_without_tle(self, get_tle_lines):
         """Test the get satellite angles without tle."""
+        get_tle_lines.side_effect = NoTLEData('No TLE data available')
+
         # Test data correspond to columns 0:2, 201:208 and 407:409. Extracted like this:
         # self.lons[0:5, [0, 1, 201, 202, 203, 204, 205, 206, 207, -2, -1]]
         self.reader.lons = np.array([[69.41555135, 68.76815744, 28.04133742, 27.94671757, 27.85220562,
@@ -364,7 +370,7 @@ class TestGacReader(unittest.TestCase):
         expected_sat_azi_408 = np.array([39.77021472, 39.71516966, 39.68104134, 39.60503726, 39.5403431])
         expected_sat_elev_0 = np.array([20.94889204, 20.96041284, 20.96368521, 20.96826309, 20.95849212])
         expected_sat_elev_204 = np.array([89.24533884, 89.22663677, 89.25079817, 89.24938043, 89.23004118])
-        sat_azi, sat_elev = self.reader.get_sat_angles_without_tle()
+        sat_azi, sat_elev = self.reader.get_sat_angles()
         np.testing.assert_allclose(sat_azi[:, 0], expected_sat_azi_0, atol=1.0)
         np.testing.assert_allclose(sat_azi[:, 2], expected_sat_azi_201, atol=35.0)  # Azi bad close to center!
         np.testing.assert_allclose(sat_azi[:, -1], expected_sat_azi_408, atol=1.0)

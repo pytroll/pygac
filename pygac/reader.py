@@ -80,6 +80,10 @@ class ReaderError(ValueError):
     pass
 
 
+class NoTLEData(IndexError):
+    """Raised if no TLE data available within time range."""
+
+
 class Reader(six.with_metaclass(ABCMeta)):
     """Reader for Gac and Lac, POD and KLM data."""
 
@@ -690,7 +694,7 @@ class Reader(six.with_metaclass(ABCMeta)):
         # Make sure the TLE we found is within the threshold
         delta_days = abs(sdate - dates[iindex]) / np.timedelta64(1, 'D')
         if delta_days > self.tle_thresh:
-            raise IndexError(
+            raise NoTLEData(
                 "Can't find tle data for %s within +/- %d days around %s" %
                 (self.spacecraft_name, self.tle_thresh, sdate))
 
@@ -707,7 +711,30 @@ class Reader(six.with_metaclass(ABCMeta)):
         self.tle_lines = tle1, tle2
         return tle1, tle2
 
-    def get_sat_angles_without_tle(self):
+    def get_sat_angles(self):
+        """Get satellite angles.
+
+        Returns:
+            Azimuth, elevation (degrees)
+        """
+        try:
+            return self._get_sat_angles_with_tle()
+        except NoTLEData:
+            LOG.warning(
+                'No TLE data available. Falling back to approximate '
+                'calculation of satellite angles.'
+            )
+            return self._get_sat_angles_without_tle()
+
+    def _get_sat_angles_with_tle(self):
+        tle1, tle2 = self.get_tle_lines()
+        orb = Orbital(self.spacecrafts_orbital[self.spacecraft_id],
+                      line1=tle1, line2=tle2)
+        sat_azi, sat_elev = orb.get_observer_look(self.times[:, np.newaxis],
+                                                  self.lons, self.lats, 0)
+        return sat_azi, sat_elev
+
+    def _get_sat_angles_without_tle(self):
         """Get satellite angles using lat/lon from data to approximate satellite postition instead of TLE."""
         from pyorbital.orbital import get_observer_look as get_observer_look_no_tle
         LOG.warning('Approximating satellite height to 850km (TIROS-N OSCAR)!')
@@ -746,14 +773,7 @@ class Reader(six.with_metaclass(ABCMeta)):
         self.get_times()
         self.get_lonlat()
         times = self.times
-        try:
-            tle1, tle2 = self.get_tle_lines()
-            orb = Orbital(self.spacecrafts_orbital[self.spacecraft_id],
-                          line1=tle1, line2=tle2)
-            sat_azi, sat_elev = orb.get_observer_look(times[:, np.newaxis],
-                                                      self.lons, self.lats, 0)
-        except IndexError:
-            sat_azi, sat_elev = self.get_sat_angles_without_tle()
+        sat_azi, sat_elev = self.get_sat_angles()
 
         sat_zenith = 90 - sat_elev
         sun_zenith = astronomy.sun_zenith_angle(times[:, np.newaxis],
