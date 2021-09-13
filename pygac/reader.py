@@ -720,6 +720,10 @@ class Reader(six.with_metaclass(ABCMeta)):
         try:
             return self._get_sat_angles_with_tle()
         except NoTLEData:
+            LOG.warning(
+                'No TLE data available. Falling back to approximate '
+                'calculation of satellite angles.'
+            )
             return self._get_sat_angles_without_tle()
 
     def _get_sat_angles_with_tle(self):
