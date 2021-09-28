@@ -214,7 +214,7 @@ class Reader(six.with_metaclass(ABCMeta)):
                 header['data_set_name'] = data_set_name.encode()
             else:
                 LOG.debug("header['data_set_name']=%s; filename='%s'"
-                          % (header['data_set_name'], filename))
+                          % (header['data_set_name'], str(filename)))
                 raise ReaderError('Cannot determine data_set_name!')
         return header
 
