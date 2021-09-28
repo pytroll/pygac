@@ -202,11 +202,12 @@ class Reader(six.with_metaclass(ABCMeta)):
             header (struct): file header
             filename (str): path to file
         """
+        filename = str(filename)
         data_set_name = header['data_set_name'].decode(errors='ignore')
         if not cls.data_set_pattern.match(data_set_name):
             LOG.debug('The data_set_name in header %s does not match.'
                       ' Use filename instead.' % header['data_set_name'])
-            match = cls.data_set_pattern.search(str(filename))
+            match = cls.data_set_pattern.search(filename)
             if match:
                 data_set_name = match.group()
                 LOG.debug("Set data_set_name, to filename %s"
@@ -214,7 +215,7 @@ class Reader(six.with_metaclass(ABCMeta)):
                 header['data_set_name'] = data_set_name.encode()
             else:
                 LOG.debug("header['data_set_name']=%s; filename='%s'"
-                          % (header['data_set_name'], str(filename)))
+                          % (header['data_set_name'], filename))
                 raise ReaderError('Cannot determine data_set_name!')
         return header
 
