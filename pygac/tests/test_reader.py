@@ -122,6 +122,11 @@ class TestGacReader(unittest.TestCase):
         # should be fine, because the data_set_name is the pefered source
         head = self.reader._correct_data_set_name(val_head.copy(), inv_filepath)
         self.assertEqual(head['data_set_name'], val_head['data_set_name'])
+        # enter a valid data_set_name, and an FSFile/pathlib object as filepath
+        from satpy.readers import FSFile
+        FS_filepath = FSFile(val_filepath)
+        head = self.reader._correct_data_set_name(val_head.copy(), FS_filepath)
+        self.assertEqual(head['data_set_name'], val_filename.encode())        
 
     @mock.patch('pygac.reader.Reader.get_calibrated_channels')
     def test__get_calibrated_channels_uniform_shape(self, get_channels):
