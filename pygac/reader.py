@@ -817,7 +817,7 @@ class Reader(six.with_metaclass(ABCMeta)):
         msec_lineno = self.lineno2msec(self.scans["scan_line_number"])
 
         jday = np.where(np.logical_or(jday < 1, jday > 366),
-                        np.median(jday), jday)
+                        np.percentile(jday, 50, interpolation='nearest'), jday)
         if_wrong_jday = np.ediff1d(jday, to_begin=0)
         jday = np.where(if_wrong_jday < 0, max(jday), jday)
 
@@ -827,7 +827,7 @@ class Reader(six.with_metaclass(ABCMeta)):
             if if_wrong_msec[0] != 0:
                 msec = msec[0] + msec_lineno
             else:
-                msec0 = np.median(msec - msec_lineno)
+                msec0 = np.percentile(msec - msec_lineno, 50, interpolation='nearest')
                 msec = msec0 + msec_lineno
 
         if_wrong_msec = np.ediff1d(msec, to_begin=0)
@@ -846,9 +846,9 @@ class Reader(six.with_metaclass(ABCMeta)):
                 msec = msec[0] + msec_lineno
             # Otherwise use median time stamp
             else:
-                year = np.median(year)
-                jday = np.median(jday)
-                msec0 = np.median(msec - msec_lineno)
+                year = np.percentile(year, 50, interpolation='nearest')
+                jday = np.percentile(jday, 50, interpolation='nearest')
+                msec0 = np.percentile(msec - msec_lineno, 50, interpolation='nearest')
                 msec = msec0 + msec_lineno
 
         return year, jday, msec
