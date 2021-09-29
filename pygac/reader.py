@@ -202,6 +202,7 @@ class Reader(six.with_metaclass(ABCMeta)):
             header (struct): file header
             filename (str): path to file
         """
+        filename = str(filename)
         data_set_name = header['data_set_name'].decode(errors='ignore')
         if not cls.data_set_pattern.match(data_set_name):
             LOG.debug('The data_set_name in header %s does not match.'

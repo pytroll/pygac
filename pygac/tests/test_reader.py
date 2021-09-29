@@ -34,6 +34,14 @@ from pygac.gac_reader import GACReader, ReaderError
 from pygac.reader import NoTLEData
 
 
+class TestPath(os.PathLike):
+    def __init__(self, path):
+        self.path = str(path)
+
+    def __fspath__(self):
+        return self.path
+
+
 class TestGacReader(unittest.TestCase):
     """Test the common GAC Reader."""
 
@@ -59,13 +67,6 @@ class TestGacReader(unittest.TestCase):
         self.assertEqual(self.reader.filename, filename)
         self.reader.filename = None
         self.assertIsNone(self.reader.filename)
-
-        class TestPath(os.PathLike):
-            def __init__(self, path):
-                self.path = str(path)
-
-            def __fspath__(self):
-                return self.path
         self.reader.filename = TestPath(filepath)
         self.assertEqual(self.reader.filename, filename)
 
@@ -122,6 +123,10 @@ class TestGacReader(unittest.TestCase):
         # should be fine, because the data_set_name is the pefered source
         head = self.reader._correct_data_set_name(val_head.copy(), inv_filepath)
         self.assertEqual(head['data_set_name'], val_head['data_set_name'])
+        # enter a valid data_set_name, and an FSFile/pathlib object as filepath
+        fs_filepath = TestPath(val_filepath)
+        head = self.reader._correct_data_set_name(val_head.copy(), fs_filepath)
+        self.assertEqual(head['data_set_name'], val_filename.encode())
 
     @mock.patch('pygac.reader.Reader.get_calibrated_channels')
     def test__get_calibrated_channels_uniform_shape(self, get_channels):
