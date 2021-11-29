@@ -3,19 +3,27 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to pygac's documentation!
-=================================
+Pygac's documentation
+=====================
 
-Contents:
+Pygac is a Python package to read, calibrate and navigate data from the AVHRR
+instrument onboard NOAA and MetOp satellites in GAC and LAC format.
+
+
+Table of Contents
+-----------------
 
 .. toctree::
    :maxdepth: 2
 
+   introduction
    installation
    usage
+   methods
    api
-   
-   
+   legacy
+
+
 
 Indices and tables
 ==================

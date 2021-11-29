@@ -85,7 +85,7 @@ class NoTLEData(IndexError):
 
 
 class Reader(six.with_metaclass(ABCMeta)):
-    """Reader for Gac and Lac, POD and KLM data."""
+    """Reader for GAC and LAC format, POD and KLM platforms."""
 
     # data set header format, see _validate_header for more details
     data_set_pattern = re.compile(
@@ -545,6 +545,11 @@ class Reader(six.with_metaclass(ABCMeta)):
 
         return channels
 
+    @abstractmethod
+    def get_telemetry(self):
+        """KLM/POD specific readout of telemetry."""
+        raise NotImplementedError
+
     def get_lonlat(self):
         """Compute lat/lon coordinates.
 
@@ -584,6 +589,15 @@ class Reader(six.with_metaclass(ABCMeta)):
         if self._mask is None:
             self._mask = self._get_corrupt_mask()
         return self._mask
+
+    @abstractproperty
+    def QFlag(self):
+        """KLM/POD specific quality indicators."""
+        raise NotImplementedError
+
+    @abstractproperty
+    def _quality_indicators_key(self):
+        raise NotImplementedError
 
     def _get_corrupt_mask(self, flags=None):
         """Readout of corrupt scanline mask.
@@ -761,14 +775,19 @@ class Reader(six.with_metaclass(ABCMeta)):
         and different ranges.
 
         Returns:
-            sat_azi: satellite azimuth angle
-                degree clockwise from north in range ]-180, 180],
-            sat_zentih: satellite zenith angles in degrees in range [0,90],
-            sun_azi: sun azimuth angle
-                degree clockwise from north in range ]-180, 180],
-            sun_zentih: sun zenith angles in degrees in range [0,90],
+
+            sat_azi: satellite azimuth angle degree clockwise from north in
+            range ]-180, 180]
+
+            sat_zentih: satellite zenith angles in degrees in range [0,90]
+
+            sun_azi: sun azimuth angle degree clockwise from north in range
+            ]-180, 180]
+
+            sun_zentih: sun zenith angles in degrees in range [0,90]
+
             rel_azi: absolute azimuth angle difference in degrees between sun
-                and sensor in range [0, 180]
+            and sensor in range [0, 180]
 
         """
         self.get_times()
@@ -859,7 +878,7 @@ class Reader(six.with_metaclass(ABCMeta)):
         This includes:
             - Scanline numbers outside the valide range
             - Scanline numbers deviating more than a certain threshold from the
-            ideal case (1,2,3,...N)
+              ideal case (1,2,3,...N)
 
         Example files having corrupt scanline numbers:
             - NSS.GHRR.NJ.D96144.S2000.E2148.B0720102.GC
