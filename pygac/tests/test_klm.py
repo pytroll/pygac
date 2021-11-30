@@ -21,90 +21,29 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-"""Test the GAC KLM reader.
-"""
+"""Test the GAC KLM reader."""
 
-import os
 import datetime as dt
 import numpy as np
 import numpy.testing
 import unittest
-import subprocess as sp
 import sys
 try:
     from unittest import mock
 except ImportError:
     import mock
 
-from pygac.reader import ReaderError
 from pygac import gac_klm
-from pygac.lac_klm import LACKLMReader
 from pygac.tests.utils import CalledWithArray
 
 
-# test_file = "test_data/NSS.GHRR.NL.D01183.S1313.E1458.B0400708.GC"
-# ref_result = "test_data/ECC_avhrrGAC_noaa16_20010702Z131338_20010702Z145809.h5"
-# my_result = "ECC_avhrrGAC_noaa16_20010702Z131338_20010702Z145809.h5"
-
-# ref_sunsat = "test_data/ECC_sunsatGAC_noaa16_20010702Z131338_20010702Z145809.h5.orig"
-# my_sunsat = "ECC_sunsatGAC_noaa16_20010702Z131338_20010702Z145809.h5"
-
-test_file = "test_data/NSS.GHRR.NL.D02187.S1904.E2058.B0921517.GC"
-ref_result = "test_data/ECC_GAC_sunsatangles_noaa16_99999_20020706T1904020Z_20020706T2058095Z.h5"
-my_result = "/tmp/ECC_GAC_sunsatangles_noaa16_99999_20020706T1904020Z_20020706T2058095Z.h5"
-
-ref_sunsat = "test_data/ECC_GAC_sunsatangles_noaa16_99999_20020706T1904020Z_20020706T2058095Z.h5"
-my_sunsat = "/tmp/ECC_GAC_sunsatangles_noaa16_99999_20020706T1904020Z_20020706T2058095Z.h5"
-
-
 class TestKLM(unittest.TestCase):
+
     def setUp(self):
         self.reader = gac_klm.GACKLMReader()
         # python 2 compatibility
         if sys.version_info.major < 3:
             self.assertRaisesRegex = self.assertRaisesRegexp
-
-    def test_global(self):
-        gac_klm.main(test_file, 0, 0)
-
-        child = sp.Popen(["h5diff", ref_sunsat, my_sunsat],
-                         stdout=sp.PIPE)
-        streamdata = child.communicate()[0]
-        retc = child.returncode
-        self.assertTrue(retc == 0, msg=streamdata)
-
-        child = sp.Popen(["h5diff", ref_result, my_result],
-                         stdout=sp.PIPE)
-        streamdata = child.communicate()[0]
-        retc = child.returncode
-        self.assertTrue(retc == 0, msg=streamdata)
-
-    def test__validate_header(self):
-        """Test the header validation"""
-        filename = os.path.basename(test_file).encode()
-        self.reader.head = {'data_set_name': filename}
-        self.reader._validate_header()
-        # wrong name pattern
-        with self.assertRaisesRegex(ReaderError,
-                                    'Data set name .* does not match!'):
-            self.reader.head = {'data_set_name': b'abc.txt'}
-            self.reader._validate_header()
-        # wrong platform
-        name = b'NSS.GHRR.TN.D80001.S0332.E0526.B0627173.WI'
-        with self.assertRaisesRegex(ReaderError,
-                                    'Improper platform id "TN"!'):
-            self.reader.head = {'data_set_name': name}
-            self.reader._validate_header()
-        # wrong transfer mode
-        name = filename.replace(b'GHRR', b'LHRR')
-        with self.assertRaisesRegex(ReaderError,
-                                    'Improper transfer mode "LHRR"!'):
-            self.reader.head = {'data_set_name': name}
-            self.reader._validate_header()
-        # change reader
-        lac_reader = LACKLMReader()
-        lac_reader.head = {'data_set_name': name}
-        lac_reader._validate_header()
 
     def test_get_lonlat(self):
         """Test readout of lon/lat coordinates."""
