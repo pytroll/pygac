@@ -33,10 +33,15 @@ and onwards) and MetOp satellites.
 
 .. _here:
     https://www.avl.class.noaa.gov/release/data_available/avhrr/index.htm
-.. _pygac-fdr: https://github.com/pytroll/pygac-fdr
 
 
 Related Projects
 ----------------
 
-`pygac-fdr`_: Generate a fundamental data record of AVHRR GAC data using Pygac.
+- `pygac-fdr`_: Generate a fundamental data record of AVHRR GAC data using
+  Pygac.
+- `level1c4pps`_: Prepare AVHRR GAC data for `NWCSAF/PPS`_ using Pygac.
+
+.. _level1c4pps: https://github.com/foua-pps/level1c4pps
+.. _NWCSAF/PPS: https://www.nwcsaf.org/16
+.. _pygac-fdr: https://github.com/pytroll/pygac-fdr
