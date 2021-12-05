@@ -500,8 +500,8 @@ class Reader(six.with_metaclass(ABCMeta)):
     def get_calibrated_channels(self):
         """Calibrate and return the channels."""
         channels = self.get_counts()
-        times = self.times
         self.get_times()
+        times = self.times
         self.update_meta_data()
         year = times[0].year
         delta = times[0].date() - datetime.date(year, 1, 1)
@@ -870,7 +870,7 @@ class Reader(six.with_metaclass(ABCMeta)):
                 msec0 = np.median(msec - msec_lineno)
                 msec = msec0 + msec_lineno
 
-        return year, jday, msec
+        return year.astype(int), jday.astype(int), msec
 
     def correct_scan_line_numbers(self):
         """Remove scanlines with corrupted scanline numbers.

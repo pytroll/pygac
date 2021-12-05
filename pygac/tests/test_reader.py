@@ -31,6 +31,8 @@ except ImportError:
 import numpy as np
 import numpy.testing
 from pygac.gac_reader import GACReader, ReaderError
+from pygac.pod_reader import POD_QualityIndicator
+from pygac.gac_pod import scanline
 from pygac.reader import NoTLEData
 
 
@@ -40,6 +42,58 @@ class TestPath(os.PathLike):
 
     def __fspath__(self):
         return self.path
+
+
+class FakeGACReader(GACReader):
+    QFlag = POD_QualityIndicator
+    _quality_indicators_key = "quality_indicators"
+    tsm_affected_intervals = {None: []}
+    along_track = 3
+    across_track = 4
+
+    def __init__(self):
+        super(FakeGACReader, self).__init__()
+        self.scan_width = self.across_track
+        scans = np.zeros(self.along_track, dtype=scanline)
+        scans["scan_line_number"] = np.arange(self.along_track)
+        scans["sensor_data"] = 128
+        self.scans = scans
+        self.head = {'foo': 'bar'}
+        self.spacecraft_name = 'noaa6'
+
+    def _get_times(self):
+        year = np.full(self.along_track, 1970, dtype=int)
+        jday = np.full(self.along_track, 1, dtype=int)
+        msec = 1000 * np.arange(1, self.along_track+1, dtype=int)
+        return year, jday, msec
+
+    def get_header_timestamp(self):
+        return datetime.datetime(1970, 1, 1)
+
+    def get_telemetry(self):
+        prt = 51 * np.ones(self.along_track)  # prt threshold is 50
+        ict = 101 * np.ones((self.along_track, 3))  # ict threshold is 100
+        space = 101 * np.ones((self.along_track, 3))  # space threshold is 100
+        return prt, ict, space
+
+    def _adjust_clock_drift(self):
+        pass
+
+    def _get_lonlat(self):
+        pass
+
+    def postproc(self, channels):
+        pass
+
+    def read(self, filename, fileobj=None):
+        pass
+
+    @classmethod
+    def read_header(cls, filename, fileobj=None):
+        pass
+
+    def get_tsm_pixels(self, channels):
+        pass
 
 
 class TestGacReader(unittest.TestCase):
@@ -136,6 +190,21 @@ class TestGacReader(unittest.TestCase):
         get_channels.return_value = channels
         with self.assertRaises(AssertionError):
             self.reader._get_calibrated_channels_uniform_shape()
+
+    def test_get_calibrated_channels(self):
+        reader = FakeGACReader()
+        res = reader.get_calibrated_channels()
+        expected = np.full(
+            (
+                FakeGACReader.along_track,
+                FakeGACReader.across_track,
+                5  # number of channels
+            ),
+            np.nan
+        )
+        expected[:, 1, 0] = 8.84714652
+        expected[:, 2, 1] = 10.23511303
+        np.testing.assert_allclose(res, expected)
 
     def test_to_datetime64(self):
         """Test conversion from (year, jday, msec) to datetime64."""
