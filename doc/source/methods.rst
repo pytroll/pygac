@@ -64,7 +64,7 @@ If the GAC data belongs to POD family, then clock drift errors are used to
 adjust existing Lat-Lon information. Here, Pygac makes use of `PyOrbital`_
 package. Pygac interpolates the clock offset and adjusts the nominal scan
 times to the actual scan times. Since the geolocation was computed using the
-nominal scan times, Pygacinterpolates the latitudes and longitudes to the
+nominal scan times, Pygac interpolates the latitudes and longitudes to the
 actual scan times using spherical linear interpolation, aka slerp. However,
 in the case of a clock drift error greater than the scan rate of the dataset,
 the latitude and longitude for each pixel of the scan lines that cannot have
