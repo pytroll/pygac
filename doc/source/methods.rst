@@ -20,7 +20,7 @@ deriving fundamental climate data records.
 The reflectances are normalized by a factor (as a function of day of a year)
 to account for changing Earth-Sun distance. However, it is left to the
 user to apply further normalization using cosine of solar zenith
-angle (depending on application in question).
+angle for example (depending on application in question).
 
 The thermal channel intercalibration is done from scratch, starting from
 obtaining Platinum Resistance Thermometer (PRT), space and Internal
