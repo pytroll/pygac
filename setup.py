@@ -29,13 +29,10 @@ except IOError:
 
 
 from setuptools import setup
-import imp
 import sys
 import os
 
 if __name__ == '__main__':
-    version = imp.load_source('pygac.version', 'pygac/version.py')
-
     requirements = ['docutils>=0.3',
                     'numpy>=1.8.0',
                     'pyorbital>=v0.3.2',
@@ -48,10 +45,9 @@ if __name__ == '__main__':
         requirements.append('python-dateutil>=2.8.0')
 
     setup(name='pygac',
-          version=version.__version__,
           description='NOAA AVHRR GAC/LAC reader and calibration',
-          author='Abhay Devasthale, Martin Raspaud',
-          author_email='martin.raspaud@smhi.se',
+          author='The Pytroll Team',
+          author_email='pytroll@googlegroups.com',
           classifiers=["Development Status :: 4 - Beta",
                        "Intended Audience :: Science/Research",
                        "License :: OSI Approved :: GNU General Public License v3 " +
@@ -72,8 +68,6 @@ if __name__ == '__main__':
           scripts=[os.path.join('bin', item) for item in os.listdir('bin')],
           data_files=[('etc', ['etc/pygac.cfg.template']),
                       ('gapfilled_tles', ['gapfilled_tles/TLE_noaa16.txt'])],
-          test_suite="pygac.tests.suite",
-          tests_require=[],
           python_requires='>=3.6',
           zip_safe=False
           )
