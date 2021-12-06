@@ -40,7 +40,7 @@ For development clone the repository from github and install pygac in editable m
   cd pygac
   pip install -e .[dev]
 
-It is recommended to activate pre-commit checks.
+It is recommended to activate `pre-commit`_ checks.
 
 .. code-block:: bash
 
@@ -51,3 +51,7 @@ The test suite can be run using pytest.
 .. code-block:: bash
 
   pytest -vs pygac/tests
+
+
+.. _pre-commit:
+    https://pre-commit.com/
