@@ -602,15 +602,3 @@ class TestGacReader(unittest.TestCase):
                    'gac_header': {'foo': 'bar'},
                    'calib_coeffs_version': 'version'}
         self.assertDictEqual(self.reader.meta_data, mda_exp)
-
-
-def suite():
-    """Test suite for test_reader."""
-    loader = unittest.TestLoader()
-    mysuite = unittest.TestSuite()
-    mysuite.addTest(loader.loadTestsFromTestCase(TestGacReader))
-    return mysuite
-
-
-if __name__ == '__main__':
-    unittest.main()

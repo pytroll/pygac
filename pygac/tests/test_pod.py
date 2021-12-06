@@ -294,15 +294,3 @@ class TestPOD(unittest.TestCase):
         get_offsets.return_value = np.zeros(10), np.zeros(10)
         get_tle_lines.side_effect = NoTLEData('No TLE data available')
         reader._adjust_clock_drift()  # should pass without errors
-
-
-def suite():
-    """Test suite for test_pod."""
-    loader = unittest.TestLoader()
-    mysuite = unittest.TestSuite()
-    mysuite.addTest(loader.loadTestsFromTestCase(TestPOD))
-    return mysuite
-
-
-if __name__ == '__main__':
-    unittest.main()
