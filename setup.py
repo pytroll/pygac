@@ -21,18 +21,14 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """The setup module."""
 
-try:
-    with open("./README", "r") as fd:
-        long_description = fd.read()
-except IOError:
-    long_description = ""
-
-
 from setuptools import setup
 import sys
 import os
 
 if __name__ == '__main__':
+    with open("README.md", "r") as fd:
+        long_description = fd.read()
+
     requirements = ['docutils>=0.3',
                     'numpy>=1.8.0',
                     'pyorbital>=v0.3.2',
