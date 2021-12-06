@@ -1,5 +1,6 @@
 include etc/*
-include testdata/*
 include gapfilled_tles/*
-include pygac/*.pyx
 include bin/pygac-*
+include LICENSE.txt
+include README.md
+include pygac/version.py

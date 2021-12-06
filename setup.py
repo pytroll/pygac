@@ -53,6 +53,7 @@ if __name__ == '__main__':
                        "Topic :: Scientific/Engineering"],
           url="https://github.com/pytroll/pygac",
           long_description=long_description,
+          long_description_content_type='text/markdown',
           license='GPLv3',
 
           packages=['pygac'],

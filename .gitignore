@@ -7,3 +7,4 @@ dist
 pygac.egg-info
 etc/*.cfg
 gapfilled_tles/
+pygac/version.py
