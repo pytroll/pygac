@@ -166,7 +166,7 @@ class Reader(six.with_metaclass(ABCMeta)):
         return calibration
 
     @abstractmethod
-    def read(self, filename, fileobj=None):  # pragma: no cover
+    def read(self, filename, fileobj=None):
         """Read the GAC/LAC data.
 
         Args:
@@ -177,7 +177,7 @@ class Reader(six.with_metaclass(ABCMeta)):
 
     @classmethod
     @abstractmethod
-    def read_header(cls, filename, fileobj=None):  # pragma: no cover
+    def read_header(cls, filename, fileobj=None):
         """Read the file header.
 
         Args:
@@ -354,7 +354,7 @@ class Reader(six.with_metaclass(ABCMeta)):
         )
 
     @abstractmethod
-    def get_header_timestamp(self):  # pragma: no cover
+    def get_header_timestamp(self):
         """Read start timestamp from the header.
 
         Returns:
@@ -400,7 +400,7 @@ class Reader(six.with_metaclass(ABCMeta)):
             return channels
 
     @abstractmethod
-    def _get_times(self):  # pragma: no cover
+    def _get_times(self):
         """Specify how to read scanline timestamps from GAC data.
 
         Returns:
@@ -546,7 +546,7 @@ class Reader(six.with_metaclass(ABCMeta)):
         return channels
 
     @abstractmethod
-    def get_telemetry(self):  # pragma: no cover
+    def get_telemetry(self):
         """KLM/POD specific readout of telemetry."""
         raise NotImplementedError
 
@@ -579,7 +579,7 @@ class Reader(six.with_metaclass(ABCMeta)):
         return self.lons, self.lats
 
     @abstractmethod
-    def _get_lonlat(self):  # pragma: no cover
+    def _get_lonlat(self):
         """KLM/POD specific readout of lat/lon coordinates."""
         raise NotImplementedError
 
@@ -591,12 +591,12 @@ class Reader(six.with_metaclass(ABCMeta)):
         return self._mask
 
     @abstractproperty
-    def QFlag(self):  # pragma: no cover
+    def QFlag(self):
         """KLM/POD specific quality indicators."""
         raise NotImplementedError
 
     @abstractproperty
-    def _quality_indicators_key(self):  # pragma: no cover
+    def _quality_indicators_key(self):
         raise NotImplementedError
 
     def _get_corrupt_mask(self, flags=None):
@@ -629,12 +629,12 @@ class Reader(six.with_metaclass(ABCMeta)):
         return qual_flags
 
     @abstractmethod
-    def postproc(self, channels):  # pragma: no cover
+    def postproc(self, channels):
         """Apply KLM/POD specific postprocessing."""
         raise NotImplementedError
 
     @abstractmethod
-    def _adjust_clock_drift(self):  # pragma: no cover
+    def _adjust_clock_drift(self):
         """Adjust clock drift."""
         raise NotImplementedError
 
@@ -1050,7 +1050,7 @@ class Reader(six.with_metaclass(ABCMeta)):
         return results
 
     @abstractproperty
-    def tsm_affected_intervals(self):  # pragma: no cover
+    def tsm_affected_intervals(self):
         """Specify time intervals being affected by the scan motor problem.
 
         Returns:
@@ -1123,7 +1123,7 @@ class Reader(six.with_metaclass(ABCMeta)):
         channels[idx] = np.nan
 
     @abstractmethod
-    def get_tsm_pixels(self, channels):  # pragma: no cover
+    def get_tsm_pixels(self, channels):
         """Determine pixels affected by the scan motor issue.
 
         Channel selection is POD/KLM specific.
