@@ -5,8 +5,8 @@ The Pygac API
                          pygac.lac_pod.LACPODReader pygac.lac_klm.LACKLMReader
 
 
-Base Classes
-------------
+Reader Base Classes
+-------------------
 
 Common functionality shared by multiple readers.
 
@@ -84,5 +84,12 @@ LAC KLM reader
 ~~~~~~~~~~~~~~
 
 .. automodule:: pygac.lac_klm
+   :members:
+   :undoc-members:
+
+Calibration
+-----------
+
+.. automodule:: pygac.calibration
    :members:
    :undoc-members:

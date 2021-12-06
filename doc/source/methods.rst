@@ -5,8 +5,17 @@ Calibration
 -----------
 
 At present, calibration coefficients provided by Andrew Heidinger
-(NOAA) under SCOPE-CM project are applied for all satellites. The current
-version is *PATMOS-x, v2017r1*, including provisional coefficients for MetOp-C.
+(NOAA) under SCOPE-CM project are applied for all satellites.
+
+Pygac comes with one default calibration file, which can be found in
+`pygac/data/calibration.json`_. The current version is *PATMOS-x, v2017r1*,
+including provisional coefficients for MetOp-C. A record of all versions is
+kept in :class:`pygac.calibration.Calibrator.version_hashs`. Alternatively, it
+is possible to pass custom coefficients to the reader, see
+:class:`pygac.reader.Reader`. This could also be a previous default version.
+
+.. _pygac/data/calibration.json:
+    https://github.com/pytroll/pygac/blob/main/pygac/data/calibration.json
 
 The solar channel calibration (Channels 1 and 2, and Channel 3a if available)
 takes into account inter-satellite differences and is derived using
