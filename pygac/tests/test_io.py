@@ -263,15 +263,3 @@ class TestIO(unittest.TestCase):
             mock.ANY
         ]
         avhrr_gac_io.assert_called_with(*expected_args)
-
-
-def suite():
-    """Test suite for test_io."""
-    loader = unittest.TestLoader()
-    mysuite = unittest.TestSuite()
-    mysuite.addTest(loader.loadTestsFromTestCase(TestIO))
-    return mysuite
-
-
-if __name__ == '__main__':
-    unittest.main()

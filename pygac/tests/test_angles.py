@@ -69,16 +69,3 @@ class TestAngles(unittest.TestCase):
              [-3.0,  172.0, 164.0, 156.0]], mask=False)
         transformed = centered_modulus(angles, 360.0)
         np.testing.assert_allclose(transformed, expected)
-
-
-def suite():
-    """Test suite for test_angles."""
-    loader = unittest.TestLoader()
-    mysuite = unittest.TestSuite()
-    mysuite.addTest(loader.loadTestsFromTestCase(TestAngles))
-
-    return mysuite
-
-
-if __name__ == '__main__':
-    unittest.main()

@@ -86,16 +86,3 @@ class TSMTest(unittest.TestCase):
         # Apply filter and compare results against reference
         filtered = tsm.std_filter(data=data, box_size=3)
         numpy.testing.assert_array_equal(filtered, filtered_ref)
-
-
-def suite():
-    """The suite for test_corrections"""
-    loader = unittest.TestLoader()
-    mysuite = unittest.TestSuite()
-    mysuite.addTest(loader.loadTestsFromTestCase(TSMTest))
-
-    return mysuite
-
-
-if __name__ == '__main__':
-    unittest.main()

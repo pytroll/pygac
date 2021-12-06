@@ -140,7 +140,3 @@ class TestKLM(unittest.TestCase):
         self.assertTrue(reader._get_corrupt_mask(flags=QFlag.FATAL_FLAG).any())
         # count the occurence (everything flagged and last entrance => 2)
         self.assertEqual(reader._get_corrupt_mask(flags=QFlag.FATAL_FLAG).sum(), 2)
-
-
-if __name__ == '__main__':
-    unittest.main()

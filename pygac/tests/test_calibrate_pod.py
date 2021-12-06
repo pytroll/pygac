@@ -136,17 +136,3 @@ class TestGenericCalibration(unittest.TestCase):
                                  [303.267012, 291.590832, 260.05426]])
 
         np.testing.assert_allclose(expected_ch5, ch5)
-
-
-def suite():
-    """The suite for test_slerp
-    """
-    loader = unittest.TestLoader()
-    mysuite = unittest.TestSuite()
-    mysuite.addTest(loader.loadTestsFromTestCase(TestGenericCalibration))
-
-    return mysuite
-
-
-if __name__ == '__main__':
-    unittest.main()

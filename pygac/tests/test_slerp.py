@@ -137,16 +137,3 @@ class TestSlerp(unittest.TestCase):
 
         self.assertTrue(np.allclose(res[:, :, 0], 0))
         self.assertTrue(np.allclose(res[:, :, 1], expected))
-
-
-def suite():
-    """The suite for test_slerp
-    """
-    loader = unittest.TestLoader()
-    mysuite = unittest.TestSuite()
-    mysuite.addTest(loader.loadTestsFromTestCase(TestSlerp))
-
-    return mysuite
-
-if __name__ == '__main__':
-    unittest.main()
