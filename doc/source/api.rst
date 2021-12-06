@@ -1,6 +1,10 @@
 The Pygac API
 =============
 
+.. inheritance-diagram:: pygac.gac_pod.GACPODReader pygac.gac_klm.GACKLMReader
+                         pygac.lac_pod.LACPODReader pygac.lac_klm.LACKLMReader
+
+
 Base Classes
 ------------
 
