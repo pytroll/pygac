@@ -198,17 +198,3 @@ class TestCalibrationCoefficientsHandling(unittest.TestCase):
                 version_hashs.get.return_value = version_dict
                 with self.assertWarns(RuntimeWarning):
                     Calibrator.read_coeffs(None)
-
-
-def suite():
-    """The suite for test_slerp
-    """
-    loader = unittest.TestLoader()
-    mysuite = unittest.TestSuite()
-    mysuite.addTest(loader.loadTestsFromTestCase(TestCalibrationCoefficientsHandling))
-
-    return mysuite
-
-
-if __name__ == '__main__':
-    unittest.main()

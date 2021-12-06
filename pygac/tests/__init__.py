@@ -21,24 +21,4 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-"""The tests package.
-"""
-
-from pygac.tests import (test_calibrate_pod, test_slerp, test_calibrate_klm,
-                         test_pod, test_tsm, test_reader, test_io,
-                         test_angles, test_init, test_utils,
-                         test_calibration_coefficients)
-import unittest
-
-
-def suite():
-    """The global test suite.
-    """
-    mysuite = unittest.TestSuite()
-    tests = (test_slerp, test_calibrate_klm, test_calibrate_pod,
-             test_pod, test_tsm, test_reader, test_io, test_angles,
-             test_init, test_utils, test_calibration_coefficients)
-    for test in tests:
-        mysuite.addTests(test.suite())
-
-    return mysuite
+"""The tests package."""
