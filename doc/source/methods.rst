@@ -38,10 +38,9 @@ from PRT counts based on coefficients provided in the POD and KLM Data User
 Guides (Kidwell, 2000). For each thermal channel, a smoothing window of 51
 successive PRT, ICT and space counts is used to obtain robust gain values and
 to dampen undue high frequency fluctuations in the count data (Trishchenko,
-2002). This window size is easily configurable to suit user needs. Section
-7.1.2.5 of `KLM User Guide`_ presents the summary of equations implemented
-in Pygac to calibrate thermal channels, including non-linearity correction
-(Walton et al. 1998).
+2002). Section 7.1.2.5 of `KLM User Guide`_ presents the summary of equations
+implemented in Pygac to calibrate thermal channels, including non-linearity
+correction (Walton et al. 1998).
 
 .. _KLM User Guide:
     https://www.ncei.noaa.gov/pub/data/satellite/publications/podguides/TIROS-N%20thru%20N-14/
