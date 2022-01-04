@@ -29,9 +29,11 @@
 
 """POD file reading.
 
-Format specification can be found here:
-http://www.ncdc.noaa.gov/oa/pod-guide/ncdc/docs/podug/html/c2/sec2-0.htm
-http://www.ncdc.noaa.gov/oa/pod-guide/ncdc/docs/podug/html/c3/sec3-1.htm
+Reads L1b GAC/LAC data from POD series of satellites (NOAA-14 and earlier).
+Format specification can be found in chapters 2 & 3 of the `POD user guide`_.
+
+.. _POD user guide:
+    https://www.ncei.noaa.gov/pub/data/satellite/publications/podguides/TIROS-N%20thru%20N-14/
 """
 
 import datetime

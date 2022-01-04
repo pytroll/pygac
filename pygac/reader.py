@@ -85,7 +85,7 @@ class NoTLEData(IndexError):
 
 
 class Reader(six.with_metaclass(ABCMeta)):
-    """Reader for Gac and Lac, POD and KLM data."""
+    """Reader for GAC and LAC format, POD and KLM platforms."""
 
     # data set header format, see _validate_header for more details
     data_set_pattern = re.compile(
@@ -166,7 +166,7 @@ class Reader(six.with_metaclass(ABCMeta)):
         return calibration
 
     @abstractmethod
-    def read(self, filename, fileobj=None):
+    def read(self, filename, fileobj=None):  # pragma: no cover
         """Read the GAC/LAC data.
 
         Args:
@@ -177,7 +177,7 @@ class Reader(six.with_metaclass(ABCMeta)):
 
     @classmethod
     @abstractmethod
-    def read_header(cls, filename, fileobj=None):
+    def read_header(cls, filename, fileobj=None):  # pragma: no cover
         """Read the file header.
 
         Args:
@@ -354,7 +354,7 @@ class Reader(six.with_metaclass(ABCMeta)):
         )
 
     @abstractmethod
-    def get_header_timestamp(self):
+    def get_header_timestamp(self):  # pragma: no cover
         """Read start timestamp from the header.
 
         Returns:
@@ -400,7 +400,7 @@ class Reader(six.with_metaclass(ABCMeta)):
             return channels
 
     @abstractmethod
-    def _get_times(self):
+    def _get_times(self):  # pragma: no cover
         """Specify how to read scanline timestamps from GAC data.
 
         Returns:
@@ -500,8 +500,8 @@ class Reader(six.with_metaclass(ABCMeta)):
     def get_calibrated_channels(self):
         """Calibrate and return the channels."""
         channels = self.get_counts()
-        times = self.times
         self.get_times()
+        times = self.times
         self.update_meta_data()
         year = times[0].year
         delta = times[0].date() - datetime.date(year, 1, 1)
@@ -545,6 +545,11 @@ class Reader(six.with_metaclass(ABCMeta)):
 
         return channels
 
+    @abstractmethod
+    def get_telemetry(self):  # pragma: no cover
+        """KLM/POD specific readout of telemetry."""
+        raise NotImplementedError
+
     def get_lonlat(self):
         """Compute lat/lon coordinates.
 
@@ -574,7 +579,7 @@ class Reader(six.with_metaclass(ABCMeta)):
         return self.lons, self.lats
 
     @abstractmethod
-    def _get_lonlat(self):
+    def _get_lonlat(self):  # pragma: no cover
         """KLM/POD specific readout of lat/lon coordinates."""
         raise NotImplementedError
 
@@ -584,6 +589,15 @@ class Reader(six.with_metaclass(ABCMeta)):
         if self._mask is None:
             self._mask = self._get_corrupt_mask()
         return self._mask
+
+    @abstractproperty
+    def QFlag(self):  # pragma: no cover
+        """KLM/POD specific quality indicators."""
+        raise NotImplementedError
+
+    @abstractproperty
+    def _quality_indicators_key(self):  # pragma: no cover
+        raise NotImplementedError
 
     def _get_corrupt_mask(self, flags=None):
         """Readout of corrupt scanline mask.
@@ -615,12 +629,12 @@ class Reader(six.with_metaclass(ABCMeta)):
         return qual_flags
 
     @abstractmethod
-    def postproc(self, channels):
+    def postproc(self, channels):  # pragma: no cover
         """Apply KLM/POD specific postprocessing."""
         raise NotImplementedError
 
     @abstractmethod
-    def _adjust_clock_drift(self):
+    def _adjust_clock_drift(self):  # pragma: no cover
         """Adjust clock drift."""
         raise NotImplementedError
 
@@ -761,14 +775,19 @@ class Reader(six.with_metaclass(ABCMeta)):
         and different ranges.
 
         Returns:
-            sat_azi: satellite azimuth angle
-                degree clockwise from north in range ]-180, 180],
-            sat_zentih: satellite zenith angles in degrees in range [0,90],
-            sun_azi: sun azimuth angle
-                degree clockwise from north in range ]-180, 180],
-            sun_zentih: sun zenith angles in degrees in range [0,90],
+
+            sat_azi: satellite azimuth angle degree clockwise from north in
+            range ]-180, 180]
+
+            sat_zentih: satellite zenith angles in degrees in range [0,90]
+
+            sun_azi: sun azimuth angle degree clockwise from north in range
+            ]-180, 180]
+
+            sun_zentih: sun zenith angles in degrees in range [0,90]
+
             rel_azi: absolute azimuth angle difference in degrees between sun
-                and sensor in range [0, 180]
+            and sensor in range [0, 180]
 
         """
         self.get_times()
@@ -851,7 +870,7 @@ class Reader(six.with_metaclass(ABCMeta)):
                 msec0 = np.median(msec - msec_lineno)
                 msec = msec0 + msec_lineno
 
-        return year, jday, msec
+        return year.astype(int), jday.astype(int), msec
 
     def correct_scan_line_numbers(self):
         """Remove scanlines with corrupted scanline numbers.
@@ -859,7 +878,7 @@ class Reader(six.with_metaclass(ABCMeta)):
         This includes:
             - Scanline numbers outside the valide range
             - Scanline numbers deviating more than a certain threshold from the
-            ideal case (1,2,3,...N)
+              ideal case (1,2,3,...N)
 
         Example files having corrupt scanline numbers:
             - NSS.GHRR.NJ.D96144.S2000.E2148.B0720102.GC
@@ -1031,7 +1050,7 @@ class Reader(six.with_metaclass(ABCMeta)):
         return results
 
     @abstractproperty
-    def tsm_affected_intervals(self):
+    def tsm_affected_intervals(self):  # pragma: no cover
         """Specify time intervals being affected by the scan motor problem.
 
         Returns:
@@ -1104,7 +1123,7 @@ class Reader(six.with_metaclass(ABCMeta)):
         channels[idx] = np.nan
 
     @abstractmethod
-    def get_tsm_pixels(self, channels):
+    def get_tsm_pixels(self, channels):  # pragma: no cover
         """Determine pixels affected by the scan motor issue.
 
         Channel selection is POD/KLM specific.

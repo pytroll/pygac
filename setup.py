@@ -43,6 +43,10 @@ if __name__ == '__main__':
                     'scipy>=0.8.0',
                     'python-geotiepoints>=1.1.8',
                     'bottleneck>=1.0.0']
+    extras_require = {
+        'dev': ['pytest', 'pre-commit', 'flake8']
+    }
+
     if sys.version_info < (3, 7):
         # To parse ISO timestamps in calibration.py
         requirements.append('python-dateutil>=2.8.0')
@@ -69,6 +73,7 @@ if __name__ == '__main__':
           # Project should use reStructuredText, so ensure that the docutils get
           # installed or upgraded on the target machine
           install_requires=requirements,
+          extras_require=extras_require,
           scripts=[os.path.join('bin', item) for item in os.listdir('bin')],
           data_files=[('etc', ['etc/pygac.cfg.template']),
                       ('gapfilled_tles', ['gapfilled_tles/TLE_noaa16.txt'])],
