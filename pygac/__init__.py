@@ -21,8 +21,15 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+try:
+    from pygac.version import version as __version__  # noqa
+except ModuleNotFoundError:
+    raise ModuleNotFoundError(
+        "No module named pygac.version. This could mean "
+        "you didn't install 'pygac' properly. Try reinstalling ('pip "
+        "install').")
+
 import logging
-from pygac.version import __version__  # noqa
 from pygac.configuration import get_config, read_config_file  # noqa
 from pygac.runner import get_reader_class, process_file  # noqa
 
