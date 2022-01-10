@@ -1,3 +1,40 @@
+## Version 1.5.0 (2022/01/10)
+
+### Issues Closed
+
+* [Issue 94](https://github.com/pytroll/pygac/issues/94) - Method get_tle_lines() raises index error when tle lines are empty strings
+* [Issue 90](https://github.com/pytroll/pygac/issues/90) - Change in masked scanlines
+* [Issue 87](https://github.com/pytroll/pygac/issues/87) - Unit test discovery ([PR 98](https://github.com/pytroll/pygac/pull/98) by [@sfinkens](https://github.com/sfinkens))
+* [Issue 85](https://github.com/pytroll/pygac/issues/85) - Update documentation
+* [Issue 80](https://github.com/pytroll/pygac/issues/80) - Reduce rounding error in POD reader adjust clock drift ([PR 84](https://github.com/pytroll/pygac/pull/84) by [@carloshorn](https://github.com/carloshorn))
+* [Issue 76](https://github.com/pytroll/pygac/issues/76) - IndexError in PODReader._adjust_clock_drift ([PR 84](https://github.com/pytroll/pygac/pull/84) by [@carloshorn](https://github.com/carloshorn))
+* [Issue 74](https://github.com/pytroll/pygac/issues/74) - Remove Cython dependency ([PR 83](https://github.com/pytroll/pygac/pull/83) by [@carloshorn](https://github.com/carloshorn))
+* [Issue 46](https://github.com/pytroll/pygac/issues/46) - Pypi and presentation work
+* [Issue 43](https://github.com/pytroll/pygac/issues/43) - Links to POD/KLM user guides are broken
+* [Issue 39](https://github.com/pytroll/pygac/issues/39) - Update release in preparation for conda-forge package
+
+In this release 10 issues were closed.
+
+### Pull Requests Merged
+
+#### Bugs fixed
+
+* [PR 91](https://github.com/pytroll/pygac/pull/91) - Invert bit position in quality flags
+* [PR 84](https://github.com/pytroll/pygac/pull/84) - Refactor clock drift ([82](https://github.com/pytroll/pygac/issues/82), [81](https://github.com/pytroll/pygac/issues/81), [80](https://github.com/pytroll/pygac/issues/80), [76](https://github.com/pytroll/pygac/issues/76))
+* [PR 79](https://github.com/pytroll/pygac/pull/79) - Fix tests on bigendian platforms
+* [PR 75](https://github.com/pytroll/pygac/pull/75) - Typo
+
+#### Features added
+
+* [PR 98](https://github.com/pytroll/pygac/pull/98) - Switch to pytest for unit tests ([87](https://github.com/pytroll/pygac/issues/87))
+* [PR 92](https://github.com/pytroll/pygac/pull/92) - Allow PathLike objects
+* [PR 89](https://github.com/pytroll/pygac/pull/89) - Add github workflow
+* [PR 86](https://github.com/pytroll/pygac/pull/86) - add METOP C coefficients
+* [PR 84](https://github.com/pytroll/pygac/pull/84) - Refactor clock drift ([82](https://github.com/pytroll/pygac/issues/82), [81](https://github.com/pytroll/pygac/issues/81), [80](https://github.com/pytroll/pygac/issues/80), [76](https://github.com/pytroll/pygac/issues/76))
+* [PR 83](https://github.com/pytroll/pygac/pull/83) - Replace cython filter ([74](https://github.com/pytroll/pygac/issues/74))
+
+In this release 10 pull requests were closed.
+
 ## Version 1.4.0 (2020/08/06)
 
 ### Issues Closed
