@@ -18,9 +18,9 @@ obtained from `NOAA CLASS`_, where you can also find a comprehensive
 .. _NOAA CLASS:
     https://www.class.noaa.gov/
 .. _POD:
-    https://www.ncei.noaa.gov/pub/data/satellite/publications/podguides/N-15%20thru%20N-19/
-.. _KLM:
     https://www.ncei.noaa.gov/pub/data/satellite/publications/podguides/TIROS-N%20thru%20N-14/
+.. _KLM:
+    https://www.ncei.noaa.gov/pub/data/satellite/publications/podguides/N-15%20thru%20N-19/
 .. _introduction:
     https://www.class.noaa.gov/release/data_available/avhrr/index.htm
 
