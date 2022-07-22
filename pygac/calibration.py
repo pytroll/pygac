@@ -59,7 +59,7 @@ class Calibrator(object):
             'name': 'PATMOS-x, v2017r1',
             'status': CoeffStatus.NOMINAL
         },
-        '87ae8f270e63d17178b0e764c5869f4f': {
+        '689386c822de18a07194ac7fd71652ea': {
             'name': 'PATMOS-x, v2017r1, with provisional coefficients for MetOp-C',
             'status': CoeffStatus.PROVISIONAL
         }
