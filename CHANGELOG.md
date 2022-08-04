@@ -1,3 +1,26 @@
+## Version <1.6.0> (2022/08/04)
+
+### Issues Closed
+
+* [Issue 107](https://github.com/pytroll/pygac/issues/107) - Fix sun-earth distance correction
+* [Issue 104](https://github.com/pytroll/pygac/issues/104) - Links to POD/KLM user guides are mixed up ([PR 105](https://github.com/pytroll/pygac/pull/105) by [@mraspaud](https://github.com/mraspaud))
+* [Issue 103](https://github.com/pytroll/pygac/issues/103) - API is missing on readthedocs
+* [Issue 40](https://github.com/pytroll/pygac/issues/40) - Calculated sun-earth distance correction factor once and add as attribute
+
+In this release 4 issues were closed.
+
+### Pull Requests Merged
+
+#### Features added
+
+* [PR 109](https://github.com/pytroll/pygac/pull/109) - Add new unpublished METOPC VIS calibration coefficients from Patmos-x
+
+#### Documentation changes
+
+* [PR 105](https://github.com/pytroll/pygac/pull/105) - Fix the pod and klm guide links ([104](https://github.com/pytroll/pygac/issues/104))
+
+In this release 2 pull requests were closed.
+
 ## Version 1.5.0 (2022/01/10)
 
 ### Issues Closed
