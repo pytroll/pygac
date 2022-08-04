@@ -1,0 +1,27 @@
+name: readthedocs
+channels:
+  - conda-forge
+dependencies:
+  - python=3.9
+  - numpy
+  - scipy
+  - bottleneck
+  - python-dateutil
+  - hdf5
+  - h5py
+  - graphviz
+  - setuptools
+  - setuptools_scm
+  - setuptools_scm_git_archive
+  - sphinx
+  - sphinx_rtd_theme
+  - sphinxcontrib-apidoc
+  - pip
+  - pip:
+    - docutils
+    - pyorbital
+    - python-geotiepoints
+    - trollimage
+    - pyspectral
+    - pyorbital
+    - ..  # relative path to the pygac project
