@@ -156,9 +156,11 @@ class Calibrator(object):
     @classmethod
     def read_coeffs(cls, coeffs_file):
         """Read calibration coefficients for all satellites from file.
-        Argument
+
+        Args:
             coeffs_file (str): path to coefficients file
-        Returns
+
+        Returns:
             coeffs (dict): dictionary containing coefficients for all satellites
             version (str): version of the coefficients (None if unknown)
         """
