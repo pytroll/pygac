@@ -53,10 +53,10 @@ Alternatively you can also use Pygac directly.
 
 .. code-block:: python
 
-    from pygac import get_reader_cls
-    
+    from pygac import get_reader_class
+
     filename = 'NSS.GHRR.NP.D15361.S0121.E0315.B3547172.SV'
-    reader_cls = get_reader_cls(filename)
+    reader_cls = get_reader_class(filename)
     reader = reader_cls(tle_dir='/path/to/tle', tle_name='TLE_%(satname)s.txt')
     reader.read(filename)
 
@@ -82,7 +82,7 @@ it in a directory as you please. Set the environment variable ``PYGAC_CONFIG_FIL
 pointing to the file. e.g.
 
 .. code-block:: bash
- 
+
   PYGAC_CONFIG_FILE=/home/user/pygac.cfg; export PYGAC_CONFIG_FILE
 
 Also adapt the configuration file to your needs. The ``tledir`` parameter should
@@ -93,7 +93,7 @@ Then call ``pygac-run`` on a GAC/LAC file.
 .. code-block:: bash
 
   pygac-run testdata/NSS.GHRR.NL.D02187.S1904.E2058.B0921517.GC 0 0
- 
+
 The last two digits are the start and end scanline numbers, thus specifying the
 portion of the GAC orbit that user wants to process. The first scanline number
 starts at 0. If zeroes are specified at both locations, then the entire orbit
