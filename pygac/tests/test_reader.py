@@ -31,20 +31,27 @@ except ImportError:
 import numpy as np
 import numpy.testing
 from pygac.gac_reader import GACReader, ReaderError
+from pygac.lac_reader import LACReader
 from pygac.pod_reader import POD_QualityIndicator
 from pygac.gac_pod import scanline
 from pygac.reader import NoTLEData
 
 
 class TestPath(os.PathLike):
+    """Fake path class."""
+
     def __init__(self, path):
+        """Initialize the path."""
         self.path = str(path)
 
     def __fspath__(self):
+        """Return the path."""
         return self.path
 
 
 class FakeGACReader(GACReader):
+    """Fake GAC reader class."""
+
     QFlag = POD_QualityIndicator
     _quality_indicators_key = "quality_indicators"
     tsm_affected_intervals = {None: []}
@@ -52,6 +59,7 @@ class FakeGACReader(GACReader):
     across_track = 4
 
     def __init__(self):
+        """Initialize the fake reader."""
         super(FakeGACReader, self).__init__()
         self.scan_width = self.across_track
         scans = np.zeros(self.along_track, dtype=scanline)
@@ -68,9 +76,11 @@ class FakeGACReader(GACReader):
         return year, jday, msec
 
     def get_header_timestamp(self):
+        """Get the header timestamp."""
         return datetime.datetime(1970, 1, 1)
 
     def get_telemetry(self):
+        """Get the telemetry."""
         prt = 51 * np.ones(self.along_track)  # prt threshold is 50
         ict = 101 * np.ones((self.along_track, 3))  # ict threshold is 100
         space = 101 * np.ones((self.along_track, 3))  # space threshold is 100
@@ -83,16 +93,20 @@ class FakeGACReader(GACReader):
         pass
 
     def postproc(self, channels):
+        """Postprocess the data."""
         pass
 
     def read(self, filename, fileobj=None):
+        """Read the data."""
         pass
 
     @classmethod
     def read_header(cls, filename, fileobj=None):
+        """Read the header."""
         pass
 
     def get_tsm_pixels(self, channels):
+        """Get the tsm pixels."""
         pass
 
 
@@ -192,6 +206,7 @@ class TestGacReader(unittest.TestCase):
             self.reader._get_calibrated_channels_uniform_shape()
 
     def test_get_calibrated_channels(self):
+        """Test getting calibrated channels."""
         reader = FakeGACReader()
         res = reader.get_calibrated_channels()
         expected = np.full(
@@ -325,9 +340,9 @@ class TestGacReader(unittest.TestCase):
         utcs2 = np.array([1, 2, 3]).astype('datetime64[ms]')
         scanline2 = None
 
-        for utcs, scanline in zip((utcs1, utcs2), (scanline1, scanline2)):
+        for utcs, scan_line in zip((utcs1, utcs2), (scanline1, scanline2)):
             self.reader.utcs = utcs
-            self.assertEqual(self.reader.get_midnight_scanline(), scanline,
+            self.assertEqual(self.reader.get_midnight_scanline(), scan_line,
                              msg='Incorrect midnight scanline')
 
     def test_miss_lines(self):
@@ -588,6 +603,7 @@ class TestGacReader(unittest.TestCase):
                              get_miss_lines,
                              get_midnight_scanline,
                              get_sun_earth_distance_correction):
+        """Test updating the metadata."""
         get_miss_lines.return_value = 'miss_lines'
         get_midnight_scanline.return_value = 'midn_line'
         get_sun_earth_distance_correction.return_value = 'factor'
@@ -602,3 +618,20 @@ class TestGacReader(unittest.TestCase):
                    'gac_header': {'foo': 'bar'},
                    'calib_coeffs_version': 'version'}
         self.assertDictEqual(self.reader.meta_data, mda_exp)
+
+
+class TestLacReader(unittest.TestCase):
+    """Test the common LAC Reader."""
+
+    longMessage = True
+
+    @mock.patch.multiple('pygac.lac_reader.LACReader',
+                         __abstractmethods__=set())
+    def setUp(self, *mocks):
+        """Set up the tests."""
+        self.reader = LACReader()
+
+    def test_lac_reader_accepts_FRAC(self):
+        """Test the header validation."""
+        head = {'data_set_name': b'NSS.FRAC.M1.D19115.S2352.E0050.B3425758.SV'}
+        self.reader._validate_header(head)

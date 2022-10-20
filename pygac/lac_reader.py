@@ -32,6 +32,7 @@ import pygac.pygac_geotiepoints as gtp
 
 LOG = logging.getLogger(__name__)
 
+
 class LACReader(Reader):
     """Reader for LAC data."""
 
@@ -46,7 +47,7 @@ class LACReader(Reader):
 
     @classmethod
     def _validate_header(cls, header):
-        """Check if the header belongs to this reader"""
+        """Check if the header belongs to this reader."""
         # call super to enter the Method Resolution Order (MRO)
         super(LACReader, cls)._validate_header(header)
         LOG.debug("validate header")
@@ -54,5 +55,5 @@ class LACReader(Reader):
         # split header into parts
         creation_site, transfer_mode, platform_id = (
             data_set_name.split('.')[:3])
-        if transfer_mode not in ['LHRR', 'HRPT']:
+        if transfer_mode not in ["LHRR", "HRPT", "FRAC"]:
             raise ReaderError('Improper transfer mode "%s"!' % transfer_mode)
