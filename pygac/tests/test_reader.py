@@ -535,8 +535,8 @@ class TestGacReader(unittest.TestCase):
             Corrupted and corrected scanline numbers.
 
         """
-        along_track = 12000
-        scans = np.zeros(12000, dtype=[("scan_line_number", ">u2")])
+        along_track = 16000
+        scans = np.zeros(16000, dtype=[("scan_line_number", ">u2")])
         scans["scan_line_number"] = np.arange(1, along_track+1)
 
         # ... with 500 missing scanlines at scanline 8000
