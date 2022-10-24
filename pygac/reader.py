@@ -49,34 +49,35 @@ LOG = logging.getLogger(__name__)
 # rpy values from
 # here:http://yyy.rsmas.miami.edu/groups/rrsl/pathfinder/Processing/proc_app_a.html
 rpy_coeffs = {
-    'noaa7':  {'roll':  0.000,
+    'noaa7': {'roll': 0.000,
+              'pitch': 0.000,
+              'yaw': 0.000,
+              },
+    'noaa9': {'roll': 0.000,
+              'pitch': 0.0025,
+              'yaw': 0.000,
+              },
+    'noaa10': {'roll': 0.000,
                'pitch': 0.000,
-               'yaw':   0.000,
-               },
-    'noaa9':  {'roll':  0.000,
-               'pitch': 0.0025,
-               'yaw':   0.000,
-               },
-    'noaa10': {'roll':  0.000,
-               'pitch': 0.000,
-               'yaw':   0.000,
+               'yaw': 0.000,
                },
     'noaa11': {'roll': -0.0019,
                'pitch': -0.0037,
-               'yaw':   0.000,
+               'yaw': 0.000,
                },
-    'noaa12': {'roll':  0.000,
+    'noaa12': {'roll': 0.000,
                'pitch': 0.000,
-               'yaw':   0.000,
+               'yaw': 0.000,
                },
-    'noaa14': {'roll':  0.000,
+    'noaa14': {'roll': 0.000,
                'pitch': 0.000,
-               'yaw':   0.000,
+               'yaw': 0.000,
                }}
 
 
 class ReaderError(ValueError):
-    """Raised in Reader.read if the given file does not correspond to it"""
+    """Raised in Reader.read if the given file does not correspond to it."""
+
     pass
 
 
@@ -134,7 +135,7 @@ class Reader(six.with_metaclass(ABCMeta)):
 
     @property
     def times(self):
-        """The UTCs as datetime.datetime"""
+        """Get the UTCs as datetime.datetime."""
         return self.to_datetime(self.utcs)
 
     @property
@@ -196,7 +197,7 @@ class Reader(six.with_metaclass(ABCMeta)):
 
     @classmethod
     def _correct_data_set_name(cls, header, filename):
-        """Replace invalid data_set_name from header with filename
+        """Replace invalid data_set_name from header with filename.
 
         Args:
             header (struct): file header
@@ -221,7 +222,7 @@ class Reader(six.with_metaclass(ABCMeta)):
 
     @classmethod
     def _validate_header(cls, header):
-        """Check if the header belongs to this reader
+        """Check if the header belongs to this reader.
 
         Note:
             according to https://www1.ncdc.noaa.gov/pub/data/satellite/
@@ -258,7 +259,7 @@ class Reader(six.with_metaclass(ABCMeta)):
                               % header['data_set_name'])
 
     def _read_scanlines(self, buffer, count):
-        """Read the scanlines from the given buffer
+        """Read the scanlines from the given buffer.
 
         Args:
             buffer (bytes, bytearray): buffer to read from
@@ -304,7 +305,7 @@ class Reader(six.with_metaclass(ABCMeta)):
 
     @classmethod
     def fromfile(cls, filename, fileobj=None):
-        """Create Reader from file (alternative constructor)
+        """Create Reader from file, alternative constructor.
 
         Args:
             filename (str): Path to GAC/LAC file
@@ -323,14 +324,14 @@ class Reader(six.with_metaclass(ABCMeta)):
         return instance
 
     def _get_calibrated_channels_uniform_shape(self):
-        """Prepare the channels as input for gac_io.save_gac"""
+        """Prepare the channels as input for gac_io.save_gac."""
         channels = self.get_calibrated_channels()
         assert channels.shape[-1] == 6
         return channels
 
     def save(self, start_line, end_line, output_file_prefix="PyGAC", output_dir="./",
              avhrr_dir=None, qual_dir=None, sunsatangles_dir=None):
-        """Convert the Reader instance content into hdf5 files"""
+        """Convert the Reader instance content into hdf5 files."""
         avhrr_dir = avhrr_dir or output_dir
         qual_dir = qual_dir or output_dir
         sunsatangles_dir = sunsatangles_dir or output_dir
@@ -775,7 +776,6 @@ class Reader(six.with_metaclass(ABCMeta)):
         and different ranges.
 
         Returns:
-
             sat_azi: satellite azimuth angle degree clockwise from north in
             range ]-180, 180]
 
@@ -894,7 +894,7 @@ class Reader(six.with_metaclass(ABCMeta)):
                    'n_orig': self.scans['scan_line_number'].copy()}
 
         # Remove scanlines whose scanline number is outside the valid range
-        within_range = np.logical_and(self.scans["scan_line_number"] < 15000,
+        within_range = np.logical_and(self.scans["scan_line_number"] < self.max_scanlines,
                                       self.scans["scan_line_number"] >= 0)
         self.scans = self.scans[within_range]
 
@@ -1131,7 +1131,7 @@ class Reader(six.with_metaclass(ABCMeta)):
         raise NotImplementedError
 
     def get_attitude_coeffs(self):
-        """Return the roll, pitch, yaw values"""
+        """Return the roll, pitch, yaw values."""
         if self._rpy is None:
             if "constant_yaw_attitude_error" in self.head.dtype.fields:
                 rpy = np.deg2rad([self.head["constant_roll_attitude_error"] / 1e3,

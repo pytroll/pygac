@@ -31,20 +31,27 @@ except ImportError:
 import numpy as np
 import numpy.testing
 from pygac.gac_reader import GACReader, ReaderError
+from pygac.lac_reader import LACReader
 from pygac.pod_reader import POD_QualityIndicator
 from pygac.gac_pod import scanline
 from pygac.reader import NoTLEData
 
 
 class TestPath(os.PathLike):
+    """Fake path class."""
+
     def __init__(self, path):
+        """Initialize the path."""
         self.path = str(path)
 
     def __fspath__(self):
+        """Return the path."""
         return self.path
 
 
 class FakeGACReader(GACReader):
+    """Fake GAC reader class."""
+
     QFlag = POD_QualityIndicator
     _quality_indicators_key = "quality_indicators"
     tsm_affected_intervals = {None: []}
@@ -52,6 +59,7 @@ class FakeGACReader(GACReader):
     across_track = 4
 
     def __init__(self):
+        """Initialize the fake reader."""
         super(FakeGACReader, self).__init__()
         self.scan_width = self.across_track
         scans = np.zeros(self.along_track, dtype=scanline)
@@ -68,9 +76,11 @@ class FakeGACReader(GACReader):
         return year, jday, msec
 
     def get_header_timestamp(self):
+        """Get the header timestamp."""
         return datetime.datetime(1970, 1, 1)
 
     def get_telemetry(self):
+        """Get the telemetry."""
         prt = 51 * np.ones(self.along_track)  # prt threshold is 50
         ict = 101 * np.ones((self.along_track, 3))  # ict threshold is 100
         space = 101 * np.ones((self.along_track, 3))  # space threshold is 100
@@ -83,16 +93,20 @@ class FakeGACReader(GACReader):
         pass
 
     def postproc(self, channels):
+        """Postprocess the data."""
         pass
 
     def read(self, filename, fileobj=None):
+        """Read the data."""
         pass
 
     @classmethod
     def read_header(cls, filename, fileobj=None):
+        """Read the header."""
         pass
 
     def get_tsm_pixels(self, channels):
+        """Get the tsm pixels."""
         pass
 
 
@@ -192,6 +206,7 @@ class TestGacReader(unittest.TestCase):
             self.reader._get_calibrated_channels_uniform_shape()
 
     def test_get_calibrated_channels(self):
+        """Test getting calibrated channels."""
         reader = FakeGACReader()
         res = reader.get_calibrated_channels()
         expected = np.full(
@@ -325,9 +340,9 @@ class TestGacReader(unittest.TestCase):
         utcs2 = np.array([1, 2, 3]).astype('datetime64[ms]')
         scanline2 = None
 
-        for utcs, scanline in zip((utcs1, utcs2), (scanline1, scanline2)):
+        for utcs, scan_line in zip((utcs1, utcs2), (scanline1, scanline2)):
             self.reader.utcs = utcs
-            self.assertEqual(self.reader.get_midnight_scanline(), scanline,
+            self.assertEqual(self.reader.get_midnight_scanline(), scan_line,
                              msg='Incorrect midnight scanline')
 
     def test_miss_lines(self):
@@ -405,19 +420,19 @@ class TestGacReader(unittest.TestCase):
         # Test data correspond to columns 0:2, 201:208 and 407:409. Extracted like this:
         # self.lons[0:5, [0, 1, 201, 202, 203, 204, 205, 206, 207, -2, -1]]
         self.reader.lons = np.array([[69.41555135, 68.76815744, 28.04133742, 27.94671757, 27.85220562,
-                                      27.7578125, 27.66354783, 27.5694182, 27.47542957,  2.66416611,
+                                      27.7578125, 27.66354783, 27.5694182, 27.47542957, 2.66416611,
                                       2.39739436],
                                      [69.41409536, 68.76979616, 28.00228658, 27.9076628, 27.8131467,
-                                      27.71875, 27.62448295, 27.53035209, 27.43636312,  2.61727408,
+                                      27.71875, 27.62448295, 27.53035209, 27.43636312, 2.61727408,
                                       2.35049275],
                                      [69.42987929, 68.78543423, 27.96407251, 27.86936406, 27.77457923,
-                                      27.6796875, 27.58467527, 27.48959853, 27.39453053,  2.5704025,
+                                      27.6796875, 27.58467527, 27.48959853, 27.39453053, 2.5704025,
                                       2.30362323],
                                      [69.44430772, 68.80064104, 27.91910034, 27.82340242, 27.72794715,
-                                      27.6328125, 27.53805662, 27.44366144, 27.34959008,  2.53088093,
+                                      27.6328125, 27.53805662, 27.44366144, 27.34959008, 2.53088093,
                                       2.26729486],
                                      [69.47408815, 68.8259859, 27.87666513, 27.78224611, 27.68795045,
-                                      27.59375, 27.49962326, 27.40557682, 27.31162435,  2.48359319,
+                                      27.59375, 27.49962326, 27.40557682, 27.31162435, 2.48359319,
                                       2.21976689]])
         self.reader.lats = np.array([[71.62830288, 71.67081539, 69.90976034, 69.89297223, 69.87616536,
                                       69.859375, 69.84262997, 69.82593315, 69.80928089, 61.61334632,
@@ -513,31 +528,9 @@ class TestGacReader(unittest.TestCase):
         self.reader.mask_tsm_pixels(channels)  # masks in-place
         numpy.testing.assert_array_equal(channels, masked_exp)
 
-    def _get_scanline_numbers(self):
-        """Create artificial scanline numbers with some corruptions.
-
-        Returns:
-            Corrupted and corrected scanline numbers.
-
-        """
-        along_track = 12000
-        scans = np.zeros(12000, dtype=[("scan_line_number", ">u2")])
-        scans["scan_line_number"] = np.arange(1, along_track+1)
-
-        # ... with 500 missing scanlines at scanline 8000
-        scans["scan_line_number"][8000:] += 500
-        corrected = scans["scan_line_number"].copy()
-
-        # ... and some spikes here and there
-        scans["scan_line_number"][3000] += 1E4
-        scans["scan_line_number"][9000] -= 1E4
-        corrected = np.delete(corrected, [3000, 9000])
-
-        return scans, corrected
-
     def test_correct_scan_line_numbers(self):
         """Test scanline number correction."""
-        scans, expected = self._get_scanline_numbers()
+        scans, expected = _get_scanline_numbers(14000)
         self.reader.scans = scans
         self.reader.correct_scan_line_numbers()
         numpy.testing.assert_array_equal(self.reader.scans['scan_line_number'],
@@ -549,7 +542,7 @@ class TestGacReader(unittest.TestCase):
         header_time = datetime.datetime(2016, 8, 16, 16, 7, 36)
 
         # Create artificial timestamps
-        _, scan_line_numbers = self._get_scanline_numbers()
+        _, scan_line_numbers = _get_scanline_numbers(14000)
         t0 = np.array([header_time], dtype="datetime64[ms]").astype("i8")[0]
         shift = 1000
         msecs = t0 + shift + scan_line_numbers / GACReader.scan_freq
@@ -588,6 +581,7 @@ class TestGacReader(unittest.TestCase):
                              get_miss_lines,
                              get_midnight_scanline,
                              get_sun_earth_distance_correction):
+        """Test updating the metadata."""
         get_miss_lines.return_value = 'miss_lines'
         get_midnight_scanline.return_value = 'midn_line'
         get_sun_earth_distance_correction.return_value = 'factor'
@@ -602,3 +596,50 @@ class TestGacReader(unittest.TestCase):
                    'gac_header': {'foo': 'bar'},
                    'calib_coeffs_version': 'version'}
         self.assertDictEqual(self.reader.meta_data, mda_exp)
+
+
+def _get_scanline_numbers(scanlines_along_track):
+    """Create artificial scanline numbers with some corruptions.
+
+    Returns:
+        Corrupted and corrected scanline numbers.
+
+    """
+    scans = np.zeros(scanlines_along_track, dtype=[("scan_line_number", ">u2")])
+    scans["scan_line_number"] = np.arange(1, scanlines_along_track + 1)
+
+    # ... with 500 missing scanlines at scanline 8000
+    scans["scan_line_number"][8000:] += 500
+    corrected = scans["scan_line_number"].copy()
+
+    # ... and some spikes here and there
+    scans["scan_line_number"][3000] += 1E4
+    scans["scan_line_number"][9000] -= 1E4
+    corrected = np.delete(corrected, [3000, 9000])
+
+    return scans, corrected
+
+
+class TestLacReader(unittest.TestCase):
+    """Test the common LAC Reader."""
+
+    longMessage = True
+
+    @mock.patch.multiple('pygac.lac_reader.LACReader',
+                         __abstractmethods__=set())
+    def setUp(self, *mocks):
+        """Set up the tests."""
+        self.reader = LACReader()
+
+    def test_lac_reader_accepts_FRAC(self):
+        """Test the header validation."""
+        head = {'data_set_name': b'NSS.FRAC.M1.D19115.S2352.E0050.B3425758.SV'}
+        self.reader._validate_header(head)
+
+    def test_correct_scan_line_numbers(self):
+        """Test scanline number correction."""
+        scans, expected = _get_scanline_numbers(22000)
+        self.reader.scans = scans
+        self.reader.correct_scan_line_numbers()
+        numpy.testing.assert_array_equal(self.reader.scans['scan_line_number'],
+                                         expected)

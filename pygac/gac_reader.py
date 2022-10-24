@@ -34,11 +34,14 @@ import pygac.pygac_geotiepoints as gtp
 
 LOG = logging.getLogger(__name__)
 
+
 class GACReader(Reader):
     """Reader for GAC data."""
 
     # Scanning frequency (scanlines per millisecond)
     scan_freq = 2.0 / 1000.0
+    # Max scanlines
+    max_scanlines = 15000
 
     def __init__(self, *args, **kwargs):
         """Init the GAC reader."""
@@ -48,7 +51,7 @@ class GACReader(Reader):
 
     @classmethod
     def _validate_header(cls, header):
-        """Check if the header belongs to this reader"""
+        """Check if the header belongs to this reader."""
         # call super to enter the Method Resolution Order (MRO)
         super(GACReader, cls)._validate_header(header)
         LOG.debug("validate header")
