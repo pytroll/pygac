@@ -38,6 +38,8 @@ class LACReader(Reader):
 
     # Scanning frequency (scanlines per millisecond)
     scan_freq = 6.0 / 1000.0
+    # Max scanlines
+    max_scanlines = 65535
 
     def __init__(self, *args, **kwargs):
         """Init the LAC reader."""

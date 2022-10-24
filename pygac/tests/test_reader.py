@@ -528,31 +528,9 @@ class TestGacReader(unittest.TestCase):
         self.reader.mask_tsm_pixels(channels)  # masks in-place
         numpy.testing.assert_array_equal(channels, masked_exp)
 
-    def _get_scanline_numbers(self):
-        """Create artificial scanline numbers with some corruptions.
-
-        Returns:
-            Corrupted and corrected scanline numbers.
-
-        """
-        along_track = 16000
-        scans = np.zeros(16000, dtype=[("scan_line_number", ">u2")])
-        scans["scan_line_number"] = np.arange(1, along_track+1)
-
-        # ... with 500 missing scanlines at scanline 8000
-        scans["scan_line_number"][8000:] += 500
-        corrected = scans["scan_line_number"].copy()
-
-        # ... and some spikes here and there
-        scans["scan_line_number"][3000] += 1E4
-        scans["scan_line_number"][9000] -= 1E4
-        corrected = np.delete(corrected, [3000, 9000])
-
-        return scans, corrected
-
     def test_correct_scan_line_numbers(self):
         """Test scanline number correction."""
-        scans, expected = self._get_scanline_numbers()
+        scans, expected = _get_scanline_numbers(14000)
         self.reader.scans = scans
         self.reader.correct_scan_line_numbers()
         numpy.testing.assert_array_equal(self.reader.scans['scan_line_number'],
@@ -564,7 +542,7 @@ class TestGacReader(unittest.TestCase):
         header_time = datetime.datetime(2016, 8, 16, 16, 7, 36)
 
         # Create artificial timestamps
-        _, scan_line_numbers = self._get_scanline_numbers()
+        _, scan_line_numbers = _get_scanline_numbers(14000)
         t0 = np.array([header_time], dtype="datetime64[ms]").astype("i8")[0]
         shift = 1000
         msecs = t0 + shift + scan_line_numbers / GACReader.scan_freq
@@ -620,6 +598,28 @@ class TestGacReader(unittest.TestCase):
         self.assertDictEqual(self.reader.meta_data, mda_exp)
 
 
+def _get_scanline_numbers(scanlines_along_track):
+    """Create artificial scanline numbers with some corruptions.
+
+    Returns:
+        Corrupted and corrected scanline numbers.
+
+    """
+    scans = np.zeros(scanlines_along_track, dtype=[("scan_line_number", ">u2")])
+    scans["scan_line_number"] = np.arange(1, scanlines_along_track + 1)
+
+    # ... with 500 missing scanlines at scanline 8000
+    scans["scan_line_number"][8000:] += 500
+    corrected = scans["scan_line_number"].copy()
+
+    # ... and some spikes here and there
+    scans["scan_line_number"][3000] += 1E4
+    scans["scan_line_number"][9000] -= 1E4
+    corrected = np.delete(corrected, [3000, 9000])
+
+    return scans, corrected
+
+
 class TestLacReader(unittest.TestCase):
     """Test the common LAC Reader."""
 
@@ -635,3 +635,11 @@ class TestLacReader(unittest.TestCase):
         """Test the header validation."""
         head = {'data_set_name': b'NSS.FRAC.M1.D19115.S2352.E0050.B3425758.SV'}
         self.reader._validate_header(head)
+
+    def test_correct_scan_line_numbers(self):
+        """Test scanline number correction."""
+        scans, expected = _get_scanline_numbers(22000)
+        self.reader.scans = scans
+        self.reader.correct_scan_line_numbers()
+        numpy.testing.assert_array_equal(self.reader.scans['scan_line_number'],
+                                         expected)

@@ -894,7 +894,7 @@ class Reader(six.with_metaclass(ABCMeta)):
                    'n_orig': self.scans['scan_line_number'].copy()}
 
         # Remove scanlines whose scanline number is outside the valid range
-        within_range = np.logical_and(self.scans["scan_line_number"] < len(self.scans) * 2,
+        within_range = np.logical_and(self.scans["scan_line_number"] < self.max_scanlines,
                                       self.scans["scan_line_number"] >= 0)
         self.scans = self.scans[within_range]
 
