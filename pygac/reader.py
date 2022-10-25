@@ -24,7 +24,7 @@
 
 Can't be used as is, has to be subclassed to add specific read functions.
 """
-from abc import ABCMeta, abstractmethod, abstractproperty
+from abc import ABCMeta, abstractmethod
 import datetime
 import logging
 import numpy as np
@@ -591,12 +591,14 @@ class Reader(six.with_metaclass(ABCMeta)):
             self._mask = self._get_corrupt_mask()
         return self._mask
 
-    @abstractproperty
+    @property
+    @abstractmethod
     def QFlag(self):  # pragma: no cover
         """KLM/POD specific quality indicators."""
         raise NotImplementedError
 
-    @abstractproperty
+    @property
+    @abstractmethod
     def _quality_indicators_key(self):  # pragma: no cover
         raise NotImplementedError
 
@@ -779,12 +781,12 @@ class Reader(six.with_metaclass(ABCMeta)):
             sat_azi: satellite azimuth angle degree clockwise from north in
             range ]-180, 180]
 
-            sat_zentih: satellite zenith angles in degrees in range [0,90]
+            sat_zenith: satellite zenith angles in degrees in range [0,90]
 
             sun_azi: sun azimuth angle degree clockwise from north in range
             ]-180, 180]
 
-            sun_zentih: sun zenith angles in degrees in range [0,90]
+            sun_zenith: sun zenith angles in degrees in range [0,90]
 
             rel_azi: absolute azimuth angle difference in degrees between sun
             and sensor in range [0, 180]
@@ -876,7 +878,7 @@ class Reader(six.with_metaclass(ABCMeta)):
         """Remove scanlines with corrupted scanline numbers.
 
         This includes:
-            - Scanline numbers outside the valide range
+            - Scanline numbers outside the valid range
             - Scanline numbers deviating more than a certain threshold from the
               ideal case (1,2,3,...N)
 
@@ -927,7 +929,7 @@ class Reader(six.with_metaclass(ABCMeta)):
                 # Relatively small variation, keep (almost) everything
                 thresh = mean_nz_diffs + 3*std_nz_diffs
             else:
-                # Large variation, filter more agressively. Use median and
+                # Large variation, filter more aggressively. Use median and
                 # median absolute deviation (MAD) as they are less sensitive to
                 # outliers. However, allow differences < 500 scanlines as they
                 # occur quite often.
@@ -1049,7 +1051,8 @@ class Reader(six.with_metaclass(ABCMeta)):
         results.update({'tn': tn, 'tcorr': self.utcs, 't0': t0})
         return results
 
-    @abstractproperty
+    @property
+    @abstractmethod
     def tsm_affected_intervals(self):  # pragma: no cover
         """Specify time intervals being affected by the scan motor problem.
 
