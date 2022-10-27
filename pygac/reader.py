@@ -27,7 +27,6 @@ Can't be used as is, has to be subclassed to add specific read functions.
 from abc import ABCMeta, abstractmethod
 import datetime
 import logging
-from contextlib import suppress
 
 import numpy as np
 import os
@@ -525,10 +524,7 @@ class Reader(six.with_metaclass(ABCMeta)):
         )
         prt, ict, space = self.get_telemetry()
 
-        ir_channels_to_calibrate = [3, 4, 5]
-        with suppress(AttributeError):
-            if np.all(self.get_ch3_switch() != 0):
-                ir_channels_to_calibrate = [4, 5]
+        ir_channels_to_calibrate = self._get_ir_channels_to_calibrate()
 
         for chan in ir_channels_to_calibrate:
             channels[:, :, chan - 6] = calibrate_thermal(

@@ -800,6 +800,12 @@ class KLMReader(Reader):
         """
         return self.scans["scan_line_bit_field"][:] & 3
 
+    def _get_ir_channels_to_calibrate(self):
+        ir_channels_to_calibrate = [3, 4, 5]
+        if np.all(self.get_ch3_switch() != 0):
+            ir_channels_to_calibrate = [4, 5]
+        return ir_channels_to_calibrate
+
     def postproc(self, channels):
         """Apply KLM specific postprocessing.
 
