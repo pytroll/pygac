@@ -93,6 +93,10 @@ class FakeGACReader(GACReader):
     def _get_lonlat(self):
         pass
 
+    @staticmethod
+    def _get_ir_channels_to_calibrate():
+        return [3, 4, 5]
+
     def postproc(self, channels):
         """Postprocess the data."""
         pass
