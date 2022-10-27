@@ -66,7 +66,6 @@ class KLM_QualityIndicator(IntFlag):
       post-January 25, 2006, all spacecraft).
 
     Notes:
-
     - Table 8.3.1.3.3.1-1. and Table 8.3.1.4.3.1-1. define bit: 21 as
       "frame sync word not valid"
     - Table 8.3.1.3.3.2-1. and Table 8.3.1.4.3.2-1. define bit: 21 as
@@ -103,7 +102,7 @@ class KLM_QualityIndicator(IntFlag):
     PSEUDO_NOISE = 2**0  # Pseudo noise occurred on this frame
 
 
-# GAC header object
+# header object
 
 header = np.dtype([("data_set_creation_site_id", "S3"),
                    ("ascii_blank_=_x20", "S1"),
@@ -721,7 +720,7 @@ class KLMReader(Reader):
 
     @classmethod
     def _validate_header(cls, header):
-        """Check if the header belongs to this reader"""
+        """Check if the header belongs to this reader."""
         # call super to enter the Method Resolution Order (MRO)
         super(KLMReader, cls)._validate_header(header)
         LOG.debug("validate header")
@@ -795,11 +794,17 @@ class KLMReader(Reader):
     def get_ch3_switch(self):
         """Channel 3 identification.
 
-        0: Channel 3b (Brightness temperature
+        0: Channel 3b (Brightness temperature)
         1: Channel 3a (Reflectance)
         2: Transition (No data)
         """
         return self.scans["scan_line_bit_field"][:] & 3
+
+    def _get_ir_channels_to_calibrate(self):
+        ir_channels_to_calibrate = [3, 4, 5]
+        if np.all(self.get_ch3_switch() != 0):
+            ir_channels_to_calibrate = [4, 5]
+        return ir_channels_to_calibrate
 
     def postproc(self, channels):
         """Apply KLM specific postprocessing.
@@ -814,6 +819,7 @@ class KLMReader(Reader):
 
     def _adjust_clock_drift(self):
         """Adjust the geolocation to compensate for the clock error.
+
         Note:
             Clock drift correction is only applied to POD satellites.
             On the KLM series, the clock is updated daily.

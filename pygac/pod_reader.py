@@ -64,6 +64,7 @@ class POD_QualityIndicator(IntFlag):
     Source:
         POD guide Table 3.1.2.1-2. Format of quality indicators.
     """
+
     # POD guide Table 3.1.2.1-2. Format of quality indicators.
     FATAL_FLAG = 2**31  # Data should not be used for product generation
     TIME_ERROR = 2**30  # A time sequence error was detected while Processing
@@ -420,7 +421,7 @@ class PODReader(Reader):
         return self.decode_timestamps(self.scans["time_code"])
 
     def _compute_missing_lonlat(self, missed_utcs):
-        """compute lon lat values using pyorbital"""
+        """Compute lon lat values using pyorbital."""
         tic = datetime.datetime.now()
 
         scan_rate = datetime.timedelta(milliseconds=1/self.scan_freq).total_seconds()
@@ -560,6 +561,11 @@ class PODReader(Reader):
 
         return prt_counts, ict_counts, space_counts
 
+    @staticmethod
+    def _get_ir_channels_to_calibrate():
+        ir_channels_to_calibrate = [3, 4, 5]
+        return ir_channels_to_calibrate
+
     def postproc(self, channels):
         """No POD specific postprocessing to be done."""
         pass
@@ -573,7 +579,7 @@ class PODReader(Reader):
                            channels[:, :, 3], channels[:, :, 4])
 
     def _get_calibrated_channels_uniform_shape(self):
-        """Prepare the channels as input for gac_io.save_gac"""
+        """Prepare the channels as input for gac_io.save_gac."""
         _channels = self.get_calibrated_channels()
         # prepare input
         # maybe there is a better (less memory requiring) method

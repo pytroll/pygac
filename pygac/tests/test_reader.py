@@ -21,9 +21,10 @@
 """Test the readers."""
 
 import datetime
-import unittest
-import sys
 import os
+import sys
+import unittest
+
 try:
     import mock
 except ImportError:
@@ -60,7 +61,7 @@ class FakeGACReader(GACReader):
 
     def __init__(self):
         """Initialize the fake reader."""
-        super(FakeGACReader, self).__init__()
+        super().__init__()
         self.scan_width = self.across_track
         scans = np.zeros(self.along_track, dtype=scanline)
         scans["scan_line_number"] = np.arange(self.along_track)
@@ -91,6 +92,10 @@ class FakeGACReader(GACReader):
 
     def _get_lonlat(self):
         pass
+
+    @staticmethod
+    def _get_ir_channels_to_calibrate():
+        return [3, 4, 5]
 
     def postproc(self, channels):
         """Postprocess the data."""
