@@ -22,7 +22,6 @@
 """The setup module."""
 
 from setuptools import setup
-import sys
 import os
 
 if __name__ == '__main__':
@@ -39,10 +38,6 @@ if __name__ == '__main__':
     extras_require = {
         'dev': ['pytest', 'pre-commit', 'flake8']
     }
-
-    if sys.version_info < (3, 7):
-        # To parse ISO timestamps in calibration.py
-        requirements.append('python-dateutil>=2.8.0')
 
     setup(name='pygac',
           description='NOAA AVHRR GAC/LAC reader and calibration',
@@ -70,6 +65,6 @@ if __name__ == '__main__':
           scripts=[os.path.join('bin', item) for item in os.listdir('bin')],
           data_files=[('etc', ['etc/pygac.cfg.template']),
                       ('gapfilled_tles', ['gapfilled_tles/TLE_noaa16.txt'])],
-          python_requires='>=3.6',
+          python_requires='>=3.8',
           zip_safe=False
           )
