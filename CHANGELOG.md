@@ -1,4 +1,29 @@
-## Version <1.6.0> (2022/08/04)
+## Version 1.7.0 (2022/10/31)
+
+### Issues Closed
+
+* [Issue 112](https://github.com/pytroll/pygac/issues/112) - Usage documentation uses wrong function name for 'get_reader_class' ([PR 113](https://github.com/pytroll/pygac/pull/113) by [@mraspaud](https://github.com/mraspaud))
+* [Issue 78](https://github.com/pytroll/pygac/issues/78) - Handle completely missing ICT or space counts ([PR 117](https://github.com/pytroll/pygac/pull/117) by [@mraspaud](https://github.com/mraspaud))
+* [Issue 22](https://github.com/pytroll/pygac/issues/22) - Thermal calibration error ([PR 117](https://github.com/pytroll/pygac/pull/117) by [@mraspaud](https://github.com/mraspaud))
+
+In this release 3 issues were closed.
+
+### Pull Requests Merged
+
+#### Bugs fixed
+
+* [PR 117](https://github.com/pytroll/pygac/pull/117) - Fix calibration when 3b is totally deactivated ([78](https://github.com/pytroll/pygac/issues/78), [22](https://github.com/pytroll/pygac/issues/22))
+* [PR 116](https://github.com/pytroll/pygac/pull/116) - Fix typos and deprecations
+* [PR 113](https://github.com/pytroll/pygac/pull/113) - Fix usage typo ([112](https://github.com/pytroll/pygac/issues/112))
+
+#### Features added
+
+* [PR 118](https://github.com/pytroll/pygac/pull/118) - Bump up python versions
+* [PR 115](https://github.com/pytroll/pygac/pull/115) - Add support for frac data
+
+In this release 5 pull requests were closed.
+
+## Version 1.6.0 (2022/08/04)
 
 ### Issues Closed
 
