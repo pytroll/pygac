@@ -4,15 +4,11 @@ Introduction
 Supported Data Format
 ---------------------
 
-Pygac reads AVHRR GAC (Global Area Coverage) and LAC (Local Area Coverage)
-level 1b data from NOAA, which is described in the `POD`_ (NOAA-14 and
-before) and `KLM`_ (NOAA-15 and following) user guides. The data can be
-obtained from `NOAA CLASS`_, where you can also find a comprehensive
-`introduction`_.
-
-.. note::
-    Pygac is currently not able to read files with the CLASS archive
-    header included.
+Pygac reads AVHRR GAC (Global Area Coverage), LAC (Local Area Coverage) and FRAC
+(Full Resolution Area Coverage) level 1b data from NOAA, which is described in
+the `POD`_ (NOAA-14 and before) and `KLM`_ (NOAA-15 and following) user guides.
+The data can be obtained from `NOAA CLASS`_, where you can also find a
+comprehensive `introduction`_.
 
 
 .. _NOAA CLASS:
