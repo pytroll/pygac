@@ -1,3 +1,19 @@
+## Version 1.7.1 (2022/12/09)
+
+
+### Pull Requests Merged
+
+#### Bugs fixed
+
+* [PR 119](https://github.com/pytroll/pygac/pull/119) - Fix the documentation to include FRAC and light cleanup
+
+#### Documentation changes
+
+* [PR 119](https://github.com/pytroll/pygac/pull/119) - Fix the documentation to include FRAC and light cleanup
+
+In this release 2 pull requests were closed.
+
+
 ## Version 1.7.0 (2022/10/31)
 
 ### Issues Closed
