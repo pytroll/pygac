@@ -498,9 +498,9 @@ class PODReader(Reader):
         # one line to the other should be equal to the scan rate.
         pixels_per_line = self.lats.shape[1]
         complete_lons = np.full((num_lines, pixels_per_line), np.nan,
-                                dtype=np.float)
+                                dtype=np.float64)
         complete_lats = np.full((num_lines, pixels_per_line), np.nan,
-                                dtype=np.float)
+                                dtype=np.float64)
 
         complete_lons[scan_lines - min_line] = self.lons
         complete_lats[scan_lines - min_line] = self.lats
