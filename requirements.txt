@@ -2,5 +2,6 @@ numpy>=1.6.1
 h5py>=2.0.1
 scipy>=0.8.0
 python-geotiepoints>=1.1.8
+packaging>=14.0
 
 
