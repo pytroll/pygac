@@ -10,6 +10,11 @@ the `POD`_ (NOAA-14 and before) and `KLM`_ (NOAA-15 and following) user guides.
 The data can be obtained from `NOAA CLASS`_, where you can also find a
 comprehensive `introduction`_.
 
+.. note::
+
+    Pygac can only read AVHRR data with 10 bits/pixel. This can be specified in
+    your NOAA CLASS order or user preferences.
+
 
 .. _NOAA CLASS:
     https://www.class.noaa.gov/
