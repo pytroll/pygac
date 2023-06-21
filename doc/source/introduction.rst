@@ -13,8 +13,11 @@ comprehensive `introduction`_.
 .. note::
 
     Pygac can only read AVHRR data with 10 bits/pixel. This can be specified in
-    your NOAA CLASS order or user preferences.
+    your NOAA CLASS order or user preferences (see screenshot below).
 
+.. image:: images/noaa_class_preferences.png
+    :width: 350
+    :alt: Screenshot of AVHRR data extraction preferences
 
 .. _NOAA CLASS:
     https://www.class.noaa.gov/
