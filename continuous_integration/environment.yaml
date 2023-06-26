@@ -8,6 +8,7 @@ dependencies:
   - python-dateutil
   - hdf5
   - h5py
+  - packaging
   - pytest
   - pytest-cov
   - pip
