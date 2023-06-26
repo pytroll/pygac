@@ -1,3 +1,23 @@
+## Version 1.7.2 (2023/06/26)
+
+
+### Pull Requests Merged
+
+#### Bugs fixed
+
+* [PR 120](https://github.com/pytroll/pygac/pull/120) - Compatibility with numpy v1.24
+
+#### Features added
+
+* [PR 122](https://github.com/pytroll/pygac/pull/122) - Don't use deprecated distutils module.
+
+#### Documentation changes
+
+* [PR 123](https://github.com/pytroll/pygac/pull/123) - Update supported data formats in documentation ([2494](https://github.com/pytroll/satpy/issues/2494))
+
+In this release 3 pull requests were closed.
+
+
 ## Version 1.7.1 (2022/12/09)
 
 
