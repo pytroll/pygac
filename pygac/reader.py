@@ -838,7 +838,7 @@ class Reader(six.with_metaclass(ABCMeta)):
         Returns:
             The q-th percentile(s) of the array elements.
         """
-        return np.percentile(input_array, q, interpolation)
+        return np.percentile(input_array, q, interpolation=interpolation)
         
     def correct_times_median(self, year, jday, msec):
         """Replace invalid timestamps with statistical estimates (using median).
