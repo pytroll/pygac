@@ -29,9 +29,11 @@
 
 """POD file reading.
 
-Format specification can be found here:
-http://www.ncdc.noaa.gov/oa/pod-guide/ncdc/docs/podug/html/c2/sec2-0.htm
-http://www.ncdc.noaa.gov/oa/pod-guide/ncdc/docs/podug/html/c3/sec3-1.htm
+Reads L1b GAC/LAC data from POD series of satellites (NOAA-14 and earlier).
+Format specification can be found in chapters 2 & 3 of the `POD user guide`_.
+
+.. _POD user guide:
+    https://www.ncei.noaa.gov/pub/data/satellite/publications/podguides/TIROS-N%20thru%20N-14/
 """
 
 import datetime
@@ -62,6 +64,7 @@ class POD_QualityIndicator(IntFlag):
     Source:
         POD guide Table 3.1.2.1-2. Format of quality indicators.
     """
+
     # POD guide Table 3.1.2.1-2. Format of quality indicators.
     FATAL_FLAG = 2**31  # Data should not be used for product generation
     TIME_ERROR = 2**30  # A time sequence error was detected while Processing
@@ -418,7 +421,7 @@ class PODReader(Reader):
         return self.decode_timestamps(self.scans["time_code"])
 
     def _compute_missing_lonlat(self, missed_utcs):
-        """compute lon lat values using pyorbital"""
+        """Compute lon lat values using pyorbital."""
         tic = datetime.datetime.now()
 
         scan_rate = datetime.timedelta(milliseconds=1/self.scan_freq).total_seconds()
@@ -495,9 +498,9 @@ class PODReader(Reader):
         # one line to the other should be equal to the scan rate.
         pixels_per_line = self.lats.shape[1]
         complete_lons = np.full((num_lines, pixels_per_line), np.nan,
-                                dtype=np.float)
+                                dtype=np.float64)
         complete_lats = np.full((num_lines, pixels_per_line), np.nan,
-                                dtype=np.float)
+                                dtype=np.float64)
 
         complete_lons[scan_lines - min_line] = self.lons
         complete_lats[scan_lines - min_line] = self.lats
@@ -558,6 +561,11 @@ class PODReader(Reader):
 
         return prt_counts, ict_counts, space_counts
 
+    @staticmethod
+    def _get_ir_channels_to_calibrate():
+        ir_channels_to_calibrate = [3, 4, 5]
+        return ir_channels_to_calibrate
+
     def postproc(self, channels):
         """No POD specific postprocessing to be done."""
         pass
@@ -571,7 +579,7 @@ class PODReader(Reader):
                            channels[:, :, 3], channels[:, :, 4])
 
     def _get_calibrated_channels_uniform_shape(self):
-        """Prepare the channels as input for gac_io.save_gac"""
+        """Prepare the channels as input for gac_io.save_gac."""
         _channels = self.get_calibrated_channels()
         # prepare input
         # maybe there is a better (less memory requiring) method

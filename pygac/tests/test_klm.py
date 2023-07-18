@@ -21,90 +21,26 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-"""Test the GAC KLM reader.
-"""
+"""Test the GAC KLM reader."""
 
-import os
 import datetime as dt
+from unittest import mock
+
 import numpy as np
 import numpy.testing
-import unittest
-import subprocess as sp
-import sys
-try:
-    from unittest import mock
-except ImportError:
-    import mock
 
-from pygac.reader import ReaderError
-from pygac import gac_klm
-from pygac.lac_klm import LACKLMReader
+from pygac.gac_klm import GACKLMReader
+from pygac.klm_reader import header
+from pygac.lac_klm import LACKLMReader, scanline
 from pygac.tests.utils import CalledWithArray
 
 
-# test_file = "test_data/NSS.GHRR.NL.D01183.S1313.E1458.B0400708.GC"
-# ref_result = "test_data/ECC_avhrrGAC_noaa16_20010702Z131338_20010702Z145809.h5"
-# my_result = "ECC_avhrrGAC_noaa16_20010702Z131338_20010702Z145809.h5"
+class TestKLM:
+    """Test the klm reader."""
 
-# ref_sunsat = "test_data/ECC_sunsatGAC_noaa16_20010702Z131338_20010702Z145809.h5.orig"
-# my_sunsat = "ECC_sunsatGAC_noaa16_20010702Z131338_20010702Z145809.h5"
-
-test_file = "test_data/NSS.GHRR.NL.D02187.S1904.E2058.B0921517.GC"
-ref_result = "test_data/ECC_GAC_sunsatangles_noaa16_99999_20020706T1904020Z_20020706T2058095Z.h5"
-my_result = "/tmp/ECC_GAC_sunsatangles_noaa16_99999_20020706T1904020Z_20020706T2058095Z.h5"
-
-ref_sunsat = "test_data/ECC_GAC_sunsatangles_noaa16_99999_20020706T1904020Z_20020706T2058095Z.h5"
-my_sunsat = "/tmp/ECC_GAC_sunsatangles_noaa16_99999_20020706T1904020Z_20020706T2058095Z.h5"
-
-
-class TestKLM(unittest.TestCase):
-    def setUp(self):
-        self.reader = gac_klm.GACKLMReader()
-        # python 2 compatibility
-        if sys.version_info.major < 3:
-            self.assertRaisesRegex = self.assertRaisesRegexp
-
-    def test_global(self):
-        gac_klm.main(test_file, 0, 0)
-
-        child = sp.Popen(["h5diff", ref_sunsat, my_sunsat],
-                         stdout=sp.PIPE)
-        streamdata = child.communicate()[0]
-        retc = child.returncode
-        self.assertTrue(retc == 0, msg=streamdata)
-
-        child = sp.Popen(["h5diff", ref_result, my_result],
-                         stdout=sp.PIPE)
-        streamdata = child.communicate()[0]
-        retc = child.returncode
-        self.assertTrue(retc == 0, msg=streamdata)
-
-    def test__validate_header(self):
-        """Test the header validation"""
-        filename = os.path.basename(test_file).encode()
-        self.reader.head = {'data_set_name': filename}
-        self.reader._validate_header()
-        # wrong name pattern
-        with self.assertRaisesRegex(ReaderError,
-                                    'Data set name .* does not match!'):
-            self.reader.head = {'data_set_name': b'abc.txt'}
-            self.reader._validate_header()
-        # wrong platform
-        name = b'NSS.GHRR.TN.D80001.S0332.E0526.B0627173.WI'
-        with self.assertRaisesRegex(ReaderError,
-                                    'Improper platform id "TN"!'):
-            self.reader.head = {'data_set_name': name}
-            self.reader._validate_header()
-        # wrong transfer mode
-        name = filename.replace(b'GHRR', b'LHRR')
-        with self.assertRaisesRegex(ReaderError,
-                                    'Improper transfer mode "LHRR"!'):
-            self.reader.head = {'data_set_name': name}
-            self.reader._validate_header()
-        # change reader
-        lac_reader = LACKLMReader()
-        lac_reader.head = {'data_set_name': name}
-        lac_reader._validate_header()
+    def setup(self):
+        """Set up the tests."""
+        self.reader = GACKLMReader()
 
     def test_get_lonlat(self):
         """Test readout of lon/lat coordinates."""
@@ -129,14 +65,14 @@ class TestKLM(unittest.TestCase):
             'start_of_data_set_utc_time_of_day': np.array([123456])
         }
         time = self.reader.get_header_timestamp()
-        self.assertEqual(time, dt.datetime(2019, 5, 3, 0, 2, 3, 456000))
+        assert time == dt.datetime(2019, 5, 3, 0, 2, 3, 456000)
 
     def test_get_times(self):
         """Test readout of scanline timestamps."""
         self.reader.scans = {'scan_line_year': 1,
                              'scan_line_day_of_year': 2,
                              'scan_line_utc_time_of_day': 3}
-        self.assertTupleEqual(self.reader._get_times(), (1, 2, 3))
+        assert self.reader._get_times() == (1, 2, 3)
 
     def test_get_ch3_switch(self):
         """Test channel 3 identification."""
@@ -146,10 +82,10 @@ class TestKLM(unittest.TestCase):
         numpy.testing.assert_array_equal(
             self.reader.get_ch3_switch(), switch_exp)
 
-    @mock.patch('pygac.gac_klm.GACKLMReader.get_ch3_switch')
-    def test_postproc(self, get_ch3_switch):
+    def test_postproc(self):
         """Test KLM specific postprocessing."""
-        get_ch3_switch.return_value = np.array([0, 1, 2])
+        self.reader.scans = {
+            'scan_line_bit_field': np.array([0, 1, 2])}
         channels = np.array([[[1., 2., 3., 4.],
                               [1., 2., 3., 4.]],
                              [[1., 2., 3., 4.],
@@ -165,22 +101,6 @@ class TestKLM(unittest.TestCase):
                                 [1., 2., np.nan, np.nan]]])
         self.reader.postproc(channels)  # masks in-place
         numpy.testing.assert_array_equal(channels, masked_exp)
-
-    @mock.patch('pygac.klm_reader.get_tsm_idx')
-    def test_get_tsm_pixels(self, get_tsm_idx):
-        """Test channel set used for TSM correction."""
-        ones = np.ones((409, 100))
-        zeros = np.zeros(ones.shape)
-        ch1 = 1*ones
-        ch2 = 2*ones
-        ch4 = 4*ones
-        ch5 = 5*ones
-        channels = np.dstack((ch1, ch2, zeros, zeros, ch4, ch5))
-        self.reader.get_tsm_pixels(channels)
-        get_tsm_idx.assert_called_with(CalledWithArray(ch1),
-                                       CalledWithArray(ch2),
-                                       CalledWithArray(ch4),
-                                       CalledWithArray(ch5))
 
     def test_quality_indicators(self):
         """Test the quality indicator unpacking."""
@@ -198,10 +118,71 @@ class TestKLM(unittest.TestCase):
         expected_mask = np.array([False, True, True, False, True], dtype=bool)
         numpy.testing.assert_array_equal(reader.mask, expected_mask)
         # test individual flags
-        self.assertTrue(reader._get_corrupt_mask(flags=QFlag.FATAL_FLAG).any())
+        assert reader._get_corrupt_mask(flags=QFlag.FATAL_FLAG).any()
         # count the occurence (everything flagged and last entrance => 2)
-        self.assertEqual(reader._get_corrupt_mask(flags=QFlag.FATAL_FLAG).sum(), 2)
+        assert reader._get_corrupt_mask(flags=QFlag.FATAL_FLAG).sum() == 2
 
 
-if __name__ == '__main__':
-    unittest.main()
+class TestGACKLM:
+    """Tests for gac klm."""
+
+    def setup(self):
+        """Set up the tests."""
+        self.reader = GACKLMReader()
+
+    @mock.patch('pygac.klm_reader.get_tsm_idx')
+    def test_get_tsm_pixels(self, get_tsm_idx):
+        """Test channel set used for TSM correction."""
+        ones = np.ones((409, 100))
+        zeros = np.zeros(ones.shape)
+        ch1 = 1*ones
+        ch2 = 2*ones
+        ch4 = 4*ones
+        ch5 = 5*ones
+        channels = np.dstack((ch1, ch2, zeros, zeros, ch4, ch5))
+        self.reader.get_tsm_pixels(channels)
+        get_tsm_idx.assert_called_with(CalledWithArray(ch1),
+                                       CalledWithArray(ch2),
+                                       CalledWithArray(ch4),
+                                       CalledWithArray(ch5))
+
+
+class TestLACKLM:
+    """Tests for lac klm."""
+
+    def setup(self):
+        """Set up the tests."""
+        self.reader = LACKLMReader()
+        self.reader.scans = np.ones(100, dtype=scanline)
+        self.reader.head = np.ones(1, dtype=header)[0]
+        self.reader.spacecraft_id = 12
+        self.reader.head["noaa_spacecraft_identification_code"] = self.reader.spacecraft_id
+        self.reader.spacecraft_name = "metopa"
+        self.reader.scans["scan_line_number"] = np.arange(100)
+        # PRT
+        self.reader.scans["telemetry"]["PRT"] = 400
+        self.reader.scans["telemetry"]["PRT"][0::5, :] = 0
+
+    def test_get_ch3_switch(self):
+        """Test channel 3 identification."""
+        self.reader.scans = {
+            'scan_line_bit_field': np.array([1, 2, 3, 4, 5, 6])}
+        switch_exp = np.array([1, 2, 3, 0, 1, 2])
+        numpy.testing.assert_array_equal(
+            self.reader.get_ch3_switch(), switch_exp)
+
+    def test_calibrate_channels(self):
+        """Test channel calibration."""
+        # ICT
+        self.reader.scans["back_scan"] = 400
+        self.reader.scans["back_scan"][0::5, :] = 0
+        # Space
+        self.reader.scans["space_data"] = 400
+        self.reader.scans["space_data"][0::5, :] = 0
+
+        assert np.any(np.isfinite(self.reader.get_calibrated_channels()))
+
+    def test_calibrate_inactive_3b(self):
+        """Test calibration of an inactive 3b."""
+        channels = self.reader.get_calibrated_channels()
+        assert np.all(np.isnan(channels[:, :, 3]))

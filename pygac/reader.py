@@ -24,9 +24,10 @@
 
 Can't be used as is, has to be subclassed to add specific read functions.
 """
-from abc import ABCMeta, abstractmethod, abstractproperty
+from abc import ABCMeta, abstractmethod
 import datetime
 import logging
+
 import numpy as np
 import os
 import re
@@ -42,41 +43,42 @@ from pyorbital.orbital import Orbital
 from pyorbital import astronomy
 from pygac.calibration import Calibrator, calibrate_solar, calibrate_thermal
 from pygac import gac_io
-from distutils.version import LooseVersion
+from packaging.version import Version
 
 LOG = logging.getLogger(__name__)
 
 # rpy values from
 # here:http://yyy.rsmas.miami.edu/groups/rrsl/pathfinder/Processing/proc_app_a.html
 rpy_coeffs = {
-    'noaa7':  {'roll':  0.000,
+    'noaa7': {'roll': 0.000,
+              'pitch': 0.000,
+              'yaw': 0.000,
+              },
+    'noaa9': {'roll': 0.000,
+              'pitch': 0.0025,
+              'yaw': 0.000,
+              },
+    'noaa10': {'roll': 0.000,
                'pitch': 0.000,
-               'yaw':   0.000,
-               },
-    'noaa9':  {'roll':  0.000,
-               'pitch': 0.0025,
-               'yaw':   0.000,
-               },
-    'noaa10': {'roll':  0.000,
-               'pitch': 0.000,
-               'yaw':   0.000,
+               'yaw': 0.000,
                },
     'noaa11': {'roll': -0.0019,
                'pitch': -0.0037,
-               'yaw':   0.000,
+               'yaw': 0.000,
                },
-    'noaa12': {'roll':  0.000,
+    'noaa12': {'roll': 0.000,
                'pitch': 0.000,
-               'yaw':   0.000,
+               'yaw': 0.000,
                },
-    'noaa14': {'roll':  0.000,
+    'noaa14': {'roll': 0.000,
                'pitch': 0.000,
-               'yaw':   0.000,
+               'yaw': 0.000,
                }}
 
 
 class ReaderError(ValueError):
-    """Raised in Reader.read if the given file does not correspond to it"""
+    """Raised in Reader.read if the given file does not correspond to it."""
+
     pass
 
 
@@ -85,7 +87,7 @@ class NoTLEData(IndexError):
 
 
 class Reader(six.with_metaclass(ABCMeta)):
-    """Reader for Gac and Lac, POD and KLM data."""
+    """Reader for GAC and LAC format, POD and KLM platforms."""
 
     # data set header format, see _validate_header for more details
     data_set_pattern = re.compile(
@@ -134,7 +136,7 @@ class Reader(six.with_metaclass(ABCMeta)):
 
     @property
     def times(self):
-        """The UTCs as datetime.datetime"""
+        """Get the UTCs as datetime.datetime."""
         return self.to_datetime(self.utcs)
 
     @property
@@ -166,7 +168,7 @@ class Reader(six.with_metaclass(ABCMeta)):
         return calibration
 
     @abstractmethod
-    def read(self, filename, fileobj=None):
+    def read(self, filename, fileobj=None):  # pragma: no cover
         """Read the GAC/LAC data.
 
         Args:
@@ -177,7 +179,7 @@ class Reader(six.with_metaclass(ABCMeta)):
 
     @classmethod
     @abstractmethod
-    def read_header(cls, filename, fileobj=None):
+    def read_header(cls, filename, fileobj=None):  # pragma: no cover
         """Read the file header.
 
         Args:
@@ -196,7 +198,7 @@ class Reader(six.with_metaclass(ABCMeta)):
 
     @classmethod
     def _correct_data_set_name(cls, header, filename):
-        """Replace invalid data_set_name from header with filename
+        """Replace invalid data_set_name from header with filename.
 
         Args:
             header (struct): file header
@@ -221,7 +223,7 @@ class Reader(six.with_metaclass(ABCMeta)):
 
     @classmethod
     def _validate_header(cls, header):
-        """Check if the header belongs to this reader
+        """Check if the header belongs to this reader.
 
         Note:
             according to https://www1.ncdc.noaa.gov/pub/data/satellite/
@@ -258,7 +260,7 @@ class Reader(six.with_metaclass(ABCMeta)):
                               % header['data_set_name'])
 
     def _read_scanlines(self, buffer, count):
-        """Read the scanlines from the given buffer
+        """Read the scanlines from the given buffer.
 
         Args:
             buffer (bytes, bytearray): buffer to read from
@@ -304,7 +306,7 @@ class Reader(six.with_metaclass(ABCMeta)):
 
     @classmethod
     def fromfile(cls, filename, fileobj=None):
-        """Create Reader from file (alternative constructor)
+        """Create Reader from file, alternative constructor.
 
         Args:
             filename (str): Path to GAC/LAC file
@@ -323,14 +325,14 @@ class Reader(six.with_metaclass(ABCMeta)):
         return instance
 
     def _get_calibrated_channels_uniform_shape(self):
-        """Prepare the channels as input for gac_io.save_gac"""
+        """Prepare the channels as input for gac_io.save_gac."""
         channels = self.get_calibrated_channels()
         assert channels.shape[-1] == 6
         return channels
 
     def save(self, start_line, end_line, output_file_prefix="PyGAC", output_dir="./",
              avhrr_dir=None, qual_dir=None, sunsatangles_dir=None):
-        """Convert the Reader instance content into hdf5 files"""
+        """Convert the Reader instance content into hdf5 files."""
         avhrr_dir = avhrr_dir or output_dir
         qual_dir = qual_dir or output_dir
         sunsatangles_dir = sunsatangles_dir or output_dir
@@ -354,7 +356,7 @@ class Reader(six.with_metaclass(ABCMeta)):
         )
 
     @abstractmethod
-    def get_header_timestamp(self):
+    def get_header_timestamp(self):  # pragma: no cover
         """Read start timestamp from the header.
 
         Returns:
@@ -400,7 +402,7 @@ class Reader(six.with_metaclass(ABCMeta)):
             return channels
 
     @abstractmethod
-    def _get_times(self):
+    def _get_times(self):  # pragma: no cover
         """Specify how to read scanline timestamps from GAC data.
 
         Returns:
@@ -500,8 +502,8 @@ class Reader(six.with_metaclass(ABCMeta)):
     def get_calibrated_channels(self):
         """Calibrate and return the channels."""
         channels = self.get_counts()
-        times = self.times
         self.get_times()
+        times = self.times
         self.update_meta_data()
         year = times[0].year
         delta = times[0].date() - datetime.date(year, 1, 1)
@@ -521,7 +523,10 @@ class Reader(six.with_metaclass(ABCMeta)):
             corr
         )
         prt, ict, space = self.get_telemetry()
-        for chan in [3, 4, 5]:
+
+        ir_channels_to_calibrate = self._get_ir_channels_to_calibrate()
+
+        for chan in ir_channels_to_calibrate:
             channels[:, :, chan - 6] = calibrate_thermal(
                 channels[:, :, chan - 6],
                 prt,
@@ -544,6 +549,11 @@ class Reader(six.with_metaclass(ABCMeta)):
             self.mask_tsm_pixels(channels)
 
         return channels
+
+    @abstractmethod
+    def get_telemetry(self):  # pragma: no cover
+        """KLM/POD specific readout of telemetry."""
+        raise NotImplementedError
 
     def get_lonlat(self):
         """Compute lat/lon coordinates.
@@ -574,7 +584,7 @@ class Reader(six.with_metaclass(ABCMeta)):
         return self.lons, self.lats
 
     @abstractmethod
-    def _get_lonlat(self):
+    def _get_lonlat(self):  # pragma: no cover
         """KLM/POD specific readout of lat/lon coordinates."""
         raise NotImplementedError
 
@@ -584,6 +594,17 @@ class Reader(six.with_metaclass(ABCMeta)):
         if self._mask is None:
             self._mask = self._get_corrupt_mask()
         return self._mask
+
+    @property
+    @abstractmethod
+    def QFlag(self):  # pragma: no cover
+        """KLM/POD specific quality indicators."""
+        raise NotImplementedError
+
+    @property
+    @abstractmethod
+    def _quality_indicators_key(self):  # pragma: no cover
+        raise NotImplementedError
 
     def _get_corrupt_mask(self, flags=None):
         """Readout of corrupt scanline mask.
@@ -615,12 +636,12 @@ class Reader(six.with_metaclass(ABCMeta)):
         return qual_flags
 
     @abstractmethod
-    def postproc(self, channels):
+    def postproc(self, channels):  # pragma: no cover
         """Apply KLM/POD specific postprocessing."""
         raise NotImplementedError
 
     @abstractmethod
-    def _adjust_clock_drift(self):
+    def _adjust_clock_drift(self):  # pragma: no cover
         """Adjust clock drift."""
         raise NotImplementedError
 
@@ -749,7 +770,7 @@ class Reader(six.with_metaclass(ABCMeta)):
             self.lons, self.lats, 0)
         # Sometimes (pyorbital <= 1.6.1) the get_observer_look_not_tle returns nodata instead of 90.
         # Problem solved with https://github.com/pytroll/pyorbital/pull/77
-        if LooseVersion(pyorbital.__version__) <= LooseVersion('1.6.1'):
+        if Version(pyorbital.__version__) <= Version('1.6.1'):
             sat_elev[:, mid_column] = 90
         return sat_azi, sat_elev
 
@@ -761,14 +782,18 @@ class Reader(six.with_metaclass(ABCMeta)):
         and different ranges.
 
         Returns:
-            sat_azi: satellite azimuth angle
-                degree clockwise from north in range ]-180, 180],
-            sat_zentih: satellite zenith angles in degrees in range [0,90],
-            sun_azi: sun azimuth angle
-                degree clockwise from north in range ]-180, 180],
-            sun_zentih: sun zenith angles in degrees in range [0,90],
+            sat_azi: satellite azimuth angle degree clockwise from north in
+            range ]-180, 180]
+
+            sat_zenith: satellite zenith angles in degrees in range [0,90]
+
+            sun_azi: sun azimuth angle degree clockwise from north in range
+            ]-180, 180]
+
+            sun_zenith: sun zenith angles in degrees in range [0,90]
+
             rel_azi: absolute azimuth angle difference in degrees between sun
-                and sensor in range [0, 180]
+            and sensor in range [0, 180]
 
         """
         self.get_times()
@@ -869,15 +894,15 @@ class Reader(six.with_metaclass(ABCMeta)):
                 msec0 = self._get_true_median(msec - msec_lineno)
                 msec = msec0 + msec_lineno
 
-        return year, jday, msec
+        return year.astype(int), jday.astype(int), msec
 
     def correct_scan_line_numbers(self):
         """Remove scanlines with corrupted scanline numbers.
 
         This includes:
-            - Scanline numbers outside the valide range
+            - Scanline numbers outside the valid range
             - Scanline numbers deviating more than a certain threshold from the
-            ideal case (1,2,3,...N)
+              ideal case (1,2,3,...N)
 
         Example files having corrupt scanline numbers:
             - NSS.GHRR.NJ.D96144.S2000.E2148.B0720102.GC
@@ -893,7 +918,7 @@ class Reader(six.with_metaclass(ABCMeta)):
                    'n_orig': self.scans['scan_line_number'].copy()}
 
         # Remove scanlines whose scanline number is outside the valid range
-        within_range = np.logical_and(self.scans["scan_line_number"] < 15000,
+        within_range = np.logical_and(self.scans["scan_line_number"] < self.max_scanlines,
                                       self.scans["scan_line_number"] >= 0)
         self.scans = self.scans[within_range]
 
@@ -926,7 +951,7 @@ class Reader(six.with_metaclass(ABCMeta)):
                 # Relatively small variation, keep (almost) everything
                 thresh = mean_nz_diffs + 3*std_nz_diffs
             else:
-                # Large variation, filter more agressively. Use median and
+                # Large variation, filter more aggressively. Use median and
                 # median absolute deviation (MAD) as they are less sensitive to
                 # outliers. However, allow differences < 500 scanlines as they
                 # occur quite often.
@@ -1048,8 +1073,9 @@ class Reader(six.with_metaclass(ABCMeta)):
         results.update({'tn': tn, 'tcorr': self.utcs, 't0': t0})
         return results
 
-    @abstractproperty
-    def tsm_affected_intervals(self):
+    @property
+    @abstractmethod
+    def tsm_affected_intervals(self):  # pragma: no cover
         """Specify time intervals being affected by the scan motor problem.
 
         Returns:
@@ -1122,7 +1148,7 @@ class Reader(six.with_metaclass(ABCMeta)):
         channels[idx] = np.nan
 
     @abstractmethod
-    def get_tsm_pixels(self, channels):
+    def get_tsm_pixels(self, channels):  # pragma: no cover
         """Determine pixels affected by the scan motor issue.
 
         Channel selection is POD/KLM specific.
@@ -1130,7 +1156,7 @@ class Reader(six.with_metaclass(ABCMeta)):
         raise NotImplementedError
 
     def get_attitude_coeffs(self):
-        """Return the roll, pitch, yaw values"""
+        """Return the roll, pitch, yaw values."""
         if self._rpy is None:
             if "constant_yaw_attitude_error" in self.head.dtype.fields:
                 rpy = np.deg2rad([self.head["constant_roll_attitude_error"] / 1e3,

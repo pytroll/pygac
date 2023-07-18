@@ -107,15 +107,3 @@ class TestUtils(unittest.TestCase):
         """Test function for the sun distance corretction."""
         corr = calculate_sun_earth_distance_correction(3)
         np.testing.assert_almost_equal(corr, 0.96660494, decimal=7)
-
-
-def suite():
-    """Test suite for test_utils."""
-    loader = unittest.TestLoader()
-    mysuite = unittest.TestSuite()
-    mysuite.addTest(loader.loadTestsFromTestCase(TestUtils))
-    return mysuite
-
-
-if __name__ == '__main__':
-    unittest.main()

@@ -26,9 +26,12 @@
 
 """Read KLM data.
 
-Reads L1b GAC/LAC data from KLM series of satellites (NOAA-15 and later) and does most of the computations.
-Format specification can be found here:
-http://www.ncdc.noaa.gov/oa/pod-guide/ncdc/docs/klm/html/c8/sec83142-1.htm
+Reads L1b GAC/LAC data from KLM series of satellites (NOAA-15 and later).
+Format specification can be found in section 8 of the `KLM user guide`_.
+
+.. _KLM user guide:
+    https://www.ncei.noaa.gov/pub/data/satellite/publications/podguides/N-15%20thru%20N-19/
+
 """
 
 import datetime
@@ -51,21 +54,25 @@ LOG = logging.getLogger(__name__)
 class KLM_QualityIndicator(IntFlag):
     """Quality Indicators.
 
-    Source:
-        KLM guide
-        Table 8.3.1.3.3.1-1. Format of packed LAC/HRPT Data Sets (Version 2, pre-April 28, 2005).
-        Table 8.3.1.3.3.2-1. Format of LAC/HRPT Data Record for NOAA-N (Version 5, post-November 14,
-                             2006, all spacecraft).
-        Table 8.3.1.4.3.1-1. Format of packed GAC Data Record for NOAA KLM (Version 2, pre-April 28, 2005).
-        Table 8.3.1.4.3.2-1. Format of GAC Data Record for NOAA-N (Version 4, post-January 25, 2006,
-                             all spacecraft).
+    Source: KLM guide
 
-    Note:
-        Table 8.3.1.3.3.1-1. and Table 8.3.1.4.3.1-1. define bit: 21 as
-        "frame sync word not valid"
-        Table 8.3.1.3.3.2-1. and Table 8.3.1.4.3.2-1. define bit: 21 as
-        "flywheeling detected during this frame"
+    - Table 8.3.1.3.3.1-1. Format of packed LAC/HRPT Data Sets (Version 2,
+      pre-April 28, 2005).
+    - Table 8.3.1.3.3.2-1. Format of LAC/HRPT Data Record for NOAA-N
+      (Version 5, post-November 14, 2006, all spacecraft).
+    - Table 8.3.1.4.3.1-1. Format of packed GAC Data Record for NOAA KLM
+      (Version 2, pre-April 28, 2005).
+    - Table 8.3.1.4.3.2-1. Format of GAC Data Record for NOAA-N (Version 4,
+      post-January 25, 2006, all spacecraft).
+
+    Notes:
+    - Table 8.3.1.3.3.1-1. and Table 8.3.1.4.3.1-1. define bit: 21 as
+      "frame sync word not valid"
+    - Table 8.3.1.3.3.2-1. and Table 8.3.1.4.3.2-1. define bit: 21 as
+      "flywheeling detected during this frame"
+
     """
+
     FATAL_FLAG = 2**31  # Data should not be used for product generation
     TIME_ERROR = 2**30  # Time sequence error detected within this scan
     DATA_GAP = 2**29  # Data gap precedes this scan
@@ -95,7 +102,7 @@ class KLM_QualityIndicator(IntFlag):
     PSEUDO_NOISE = 2**0  # Pseudo noise occurred on this frame
 
 
-# GAC header object
+# header object
 
 header = np.dtype([("data_set_creation_site_id", "S3"),
                    ("ascii_blank_=_x20", "S1"),
@@ -713,7 +720,7 @@ class KLMReader(Reader):
 
     @classmethod
     def _validate_header(cls, header):
-        """Check if the header belongs to this reader"""
+        """Check if the header belongs to this reader."""
         # call super to enter the Method Resolution Order (MRO)
         super(KLMReader, cls)._validate_header(header)
         LOG.debug("validate header")
@@ -787,11 +794,17 @@ class KLMReader(Reader):
     def get_ch3_switch(self):
         """Channel 3 identification.
 
-        0: Channel 3b (Brightness temperature
+        0: Channel 3b (Brightness temperature)
         1: Channel 3a (Reflectance)
         2: Transition (No data)
         """
         return self.scans["scan_line_bit_field"][:] & 3
+
+    def _get_ir_channels_to_calibrate(self):
+        ir_channels_to_calibrate = [3, 4, 5]
+        if np.all(self.get_ch3_switch() != 0):
+            ir_channels_to_calibrate = [4, 5]
+        return ir_channels_to_calibrate
 
     def postproc(self, channels):
         """Apply KLM specific postprocessing.
@@ -806,6 +819,7 @@ class KLMReader(Reader):
 
     def _adjust_clock_drift(self):
         """Adjust the geolocation to compensate for the clock error.
+
         Note:
             Clock drift correction is only applied to POD satellites.
             On the KLM series, the clock is updated daily.

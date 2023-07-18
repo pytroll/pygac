@@ -1,3 +1,124 @@
+## Version 1.7.2 (2023/06/26)
+
+
+### Pull Requests Merged
+
+#### Bugs fixed
+
+* [PR 120](https://github.com/pytroll/pygac/pull/120) - Compatibility with numpy v1.24
+
+#### Features added
+
+* [PR 122](https://github.com/pytroll/pygac/pull/122) - Don't use deprecated distutils module.
+
+#### Documentation changes
+
+* [PR 123](https://github.com/pytroll/pygac/pull/123) - Update supported data formats in documentation ([2494](https://github.com/pytroll/satpy/issues/2494))
+
+In this release 3 pull requests were closed.
+
+
+## Version 1.7.1 (2022/12/09)
+
+
+### Pull Requests Merged
+
+#### Bugs fixed
+
+* [PR 119](https://github.com/pytroll/pygac/pull/119) - Fix the documentation to include FRAC and light cleanup
+
+#### Documentation changes
+
+* [PR 119](https://github.com/pytroll/pygac/pull/119) - Fix the documentation to include FRAC and light cleanup
+
+In this release 2 pull requests were closed.
+
+
+## Version 1.7.0 (2022/10/31)
+
+### Issues Closed
+
+* [Issue 112](https://github.com/pytroll/pygac/issues/112) - Usage documentation uses wrong function name for 'get_reader_class' ([PR 113](https://github.com/pytroll/pygac/pull/113) by [@mraspaud](https://github.com/mraspaud))
+* [Issue 78](https://github.com/pytroll/pygac/issues/78) - Handle completely missing ICT or space counts ([PR 117](https://github.com/pytroll/pygac/pull/117) by [@mraspaud](https://github.com/mraspaud))
+* [Issue 22](https://github.com/pytroll/pygac/issues/22) - Thermal calibration error ([PR 117](https://github.com/pytroll/pygac/pull/117) by [@mraspaud](https://github.com/mraspaud))
+
+In this release 3 issues were closed.
+
+### Pull Requests Merged
+
+#### Bugs fixed
+
+* [PR 117](https://github.com/pytroll/pygac/pull/117) - Fix calibration when 3b is totally deactivated ([78](https://github.com/pytroll/pygac/issues/78), [22](https://github.com/pytroll/pygac/issues/22))
+* [PR 116](https://github.com/pytroll/pygac/pull/116) - Fix typos and deprecations
+* [PR 113](https://github.com/pytroll/pygac/pull/113) - Fix usage typo ([112](https://github.com/pytroll/pygac/issues/112))
+
+#### Features added
+
+* [PR 118](https://github.com/pytroll/pygac/pull/118) - Bump up python versions
+* [PR 115](https://github.com/pytroll/pygac/pull/115) - Add support for frac data
+
+In this release 5 pull requests were closed.
+
+## Version 1.6.0 (2022/08/04)
+
+### Issues Closed
+
+* [Issue 107](https://github.com/pytroll/pygac/issues/107) - Fix sun-earth distance correction
+* [Issue 104](https://github.com/pytroll/pygac/issues/104) - Links to POD/KLM user guides are mixed up ([PR 105](https://github.com/pytroll/pygac/pull/105) by [@mraspaud](https://github.com/mraspaud))
+* [Issue 103](https://github.com/pytroll/pygac/issues/103) - API is missing on readthedocs
+* [Issue 40](https://github.com/pytroll/pygac/issues/40) - Calculated sun-earth distance correction factor once and add as attribute
+
+In this release 4 issues were closed.
+
+### Pull Requests Merged
+
+#### Features added
+
+* [PR 109](https://github.com/pytroll/pygac/pull/109) - Add new unpublished METOPC VIS calibration coefficients from Patmos-x
+
+#### Documentation changes
+
+* [PR 105](https://github.com/pytroll/pygac/pull/105) - Fix the pod and klm guide links ([104](https://github.com/pytroll/pygac/issues/104))
+
+In this release 2 pull requests were closed.
+
+## Version 1.5.0 (2022/01/10)
+
+### Issues Closed
+
+* [Issue 94](https://github.com/pytroll/pygac/issues/94) - Method get_tle_lines() raises index error when tle lines are empty strings
+* [Issue 90](https://github.com/pytroll/pygac/issues/90) - Change in masked scanlines
+* [Issue 87](https://github.com/pytroll/pygac/issues/87) - Unit test discovery ([PR 98](https://github.com/pytroll/pygac/pull/98) by [@sfinkens](https://github.com/sfinkens))
+* [Issue 85](https://github.com/pytroll/pygac/issues/85) - Update documentation
+* [Issue 80](https://github.com/pytroll/pygac/issues/80) - Reduce rounding error in POD reader adjust clock drift ([PR 84](https://github.com/pytroll/pygac/pull/84) by [@carloshorn](https://github.com/carloshorn))
+* [Issue 76](https://github.com/pytroll/pygac/issues/76) - IndexError in PODReader._adjust_clock_drift ([PR 84](https://github.com/pytroll/pygac/pull/84) by [@carloshorn](https://github.com/carloshorn))
+* [Issue 74](https://github.com/pytroll/pygac/issues/74) - Remove Cython dependency ([PR 83](https://github.com/pytroll/pygac/pull/83) by [@carloshorn](https://github.com/carloshorn))
+* [Issue 46](https://github.com/pytroll/pygac/issues/46) - Pypi and presentation work
+* [Issue 43](https://github.com/pytroll/pygac/issues/43) - Links to POD/KLM user guides are broken
+* [Issue 39](https://github.com/pytroll/pygac/issues/39) - Update release in preparation for conda-forge package
+
+In this release 10 issues were closed.
+
+### Pull Requests Merged
+
+#### Bugs fixed
+
+* [PR 91](https://github.com/pytroll/pygac/pull/91) - Invert bit position in quality flags
+* [PR 84](https://github.com/pytroll/pygac/pull/84) - Refactor clock drift ([82](https://github.com/pytroll/pygac/issues/82), [81](https://github.com/pytroll/pygac/issues/81), [80](https://github.com/pytroll/pygac/issues/80), [76](https://github.com/pytroll/pygac/issues/76))
+* [PR 79](https://github.com/pytroll/pygac/pull/79) - Fix tests on bigendian platforms
+* [PR 75](https://github.com/pytroll/pygac/pull/75) - Typo
+
+#### Features added
+
+* [PR 98](https://github.com/pytroll/pygac/pull/98) - Switch to pytest for unit tests ([87](https://github.com/pytroll/pygac/issues/87))
+* [PR 92](https://github.com/pytroll/pygac/pull/92) - Allow PathLike objects
+* [PR 89](https://github.com/pytroll/pygac/pull/89) - Add github workflow
+* [PR 86](https://github.com/pytroll/pygac/pull/86) - add METOP C coefficients
+* [PR 84](https://github.com/pytroll/pygac/pull/84) - Refactor clock drift ([82](https://github.com/pytroll/pygac/issues/82), [81](https://github.com/pytroll/pygac/issues/81), [80](https://github.com/pytroll/pygac/issues/80), [76](https://github.com/pytroll/pygac/issues/76))
+* [PR 83](https://github.com/pytroll/pygac/pull/83) - Replace cython filter ([74](https://github.com/pytroll/pygac/issues/74))
+
+In this release 10 pull requests were closed.
+
 ## Version 1.4.0 (2020/08/06)
 
 ### Issues Closed

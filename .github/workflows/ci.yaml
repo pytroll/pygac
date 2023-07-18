@@ -10,7 +10,7 @@ jobs:
       fail-fast: true
       matrix:
         os: ["ubuntu-latest"]
-        python-version: ["3.7", "3.8"]
+        python-version: ["3.8", "3.9", "3.10"]
         experimental: [false]
 
     env:
@@ -39,11 +39,10 @@ jobs:
       - name: Run unit tests
         shell: bash -l {0}
         run: |
-          coverage run --source=pygac setup.py test
-          coverage xml
+          pytest --cov=pygac pygac/tests --cov-report=xml
 
       - name: Upload unittest coverage
-        uses: codecov/codecov-action@v1
+        uses: codecov/codecov-action@v2
         with:
           file: ./coverage.xml
           env_vars: OS,PYTHON_VERSION

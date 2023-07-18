@@ -21,20 +21,12 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """The setup module."""
 
-try:
-    with open("./README", "r") as fd:
-        long_description = fd.read()
-except IOError:
-    long_description = ""
-
-
 from setuptools import setup
-import imp
-import sys
 import os
 
 if __name__ == '__main__':
-    version = imp.load_source('pygac.version', 'pygac/version.py')
+    with open("README.md", "r") as fd:
+        long_description = fd.read()
 
     requirements = ['docutils>=0.3',
                     'numpy>=1.8.0',
@@ -43,15 +35,14 @@ if __name__ == '__main__':
                     'scipy>=0.8.0',
                     'python-geotiepoints>=1.1.8',
                     'bottleneck>=1.0.0']
-    if sys.version_info < (3, 7):
-        # To parse ISO timestamps in calibration.py
-        requirements.append('python-dateutil>=2.8.0')
+    extras_require = {
+        'dev': ['pytest', 'pre-commit', 'flake8']
+    }
 
     setup(name='pygac',
-          version=version.__version__,
           description='NOAA AVHRR GAC/LAC reader and calibration',
-          author='Abhay Devasthale, Martin Raspaud',
-          author_email='martin.raspaud@smhi.se',
+          author='The Pytroll Team',
+          author_email='pytroll@googlegroups.com',
           classifiers=["Development Status :: 4 - Beta",
                        "Intended Audience :: Science/Research",
                        "License :: OSI Approved :: GNU General Public License v3 " +
@@ -61,6 +52,7 @@ if __name__ == '__main__':
                        "Topic :: Scientific/Engineering"],
           url="https://github.com/pytroll/pygac",
           long_description=long_description,
+          long_description_content_type='text/markdown',
           license='GPLv3',
 
           packages=['pygac'],
@@ -69,11 +61,10 @@ if __name__ == '__main__':
           # Project should use reStructuredText, so ensure that the docutils get
           # installed or upgraded on the target machine
           install_requires=requirements,
+          extras_require=extras_require,
           scripts=[os.path.join('bin', item) for item in os.listdir('bin')],
           data_files=[('etc', ['etc/pygac.cfg.template']),
                       ('gapfilled_tles', ['gapfilled_tles/TLE_noaa16.txt'])],
-          test_suite="pygac.tests.suite",
-          tests_require=[],
-          python_requires='>=3.6',
+          python_requires='>=3.8',
           zip_safe=False
           )
