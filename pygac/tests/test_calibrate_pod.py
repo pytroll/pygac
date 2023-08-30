@@ -89,9 +89,9 @@ class TestGenericCalibration(unittest.TestCase):
         ict_counts = np.array([[745.3, 397.9, 377.8],
                                [744.8, 398.1, 378.4],
                                [745.7, 398., 378.3]])
-        space_counts = np.array([[987.3,  992.5,  989.4],
-                                 [986.9,  992.8,  989.6],
-                                 [986.3,  992.3,  988.9]])
+        space_counts = np.array([[987.3, 992.5, 989.4],
+                                 [986.9, 992.8, 989.6],
+                                 [986.3, 992.3, 988.9]])
 
         spacecraft_id = "noaa14"
         cal = Calibrator(spacecraft_id)
