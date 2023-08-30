@@ -62,7 +62,11 @@ class Calibrator(object):
         '689386c822de18a07194ac7fd71652ea': {
             'name': 'PATMOS-x, v2017r1, with provisional coefficients for MetOp-C',
             'status': CoeffStatus.PROVISIONAL
-        }
+        },
+        '24ddbfe5a81be82090267a09ff175422': {
+            'name': 'PATMOS-x, v2023',
+            'status': CoeffStatus.PROVISIONAL
+        },
     }
     fields = [
         "dark_count", "gain_switch", "s0", "s1", "s2", "b",  # "b0", "b1", "b2",

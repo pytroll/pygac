@@ -64,10 +64,10 @@ class TestGenericCalibration(unittest.TestCase):
 
         ref3 = calibrate_solar(data, channel, year, jday, cal, corr)
 
-        expected = (np.array([[np.nan, 60.891074, 126.953364],
-                              [0., 14.091565, 85.195791]]),
-                    np.array([[np.nan, 72.98262, 152.16334],
-                              [0., 16.889821, 102.113687]]),
+        expected = (np.array([[np.nan, 60.91525491, 127.00377987],
+                              [0., 14.0971609, 85.22962417]]),
+                    np.array([[np.nan, 72.51635437, 151.19121018],
+                              [0., 16.7819164, 101.46131111]]),
                     np.array([[-32001., -32001., -32001.],
                               [-32001., -32001., -32001.]]))
 
