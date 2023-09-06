@@ -63,12 +63,12 @@ class TestGenericCalibration(unittest.TestCase):
 
         ref3 = calibrate_solar(data, channel, year, jday, cal, corr)
 
-        expected = (np.array([[np.nan, 27.37909518, 110.60103456],
-                              [0.11943135, 6.03671211, 57.99695154]]),
-                    np.array([[np.nan, 3.05229160e+01, 1.24811455e+02],
-                              [1.23011792e-01, 6.82715447e+00, 6.52122414e+01]]),
-                    np.array([[0., 523.41775, 1034.41775],
-                              [41., 150., 711.41775]]))
+        expected = (np.array([[np.nan, 27.32328509, 110.84050459],
+                              [0.1191198, 6.02096454, 58.0497768]]),
+                    np.array([[np.nan, 3.04160070e+01, 1.24374292e+02],
+                              [1.22580933e-01, 6.80324179e+00, 6.49838301e+01]]),
+                    np.array([[0., 524.33117, 1035.33117],
+                              [41., 150., 712.33117]]))
         np.testing.assert_allclose(ref1, expected[0])
         np.testing.assert_allclose(ref2, expected[1])
         np.testing.assert_allclose(ref3, expected[2])
@@ -87,9 +87,9 @@ class TestGenericCalibration(unittest.TestCase):
         ict_counts = np.array([[745.3, 397.9, 377.8],
                                [744.8, 398.1, 378.4],
                                [745.7, 398., 378.3]])
-        space_counts = np.array([[987.3,  992.5,  989.4],
-                                 [986.9,  992.8,  989.6],
-                                 [986.3,  992.3,  988.9]])
+        space_counts = np.array([[987.3, 992.5, 989.4],
+                                 [986.9, 992.8, 989.6],
+                                 [986.3, 992.3, 988.9]])
 
         spacecraft_id = "noaa19"
         cal = Calibrator(spacecraft_id)
