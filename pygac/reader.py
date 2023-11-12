@@ -820,7 +820,26 @@ class Reader(six.with_metaclass(ABCMeta)):
             arr[self.mask] = np.nan
 
         return sat_azi, sat_zenith, sun_azi, sun_zenith, rel_azi
+  
+    def _get_true_median(self, input_array, q=50, interpolation='nearest'):
+        """
+        This is a helper function to get the true median value of the input array.
+        Functions like np.median, but also np.percentile, default to returning
+        an interpolation of the two closest values in case the population size
+        is even. Such an interpolation would turn an integer into a float, which
+        is not always desireable (like when processing time data).
 
+        Args:
+            input_array: array_like
+            q: percentile to be computed, array_like of float,
+               must be between 0 and 100 inclusive
+            interpolation: 'linear', 'lower', 'higher', 'midpoint', 'nearest'
+
+        Returns:
+            The q-th percentile(s) of the array elements.
+        """
+        return np.percentile(input_array, q, interpolation=interpolation)
+        
     def correct_times_median(self, year, jday, msec):
         """Replace invalid timestamps with statistical estimates (using median).
 
@@ -841,8 +860,7 @@ class Reader(six.with_metaclass(ABCMeta)):
         # offset, e.g. the first scanline has timestamp 1970-01-01 00:00
         msec_lineno = self.lineno2msec(self.scans["scan_line_number"])
 
-        jday = np.where(np.logical_or(jday < 1, jday > 366),
-                        np.median(jday), jday)
+        jday = np.where(np.logical_or(jday < 1, jday > 366), self._get_true_median(jday), jday)
         if_wrong_jday = np.ediff1d(jday, to_begin=0)
         jday = np.where(if_wrong_jday < 0, max(jday), jday)
 
@@ -852,7 +870,7 @@ class Reader(six.with_metaclass(ABCMeta)):
             if if_wrong_msec[0] != 0:
                 msec = msec[0] + msec_lineno
             else:
-                msec0 = np.median(msec - msec_lineno)
+                msec0 = self._get_true_median(msec - msec_lineno)
                 msec = msec0 + msec_lineno
 
         if_wrong_msec = np.ediff1d(msec, to_begin=0)
@@ -871,9 +889,9 @@ class Reader(six.with_metaclass(ABCMeta)):
                 msec = msec[0] + msec_lineno
             # Otherwise use median time stamp
             else:
-                year = np.median(year)
-                jday = np.median(jday)
-                msec0 = np.median(msec - msec_lineno)
+                year = self._get_true_median(year)
+                jday = self._get_true_median(jday)
+                msec0 = self._get_true_median(msec - msec_lineno)
                 msec = msec0 + msec_lineno
 
         return year.astype(int), jday.astype(int), msec

@@ -602,6 +602,11 @@ class TestGacReader(unittest.TestCase):
                    'calib_coeffs_version': 'version'}
         self.assertDictEqual(self.reader.meta_data, mda_exp)
 
+    def test__get_true_median(self):
+        """Test the get true median method."""
+        data = [1, 2, 3, 4, 5, 6]
+        self.assertEqual(self.reader._get_true_median(data), 3)
+        self.assertEqual(self.reader._get_true_median(data, interpolation='linear'), 3.5)
 
 def _get_scanline_numbers(scanlines_along_track):
     """Create artificial scanline numbers with some corruptions.
