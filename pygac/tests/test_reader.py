@@ -174,29 +174,62 @@ class TestGacReader(unittest.TestCase):
             head = {'data_set_name': b'\xea\xf8'}
             self.reader._validate_header(head)
 
-    def test__correct_data_set_name(self):
+    def test__correct_data_set_name_ebcdic_encoded_header_invalid_path(self):
+        """Test the data_set_name correction in file header."""
+        inv_filename = 'InvalidFileName'
+        inv_filepath = 'path/to/' + inv_filename
+
+        expected_data_set_name = 'NSS.GHRR.TN.D80001.S0332.E0526.B0627173.WI'
+        val_head = {'data_set_name': 'NSS.GHRR.TN.D80001.S0332.E0526.B0627173.WI'.encode("cp500")}
+        head = self.reader._correct_data_set_name(val_head.copy(), inv_filepath)
+        assert head['data_set_name'] == expected_data_set_name.encode()
+
+    def test__correct_data_set_name_valid_header_and_file(self):
         """Test the data_set_name correction in file header."""
         val_filename = 'NSS.GHRR.TN.D80001.S0332.E0526.B0627173.WI'
         val_filepath = 'path/to/' + val_filename
         val_head = {'data_set_name': b'NSS.GHRR.TN.D80001.S0332.E0526.B0627173.WI'}
-        inv_filename = 'InvalidFileName'
-        inv_filepath = 'path/to/' + inv_filename
-        inv_head = {'data_set_name': b'InvalidDataSetName'}
         # Note: always pass a copy to _correct_data_set_name, because
         #       the input header is modified in place.
         # enter a valid data_set_name and filepath
         head = self.reader._correct_data_set_name(val_head.copy(), val_filepath)
+        assert head['data_set_name'] == val_filename.encode()
+
+    def test__correct_data_set_name_invalid_header_and_valid_file(self):
+        """Test the data_set_name correction in file header."""
+        val_filename = 'NSS.GHRR.TN.D80001.S0332.E0526.B0627173.WI'
+        val_filepath = 'path/to/' + val_filename
+        inv_head = {'data_set_name': b'InvalidDataSetName'}
+
         # enter an invalid data_set_name, but valid filepath
         head = self.reader._correct_data_set_name(inv_head.copy(), val_filepath)
-        self.assertEqual(head['data_set_name'], val_filename.encode())
-        # enter an invalid data_set_name, and invalid filepath
+        assert head['data_set_name'] == val_filename.encode()
+
+    def test__correct_data_set_name_invalid_header_and_file(self):
+        """Test the data_set_name correction in file header."""
+        inv_filename = 'InvalidFileName'
+        inv_filepath = 'path/to/' + inv_filename
+        inv_head = {'data_set_name': b'InvalidDataSetName'}
         with self.assertRaisesRegex(ReaderError, 'Cannot determine data_set_name!'):
-            head = self.reader._correct_data_set_name(inv_head.copy(), inv_filepath)
+            _ = self.reader._correct_data_set_name(inv_head.copy(), inv_filepath)
+
+    def test__correct_data_set_name_valid_header_invalid_file(self):
+        """Test the data_set_name correction in file header."""
+        val_head = {'data_set_name': b'NSS.GHRR.TN.D80001.S0332.E0526.B0627173.WI'}
+        inv_filename = 'InvalidFileName'
+        inv_filepath = 'path/to/' + inv_filename
+
         # enter a valid data_set_name, and an invalid filepath
         # should be fine, because the data_set_name is the pefered source
         head = self.reader._correct_data_set_name(val_head.copy(), inv_filepath)
-        self.assertEqual(head['data_set_name'], val_head['data_set_name'])
-        # enter a valid data_set_name, and an FSFile/pathlib object as filepath
+        assert head['data_set_name'] == val_head['data_set_name']
+
+    def test__correct_data_set_name_valid_header_pathlib_file(self):
+        """Test the data_set_name correction in file header."""
+        val_filename = 'NSS.GHRR.TN.D80001.S0332.E0526.B0627173.WI'
+        val_filepath = 'path/to/' + val_filename
+        val_head = {'data_set_name': b'NSS.GHRR.TN.D80001.S0332.E0526.B0627173.WI'}
+
         fs_filepath = TestPath(val_filepath)
         head = self.reader._correct_data_set_name(val_head.copy(), fs_filepath)
         self.assertEqual(head['data_set_name'], val_filename.encode())
