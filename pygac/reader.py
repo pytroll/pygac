@@ -95,7 +95,7 @@ class Reader(six.with_metaclass(ABCMeta)):
 
     def __init__(self, interpolate_coords=True, adjust_clock_drift=True,
                  tle_dir=None, tle_name=None, tle_thresh=7, creation_site=None,
-                 custom_calibration=None, calibration_file=None, eosip_header=False):
+                 custom_calibration=None, calibration_file=None, header_date="auto"):
         """Init the reader.
 
         Args:
@@ -111,6 +111,7 @@ class Reader(six.with_metaclass(ABCMeta)):
             custom_calibration: dictionary with a subset of user defined satellite specific
                                 calibration coefficients
             calibration_file: path to json file containing default calibrations
+            header_date: the date to use for pod header choice. Defaults to "auto".
 
         """
         self.meta_data = {}
@@ -122,7 +123,7 @@ class Reader(six.with_metaclass(ABCMeta)):
         self.creation_site = (creation_site or 'NSS').encode('utf-8')
         self.custom_calibration = custom_calibration
         self.calibration_file = calibration_file
-        self.eosip_header = eosip_header
+        self.header_date = header_date
         self.head = None
         self.scans = None
         self.spacecraft_name = None
