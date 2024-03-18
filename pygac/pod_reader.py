@@ -348,7 +348,7 @@ class PODReader(Reader):
     def choose_header_based_on_timestamp(cls, header_date, fd_):
         """Choose the header dtype based on the timestamp."""
         if header_date == "auto":
-            header_date = cls.get_start_time(fd_)
+            header_date = cls.get_start_date(fd_)
         if header_date < datetime.date(1992, 9, 8):
             header = header1
         elif header_date <= datetime.date(1994, 11, 15):
@@ -358,7 +358,7 @@ class PODReader(Reader):
         return header
 
     @classmethod
-    def get_start_time(cls, fd_):
+    def get_start_date(cls, fd_):
         """Get the start time from the filestream."""
         head0, = np.frombuffer(
                     fd_.read(header0.itemsize),
