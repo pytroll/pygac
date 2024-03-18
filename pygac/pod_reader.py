@@ -279,7 +279,7 @@ class PODReader(Reader):
         # choose the right header depending on the date
         with file_opener(fileobj or filename) as fd_:
             self.tbm_head, self.head = self.read_header(
-                filename, fileobj=fd_)
+                filename, fileobj=fd_, eosip_header=self.eosip_header)
             if self.tbm_head:
                 tbm_offset = tbm_header.itemsize
             else:
@@ -302,12 +302,13 @@ class PODReader(Reader):
         return self.head, self.scans
 
     @classmethod
-    def read_header(cls, filename, fileobj=None):
+    def read_header(cls, filename, fileobj=None, eosip_header=False):
         """Read the file header.
 
         Args:
             filename (str): Path to GAC/LAC file
             fileobj: An open file object to read from. (optional)
+            eosip_header: if the format to read is eosip, use only the latest header format, independently of the date.
 
         Returns:
             archive_header (struct): archive header
@@ -332,20 +333,22 @@ class PODReader(Reader):
                 fd_.seek(0)
                 tbm_head = None
                 tbm_offset = 0
-            # read header
-            head0, = np.frombuffer(
-                fd_.read(header0.itemsize),
-                dtype=header0, count=1)
-            year, jday, _ = cls.decode_timestamps(head0["start_time"])
-            start_date = (datetime.date(year, 1, 1) +
-                          datetime.timedelta(days=int(jday) - 1))
-            if start_date < datetime.date(1992, 9, 8):
-                header = header1
-            elif start_date <= datetime.date(1994, 11, 15):
-                header = header2
-            else:
-                header = header3
-            fd_.seek(tbm_offset, 0)
+            header = header3
+            if not eosip_header:
+                # choose the appropriate header
+                head0, = np.frombuffer(
+                    fd_.read(header0.itemsize),
+                    dtype=header0, count=1)
+                year, jday, _ = cls.decode_timestamps(head0["start_time"])
+                start_date = (datetime.date(year, 1, 1) +
+                              datetime.timedelta(days=int(jday) - 1))
+                if start_date < datetime.date(1992, 9, 8):
+                    header = header1
+                elif start_date <= datetime.date(1994, 11, 15):
+                    header = header2
+                else:
+                    header = header3
+                fd_.seek(tbm_offset, 0)
             # need to copy frombuffer to have write access on head
             head, = np.frombuffer(
                 fd_.read(header.itemsize),

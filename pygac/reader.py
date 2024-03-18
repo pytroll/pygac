@@ -95,7 +95,7 @@ class Reader(six.with_metaclass(ABCMeta)):
 
     def __init__(self, interpolate_coords=True, adjust_clock_drift=True,
                  tle_dir=None, tle_name=None, tle_thresh=7, creation_site=None,
-                 custom_calibration=None, calibration_file=None):
+                 custom_calibration=None, calibration_file=None, eosip_header=False):
         """Init the reader.
 
         Args:
@@ -122,6 +122,7 @@ class Reader(six.with_metaclass(ABCMeta)):
         self.creation_site = (creation_site or 'NSS').encode('utf-8')
         self.custom_calibration = custom_calibration
         self.calibration_file = calibration_file
+        self.eosip_header = eosip_header
         self.head = None
         self.scans = None
         self.spacecraft_name = None
