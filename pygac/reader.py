@@ -205,26 +205,25 @@ class Reader(six.with_metaclass(ABCMeta)):
             filename (str): path to file
         """
         filename = str(filename)
-        data_set_name = header['data_set_name'].decode(errors='ignore')
-        if not cls.data_set_pattern.match(data_set_name):
-            LOG.debug('The data_set_name in header %s does not seem correct.'
-                      ' Trying EBCDIC decoding.' % header['data_set_name'])
-            data_set_name = header['data_set_name'].decode("cp500")
+        for encoding in "utf-8", "cp500":
+            data_set_name = header['data_set_name'].decode(encoding, errors='ignore')
             if not cls.data_set_pattern.match(data_set_name):
-                LOG.debug('The data_set_name in header %s does not match.'
-                          ' Use filename instead.' % header['data_set_name'])
-                match = cls.data_set_pattern.search(filename)
-                if match:
-                    data_set_name = match.group()
-                    LOG.debug("Set data_set_name, to filename %s"
-                              % data_set_name)
-                    header['data_set_name'] = data_set_name.encode()
-                else:
-                    LOG.debug("header['data_set_name']=%s; filename='%s'"
-                              % (header['data_set_name'], filename))
-                    raise ReaderError('Cannot determine data_set_name!')
+                LOG.debug(f'The data_set_name in header {header["data_set_name"]} '
+                          f'does not seem correct using encoding {encoding}.')
             else:
+                header["data_set_name"] = data_set_name.encode()
+                break
+        else:
+            LOG.debug(f'The data_set_name in header {header["data_set_name"]} does not match.'
+                      ' Use filename instead.')
+            match = cls.data_set_pattern.search(filename)
+            if match:
+                data_set_name = match.group()
+                LOG.debug(f"Set data_set_name, to filename {data_set_name}")
                 header['data_set_name'] = data_set_name.encode()
+            else:
+                LOG.debug(f"header['data_set_name']={header['data_set_name']}; filename='{filename}'")
+                raise ReaderError('Cannot determine data_set_name!')
         return header
 
     @classmethod
