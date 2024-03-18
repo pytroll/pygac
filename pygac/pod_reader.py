@@ -279,7 +279,7 @@ class PODReader(Reader):
         # choose the right header depending on the date
         with file_opener(fileobj or filename) as fd_:
             self.tbm_head, self.head = self.read_header(
-                filename, fileobj=fd_, eosip_header=self.eosip_header)
+                filename, fileobj=fd_, header_datetime=self.header_datetime)
             if self.tbm_head:
                 tbm_offset = tbm_header.itemsize
             else:
@@ -302,13 +302,14 @@ class PODReader(Reader):
         return self.head, self.scans
 
     @classmethod
-    def read_header(cls, filename, fileobj=None, eosip_header=False):
+    def read_header(cls, filename, fileobj=None, header_datetime="auto"):
         """Read the file header.
 
         Args:
             filename (str): Path to GAC/LAC file
             fileobj: An open file object to read from. (optional)
-            eosip_header: if the format to read is eosip, use only the latest header format, independently of the date.
+            header_datetime: date and time to use to choose the header to use.
+                Defaults to "auto" to use the data to pick the best header.
 
         Returns:
             archive_header (struct): archive header
@@ -333,22 +334,8 @@ class PODReader(Reader):
                 fd_.seek(0)
                 tbm_head = None
                 tbm_offset = 0
-            header = header3
-            if not eosip_header:
-                # choose the appropriate header
-                head0, = np.frombuffer(
-                    fd_.read(header0.itemsize),
-                    dtype=header0, count=1)
-                year, jday, _ = cls.decode_timestamps(head0["start_time"])
-                start_date = (datetime.date(year, 1, 1) +
-                              datetime.timedelta(days=int(jday) - 1))
-                if start_date < datetime.date(1992, 9, 8):
-                    header = header1
-                elif start_date <= datetime.date(1994, 11, 15):
-                    header = header2
-                else:
-                    header = header3
-                fd_.seek(tbm_offset, 0)
+            header = cls.choose_header_based_on_timestamp(header_datetime, fd_)
+            fd_.seek(tbm_offset, 0)
             # need to copy frombuffer to have write access on head
             head, = np.frombuffer(
                 fd_.read(header.itemsize),
@@ -356,6 +343,31 @@ class PODReader(Reader):
         head = cls._correct_data_set_name(head, filename)
         cls._validate_header(head)
         return tbm_head, head
+
+    @classmethod
+    def choose_header_based_on_timestamp(cls, header_datetime, fd_):
+        """Choose the header dtype based on the timestamp."""
+        if header_datetime == "auto":
+            header_datetime = cls.get_start_time(fd_)
+        if header_datetime < datetime.date(1992, 9, 8):
+            header = header1
+        elif header_datetime <= datetime.date(1994, 11, 15):
+            header = header2
+        else:
+            header = header3
+        return header
+
+    @classmethod
+    def get_start_time(cls, fd_):
+        """Get the start time from the filestream."""
+        head0, = np.frombuffer(
+                    fd_.read(header0.itemsize),
+                    dtype=header0, count=1)
+        year, jday, _ = cls.decode_timestamps(head0["start_time"])
+        header_datetime = (datetime.date(year, 1, 1) +
+                           datetime.timedelta(days=int(jday) - 1))
+
+        return header_datetime
 
     @classmethod
     def _validate_header(cls, header):

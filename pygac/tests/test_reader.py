@@ -25,10 +25,7 @@ import os
 import sys
 import unittest
 
-try:
-    import mock
-except ImportError:
-    from unittest import mock
+from unittest import mock
 import numpy as np
 import numpy.testing
 from pygac.gac_reader import GACReader, ReaderError
@@ -127,9 +124,6 @@ class TestGacReader(unittest.TestCase):
         """Set up the tests."""
         self.interpolator = interpolator
         self.reader = GACReader()
-        # python 2 compatibility
-        if sys.version_info.major < 3:
-            self.assertRaisesRegex = self.assertRaisesRegexp
 
     def test_filename(self):
         """Test the setter of the filename property."""
