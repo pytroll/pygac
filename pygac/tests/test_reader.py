@@ -706,7 +706,7 @@ def pod_file_with_tbm_header(tmp_path):
     header["data_type_code"] = 48
     header["start_time"] = [51522, 181, 62790]
     header["number_of_scans"] = number_of_scans
-    header["end_time"] = [51522,   195, 42286]
+    header["end_time"] = [51522, 195, 42286]
     header["processing_block_id"] = b'3031919'
     header["ramp_auto_calibration"] = 0
     header["number_of_data_gaps"] = 0
@@ -739,7 +739,7 @@ def pod_file_with_tbm_header(tmp_path):
 
     scanlines = np.zeros(number_of_scans, dtype=lacpod_scanline)
     scanlines["scan_line_number"] = np.arange(number_of_scans) + 1
-    scanlines["time_code"][:, :2] = [51522,   181]
+    scanlines["time_code"][:, :2] = [51522, 181]
     scanlines["time_code"][:, 2] = np.arange(62790, 62790 + 166 * number_of_scans, 166)
     scanlines["quality_indicators"] = 1073741824
     scanlines["calibration_coefficients"] = [149722896, -23983736, 173651248, -27815402, -1803673, 6985664, -176321840,
