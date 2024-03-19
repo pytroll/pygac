@@ -1,3 +1,15 @@
+## Version 1.7.3 (2024/03/19)
+
+
+### Pull Requests Merged
+
+#### Features added
+
+* [PR 125](https://github.com/pytroll/pygac/pull/125) - Support reading EO-SIP LAC data
+
+In this release 1 pull request was closed.
+
+
 ## Version 1.7.2 (2023/06/26)
 
 
