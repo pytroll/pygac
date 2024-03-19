@@ -86,6 +86,10 @@ class NoTLEData(IndexError):
     """Raised if no TLE data available within time range."""
 
 
+class DecodingError(ValueError):
+    """Raised when decoding of some value fails."""
+
+
 class Reader(six.with_metaclass(ABCMeta)):
     """Reader for GAC and LAC format, POD and KLM platforms."""
 
@@ -208,12 +212,13 @@ class Reader(six.with_metaclass(ABCMeta)):
         """
         filename = str(filename)
         for encoding in "utf-8", "cp500":
-            data_set_name = header['data_set_name'].decode(encoding, errors='ignore')
-            if not cls.data_set_pattern.match(data_set_name):
-                LOG.debug(f'The data_set_name in header {header["data_set_name"]} '
-                          f'does not seem correct using encoding {encoding}.')
+            data_set_name = header['data_set_name']
+            try:
+                data_set_name = cls._decode_data_set_name(data_set_name, encoding)
+            except DecodingError as err:
+                LOG.debug(str(err))
             else:
-                header["data_set_name"] = data_set_name.encode()
+                header["data_set_name"] = data_set_name
                 break
         else:
             LOG.debug(f'The data_set_name in header {header["data_set_name"]} does not match.'
@@ -227,6 +232,16 @@ class Reader(six.with_metaclass(ABCMeta)):
                 LOG.debug(f"header['data_set_name']={header['data_set_name']}; filename='{filename}'")
                 raise ReaderError('Cannot determine data_set_name!')
         return header
+
+    @classmethod
+    def _decode_data_set_name(cls, data_set_name, encoding):
+        data_set_name = data_set_name.decode(encoding, errors='ignore')
+        if not cls.data_set_pattern.match(data_set_name):
+            raise DecodingError(f'The data_set_name in header {data_set_name} '
+                                f'does not seem correct using encoding {encoding}.')
+        else:
+            data_set_name = data_set_name.encode()
+        return data_set_name
 
     @classmethod
     def _validate_header(cls, header):
