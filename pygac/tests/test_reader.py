@@ -715,6 +715,7 @@ def pod_file_with_tbm_header(tmp_path):
     header["dacs_status"] = 24
     header["nadir_earth_location_tolerance"] = 20
     header["start_of_data_set_year"] = 2000
+    # EBCDIC, aka cp500 encoding
     header["data_set_name"] = (b"\xc2\xd9\xd5K\xc8\xd9\xd7\xe3K\xd5\xd1K\xc4\xf0\xf0\xf3\xf2\xf2K\xe2\xf0\xf3\xf1\xf9K"
                                b"\xc5\xf0\xf3\xf3\xf4K\xc2\xf3\xf0\xf3\xf1\xf9\xf1\xf9K\xc2\xd3@@")
     header["year_of_epoch"] = 2000
