@@ -24,11 +24,9 @@ import datetime
 import os
 import sys
 import unittest
+import pytest
 
-try:
-    import mock
-except ImportError:
-    from unittest import mock
+from unittest import mock
 import numpy as np
 import numpy.testing
 from pygac.gac_reader import GACReader, ReaderError
@@ -36,6 +34,10 @@ from pygac.lac_reader import LACReader
 from pygac.pod_reader import POD_QualityIndicator
 from pygac.gac_pod import scanline
 from pygac.reader import NoTLEData
+from pygac.lac_pod import LACPODReader
+
+from pygac.pod_reader import tbm_header as tbm_header_dtype, header3
+from pygac.lac_pod import scanline as lacpod_scanline
 
 
 class TestPath(os.PathLike):
@@ -127,9 +129,6 @@ class TestGacReader(unittest.TestCase):
         """Set up the tests."""
         self.interpolator = interpolator
         self.reader = GACReader()
-        # python 2 compatibility
-        if sys.version_info.major < 3:
-            self.assertRaisesRegex = self.assertRaisesRegexp
 
     def test_filename(self):
         """Test the setter of the filename property."""
@@ -174,29 +173,62 @@ class TestGacReader(unittest.TestCase):
             head = {'data_set_name': b'\xea\xf8'}
             self.reader._validate_header(head)
 
-    def test__correct_data_set_name(self):
+    def test__correct_data_set_name_ebcdic_encoded_header_invalid_path(self):
+        """Test the data_set_name correction in file header."""
+        inv_filename = 'InvalidFileName'
+        inv_filepath = 'path/to/' + inv_filename
+
+        expected_data_set_name = 'NSS.GHRR.TN.D80001.S0332.E0526.B0627173.WI'
+        val_head = {'data_set_name': 'NSS.GHRR.TN.D80001.S0332.E0526.B0627173.WI'.encode("cp500")}
+        head = self.reader._correct_data_set_name(val_head.copy(), inv_filepath)
+        assert head['data_set_name'] == expected_data_set_name.encode()
+
+    def test__correct_data_set_name_valid_header_and_file(self):
         """Test the data_set_name correction in file header."""
         val_filename = 'NSS.GHRR.TN.D80001.S0332.E0526.B0627173.WI'
         val_filepath = 'path/to/' + val_filename
         val_head = {'data_set_name': b'NSS.GHRR.TN.D80001.S0332.E0526.B0627173.WI'}
-        inv_filename = 'InvalidFileName'
-        inv_filepath = 'path/to/' + inv_filename
-        inv_head = {'data_set_name': b'InvalidDataSetName'}
         # Note: always pass a copy to _correct_data_set_name, because
         #       the input header is modified in place.
         # enter a valid data_set_name and filepath
         head = self.reader._correct_data_set_name(val_head.copy(), val_filepath)
+        assert head['data_set_name'] == val_filename.encode()
+
+    def test__correct_data_set_name_invalid_header_and_valid_file(self):
+        """Test the data_set_name correction in file header."""
+        val_filename = 'NSS.GHRR.TN.D80001.S0332.E0526.B0627173.WI'
+        val_filepath = 'path/to/' + val_filename
+        inv_head = {'data_set_name': b'InvalidDataSetName'}
+
         # enter an invalid data_set_name, but valid filepath
         head = self.reader._correct_data_set_name(inv_head.copy(), val_filepath)
-        self.assertEqual(head['data_set_name'], val_filename.encode())
-        # enter an invalid data_set_name, and invalid filepath
+        assert head['data_set_name'] == val_filename.encode()
+
+    def test__correct_data_set_name_invalid_header_and_file(self):
+        """Test the data_set_name correction in file header."""
+        inv_filename = 'InvalidFileName'
+        inv_filepath = 'path/to/' + inv_filename
+        inv_head = {'data_set_name': b'InvalidDataSetName'}
         with self.assertRaisesRegex(ReaderError, 'Cannot determine data_set_name!'):
-            head = self.reader._correct_data_set_name(inv_head.copy(), inv_filepath)
+            _ = self.reader._correct_data_set_name(inv_head.copy(), inv_filepath)
+
+    def test__correct_data_set_name_valid_header_invalid_file(self):
+        """Test the data_set_name correction in file header."""
+        val_head = {'data_set_name': b'NSS.GHRR.TN.D80001.S0332.E0526.B0627173.WI'}
+        inv_filename = 'InvalidFileName'
+        inv_filepath = 'path/to/' + inv_filename
+
         # enter a valid data_set_name, and an invalid filepath
         # should be fine, because the data_set_name is the pefered source
         head = self.reader._correct_data_set_name(val_head.copy(), inv_filepath)
-        self.assertEqual(head['data_set_name'], val_head['data_set_name'])
-        # enter a valid data_set_name, and an FSFile/pathlib object as filepath
+        assert head['data_set_name'] == val_head['data_set_name']
+
+    def test__correct_data_set_name_valid_header_pathlib_file(self):
+        """Test the data_set_name correction in file header."""
+        val_filename = 'NSS.GHRR.TN.D80001.S0332.E0526.B0627173.WI'
+        val_filepath = 'path/to/' + val_filename
+        val_head = {'data_set_name': b'NSS.GHRR.TN.D80001.S0332.E0526.B0627173.WI'}
+
         fs_filepath = TestPath(val_filepath)
         head = self.reader._correct_data_set_name(val_head.copy(), fs_filepath)
         self.assertEqual(head['data_set_name'], val_filename.encode())
@@ -648,3 +680,105 @@ class TestLacReader(unittest.TestCase):
         self.reader.correct_scan_line_numbers()
         numpy.testing.assert_array_equal(self.reader.scans['scan_line_number'],
                                          expected)
+
+
+@pytest.fixture
+def pod_file_with_tbm_header(tmp_path):
+    """Create a pod file with a tbm header, and header, and some scanlines."""
+    number_of_scans = 3
+
+    tbm_header = np.zeros(1, dtype=tbm_header_dtype)
+    tbm_header["data_set_name"] = b"BRN.HRPT.NJ.D00322.S0334.E0319.B3031919.BL  "
+    tbm_header["select_flag"] = b"S"
+    tbm_header["beginning_latitude"] = b"+77"
+    tbm_header["ending_latitude"] = b"+22"
+    tbm_header["beginning_longitude"] = b"-004"
+    tbm_header["ending_longitude"] = b"+032"
+    tbm_header["start_hour"] = b'AL'
+    tbm_header["start_minute"] = b'L '
+    tbm_header["number_of_minutes"] = b'ALL'
+    tbm_header["appended_data_flag"] = b'Y'
+    tbm_header["channel_select_flag"][0, :5] = b'\x01'
+    tbm_header["sensor_data_word_size"] = b'10'
+
+    header = np.zeros(1, dtype=header3)
+    header["noaa_spacecraft_identification_code"] = 3
+    header["data_type_code"] = 48
+    header["start_time"] = [51522, 181, 62790]
+    header["number_of_scans"] = number_of_scans
+    header["end_time"] = [51522, 195, 42286]
+    header["processing_block_id"] = b'3031919'
+    header["ramp_auto_calibration"] = 0
+    header["number_of_data_gaps"] = 0
+    header["dacs_quality"] = [21, 7, 0, 0, 0, 0]
+    header["calibration_parameter_id"] = 12336
+    header["dacs_status"] = 24
+    header["nadir_earth_location_tolerance"] = 20
+    header["start_of_data_set_year"] = 2000
+    # EBCDIC, aka cp500 encoding
+    header["data_set_name"] = (b"\xc2\xd9\xd5K\xc8\xd9\xd7\xe3K\xd5\xd1K\xc4\xf0\xf0\xf3\xf2\xf2K\xe2\xf0\xf3\xf1\xf9K"
+                               b"\xc5\xf0\xf3\xf3\xf4K\xc2\xf3\xf0\xf3\xf1\xf9\xf1\xf9K\xc2\xd3@@")
+    header["year_of_epoch"] = 2000
+    header["julian_day_of_epoch"] = 322
+    header["millisecond_utc_epoch_time_of_day"] = 11864806
+    header["semi_major_axis"] = 7226239
+    header["eccentricity"] = 100496
+    header["inclination"] = 9915900
+    header["argument_of_perigee"] = 2511798
+    header["right_ascension"] = 30366227
+    header["mean_anomaly"] = 7341437
+    header["x_component_of_position_vector"] = 40028760
+    header["y_component_of_position_vector"] = -60151283
+    header["z_component_of_position_vector"] = 0,
+    header["x_dot_component_of_position_vector"] = -990271
+    header["y_dot_component_of_position_vector"] = -646066
+    header["z_dot_component_of_position_vector"] = 7337861
+    header["yaw_fixed_error_correction"] = 0
+    header["roll_fixed_error_correction"] = 0
+    header["pitch_fixed_error_correction"] = 0
+
+    scanlines = np.zeros(number_of_scans, dtype=lacpod_scanline)
+    scanlines["scan_line_number"] = np.arange(number_of_scans) + 1
+    scanlines["time_code"][:, :2] = [51522, 181]
+    scanlines["time_code"][:, 2] = np.arange(62790, 62790 + 166 * number_of_scans, 166)
+    scanlines["quality_indicators"] = 1073741824
+    scanlines["calibration_coefficients"] = [149722896, -23983736, 173651248, -27815402, -1803673, 6985664, -176321840,
+                                             666680320, -196992576, 751880640]
+    scanlines["number_of_meaningful_zenith_angles_and_earth_location_appended"] = 51
+    scanlines["solar_zenith_angles"] = [-24, -26, -28, -30, -32, -33, -34, -35, -37, -37, -38, -39, -40, -41, -41, -42,
+                                        -43, -43, -44, -45, -45, -46, -46, -47, -48, -48, -49, -49, -50, -50, -51, -52,
+                                        -52, -53, -53, -54, -55, -55, -56, -57, -58, -59, -60, -61, -62, -63, -64, -66,
+                                        -68, -70, -73]
+    scanlines["earth_location"] = [9929, -36, 9966, 747, 9983, 1415, 9988, 1991, 9984, 2492, 9975, 2931,
+                                   9963, 3320, 9948, 3667, 9931, 3979, 9913, 4262, 9895, 4519, 9875, 4755,
+                                   9856, 4972, 9836, 5174, 9816, 5362, 9796, 5538, 9775, 5703, 9755, 5860,
+                                   9734, 6009, 9713, 6150, 9692, 6286, 9671, 6416, 9650, 6542, 9628, 6663,
+                                   9606, 6781, 9583, 6896, 9560, 7009, 9537, 7119, 9513, 7227, 9488, 7334,
+                                   9463, 7440, 9437, 7545, 9409, 7650, 9381, 7755, 9351, 7860, 9320,
+                                   7966, 9288, 8073, 9253, 8181, 9216, 8291, 9177, 8403, 9135, 8518,
+                                   9090, 8637, 9040, 8759, 8986, 8886, 8926, 9019, 8859, 9159, 8784,
+                                   9307, 8697, 9466, 8596, 9637, 8476, 9824, 8327, 10033]
+    scanlines["telemetry"] = 0
+    scanlines["sensor_data"] = 99
+    scanlines["add_on_zenith"] = 0
+    scanlines["clock_drift_delta"] = 0
+
+    pod_filename = tmp_path / "image.l1b"
+    offset = 14800
+    fill = np.zeros(offset - header3.itemsize, dtype=np.uint8)
+
+    with open(pod_filename, "wb") as fd_:
+        fd_.write(tbm_header.tobytes())
+        fd_.write(header.tobytes())
+        fd_.write(fill.tobytes())
+        fd_.write(scanlines.tobytes())
+    return pod_filename
+
+
+def test_podlac_eosip(pod_file_with_tbm_header):
+    """Test reading a real podlac file."""
+    reader = LACPODReader(interpolate_coords=False)
+    reader.read(pod_file_with_tbm_header)
+    assert reader.head.itemsize == header3.itemsize
+    # this is broken in eosip pod data, tbm data set name has start and end times reversed.
+    # assert reader.head["data_set_name"] == reader.tbm_head["data_set_name"]

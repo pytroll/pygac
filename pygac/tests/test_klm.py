@@ -38,7 +38,7 @@ from pygac.tests.utils import CalledWithArray
 class TestKLM:
     """Test the klm reader."""
 
-    def setup(self):
+    def setup_method(self):
         """Set up the tests."""
         self.reader = GACKLMReader()
 
@@ -126,7 +126,7 @@ class TestKLM:
 class TestGACKLM:
     """Tests for gac klm."""
 
-    def setup(self):
+    def setup_method(self):
         """Set up the tests."""
         self.reader = GACKLMReader()
 
@@ -150,7 +150,7 @@ class TestGACKLM:
 class TestLACKLM:
     """Tests for lac klm."""
 
-    def setup(self):
+    def setup_method(self):
         """Set up the tests."""
         self.reader = LACKLMReader()
         self.reader.scans = np.ones(100, dtype=scanline)

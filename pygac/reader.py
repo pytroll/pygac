@@ -86,6 +86,10 @@ class NoTLEData(IndexError):
     """Raised if no TLE data available within time range."""
 
 
+class DecodingError(ValueError):
+    """Raised when decoding of some value fails."""
+
+
 class Reader(six.with_metaclass(ABCMeta)):
     """Reader for GAC and LAC format, POD and KLM platforms."""
 
@@ -95,7 +99,7 @@ class Reader(six.with_metaclass(ABCMeta)):
 
     def __init__(self, interpolate_coords=True, adjust_clock_drift=True,
                  tle_dir=None, tle_name=None, tle_thresh=7, creation_site=None,
-                 custom_calibration=None, calibration_file=None):
+                 custom_calibration=None, calibration_file=None, header_date="auto"):
         """Init the reader.
 
         Args:
@@ -111,6 +115,7 @@ class Reader(six.with_metaclass(ABCMeta)):
             custom_calibration: dictionary with a subset of user defined satellite specific
                                 calibration coefficients
             calibration_file: path to json file containing default calibrations
+            header_date: the date to use for pod header choice. Defaults to "auto".
 
         """
         self.meta_data = {}
@@ -122,6 +127,7 @@ class Reader(six.with_metaclass(ABCMeta)):
         self.creation_site = (creation_site or 'NSS').encode('utf-8')
         self.custom_calibration = custom_calibration
         self.calibration_file = calibration_file
+        self.header_date = header_date
         self.head = None
         self.scans = None
         self.spacecraft_name = None
@@ -205,21 +211,37 @@ class Reader(six.with_metaclass(ABCMeta)):
             filename (str): path to file
         """
         filename = str(filename)
-        data_set_name = header['data_set_name'].decode(errors='ignore')
-        if not cls.data_set_pattern.match(data_set_name):
-            LOG.debug('The data_set_name in header %s does not match.'
-                      ' Use filename instead.' % header['data_set_name'])
+        for encoding in "utf-8", "cp500":
+            data_set_name = header['data_set_name']
+            try:
+                data_set_name = cls._decode_data_set_name(data_set_name, encoding)
+            except DecodingError as err:
+                LOG.debug(str(err))
+            else:
+                header["data_set_name"] = data_set_name
+                break
+        else:
+            LOG.debug(f'The data_set_name in header {header["data_set_name"]} does not match.'
+                      ' Use filename instead.')
             match = cls.data_set_pattern.search(filename)
             if match:
                 data_set_name = match.group()
-                LOG.debug("Set data_set_name, to filename %s"
-                          % data_set_name)
+                LOG.debug(f"Set data_set_name, to filename {data_set_name}")
                 header['data_set_name'] = data_set_name.encode()
             else:
-                LOG.debug("header['data_set_name']=%s; filename='%s'"
-                          % (header['data_set_name'], filename))
+                LOG.debug(f"header['data_set_name']={header['data_set_name']}; filename='{filename}'")
                 raise ReaderError('Cannot determine data_set_name!')
         return header
+
+    @classmethod
+    def _decode_data_set_name(cls, data_set_name, encoding):
+        data_set_name = data_set_name.decode(encoding, errors='ignore')
+        if not cls.data_set_pattern.match(data_set_name):
+            raise DecodingError(f'The data_set_name in header {data_set_name} '
+                                f'does not seem correct using encoding {encoding}.')
+        else:
+            data_set_name = data_set_name.encode()
+        return data_set_name
 
     @classmethod
     def _validate_header(cls, header):
@@ -274,7 +296,7 @@ class Reader(six.with_metaclass(ABCMeta)):
                 "Expected %d scan lines, but found %d!"
                 % (count, line_count))
             warnings.warn("Unexpected number of scanlines!",
-                          category=RuntimeWarning)
+                          category=RuntimeWarning, stacklevel=2)
         self.scans = np.frombuffer(
             buffer, dtype=self.scanline_type, count=line_count)
 
