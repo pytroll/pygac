@@ -29,16 +29,11 @@
 import argparse
 import logging
 import os
-import sys
 import tarfile
 from datetime import datetime
 from functools import wraps
 
 import pygac
-
-if sys.version_info.major < 3:
-    class FileNotFoundError(OSError):
-        pass
 
 logger = logging.getLogger("pygac")
 
@@ -125,7 +120,8 @@ def logged_trial(processor, debug=False):
     return wrapper
 
 
-if __name__ == "__main__":
+def main():
+    """The main function."""
     parser = argparse.ArgumentParser(
         description='Read, calibrate and navigate NOAA AVHRR GAC data')
     parser.add_argument('path', type=str, help='Path to GAC file(s) to be processed'
@@ -153,7 +149,7 @@ if __name__ == "__main__":
     path = args.path
     start_line = args.start_line
     end_line = args.end_line
-    if os.path.isfile(path): 
+    if os.path.isfile(path):
         if tarfile.is_tarfile(path):
             logger.info('Open archive "%s"' % str(path))
             for filename, fileobj in tarfile_walker(path):
@@ -170,3 +166,6 @@ if __name__ == "__main__":
     else:
         raise FileNotFoundError(
             'The provided path "%s" is neither a file nor a directory!' % args.path)
+
+if __name__ == "__main__":
+    main()

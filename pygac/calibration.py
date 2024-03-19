@@ -24,17 +24,18 @@
 """Calibration coefficients and generic calibration functions
 """
 from __future__ import division
-from enum import Enum
-import sys
-import logging
-import numpy as np
-import json
-import hashlib
-import warnings
-import datetime as dt
-from collections import namedtuple
-from pkg_resources import resource_filename
 
+import datetime as dt
+import hashlib
+import json
+import logging
+import sys
+import warnings
+from collections import namedtuple
+from enum import Enum
+from importlib.resources import files
+
+import numpy as np
 
 LOG = logging.getLogger(__name__)
 
@@ -172,7 +173,7 @@ class Calibrator(object):
             LOG.info('Read calibration coefficients from "%s"', coeffs_file)
         else:
             LOG.debug("Read PyGAC internal calibration coefficients.")
-            coeffs_file = resource_filename('pygac', 'data/calibration.json')
+            coeffs_file = files("pygac") / "data/calibration.json"
         with open(coeffs_file, mode='rb') as json_file:
             content = json_file.read()
             coeffs = json.loads(content)

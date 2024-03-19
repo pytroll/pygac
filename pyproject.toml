@@ -1,6 +1,71 @@
+[project]
+name = "pygac"
+dynamic = ["version"]
+description = "NOAA AVHRR GAC/LAC/FRAC reader and calibration"
+authors = [
+    { name = "The Pytroll Team", email = "pytroll@googlegroups.com" }
+]
+dependencies = [
+    "bottleneck>=1.0.0",
+    "docutils>=0.3",
+    "h5py>=2.0.1",
+    "numpy>=1.8.0",
+    "pyorbital>=0.3.2",
+    "python-geotiepoints>=1.1.8",
+    "scipy>=0.8.0",
+    "packaging"
+]
+readme = "README.md"
+requires-python = ">=3.8"
+license = { text = "GPLv3" }
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
+    "Operating System :: OS Independent",
+    "Topic :: Scientific/Engineering"
+]
+
+[project.urls]
+Homepage = "https://github.com/pytroll/pygac"
+"Bug Tracker" = "https://github.com/pytroll/pygac/issues"
+Documentation = "https://pygac.readthedocs.io/en/stable/"
+"Source Code" = "https://github.com/pytroll/pygac"
+Organization = "https://pytroll.github.io/"
+Slack = "https://pytroll.slack.com/"
+"Release Notes" = "https://github.com/pytroll/pygac/blob/main/CHANGELOG.md"
+
+[project.optional-dependencies]
+dev = ['pytest', 'pre-commit', 'ruff']
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["etc", "gapfilled_tles"]
+
+[project.scripts]
+pygac-run = "pygac.bin.pygac_run:main"
+pygac-convert-patmosx-coefficients = "pygac.bin.pygac_convert_patmosx_coefficients:main"
+
 [build-system]
-requires = ["setuptools>=45", "wheel", "setuptools_scm[toml]>=6.2", 'setuptools_scm_git_archive']
+requires = ["setuptools>=61.0", "setuptools_scm[toml]>=6.2", 'setuptools_scm_git_archive']
 build-backend = "setuptools.build_meta"
+
+[tool.setuptools.package-data]
+pygac = ['data/calibration.json']
+
+[tool.rye]
+managed = true
+dev-dependencies = ['pytest', 'pre-commit', "ruff"]
 
 [tool.setuptools_scm]
 write_to = "pygac/version.py"
+
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I"]
