@@ -1,6 +1,5 @@
-include etc/*
-include gapfilled_tles/*
-include bin/pygac-*
+include etc/pygac.cfg.template
+include gapfilled_tles/TLE_*.txt
 include LICENSE.txt
 include README.md
 include pygac/version.py

@@ -6,5 +6,11 @@ doc/build
 dist
 pygac.egg-info
 etc/*.cfg
-gapfilled_tles/
+gapfilled_tles/*
 pygac/version.py
+
+tmp
+.vscode
+.venv
+*.lock
+.python-version

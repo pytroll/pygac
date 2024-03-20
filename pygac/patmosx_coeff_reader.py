@@ -23,13 +23,15 @@ The official tarballs are available on the PATMOS-x webpage "https://cimss.ssec.
 """
 
 import argparse
-import pathlib
 import datetime as dt
-import tarfile
-import re
 import json
 import logging
+import pathlib
+import re
+import tarfile
+
 from scipy.optimize import bisect
+
 
 class PatmosxReader:
     """Read PATMOS-x coefficient files tarballs."""
@@ -38,9 +40,9 @@ class PatmosxReader:
         r'\s*(?P<sat_name>\w+)[^\n]*\n'
         r'\s*(?P<solar_3b>[eE0-9\.-]+)[^\n]*\n'
         r'\s*(?P<ew_3b>[eE0-9\.-]+)[^\n]*\n'
-        r'\s*(?P<ch3b_Ns>[eE0-9\.-]+),?\s*(?P<ch3b_b0>[eE0-9\.-]+),?\s*(?P<ch3b_b1>[eE0-9\.-]+),?\s*(?P<ch3b_b2>[eE0-9\.-]+)[^\n]*\n'
-        r'\s*(?P<ch4_Ns>[eE0-9\.-]+),?\s*(?P<ch4_b0>[eE0-9\.-]+),?\s*(?P<ch4_b1>[eE0-9\.-]+),?\s*(?P<ch4_b2>[eE0-9\.-]+)[^\n]*\n'
-        r'\s*(?P<ch5_Ns>[eE0-9\.-]+),?\s*(?P<ch5_b0>[eE0-9\.-]+),?\s*(?P<ch5_b1>[eE0-9\.-]+),?\s*(?P<ch5_b2>[eE0-9\.-]+)[^\n]*\n'
+        r'\s*(?P<ch3b_Ns>[eE0-9\.-]+),?\s*(?P<ch3b_b0>[eE0-9\.-]+),?\s*(?P<ch3b_b1>[eE0-9\.-]+),?\s*(?P<ch3b_b2>[eE0-9\.-]+)[^\n]*\n'  # noqa
+        r'\s*(?P<ch4_Ns>[eE0-9\.-]+),?\s*(?P<ch4_b0>[eE0-9\.-]+),?\s*(?P<ch4_b1>[eE0-9\.-]+),?\s*(?P<ch4_b2>[eE0-9\.-]+)[^\n]*\n'  # noqa
+        r'\s*(?P<ch5_Ns>[eE0-9\.-]+),?\s*(?P<ch5_b0>[eE0-9\.-]+),?\s*(?P<ch5_b1>[eE0-9\.-]+),?\s*(?P<ch5_b2>[eE0-9\.-]+)[^\n]*\n'  # noqa
         r'\s*(?P<nu_3b>[eE0-9\.-]+)[^\n]*\n'
         r'\s*(?P<a1_3b>[eE0-9\.-]+)[^\n]*\n'
         r'\s*(?P<a2_3b>[eE0-9\.-]+)[^\n]*\n'
@@ -54,23 +56,23 @@ class PatmosxReader:
         r'\s*(?P<ch2_dark_count>[eE0-9\.-]+)[^\n]*\n'
         r'\s*(?P<ch3a_dark_count>[eE0-9\.-]+)[^\n]*\n'
         r'(?:[a-z]+[^\n]*\n)?'
-        r'\s*(?P<ch1_low_gain_S0>[eE0-9\.-]+)\s*(?P<ch1_low_gain_S1>[eE0-9\.-]+)\s*(?P<ch1_low_gain_S2>[eE0-9\.-]+)[^\n]*\n'
-        r'\s*(?P<ch1_high_gain_S0>[eE0-9\.-]+)\s*(?P<ch1_high_gain_S1>[eE0-9\.-]+)\s*(?P<ch1_high_gain_S2>[eE0-9\.-]+)[^\n]*\n'
-        r'\s*(?P<ch2_low_gain_S0>[eE0-9\.-]+)\s*(?P<ch2_low_gain_S1>[eE0-9\.-]+)\s*(?P<ch2_low_gain_S2>[eE0-9\.-]+)[^\n]*\n'
-        r'\s*(?P<ch2_high_gain_S0>[eE0-9\.-]+)\s*(?P<ch2_high_gain_S1>[eE0-9\.-]+)\s*(?P<ch2_high_gain_S2>[eE0-9\.-]+)[^\n]*\n'
-        r'\s*(?P<ch3a_low_gain_S0>[eE0-9\.-]+)\s*(?P<ch3a_low_gain_S1>[eE0-9\.-]+)\s*(?P<ch3a_low_gain_S2>[eE0-9\.-]+)[^\n]*\n'
-        r'\s*(?P<ch3a_high_gain_S0>[eE0-9\.-]+)\s*(?P<ch3a_high_gain_S1>[eE0-9\.-]+)\s*(?P<ch3a_high_gain_S2>[eE0-9\.-]+)[^\n]*\n'
+        r'\s*(?P<ch1_low_gain_S0>[eE0-9\.-]+)\s*(?P<ch1_low_gain_S1>[eE0-9\.-]+)\s*(?P<ch1_low_gain_S2>[eE0-9\.-]+)[^\n]*\n'  # noqa
+        r'\s*(?P<ch1_high_gain_S0>[eE0-9\.-]+)\s*(?P<ch1_high_gain_S1>[eE0-9\.-]+)\s*(?P<ch1_high_gain_S2>[eE0-9\.-]+)[^\n]*\n'  # noqa
+        r'\s*(?P<ch2_low_gain_S0>[eE0-9\.-]+)\s*(?P<ch2_low_gain_S1>[eE0-9\.-]+)\s*(?P<ch2_low_gain_S2>[eE0-9\.-]+)[^\n]*\n'  # noqa
+        r'\s*(?P<ch2_high_gain_S0>[eE0-9\.-]+)\s*(?P<ch2_high_gain_S1>[eE0-9\.-]+)\s*(?P<ch2_high_gain_S2>[eE0-9\.-]+)[^\n]*\n'  # noqa
+        r'\s*(?P<ch3a_low_gain_S0>[eE0-9\.-]+)\s*(?P<ch3a_low_gain_S1>[eE0-9\.-]+)\s*(?P<ch3a_low_gain_S2>[eE0-9\.-]+)[^\n]*\n'  # noqa
+        r'\s*(?P<ch3a_high_gain_S0>[eE0-9\.-]+)\s*(?P<ch3a_high_gain_S1>[eE0-9\.-]+)\s*(?P<ch3a_high_gain_S2>[eE0-9\.-]+)[^\n]*\n'  # noqa
         r'\s*(?P<date_of_launch>[eE0-9\.-]+)[^\n]*\n'
         r'\s*(?P<ch1_gain_switches_count>[eE0-9\.-]+)[^\n]*\n'
         r'\s*(?P<ch2_gain_switches_count>[eE0-9\.-]+)[^\n]*\n'
         r'\s*(?P<ch3a_gain_switches_count>[eE0-9\.-]+)[^\n]*\n'
-        r'\s*(?P<PRT1_0>[eE0-9\.-]+)\,*\s*(?P<PRT1_1>[eE0-9\.-]+)\,*\s*(?P<PRT1_2>[eE0-9\.-]+)\,*\s*(?P<PRT1_3>[eE0-9\.-]+)\,*\s*(?P<PRT1_4>[eE0-9\.-]+)[^\n]*\n'
-        r'\s*(?P<PRT2_0>[eE0-9\.-]+)\,*\s*(?P<PRT2_1>[eE0-9\.-]+)\,*\s*(?P<PRT2_2>[eE0-9\.-]+)\,*\s*(?P<PRT2_3>[eE0-9\.-]+)\,*\s*(?P<PRT2_4>[eE0-9\.-]+)[^\n]*\n'
-        r'\s*(?P<PRT3_0>[eE0-9\.-]+)\,*\s*(?P<PRT3_1>[eE0-9\.-]+)\,*\s*(?P<PRT3_2>[eE0-9\.-]+)\,*\s*(?P<PRT3_3>[eE0-9\.-]+)\,*\s*(?P<PRT3_4>[eE0-9\.-]+)[^\n]*\n'
-        r'\s*(?P<PRT4_0>[eE0-9\.-]+)\,*\s*(?P<PRT4_1>[eE0-9\.-]+)\,*\s*(?P<PRT4_2>[eE0-9\.-]+)\,*\s*(?P<PRT4_3>[eE0-9\.-]+)\,*\s*(?P<PRT4_4>[eE0-9\.-]+)[^\n]*\n'
-        r'\s*(?P<PRT_weight_1>[eE0-9\.-]+)\s*(?P<PRT_weight_2>[eE0-9\.-]+)\s*(?P<PRT_weight_3>[eE0-9\.-]+)\s*(?P<PRT_weight_4>[eE0-9\.-]+)[^\n]*\n'
-        r'(?:\s*(?P<sst_mask_day_0>[eE0-9\.-]+),\s*(?P<sst_mask_day_1>[eE0-9\.-]+),\s*(?P<sst_mask_day_2>[eE0-9\.-]+),\s*(?P<sst_mask_day_3>[eE0-9\.-]+)[^\n]*\n)?'
-        r'(?:\s*(?P<sst_mask_night_0>[eE0-9\.-]+),\s*(?P<sst_mask_night_1>[eE0-9\.-]+),\s*(?P<sst_mask_night_2>[eE0-9\.-]+),\s*(?P<sst_mask_night_3>[eE0-9\.-]+)[^\n]*\n)?'
+        r'\s*(?P<PRT1_0>[eE0-9\.-]+)\,*\s*(?P<PRT1_1>[eE0-9\.-]+)\,*\s*(?P<PRT1_2>[eE0-9\.-]+)\,*\s*(?P<PRT1_3>[eE0-9\.-]+)\,*\s*(?P<PRT1_4>[eE0-9\.-]+)[^\n]*\n'  # noqa
+        r'\s*(?P<PRT2_0>[eE0-9\.-]+)\,*\s*(?P<PRT2_1>[eE0-9\.-]+)\,*\s*(?P<PRT2_2>[eE0-9\.-]+)\,*\s*(?P<PRT2_3>[eE0-9\.-]+)\,*\s*(?P<PRT2_4>[eE0-9\.-]+)[^\n]*\n'  # noqa
+        r'\s*(?P<PRT3_0>[eE0-9\.-]+)\,*\s*(?P<PRT3_1>[eE0-9\.-]+)\,*\s*(?P<PRT3_2>[eE0-9\.-]+)\,*\s*(?P<PRT3_3>[eE0-9\.-]+)\,*\s*(?P<PRT3_4>[eE0-9\.-]+)[^\n]*\n'  # noqa
+        r'\s*(?P<PRT4_0>[eE0-9\.-]+)\,*\s*(?P<PRT4_1>[eE0-9\.-]+)\,*\s*(?P<PRT4_2>[eE0-9\.-]+)\,*\s*(?P<PRT4_3>[eE0-9\.-]+)\,*\s*(?P<PRT4_4>[eE0-9\.-]+)[^\n]*\n'  # noqa
+        r'\s*(?P<PRT_weight_1>[eE0-9\.-]+)\s*(?P<PRT_weight_2>[eE0-9\.-]+)\s*(?P<PRT_weight_3>[eE0-9\.-]+)\s*(?P<PRT_weight_4>[eE0-9\.-]+)[^\n]*\n'  # noqa
+        r'(?:\s*(?P<sst_mask_day_0>[eE0-9\.-]+),\s*(?P<sst_mask_day_1>[eE0-9\.-]+),\s*(?P<sst_mask_day_2>[eE0-9\.-]+),\s*(?P<sst_mask_day_3>[eE0-9\.-]+)[^\n]*\n)?'  # noqa
+        r'(?:\s*(?P<sst_mask_night_0>[eE0-9\.-]+),\s*(?P<sst_mask_night_1>[eE0-9\.-]+),\s*(?P<sst_mask_night_2>[eE0-9\.-]+),\s*(?P<sst_mask_night_3>[eE0-9\.-]+)[^\n]*\n)?'  # noqa
         r'(?:\![^v][^\n]*\n)*'
         r'(?:\!(?P<version>v\w+))?'
     )
@@ -122,7 +124,7 @@ class Translator:
                 "s2": "quadratic single-gain calibration slope parameter [% years^{-2}]",
                 "date_of_launch": "timestamp of launch date [UTC]"
             },
-            "method": 'Heidinger, A.K., W.C. Straka III, C.C. Molling, J.T. Sullivan, and X. Wu, 2010: Deriving an inter-sensor consistent calibration for the AVHRR solar reflectance data record. International Journal of Remote Sensing, 31:6493-6517'
+            "method": 'Heidinger, A.K., W.C. Straka III, C.C. Molling, J.T. Sullivan, and X. Wu, 2010: Deriving an inter-sensor consistent calibration for the AVHRR solar reflectance data record. International Journal of Remote Sensing, 31:6493-6517'  # noqa
         },
         "thermal": {
             "channels": ['3b', '4', '5'],
@@ -132,7 +134,7 @@ class Translator:
                 "b1": "linear non-linear radiance correction coefficient []",
                 "b2": "quadratic non-linear radiance correction coefficient [(mW^{-1} m^2 sr^{-1} cm)]",
                 "space_radiance": "radiance of space [mW m^{-2} sr cm^{-1}]",
-                "to_eff_blackbody_intercept": "thermal channel temperature to effective blackbody temperature intercept [K]",
+                "to_eff_blackbody_intercept": "thermal channel temperature to effective blackbody temperature intercept [K]",  # noqa
                 "to_eff_blackbody_slope": "thermal channel temperature to effective blackbody temperature slope []",
                 "d0": "constant thermometer counts to temperature conversion coefficient [K]",
                 "d1": "linear thermometer counts to temperature conversion coefficient [K]",
@@ -140,7 +142,7 @@ class Translator:
                 "d3": "cubic thermometer counts to temperature conversion coefficient [K]",
                 "d4": "quartic thermometer counts to temperature conversion coefficient [K]"
             },
-            "method": "Goodrum, G., Kidwell, K.B. and W. Winston, 2000: NOAA KLM User's Guide. U.S. Department of Commerce, National Oceanic and Atmospheric Administration, National Environmental Satellite, Data and Information Service; Walton, C. C., J. T. Sullivan, C. R. N. Rao, and M. P. Weinreb, 1998: Corrections for detector nonlinearities and calibration inconsistencies of the infrared channels of the Advanced Very High Resolution Radiometer. J. Geophys. Res., 103, 3323-3337; Trishchenko, A.P., 2002: Removing Unwanted Fluctuations in the AVHRR Thermal Calibration Data Using Robust Techniques. Journal of Atmospheric and Oceanic Technology, 19:1939-1954"
+            "method": "Goodrum, G., Kidwell, K.B. and W. Winston, 2000: NOAA KLM User's Guide. U.S. Department of Commerce, National Oceanic and Atmospheric Administration, National Environmental Satellite, Data and Information Service; Walton, C. C., J. T. Sullivan, C. R. N. Rao, and M. P. Weinreb, 1998: Corrections for detector nonlinearities and calibration inconsistencies of the infrared channels of the Advanced Very High Resolution Radiometer. J. Geophys. Res., 103, 3323-3337; Trishchenko, A.P., 2002: Removing Unwanted Fluctuations in the AVHRR Thermal Calibration Data Using Robust Techniques. Journal of Atmospheric and Oceanic Technology, 19:1939-1954"  # noqa
         }
     }
 
@@ -251,7 +253,8 @@ class Translator:
             json.dump(self.coeffs, json_file, indent=4, sort_keys=True)
 
 
-if __name__ == "__main__":
+def main():
+    """The main function."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('tarball', type=str, help='path to PATMOS-x coefficients tarball')
     parser.add_argument('-o', '--output', type=str, metavar="JSON",
@@ -272,3 +275,6 @@ if __name__ == "__main__":
     logging.info('Write PyGAC calibration json file "%s".', output)
     pygac_coeffs.save(output)
     logging.info('Done!')
+
+if __name__ == "__main__":
+    main()
