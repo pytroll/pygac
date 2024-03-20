@@ -40,29 +40,24 @@ Slack = "https://pytroll.slack.com/"
 [project.optional-dependencies]
 dev = ['pytest', 'pre-commit', 'ruff']
 
-[tool.setuptools]
-include-package-data = true
-
-[tool.setuptools.packages.find]
-where = ["etc", "gapfilled_tles"]
-
 [project.scripts]
-pygac-run = "pygac.bin.pygac_run:main"
-pygac-convert-patmosx-coefficients = "pygac.bin.pygac_convert_patmosx_coefficients:main"
+pygac-convert-patmosx-coefficients = "pygac.patmosx_coeff_reader:main"
 
 [build-system]
-requires = ["setuptools>=61.0", "setuptools_scm[toml]>=6.2", 'setuptools_scm_git_archive']
-build-backend = "setuptools.build_meta"
+requires = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
 
-[tool.setuptools.package-data]
-pygac = ['data/calibration.json']
+[tool.hatch.metadata]
+allow-direct-references = true
 
-[tool.rye]
-managed = true
-dev-dependencies = ['pytest', 'pre-commit', "ruff"]
+[tool.hatch.build.targets.wheel]
+packages = ["pygac"]
 
-[tool.setuptools_scm]
-write_to = "pygac/version.py"
+[tool.hatch.version]
+source = "vcs"
+
+[tool.hatch.build.hooks.vcs]
+version-file = "pygac/version.py"
 
 [tool.ruff]
 line-length = 120

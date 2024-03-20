@@ -253,7 +253,7 @@ class Translator:
             json.dump(self.coeffs, json_file, indent=4, sort_keys=True)
 
 
-def main(__doc__, PatmosxReader, Translator):
+def main():
     """The main function."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('tarball', type=str, help='path to PATMOS-x coefficients tarball')

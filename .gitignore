@@ -8,3 +8,7 @@ pygac.egg-info
 etc/*.cfg
 gapfilled_tles/
 pygac/version.py
+
+.venv
+
+.python-version

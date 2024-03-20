@@ -1,7 +1,0 @@
-linters:
-  flake8:
-    fixer: true
-    python: 3
-    config: setup.cfg
-fixers:
-  enable: true
