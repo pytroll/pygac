@@ -154,6 +154,8 @@ class TestLACKLM:
         """Set up the tests."""
         self.reader = LACKLMReader()
         self.reader.scans = np.ones(100, dtype=scanline)
+        self.reader.scans["scan_line_year"] = 2001
+        self.reader.scans["sensor_data"] = 2047
         self.reader.head = np.ones(1, dtype=header)[0]
         self.reader.spacecraft_id = 12
         self.reader.head["noaa_spacecraft_identification_code"] = self.reader.spacecraft_id
