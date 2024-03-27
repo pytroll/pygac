@@ -25,7 +25,6 @@
 
 
 import geotiepoints as gtp
-
 import numpy as np
 
 

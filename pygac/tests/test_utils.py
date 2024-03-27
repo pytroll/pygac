@@ -31,7 +31,7 @@ from unittest import mock
 
 import numpy as np
 
-from pygac.utils import file_opener, calculate_sun_earth_distance_correction
+from pygac.utils import calculate_sun_earth_distance_correction, file_opener
 
 
 class TestUtils(unittest.TestCase):

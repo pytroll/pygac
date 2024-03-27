@@ -28,9 +28,8 @@ Can't be used as is, has to be subclassed to add specific read functions.
 
 import logging
 
-from pygac.reader import Reader, ReaderError
 import pygac.pygac_geotiepoints as gtp
-
+from pygac.reader import Reader, ReaderError
 
 LOG = logging.getLogger(__name__)
 

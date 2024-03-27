@@ -30,8 +30,8 @@ import logging
 
 import numpy as np
 
-from pygac.pod_reader import PODReader, main_pod
 from pygac.gac_reader import GACReader
+from pygac.pod_reader import PODReader, main_pod
 
 LOG = logging.getLogger(__name__)
 

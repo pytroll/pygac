@@ -30,6 +30,7 @@ except ModuleNotFoundError:
         "install').")
 
 import logging
+
 from pygac.configuration import get_config, read_config_file  # noqa
 from pygac.runner import get_reader_class, process_file  # noqa
 

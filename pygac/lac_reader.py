@@ -26,9 +26,8 @@
 
 import logging
 
-from pygac.reader import Reader, ReaderError
 import pygac.pygac_geotiepoints as gtp
-
+from pygac.reader import Reader, ReaderError
 
 LOG = logging.getLogger(__name__)
 
