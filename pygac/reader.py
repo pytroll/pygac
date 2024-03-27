@@ -40,7 +40,7 @@ from pyorbital import astronomy
 from pyorbital.orbital import Orbital
 
 from pygac import gac_io
-from pygac.noaa_calibration import calibrate
+from pygac.calibration.noaa import calibrate
 from pygac.utils import calculate_sun_earth_distance_correction, centered_modulus, get_absolute_azimuth_angle_diff
 
 LOG = logging.getLogger(__name__)

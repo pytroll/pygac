@@ -24,14 +24,11 @@
 
 import sys
 import unittest
+from unittest import mock
 
-try:
-    import mock
-except ImportError:
-    from unittest import mock
 import numpy as np
 
-from pygac.noaa_calibration import Calibrator, CoeffStatus, calibrate_solar
+from pygac.calibration.noaa import Calibrator, CoeffStatus, calibrate_solar
 
 # dummy user json file including only noaa19 data with changed channel 1 coefficients
 user_json_file = b"""{
@@ -119,7 +116,7 @@ user_json_file = b"""{
 
 class TestCalibrationCoefficientsHandling(unittest.TestCase):
 
-    @mock.patch("pygac.noaa_calibration.open", mock.mock_open(read_data=user_json_file))
+    @mock.patch("pygac.calibration.noaa.open", mock.mock_open(read_data=user_json_file))
     def test_user_coefficients_file(self):
         if sys.version_info.major < 3:
             cal = Calibrator("noaa19", coeffs_file="/path/to/unknow/defaults.json")
@@ -160,7 +157,6 @@ class TestCalibrationCoefficientsHandling(unittest.TestCase):
         if sys.version_info.major > 2:
             self.assertIsNone(cal.version)
 
-    @unittest.skipIf(sys.version_info.major < 3, "Skipped in python2!")
     def test_vis_deprecation_warning(self):
         counts = np.arange(10)
         year = 2010
@@ -183,7 +179,6 @@ class TestCalibrationCoefficientsHandling(unittest.TestCase):
         _, version = Calibrator.read_coeffs(None)
         self.assertIsNotNone(version)
 
-    @unittest.skipIf(sys.version_info.major < 3, "Skipped in python2!")
     def test_read_coeffs_warnings(self):
         """Test warnings issued by Calibrator.read_coeffs."""
         version_dicts = [

@@ -41,6 +41,14 @@ LOG = logging.getLogger(__name__)
 
 
 def calibrate(ds, custom_coeffs=None, coeffs_file=None):
+    """Calibrate the dataset `ds`, possibly using custom_coeffs or a coeff file.
+
+    Args:
+        ds: xarray Dataset object containing the data to calibrate.
+        custom_calibration: dictionary with a subset of user defined satellite specific
+                            calibration coefficients
+        calibration_file: path to json file containing default calibrations
+    """
     channels = ds["channels"].data
     times = ds.coords["times"].data
     scan_line_numbers = ds["scan_line_index"].data

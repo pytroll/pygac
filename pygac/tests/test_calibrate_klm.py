@@ -28,7 +28,7 @@ import unittest
 
 import numpy as np
 
-from pygac.noaa_calibration import Calibrator, calibrate_solar, calibrate_thermal
+from pygac.calibration.noaa import Calibrator, calibrate_solar, calibrate_thermal
 
 
 class TestGenericCalibration(unittest.TestCase):
