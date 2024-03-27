@@ -26,9 +26,8 @@
 
 import logging
 
-from pygac.reader import Reader, ReaderError
 import pygac.pygac_geotiepoints as gtp
-
+from pygac.reader import Reader, ReaderError
 
 LOG = logging.getLogger(__name__)
 
@@ -53,9 +52,9 @@ class LACReader(Reader):
         # call super to enter the Method Resolution Order (MRO)
         super(LACReader, cls)._validate_header(header)
         LOG.debug("validate header")
-        data_set_name = header['data_set_name'].decode()
+        data_set_name = header["data_set_name"].decode()
         # split header into parts
         creation_site, transfer_mode, platform_id = (
-            data_set_name.split('.')[:3])
+            data_set_name.split(".")[:3])
         if transfer_mode not in ["LHRR", "HRPT", "FRAC"]:
             raise ReaderError('Improper transfer mode "%s"!' % transfer_mode)

@@ -25,8 +25,10 @@
 
 
 import unittest
-from pygac.slerp import slerp
+
 import numpy as np
+
+from pygac.slerp import slerp
 
 
 class TestSlerp(unittest.TestCase):

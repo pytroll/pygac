@@ -37,35 +37,35 @@ class PatmosxReader:
     """Read PATMOS-x coefficient files tarballs."""
     # regular expression with named capturing groups to read an entire patmosx file
     regex = re.compile(
-        r'\s*(?P<sat_name>\w+)[^\n]*\n'
-        r'\s*(?P<solar_3b>[eE0-9\.-]+)[^\n]*\n'
-        r'\s*(?P<ew_3b>[eE0-9\.-]+)[^\n]*\n'
+        r"\s*(?P<sat_name>\w+)[^\n]*\n"
+        r"\s*(?P<solar_3b>[eE0-9\.-]+)[^\n]*\n"
+        r"\s*(?P<ew_3b>[eE0-9\.-]+)[^\n]*\n"
         r'\s*(?P<ch3b_Ns>[eE0-9\.-]+),?\s*(?P<ch3b_b0>[eE0-9\.-]+),?\s*(?P<ch3b_b1>[eE0-9\.-]+),?\s*(?P<ch3b_b2>[eE0-9\.-]+)[^\n]*\n'  # noqa
         r'\s*(?P<ch4_Ns>[eE0-9\.-]+),?\s*(?P<ch4_b0>[eE0-9\.-]+),?\s*(?P<ch4_b1>[eE0-9\.-]+),?\s*(?P<ch4_b2>[eE0-9\.-]+)[^\n]*\n'  # noqa
         r'\s*(?P<ch5_Ns>[eE0-9\.-]+),?\s*(?P<ch5_b0>[eE0-9\.-]+),?\s*(?P<ch5_b1>[eE0-9\.-]+),?\s*(?P<ch5_b2>[eE0-9\.-]+)[^\n]*\n'  # noqa
-        r'\s*(?P<nu_3b>[eE0-9\.-]+)[^\n]*\n'
-        r'\s*(?P<a1_3b>[eE0-9\.-]+)[^\n]*\n'
-        r'\s*(?P<a2_3b>[eE0-9\.-]+)[^\n]*\n'
-        r'\s*(?P<nu_4>[eE0-9\.-]+)[^\n]*\n'
-        r'\s*(?P<a1_4>[eE0-9\.-]+)[^\n]*\n'
-        r'\s*(?P<a2_4>[eE0-9\.-]+)[^\n]*\n'
-        r'\s*(?P<nu_5>[eE0-9\.-]+)[^\n]*\n'
-        r'\s*(?P<a1_5>[eE0-9\.-]+)[^\n]*\n'
-        r'\s*(?P<a2_5>[eE0-9\.-]+)[^\n]*\n'
-        r'\s*(?P<ch1_dark_count>[eE0-9\.-]+)[^\n]*\n'
-        r'\s*(?P<ch2_dark_count>[eE0-9\.-]+)[^\n]*\n'
-        r'\s*(?P<ch3a_dark_count>[eE0-9\.-]+)[^\n]*\n'
-        r'(?:[a-z]+[^\n]*\n)?'
+        r"\s*(?P<nu_3b>[eE0-9\.-]+)[^\n]*\n"
+        r"\s*(?P<a1_3b>[eE0-9\.-]+)[^\n]*\n"
+        r"\s*(?P<a2_3b>[eE0-9\.-]+)[^\n]*\n"
+        r"\s*(?P<nu_4>[eE0-9\.-]+)[^\n]*\n"
+        r"\s*(?P<a1_4>[eE0-9\.-]+)[^\n]*\n"
+        r"\s*(?P<a2_4>[eE0-9\.-]+)[^\n]*\n"
+        r"\s*(?P<nu_5>[eE0-9\.-]+)[^\n]*\n"
+        r"\s*(?P<a1_5>[eE0-9\.-]+)[^\n]*\n"
+        r"\s*(?P<a2_5>[eE0-9\.-]+)[^\n]*\n"
+        r"\s*(?P<ch1_dark_count>[eE0-9\.-]+)[^\n]*\n"
+        r"\s*(?P<ch2_dark_count>[eE0-9\.-]+)[^\n]*\n"
+        r"\s*(?P<ch3a_dark_count>[eE0-9\.-]+)[^\n]*\n"
+        r"(?:[a-z]+[^\n]*\n)?"
         r'\s*(?P<ch1_low_gain_S0>[eE0-9\.-]+)\s*(?P<ch1_low_gain_S1>[eE0-9\.-]+)\s*(?P<ch1_low_gain_S2>[eE0-9\.-]+)[^\n]*\n'  # noqa
         r'\s*(?P<ch1_high_gain_S0>[eE0-9\.-]+)\s*(?P<ch1_high_gain_S1>[eE0-9\.-]+)\s*(?P<ch1_high_gain_S2>[eE0-9\.-]+)[^\n]*\n'  # noqa
         r'\s*(?P<ch2_low_gain_S0>[eE0-9\.-]+)\s*(?P<ch2_low_gain_S1>[eE0-9\.-]+)\s*(?P<ch2_low_gain_S2>[eE0-9\.-]+)[^\n]*\n'  # noqa
         r'\s*(?P<ch2_high_gain_S0>[eE0-9\.-]+)\s*(?P<ch2_high_gain_S1>[eE0-9\.-]+)\s*(?P<ch2_high_gain_S2>[eE0-9\.-]+)[^\n]*\n'  # noqa
         r'\s*(?P<ch3a_low_gain_S0>[eE0-9\.-]+)\s*(?P<ch3a_low_gain_S1>[eE0-9\.-]+)\s*(?P<ch3a_low_gain_S2>[eE0-9\.-]+)[^\n]*\n'  # noqa
         r'\s*(?P<ch3a_high_gain_S0>[eE0-9\.-]+)\s*(?P<ch3a_high_gain_S1>[eE0-9\.-]+)\s*(?P<ch3a_high_gain_S2>[eE0-9\.-]+)[^\n]*\n'  # noqa
-        r'\s*(?P<date_of_launch>[eE0-9\.-]+)[^\n]*\n'
-        r'\s*(?P<ch1_gain_switches_count>[eE0-9\.-]+)[^\n]*\n'
-        r'\s*(?P<ch2_gain_switches_count>[eE0-9\.-]+)[^\n]*\n'
-        r'\s*(?P<ch3a_gain_switches_count>[eE0-9\.-]+)[^\n]*\n'
+        r"\s*(?P<date_of_launch>[eE0-9\.-]+)[^\n]*\n"
+        r"\s*(?P<ch1_gain_switches_count>[eE0-9\.-]+)[^\n]*\n"
+        r"\s*(?P<ch2_gain_switches_count>[eE0-9\.-]+)[^\n]*\n"
+        r"\s*(?P<ch3a_gain_switches_count>[eE0-9\.-]+)[^\n]*\n"
         r'\s*(?P<PRT1_0>[eE0-9\.-]+)\,*\s*(?P<PRT1_1>[eE0-9\.-]+)\,*\s*(?P<PRT1_2>[eE0-9\.-]+)\,*\s*(?P<PRT1_3>[eE0-9\.-]+)\,*\s*(?P<PRT1_4>[eE0-9\.-]+)[^\n]*\n'  # noqa
         r'\s*(?P<PRT2_0>[eE0-9\.-]+)\,*\s*(?P<PRT2_1>[eE0-9\.-]+)\,*\s*(?P<PRT2_2>[eE0-9\.-]+)\,*\s*(?P<PRT2_3>[eE0-9\.-]+)\,*\s*(?P<PRT2_4>[eE0-9\.-]+)[^\n]*\n'  # noqa
         r'\s*(?P<PRT3_0>[eE0-9\.-]+)\,*\s*(?P<PRT3_1>[eE0-9\.-]+)\,*\s*(?P<PRT3_2>[eE0-9\.-]+)\,*\s*(?P<PRT3_3>[eE0-9\.-]+)\,*\s*(?P<PRT3_4>[eE0-9\.-]+)[^\n]*\n'  # noqa
@@ -73,8 +73,8 @@ class PatmosxReader:
         r'\s*(?P<PRT_weight_1>[eE0-9\.-]+)\s*(?P<PRT_weight_2>[eE0-9\.-]+)\s*(?P<PRT_weight_3>[eE0-9\.-]+)\s*(?P<PRT_weight_4>[eE0-9\.-]+)[^\n]*\n'  # noqa
         r'(?:\s*(?P<sst_mask_day_0>[eE0-9\.-]+),\s*(?P<sst_mask_day_1>[eE0-9\.-]+),\s*(?P<sst_mask_day_2>[eE0-9\.-]+),\s*(?P<sst_mask_day_3>[eE0-9\.-]+)[^\n]*\n)?'  # noqa
         r'(?:\s*(?P<sst_mask_night_0>[eE0-9\.-]+),\s*(?P<sst_mask_night_1>[eE0-9\.-]+),\s*(?P<sst_mask_night_2>[eE0-9\.-]+),\s*(?P<sst_mask_night_3>[eE0-9\.-]+)[^\n]*\n)?'  # noqa
-        r'(?:\![^v][^\n]*\n)*'
-        r'(?:\!(?P<version>v\w+))?'
+        r"(?:\![^v][^\n]*\n)*"
+        r"(?:\!(?P<version>v\w+))?"
     )
 
     def __init__(self, tarball):
@@ -115,9 +115,9 @@ class Translator:
     sat_names.update({"n{0:02d}".format(i): "noaa{0}".format(i) for i in range(6,20)})
     description = {
         "visible": {
-            "channels": ['1', '2', '3a'],
+            "channels": ["1", "2", "3a"],
             "coefficients": {
-                'dark_count': "instrument counts under dark conditions []",
+                "dark_count": "instrument counts under dark conditions []",
                 "gain_switch": "dual-gain switch count, set to 'null' for single-gain instruments []",
                 "s0": "single-gain calibration slope at launch date [%]",
                 "s1": "linear single-gain calibration slope parameter [% years^{-1}]",
@@ -127,9 +127,9 @@ class Translator:
             "method": 'Heidinger, A.K., W.C. Straka III, C.C. Molling, J.T. Sullivan, and X. Wu, 2010: Deriving an inter-sensor consistent calibration for the AVHRR solar reflectance data record. International Journal of Remote Sensing, 31:6493-6517'  # noqa
         },
         "thermal": {
-            "channels": ['3b', '4', '5'],
+            "channels": ["3b", "4", "5"],
             "coefficients": {
-                'centroid_wavenumber': "centroid wavenumber [cm^{-1}]",
+                "centroid_wavenumber": "centroid wavenumber [cm^{-1}]",
                 "b0": "constant non-linear radiance correction coefficient [mW m^{-2} sr cm^{-1}]",
                 "b1": "linear non-linear radiance correction coefficient []",
                 "b2": "quadratic non-linear radiance correction coefficient [(mW^{-1} m^2 sr^{-1} cm)]",
@@ -158,34 +158,34 @@ class Translator:
         pygac_sat_coeffs = {}
         # visible calibration
         for ch in ("1", "2", "3a"):
-            s0l = patmosx_sat_coeffs['ch{0}_low_gain_S0'.format(ch)]
-            s0h = patmosx_sat_coeffs['ch{0}_high_gain_S0'.format(ch)]
+            s0l = patmosx_sat_coeffs["ch{0}_low_gain_S0".format(ch)]
+            s0h = patmosx_sat_coeffs["ch{0}_high_gain_S0".format(ch)]
             if s0l == s0h:
                 gain_switch = None
                 s0 = s0l
             else:
-                gain_switch = patmosx_sat_coeffs['ch{0}_gain_switches_count'.format(ch)]
+                gain_switch = patmosx_sat_coeffs["ch{0}_gain_switches_count".format(ch)]
                 s0 = cls.find_s0(s0l, s0h, ch)
             pygac_sat_coeffs["channel_{0}".format(ch)] = {
-                "dark_count": float(patmosx_sat_coeffs['ch{0}_dark_count'.format(ch)]),
+                "dark_count": float(patmosx_sat_coeffs["ch{0}_dark_count".format(ch)]),
                 "gain_switch": gain_switch,
                 "s0": s0,
-                "s1": patmosx_sat_coeffs['ch{0}_high_gain_S1'.format(ch)],
-                "s2": patmosx_sat_coeffs['ch{0}_high_gain_S2'.format(ch)]
+                "s1": patmosx_sat_coeffs["ch{0}_high_gain_S1".format(ch)],
+                "s2": patmosx_sat_coeffs["ch{0}_high_gain_S2".format(ch)]
             }
-        date_of_launch = cls.float2date(patmosx_sat_coeffs['date_of_launch'])
-        pygac_sat_coeffs['date_of_launch'] = date_of_launch.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+        date_of_launch = cls.float2date(patmosx_sat_coeffs["date_of_launch"])
+        pygac_sat_coeffs["date_of_launch"] = date_of_launch.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
         # thermal channels
         for ch in ("3b", "4", "5"):
             pygac_sat_coeffs["channel_{0}".format(ch)] = {
-                "b0": patmosx_sat_coeffs['ch{0}_b0'.format(ch)],
-                "b1": patmosx_sat_coeffs['ch{0}_b1'.format(ch)],
-                "b2": patmosx_sat_coeffs['ch{0}_b2'.format(ch)],
-                "centroid_wavenumber": patmosx_sat_coeffs['nu_{0}'.format(ch)],
-                "space_radiance": patmosx_sat_coeffs['ch{0}_Ns'.format(ch)],
-                "to_eff_blackbody_intercept": (-patmosx_sat_coeffs['a1_{0}'.format(ch)]
-                                                / patmosx_sat_coeffs['a2_{0}'.format(ch)]),
-                "to_eff_blackbody_slope": 1/patmosx_sat_coeffs['a2_{0}'.format(ch)]
+                "b0": patmosx_sat_coeffs["ch{0}_b0".format(ch)],
+                "b1": patmosx_sat_coeffs["ch{0}_b1".format(ch)],
+                "b2": patmosx_sat_coeffs["ch{0}_b2".format(ch)],
+                "centroid_wavenumber": patmosx_sat_coeffs["nu_{0}".format(ch)],
+                "space_radiance": patmosx_sat_coeffs["ch{0}_Ns".format(ch)],
+                "to_eff_blackbody_intercept": (-patmosx_sat_coeffs["a1_{0}".format(ch)]
+                                                / patmosx_sat_coeffs["a2_{0}".format(ch)]),
+                "to_eff_blackbody_slope": 1/patmosx_sat_coeffs["a2_{0}".format(ch)]
             }
         for t in range(1, 5):
             pygac_sat_coeffs["thermometer_{0}".format(t)] = {
@@ -209,7 +209,7 @@ class Translator:
         if s0_low == s0_high:
             # single gain case
             return s0_low
-        if ch == '3a':
+        if ch == "3a":
             g_low, g_high = 0.25, 1.75
         else:
             g_low, g_high = 0.5, 1.5
@@ -249,32 +249,32 @@ class Translator:
 
     def save(self, filepath):
         """Save coefficients as PyGAC json file."""
-        with open(filepath, mode='w') as json_file:
+        with open(filepath, mode="w") as json_file:
             json.dump(self.coeffs, json_file, indent=4, sort_keys=True)
 
 
 def main():
     """The main function."""
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('tarball', type=str, help='path to PATMOS-x coefficients tarball')
-    parser.add_argument('-o', '--output', type=str, metavar="JSON",
+    parser.add_argument("tarball", type=str, help="path to PATMOS-x coefficients tarball")
+    parser.add_argument("-o", "--output", type=str, metavar="JSON",
                         help='path to PyGAC json file, defaults to tarball path with suffix ".json"')
-    parser.add_argument('-v', '--verbose', action='store_true', help='explain what is being done')
+    parser.add_argument("-v", "--verbose", action="store_true", help="explain what is being done")
     args = parser.parse_args()
     if args.verbose:
         loglevel = logging.INFO
     else:
         loglevel = logging.WARNING
-    logging.basicConfig(level=loglevel, format='[%(asctime)s] %(message)s')
+    logging.basicConfig(level=loglevel, format="[%(asctime)s] %(message)s")
     tarball = pathlib.Path(args.tarball)
     logging.info('Read PATMOS-x tarball "%s".', tarball)
     patmosx_coeffs = PatmosxReader(tarball)
-    logging.info('Translate PATMOS-x coefficients to PyGAC format.')
+    logging.info("Translate PATMOS-x coefficients to PyGAC format.")
     pygac_coeffs = Translator(patmosx_coeffs)
     output = args.output or tarball.with_suffix(".json")
     logging.info('Write PyGAC calibration json file "%s".', output)
     pygac_coeffs.save(output)
-    logging.info('Done!')
+    logging.info("Done!")
 
 if __name__ == "__main__":
     main()
