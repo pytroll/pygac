@@ -69,9 +69,9 @@ class FakeGACReader(GACReader):
         scans["scan_line_number"] = np.arange(self.along_track)
         scans["sensor_data"] = 128
         self.scans = scans
-        self.head = {'foo': 'bar'}
-        self.head = np.core.records.fromrecords([("bar", ),],names='foo')
-        self.spacecraft_name = 'noaa6'
+        self.head = {"foo": "bar"}
+        self.head = np.core.records.fromrecords([("bar", ),],names="foo")
+        self.spacecraft_name = "noaa6"
 
     def _get_times(self):
         year = np.full(self.along_track, 1970, dtype=int)
@@ -123,9 +123,9 @@ class TestGacReader(unittest.TestCase):
 
     longMessage = True
 
-    @mock.patch.multiple('pygac.gac_reader.GACReader',
+    @mock.patch.multiple("pygac.gac_reader.GACReader",
                          __abstractmethods__=set())
-    @mock.patch('pygac.gac_reader.gtp.gac_lat_lon_interpolator')
+    @mock.patch("pygac.gac_reader.gtp.gac_lat_lon_interpolator")
     def setUp(self, interpolator, *mocks):
         """Set up the tests."""
         self.interpolator = interpolator
@@ -134,8 +134,8 @@ class TestGacReader(unittest.TestCase):
     def test_filename(self):
         """Test the setter of the filename property."""
         # test path with .gz extension
-        filename = 'NSS.GHRR.TN.D80001.S0332.E0526.B0627173.WI'
-        filepath = '/path/to/' + filename + '.gz'
+        filename = "NSS.GHRR.TN.D80001.S0332.E0526.B0627173.WI"
+        filepath = "/path/to/" + filename + ".gz"
         self.reader.filename = filepath
         self.assertEqual(self.reader.filename, filename)
         self.reader.filename = None
@@ -147,94 +147,94 @@ class TestGacReader(unittest.TestCase):
     def test__read_scanlines(self):
         """Test the scanline extraction."""
         self.reader.scanline_type = np.dtype([
-            ('a', 'S2'), ('b', '<i4')])
+            ("a", "S2"), ("b", "<i4")])
         # request more scan lines than available
         with self.assertWarnsRegex(RuntimeWarning,
                                    "Unexpected number of scanlines!"):
-            buffer = (b'a\x00\x01\x00\x00\x00'
-                      b'b\x00\x02\x00\x00\x00'
-                      b'c\x00\x03\x00\x00\x00')
+            buffer = (b"a\x00\x01\x00\x00\x00"
+                      b"b\x00\x02\x00\x00\x00"
+                      b"c\x00\x03\x00\x00\x00")
             count = 4
             self.reader._read_scanlines(buffer, count)
         # check the output
         first_line = self.reader.scans[0]
-        self.assertEqual(first_line['a'], b'a')
-        self.assertEqual(first_line['b'], 1)
+        self.assertEqual(first_line["a"], b"a")
+        self.assertEqual(first_line["b"], 1)
 
     def test__validate_header(self):
         """Test the header validation."""
         # wrong name pattern
         with self.assertRaisesRegex(ReaderError,
-                                    'Data set name .* does not match!'):
-            head = {'data_set_name': b'abc.txt'}
+                                    "Data set name .* does not match!"):
+            head = {"data_set_name": b"abc.txt"}
             self.reader._validate_header(head)
         # Unicode errors are now caught with the same exception.
         with self.assertRaisesRegex(ReaderError,
-                                    'Data set name .* does not match!'):
-            head = {'data_set_name': b'\xea\xf8'}
+                                    "Data set name .* does not match!"):
+            head = {"data_set_name": b"\xea\xf8"}
             self.reader._validate_header(head)
 
     def test__correct_data_set_name_ebcdic_encoded_header_invalid_path(self):
         """Test the data_set_name correction in file header."""
-        inv_filename = 'InvalidFileName'
-        inv_filepath = 'path/to/' + inv_filename
+        inv_filename = "InvalidFileName"
+        inv_filepath = "path/to/" + inv_filename
 
-        expected_data_set_name = 'NSS.GHRR.TN.D80001.S0332.E0526.B0627173.WI'
-        val_head = {'data_set_name': 'NSS.GHRR.TN.D80001.S0332.E0526.B0627173.WI'.encode("cp500")}
+        expected_data_set_name = "NSS.GHRR.TN.D80001.S0332.E0526.B0627173.WI"
+        val_head = {"data_set_name": "NSS.GHRR.TN.D80001.S0332.E0526.B0627173.WI".encode("cp500")}
         head = self.reader._correct_data_set_name(val_head.copy(), inv_filepath)
-        assert head['data_set_name'] == expected_data_set_name.encode()
+        assert head["data_set_name"] == expected_data_set_name.encode()
 
     def test__correct_data_set_name_valid_header_and_file(self):
         """Test the data_set_name correction in file header."""
-        val_filename = 'NSS.GHRR.TN.D80001.S0332.E0526.B0627173.WI'
-        val_filepath = 'path/to/' + val_filename
-        val_head = {'data_set_name': b'NSS.GHRR.TN.D80001.S0332.E0526.B0627173.WI'}
+        val_filename = "NSS.GHRR.TN.D80001.S0332.E0526.B0627173.WI"
+        val_filepath = "path/to/" + val_filename
+        val_head = {"data_set_name": b"NSS.GHRR.TN.D80001.S0332.E0526.B0627173.WI"}
         # Note: always pass a copy to _correct_data_set_name, because
         #       the input header is modified in place.
         # enter a valid data_set_name and filepath
         head = self.reader._correct_data_set_name(val_head.copy(), val_filepath)
-        assert head['data_set_name'] == val_filename.encode()
+        assert head["data_set_name"] == val_filename.encode()
 
     def test__correct_data_set_name_invalid_header_and_valid_file(self):
         """Test the data_set_name correction in file header."""
-        val_filename = 'NSS.GHRR.TN.D80001.S0332.E0526.B0627173.WI'
-        val_filepath = 'path/to/' + val_filename
-        inv_head = {'data_set_name': b'InvalidDataSetName'}
+        val_filename = "NSS.GHRR.TN.D80001.S0332.E0526.B0627173.WI"
+        val_filepath = "path/to/" + val_filename
+        inv_head = {"data_set_name": b"InvalidDataSetName"}
 
         # enter an invalid data_set_name, but valid filepath
         head = self.reader._correct_data_set_name(inv_head.copy(), val_filepath)
-        assert head['data_set_name'] == val_filename.encode()
+        assert head["data_set_name"] == val_filename.encode()
 
     def test__correct_data_set_name_invalid_header_and_file(self):
         """Test the data_set_name correction in file header."""
-        inv_filename = 'InvalidFileName'
-        inv_filepath = 'path/to/' + inv_filename
-        inv_head = {'data_set_name': b'InvalidDataSetName'}
-        with self.assertRaisesRegex(ReaderError, 'Cannot determine data_set_name!'):
+        inv_filename = "InvalidFileName"
+        inv_filepath = "path/to/" + inv_filename
+        inv_head = {"data_set_name": b"InvalidDataSetName"}
+        with self.assertRaisesRegex(ReaderError, "Cannot determine data_set_name!"):
             _ = self.reader._correct_data_set_name(inv_head.copy(), inv_filepath)
 
     def test__correct_data_set_name_valid_header_invalid_file(self):
         """Test the data_set_name correction in file header."""
-        val_head = {'data_set_name': b'NSS.GHRR.TN.D80001.S0332.E0526.B0627173.WI'}
-        inv_filename = 'InvalidFileName'
-        inv_filepath = 'path/to/' + inv_filename
+        val_head = {"data_set_name": b"NSS.GHRR.TN.D80001.S0332.E0526.B0627173.WI"}
+        inv_filename = "InvalidFileName"
+        inv_filepath = "path/to/" + inv_filename
 
         # enter a valid data_set_name, and an invalid filepath
         # should be fine, because the data_set_name is the pefered source
         head = self.reader._correct_data_set_name(val_head.copy(), inv_filepath)
-        assert head['data_set_name'] == val_head['data_set_name']
+        assert head["data_set_name"] == val_head["data_set_name"]
 
     def test__correct_data_set_name_valid_header_pathlib_file(self):
         """Test the data_set_name correction in file header."""
-        val_filename = 'NSS.GHRR.TN.D80001.S0332.E0526.B0627173.WI'
-        val_filepath = 'path/to/' + val_filename
-        val_head = {'data_set_name': b'NSS.GHRR.TN.D80001.S0332.E0526.B0627173.WI'}
+        val_filename = "NSS.GHRR.TN.D80001.S0332.E0526.B0627173.WI"
+        val_filepath = "path/to/" + val_filename
+        val_head = {"data_set_name": b"NSS.GHRR.TN.D80001.S0332.E0526.B0627173.WI"}
 
         fs_filepath = TestPath(val_filepath)
         head = self.reader._correct_data_set_name(val_head.copy(), fs_filepath)
-        self.assertEqual(head['data_set_name'], val_filename.encode())
+        self.assertEqual(head["data_set_name"], val_filename.encode())
 
-    @mock.patch('pygac.reader.Reader.get_calibrated_channels')
+    @mock.patch("pygac.reader.Reader.get_calibrated_channels")
     def test__get_calibrated_channels_uniform_shape(self, get_channels):
         """Test the uniform shape as required by gac_io.save_gac."""
         # check if it raises the assertion error
@@ -256,9 +256,9 @@ class TestGacReader(unittest.TestCase):
         """Test conversion from (year, jday, msec) to datetime64."""
         t0 = GACReader.to_datetime64(year=np.array(1970), jday=np.array(1),
                                      msec=np.array(0))
-        self.assertEqual(t0.astype('i8'), 0,
-                         msg='Conversion (year, jday, msec) to datetime64 '
-                             'is not correct')
+        self.assertEqual(t0.astype("i8"), 0,
+                         msg="Conversion (year, jday, msec) to datetime64 "
+                             "is not correct")
 
     def test_to_datetime(self):
         """Test conversion from datetime64 to datetime."""
@@ -270,10 +270,10 @@ class TestGacReader(unittest.TestCase):
         """Test scanline timestamp estimation."""
         self.assertEqual(self.reader.lineno2msec(12345), 6172000)
 
-    @mock.patch('pygac.reader.Reader.update_meta_data')
-    @mock.patch('pygac.gac_reader.GACReader._get_lonlat')
-    @mock.patch('pygac.gac_reader.GACReader._get_corrupt_mask')
-    @mock.patch('pygac.gac_reader.GACReader._adjust_clock_drift')
+    @mock.patch("pygac.reader.Reader.update_meta_data")
+    @mock.patch("pygac.gac_reader.GACReader._get_lonlat")
+    @mock.patch("pygac.gac_reader.GACReader._get_corrupt_mask")
+    @mock.patch("pygac.gac_reader.GACReader._adjust_clock_drift")
     def test_get_lonlat(self, adjust_clockdrift,
                         get_corrupt_mask, get_lonlat,
                         update_meta_data):
@@ -329,10 +329,10 @@ class TestGacReader(unittest.TestCase):
         for method in methods:
             method.asser_not_called()
 
-    @mock.patch('pygac.reader.Reader.update_meta_data')
-    @mock.patch('pygac.gac_reader.GACReader._get_corrupt_mask')
-    @mock.patch('pygac.gac_reader.GACReader._adjust_clock_drift')
-    @mock.patch('pygac.gac_reader.GACReader._get_lonlat')
+    @mock.patch("pygac.reader.Reader.update_meta_data")
+    @mock.patch("pygac.gac_reader.GACReader._get_corrupt_mask")
+    @mock.patch("pygac.gac_reader.GACReader._adjust_clock_drift")
+    @mock.patch("pygac.gac_reader.GACReader._get_lonlat")
     def test_interpolate(self, _get_lonlat, _adjust_clock_drift,
                          _get_corrupt_mask, update_meta_data):
         """Test interpolate method in get_lonlat."""
@@ -349,7 +349,7 @@ class TestGacReader(unittest.TestCase):
         self.assertEqual(lons.shape[1], 409)
         self.interpolator.assert_called_once_with(lr_lons, lr_lats)
 
-    @mock.patch('pygac.gac_reader.GACReader._get_corrupt_mask')
+    @mock.patch("pygac.gac_reader.GACReader._get_corrupt_mask")
     def test_get_corrupt_mask(self, get_corrupt_mask):
         """Test common computation of corrupt scanline mask."""
         get_corrupt_mask.return_value = [1, 2, 3]
@@ -364,51 +364,51 @@ class TestGacReader(unittest.TestCase):
         """Test midnight scanline computation."""
         # Define test cases...
         # ... midnight scanline exists
-        utcs1 = np.array([-3, -2, -1, 0, 1, 2, 3]).astype('datetime64[ms]')
+        utcs1 = np.array([-3, -2, -1, 0, 1, 2, 3]).astype("datetime64[ms]")
         scanline1 = 2
 
         # ... midnight scanline does not exist
-        utcs2 = np.array([1, 2, 3]).astype('datetime64[ms]')
+        utcs2 = np.array([1, 2, 3]).astype("datetime64[ms]")
         scanline2 = None
 
         for utcs, scan_line in zip((utcs1, utcs2), (scanline1, scanline2)):
             self.reader.utcs = utcs
             self.assertEqual(self.reader.get_midnight_scanline(), scan_line,
-                             msg='Incorrect midnight scanline')
+                             msg="Incorrect midnight scanline")
 
     def test_miss_lines(self):
         """Test detection of missing scanlines."""
         lines = [2, 4, 5, 6, 10, 11, 12]
         miss_lines_ref = [1, 3, 7, 8, 9]
         self.reader.scans = np.zeros(
-            len(lines), dtype=[('scan_line_number', 'i2')])
-        self.reader.scans['scan_line_number'] = lines
+            len(lines), dtype=[("scan_line_number", "i2")])
+        self.reader.scans["scan_line_number"] = lines
         miss_lines = self.reader.get_miss_lines()
         self.assertTrue((miss_lines == miss_lines_ref).all(),
-                        msg='Missing scanlines not detected correctly')
+                        msg="Missing scanlines not detected correctly")
         self.assertEqual(miss_lines.dtype, int)
 
     def test_tle2datetime64(self, *mocks):
         """Test conversion from TLE timestamps to datetime64."""
         dates = np.array([70365.1234, 18001.25])
-        dates64_exp = [np.datetime64(datetime.datetime(1970, 12, 31, 2, 57, 41, 760000), '[ms]'),
-                       np.datetime64(datetime.datetime(2018, 1, 1, 6, 0), '[ms]')]
+        dates64_exp = [np.datetime64(datetime.datetime(1970, 12, 31, 2, 57, 41, 760000), "[ms]"),
+                       np.datetime64(datetime.datetime(2018, 1, 1, 6, 0), "[ms]")]
         dates64 = GACReader.tle2datetime64(dates)
         self.assertTrue(np.all(dates64 == dates64_exp))
 
-    @mock.patch('pygac.gac_reader.GACReader.get_times')
-    @mock.patch('pygac.gac_reader.GACReader.get_tle_file')
-    @mock.patch('pygac.gac_reader.GACReader.read_tle_file')
+    @mock.patch("pygac.gac_reader.GACReader.get_times")
+    @mock.patch("pygac.gac_reader.GACReader.get_tle_file")
+    @mock.patch("pygac.gac_reader.GACReader.read_tle_file")
     def test_get_tle_lines(self, read_tle_file, *mocks):
         """Test identification of closest TLE lines."""
-        tle_data = ['1 38771U 12049A   18363.63219793 -.00000013  00000-0  14176-4 0  9991\r\n',
-                    '2 38771  98.7297  60.1350 0002062  95.9284  25.0713 14.21477560325906\r\n',
-                    '1 38771U 12049A   18364.62426010 -.00000015  00000-0  13136-4 0  9990\r\n',  # 2018-12-30 14:58
-                    '2 38771  98.7295  61.1159 0002062  94.5796  60.2561 14.21477636326047\r\n',
-                    '1 38771U 12049A   18364.94649306 -.00000018  00000-0  12040-4 0  9996\r\n',  # 2018-12-30 22:42
-                    '2 38771  98.7295  61.4345 0002060  94.1226 268.7521 14.21477633326092\r\n',
-                    '1 38771U 12049A   18365.81382142 -.00000015  00000-0  13273-4 0  9991\r\n',
-                    '2 38771  98.7294  62.2921 0002057  92.7653  26.0030 14.21477711326215\r\n']
+        tle_data = ["1 38771U 12049A   18363.63219793 -.00000013  00000-0  14176-4 0  9991\r\n",
+                    "2 38771  98.7297  60.1350 0002062  95.9284  25.0713 14.21477560325906\r\n",
+                    "1 38771U 12049A   18364.62426010 -.00000015  00000-0  13136-4 0  9990\r\n",  # 2018-12-30 14:58
+                    "2 38771  98.7295  61.1159 0002062  94.5796  60.2561 14.21477636326047\r\n",
+                    "1 38771U 12049A   18364.94649306 -.00000018  00000-0  12040-4 0  9996\r\n",  # 2018-12-30 22:42
+                    "2 38771  98.7295  61.4345 0002060  94.1226 268.7521 14.21477633326092\r\n",
+                    "1 38771U 12049A   18365.81382142 -.00000015  00000-0  13273-4 0  9991\r\n",
+                    "2 38771  98.7294  62.2921 0002057  92.7653  26.0030 14.21477711326215\r\n"]
 
         expected = {
             datetime.datetime(2018, 12, 20, 12, 0): None,
@@ -421,7 +421,7 @@ class TestGacReader(unittest.TestCase):
 
         read_tle_file.return_value = tle_data
         for time, tle_idx in expected.items():
-            self.reader.utcs = np.array([time], dtype='datetime64[ms]')
+            self.reader.utcs = np.array([time], dtype="datetime64[ms]")
             self.reader.tle_lines = None
             if tle_idx is None:
                 self.assertRaises(NoTLEData, self.reader.get_tle_lines)
@@ -430,10 +430,10 @@ class TestGacReader(unittest.TestCase):
                 self.assertEqual(tle1, tle_data[tle_idx])
                 self.assertEqual(tle2, tle_data[tle_idx + 1])
 
-    @mock.patch('pygac.reader.Reader.get_tle_lines')
+    @mock.patch("pygac.reader.Reader.get_tle_lines")
     def test_get_sat_angles_without_tle_at_nadir(self, get_tle_lines):
         """Test that the get satellite angles without tle at nadir."""
-        get_tle_lines.side_effect = NoTLEData('No TLE data available')
+        get_tle_lines.side_effect = NoTLEData("No TLE data available")
         rng = np.random.RandomState(125)
         self.reader.lons = rng.rand(100, 409) * 90
         self.reader.lats = rng.rand(100, 409) * 90
@@ -443,10 +443,10 @@ class TestGacReader(unittest.TestCase):
         self.assertEqual(np.sum(np.isnan(sat_elev)), 0)
         np.testing.assert_allclose(sat_elev[:, 204], 90., atol=0.01)
 
-    @mock.patch('pygac.reader.Reader.get_tle_lines')
+    @mock.patch("pygac.reader.Reader.get_tle_lines")
     def test_get_sat_angles_without_tle(self, get_tle_lines):
         """Test the get satellite angles without tle."""
-        get_tle_lines.side_effect = NoTLEData('No TLE data available')
+        get_tle_lines.side_effect = NoTLEData("No TLE data available")
 
         # Test data correspond to columns 0:2, 201:208 and 407:409. Extracted like this:
         # self.lons[0:5, [0, 1, 201, 202, 203, 204, 205, 206, 207, -2, -1]]
@@ -497,7 +497,7 @@ class TestGacReader(unittest.TestCase):
         np.testing.assert_allclose(sat_elev[:, 0], expected_sat_elev_0, atol=1.0)
         np.testing.assert_allclose(sat_elev[:, 5], expected_sat_elev_204, atol=1.0)
 
-    @mock.patch('pygac.gac_reader.GACReader._get_corrupt_mask')
+    @mock.patch("pygac.gac_reader.GACReader._get_corrupt_mask")
     def test_get_angles(self, get_corrupt_mask):
         """Test get_angles function of the reader."""
         # Line: 1, 649, 6198 and 12658 from Tiros-N file (1980-01-03 11:47)
@@ -514,8 +514,8 @@ class TestGacReader(unittest.TestCase):
         self.reader.utcs = np.array(
             [315748035469, 315748359969,
              315751135469, 315754371969,
-             315754371969]).astype('datetime64[ms]')
-        self.reader.spacecrafts_orbital = {25: 'tiros n'}
+             315754371969]).astype("datetime64[ms]")
+        self.reader.spacecrafts_orbital = {25: "tiros n"}
         self.reader.spacecraft_id = 25
         expected_sat_azi = np.array(
             [-76.90, 11.08, 145.33, -50.01, np.nan])[:, np.newaxis]
@@ -538,13 +538,13 @@ class TestGacReader(unittest.TestCase):
 
     def test_get_tle_file(self):
         """Test get_tle_file."""
-        self.reader.tle_dir = '/tle/dir'
-        self.reader.tle_name = 'tle_%(satname)s.txt'
-        self.reader.spacecraft_name = 'ISS'
+        self.reader.tle_dir = "/tle/dir"
+        self.reader.tle_name = "tle_%(satname)s.txt"
+        self.reader.spacecraft_name = "ISS"
         tle_file = self.reader.get_tle_file()
-        self.assertEqual(tle_file, '/tle/dir/tle_ISS.txt')
+        self.assertEqual(tle_file, "/tle/dir/tle_ISS.txt")
 
-    @mock.patch('pygac.gac_reader.GACReader.get_tsm_pixels')
+    @mock.patch("pygac.gac_reader.GACReader.get_tsm_pixels")
     def test_mask_tsm_pixels(self, get_tsm_pixels):
         """Test masking of pixels affected by the scan motor issue."""
         get_tsm_pixels.return_value = ([0, 1], [0, 1])
@@ -564,10 +564,10 @@ class TestGacReader(unittest.TestCase):
         scans, expected = _get_scanline_numbers(14000)
         self.reader.scans = scans
         self.reader.correct_scan_line_numbers()
-        numpy.testing.assert_array_equal(self.reader.scans['scan_line_number'],
+        numpy.testing.assert_array_equal(self.reader.scans["scan_line_number"],
                                          expected)
 
-    @mock.patch('pygac.gac_reader.GACReader.get_header_timestamp')
+    @mock.patch("pygac.gac_reader.GACReader.get_header_timestamp")
     def test_correct_times_thresh(self, get_header_timestamp):
         """Test correction of scanline timestamps."""
         header_time = datetime.datetime(2016, 8, 16, 16, 7, 36)
@@ -598,29 +598,29 @@ class TestGacReader(unittest.TestCase):
         """Test the calculate sun earth distance correction method."""
         self.reader.utcs = np.array([315748035469, 315748359969,
                                      315751135469, 315754371969,
-                                     315754371969]).astype('datetime64[ms]')
+                                     315754371969]).astype("datetime64[ms]")
         corr = self.reader.get_sun_earth_distance_correction()
         numpy.testing.assert_almost_equal(corr, 0.96660494, decimal=7)
 
-    @mock.patch('pygac.reader.Reader.get_sun_earth_distance_correction')
-    @mock.patch('pygac.reader.Reader.get_midnight_scanline')
-    @mock.patch('pygac.reader.Reader.get_miss_lines')
+    @mock.patch("pygac.reader.Reader.get_sun_earth_distance_correction")
+    @mock.patch("pygac.reader.Reader.get_midnight_scanline")
+    @mock.patch("pygac.reader.Reader.get_miss_lines")
     def test_update_metadata(self,
                              get_miss_lines,
                              get_midnight_scanline,
                              get_sun_earth_distance_correction):
         """Test updating the metadata."""
-        get_miss_lines.return_value = 'miss_lines'
-        get_midnight_scanline.return_value = 'midn_line'
-        get_sun_earth_distance_correction.return_value = 'factor'
-        self.reader.head = {'foo': 'bar'}
+        get_miss_lines.return_value = "miss_lines"
+        get_midnight_scanline.return_value = "midn_line"
+        get_sun_earth_distance_correction.return_value = "factor"
+        self.reader.head = {"foo": "bar"}
 
         self.reader.update_meta_data()
 
-        mda_exp = {'midnight_scanline': 'midn_line',
-                   'missing_scanlines': 'miss_lines',
-                   'sun_earth_distance_correction_factor': 'factor',
-                   'gac_header': {'foo': 'bar'}}
+        mda_exp = {"midnight_scanline": "midn_line",
+                   "missing_scanlines": "miss_lines",
+                   "sun_earth_distance_correction_factor": "factor",
+                   "gac_header": {"foo": "bar"}}
         self.assertDictEqual(self.reader.meta_data, mda_exp)
 
 
@@ -651,7 +651,7 @@ class TestLacReader(unittest.TestCase):
 
     longMessage = True
 
-    @mock.patch.multiple('pygac.lac_reader.LACReader',
+    @mock.patch.multiple("pygac.lac_reader.LACReader",
                          __abstractmethods__=set())
     def setUp(self, *mocks):
         """Set up the tests."""
@@ -659,7 +659,7 @@ class TestLacReader(unittest.TestCase):
 
     def test_lac_reader_accepts_FRAC(self):
         """Test the header validation."""
-        head = {'data_set_name': b'NSS.FRAC.M1.D19115.S2352.E0050.B3425758.SV'}
+        head = {"data_set_name": b"NSS.FRAC.M1.D19115.S2352.E0050.B3425758.SV"}
         self.reader._validate_header(head)
 
     def test_correct_scan_line_numbers(self):
@@ -667,7 +667,7 @@ class TestLacReader(unittest.TestCase):
         scans, expected = _get_scanline_numbers(22000)
         self.reader.scans = scans
         self.reader.correct_scan_line_numbers()
-        numpy.testing.assert_array_equal(self.reader.scans['scan_line_number'],
+        numpy.testing.assert_array_equal(self.reader.scans["scan_line_number"],
                                          expected)
 
 
@@ -683,12 +683,12 @@ def pod_file_with_tbm_header(tmp_path):
     tbm_header["ending_latitude"] = b"+22"
     tbm_header["beginning_longitude"] = b"-004"
     tbm_header["ending_longitude"] = b"+032"
-    tbm_header["start_hour"] = b'AL'
-    tbm_header["start_minute"] = b'L '
-    tbm_header["number_of_minutes"] = b'ALL'
-    tbm_header["appended_data_flag"] = b'Y'
-    tbm_header["channel_select_flag"][0, :5] = b'\x01'
-    tbm_header["sensor_data_word_size"] = b'10'
+    tbm_header["start_hour"] = b"AL"
+    tbm_header["start_minute"] = b"L "
+    tbm_header["number_of_minutes"] = b"ALL"
+    tbm_header["appended_data_flag"] = b"Y"
+    tbm_header["channel_select_flag"][0, :5] = b"\x01"
+    tbm_header["sensor_data_word_size"] = b"10"
 
     header = np.zeros(1, dtype=header3)
     header["noaa_spacecraft_identification_code"] = 3
@@ -696,7 +696,7 @@ def pod_file_with_tbm_header(tmp_path):
     header["start_time"] = [51522, 181, 62790]
     header["number_of_scans"] = number_of_scans
     header["end_time"] = [51522, 195, 42286]
-    header["processing_block_id"] = b'3031919'
+    header["processing_block_id"] = b"3031919"
     header["ramp_auto_calibration"] = 0
     header["number_of_data_gaps"] = 0
     header["dacs_quality"] = [21, 7, 0, 0, 0, 0]
@@ -780,7 +780,7 @@ def test_read_to_dataset(pod_file_with_tbm_header):
     dataset = reader.read_as_dataset(pod_file_with_tbm_header)
     assert isinstance(dataset, xr.Dataset)
     assert dataset["channels"].shape == (3, 2048, 5)
-    assert dataset.attrs["processing_block_id"] == b'3031919'
+    assert dataset.attrs["processing_block_id"] == b"3031919"
     assert "times" in dataset.coords
     assert "scan_line_index" in dataset.coords
     assert "channel_name" in dataset.coords

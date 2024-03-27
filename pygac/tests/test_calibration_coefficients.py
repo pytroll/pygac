@@ -119,14 +119,14 @@ user_json_file = b"""{
 
 class TestCalibrationCoefficientsHandling(unittest.TestCase):
 
-    @mock.patch('pygac.noaa_calibration.open', mock.mock_open(read_data=user_json_file))
+    @mock.patch("pygac.noaa_calibration.open", mock.mock_open(read_data=user_json_file))
     def test_user_coefficients_file(self):
         if sys.version_info.major < 3:
-            cal = Calibrator('noaa19', coeffs_file="/path/to/unknow/defaults.json")
+            cal = Calibrator("noaa19", coeffs_file="/path/to/unknow/defaults.json")
         else:
             with self.assertWarnsRegex(RuntimeWarning,
                                        "Unknown calibration coefficients version!"):
-                cal = Calibrator('noaa19', coeffs_file="/path/to/unknow/defaults.json")
+                cal = Calibrator("noaa19", coeffs_file="/path/to/unknow/defaults.json")
 
         self.assertEqual(cal.dark_count[0], 0)
         self.assertEqual(cal.gain_switch[0], 1000)
@@ -188,13 +188,13 @@ class TestCalibrationCoefficientsHandling(unittest.TestCase):
         """Test warnings issued by Calibrator.read_coeffs."""
         version_dicts = [
             # Non-nominal coefficients
-            {'name': 'v123',
-             'status': CoeffStatus.PROVISIONAL},
+            {"name": "v123",
+             "status": CoeffStatus.PROVISIONAL},
             # Unknown coefficients
-            {'name': None,
-             'status': None}
+            {"name": None,
+             "status": None}
         ]
-        with mock.patch.object(Calibrator, 'version_hashs') as version_hashs:
+        with mock.patch.object(Calibrator, "version_hashs") as version_hashs:
             for version_dict in version_dicts:
                 version_hashs.get.return_value = version_dict
                 with self.assertWarns(RuntimeWarning):

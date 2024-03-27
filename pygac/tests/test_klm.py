@@ -46,7 +46,7 @@ class TestKLM:
         """Test readout of lon/lat coordinates."""
         earth_loc = 1e4 * np.array([[1, 2, 3, 4],
                                     [5, 6, 7, 8]])
-        self.reader.scans = {'earth_location': earth_loc}
+        self.reader.scans = {"earth_location": earth_loc}
 
         lons_exp = np.array([[2, 4],
                              [6, 8]])
@@ -60,24 +60,24 @@ class TestKLM:
     def test_get_header_timestamp(self):
         """Test readout of header timestamp."""
         self.reader.head = {
-            'start_of_data_set_year': np.array([2019]),
-            'start_of_data_set_day_of_year': np.array([123]),
-            'start_of_data_set_utc_time_of_day': np.array([123456])
+            "start_of_data_set_year": np.array([2019]),
+            "start_of_data_set_day_of_year": np.array([123]),
+            "start_of_data_set_utc_time_of_day": np.array([123456])
         }
         time = self.reader.get_header_timestamp()
         assert time == dt.datetime(2019, 5, 3, 0, 2, 3, 456000)
 
     def test_get_times(self):
         """Test readout of scanline timestamps."""
-        self.reader.scans = {'scan_line_year': 1,
-                             'scan_line_day_of_year': 2,
-                             'scan_line_utc_time_of_day': 3}
+        self.reader.scans = {"scan_line_year": 1,
+                             "scan_line_day_of_year": 2,
+                             "scan_line_utc_time_of_day": 3}
         assert self.reader._get_times() == (1, 2, 3)
 
     def test_get_ch3_switch(self):
         """Test channel 3 identification."""
         self.reader.scans = {
-            'scan_line_bit_field': np.array([1, 2, 3, 4, 5, 6])}
+            "scan_line_bit_field": np.array([1, 2, 3, 4, 5, 6])}
         switch_exp = np.array([1, 2, 3, 0, 1, 2])
         numpy.testing.assert_array_equal(
             self.reader.get_ch3_switch(), switch_exp)
@@ -85,7 +85,7 @@ class TestKLM:
     def test_postproc(self):
         """Test KLM specific postprocessing."""
         self.reader.scans = {
-            'scan_line_bit_field': np.array([0, 1, 2])}
+            "scan_line_bit_field": np.array([0, 1, 2])}
         channels = np.array([[[1., 2., 3., 4.],
                               [1., 2., 3., 4.]],
                              [[1., 2., 3., 4.],
@@ -130,7 +130,7 @@ class TestGACKLM:
         """Set up the tests."""
         self.reader = GACKLMReader()
 
-    @mock.patch('pygac.klm_reader.get_tsm_idx')
+    @mock.patch("pygac.klm_reader.get_tsm_idx")
     def test_get_tsm_pixels(self, get_tsm_idx):
         """Test channel set used for TSM correction."""
         ones = np.ones((409, 100))
@@ -168,7 +168,7 @@ class TestLACKLM:
     def test_get_ch3_switch(self):
         """Test channel 3 identification."""
         self.reader.scans = {
-            'scan_line_bit_field': np.array([1, 2, 3, 4, 5, 6])}
+            "scan_line_bit_field": np.array([1, 2, 3, 4, 5, 6])}
         switch_exp = np.array([1, 2, 3, 0, 1, 2])
         numpy.testing.assert_array_equal(
             self.reader.get_ch3_switch(), switch_exp)
