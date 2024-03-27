@@ -25,13 +25,10 @@
 
 
 import unittest
-try:
-    import mock
-except ImportError:
-    from unittest import mock
+
 import numpy as np
 
-from pygac.calibration import Calibrator, calibrate_solar, calibrate_thermal
+from pygac.noaa_calibration import Calibrator, calibrate_solar, calibrate_thermal
 
 
 class TestGenericCalibration(unittest.TestCase):

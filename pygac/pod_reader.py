@@ -38,6 +38,7 @@ Format specification can be found in chapters 2 & 3 of the `POD user guide`_.
 
 import datetime
 import logging
+
 try:
     from enum import IntFlag
 except ImportError:
@@ -45,13 +46,12 @@ except ImportError:
     IntFlag = object
 
 import numpy as np
-
-from pyorbital.geoloc_instrument_definitions import avhrr_gac
 from pyorbital.geoloc import compute_pixels, get_lonlatalt
+from pyorbital.geoloc_instrument_definitions import avhrr_gac
 
 from pygac.clock_offsets_converter import get_offsets
 from pygac.correct_tsm_issue import TSM_AFFECTED_INTERVALS_POD, get_tsm_idx
-from pygac.reader import Reader, ReaderError, NoTLEData
+from pygac.reader import NoTLEData, Reader, ReaderError
 from pygac.slerp import slerp
 from pygac.utils import file_opener
 
@@ -246,7 +246,7 @@ class PODReader(Reader):
     def correct_scan_line_numbers(self):
         """Correct the scan line numbers."""
         # Perform common corrections first.
-        super(PODReader, self).correct_scan_line_numbers()
+        super().correct_scan_line_numbers()
 
         # cleaning up the data
         min_scanline_number = np.amin(

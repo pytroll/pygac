@@ -24,13 +24,14 @@
 
 import sys
 import unittest
+
 try:
     import mock
 except ImportError:
     from unittest import mock
 import numpy as np
 
-from pygac.calibration import Calibrator, calibrate_solar, CoeffStatus
+from pygac.noaa_calibration import Calibrator, CoeffStatus, calibrate_solar
 
 # dummy user json file including only noaa19 data with changed channel 1 coefficients
 user_json_file = b"""{
@@ -118,7 +119,7 @@ user_json_file = b"""{
 
 class TestCalibrationCoefficientsHandling(unittest.TestCase):
 
-    @mock.patch('pygac.calibration.open', mock.mock_open(read_data=user_json_file))
+    @mock.patch('pygac.noaa_calibration.open', mock.mock_open(read_data=user_json_file))
     def test_user_coefficients_file(self):
         if sys.version_info.major < 3:
             cal = Calibrator('noaa19', coeffs_file="/path/to/unknow/defaults.json")

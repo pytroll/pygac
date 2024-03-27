@@ -24,20 +24,20 @@ import datetime
 import os
 import sys
 import unittest
-import pytest
-
 from unittest import mock
+
 import numpy as np
 import numpy.testing
-from pygac.gac_reader import GACReader, ReaderError
-from pygac.lac_reader import LACReader
-from pygac.pod_reader import POD_QualityIndicator
-from pygac.gac_pod import scanline
-from pygac.reader import NoTLEData
-from pygac.lac_pod import LACPODReader
+import pytest
 
-from pygac.pod_reader import tbm_header as tbm_header_dtype, header3
+from pygac.gac_pod import scanline
+from pygac.gac_reader import GACReader, ReaderError
+from pygac.lac_pod import LACPODReader
 from pygac.lac_pod import scanline as lacpod_scanline
+from pygac.lac_reader import LACReader
+from pygac.pod_reader import POD_QualityIndicator, header3
+from pygac.pod_reader import tbm_header as tbm_header_dtype
+from pygac.reader import NoTLEData
 
 
 class TestPath(os.PathLike):
@@ -59,7 +59,7 @@ class FakeGACReader(GACReader):
     _quality_indicators_key = "quality_indicators"
     tsm_affected_intervals = {None: []}
     along_track = 3
-    across_track = 4
+    across_track = 409
 
     def __init__(self):
         """Initialize the fake reader."""
@@ -70,6 +70,7 @@ class FakeGACReader(GACReader):
         scans["sensor_data"] = 128
         self.scans = scans
         self.head = {'foo': 'bar'}
+        self.head = np.core.records.fromrecords([("bar", ),],names='foo')
         self.spacecraft_name = 'noaa6'
 
     def _get_times(self):
@@ -93,7 +94,7 @@ class FakeGACReader(GACReader):
         pass
 
     def _get_lonlat(self):
-        pass
+        return np.zeros((self.along_track, 51)), np.zeros((self.along_track, 51))
 
     @staticmethod
     def _get_ir_channels_to_calibrate():
@@ -246,17 +247,10 @@ class TestGacReader(unittest.TestCase):
         """Test getting calibrated channels."""
         reader = FakeGACReader()
         res = reader.get_calibrated_channels()
-        expected = np.full(
-            (
-                FakeGACReader.along_track,
-                FakeGACReader.across_track,
-                5  # number of channels
-            ),
-            np.nan
-        )
-        expected[:, 1, 0] = 8.84714652
-        expected[:, 2, 1] = 10.23511303
-        np.testing.assert_allclose(res, expected)
+
+        np.testing.assert_allclose(res[:, 1, 0], 8.84714652)
+        np.testing.assert_allclose(res[:, 2, 1], 10.23511303)
+        assert reader.meta_data["calib_coeffs_version"] == "PATMOS-x, v2023"
 
     def test_to_datetime64(self):
         """Test conversion from (year, jday, msec) to datetime64."""
@@ -611,10 +605,7 @@ class TestGacReader(unittest.TestCase):
     @mock.patch('pygac.reader.Reader.get_sun_earth_distance_correction')
     @mock.patch('pygac.reader.Reader.get_midnight_scanline')
     @mock.patch('pygac.reader.Reader.get_miss_lines')
-    @mock.patch('pygac.reader.Reader.calibration',
-                new_callable=mock.PropertyMock)
     def test_update_metadata(self,
-                             calibration,
                              get_miss_lines,
                              get_midnight_scanline,
                              get_sun_earth_distance_correction):
@@ -623,15 +614,13 @@ class TestGacReader(unittest.TestCase):
         get_midnight_scanline.return_value = 'midn_line'
         get_sun_earth_distance_correction.return_value = 'factor'
         self.reader.head = {'foo': 'bar'}
-        calibration.return_value = mock.MagicMock(version='version')
 
         self.reader.update_meta_data()
 
         mda_exp = {'midnight_scanline': 'midn_line',
                    'missing_scanlines': 'miss_lines',
                    'sun_earth_distance_correction_factor': 'factor',
-                   'gac_header': {'foo': 'bar'},
-                   'calib_coeffs_version': 'version'}
+                   'gac_header': {'foo': 'bar'}}
         self.assertDictEqual(self.reader.meta_data, mda_exp)
 
 
@@ -782,3 +771,21 @@ def test_podlac_eosip(pod_file_with_tbm_header):
     assert reader.head.itemsize == header3.itemsize
     # this is broken in eosip pod data, tbm data set name has start and end times reversed.
     # assert reader.head["data_set_name"] == reader.tbm_head["data_set_name"]
+
+
+def test_read_to_dataset(pod_file_with_tbm_header):
+    """Test creating an xr.Dataset from a gac file."""
+    import xarray as xr
+    reader = LACPODReader(interpolate_coords=False)
+    dataset = reader.read_as_dataset(pod_file_with_tbm_header)
+    assert isinstance(dataset, xr.Dataset)
+    assert dataset["channels"].shape == (3, 2048, 5)
+    assert dataset.attrs["processing_block_id"] == b'3031919'
+    assert "times" in dataset.coords
+    assert "scan_line_index" in dataset.coords
+    assert "channel_name" in dataset.coords
+    assert dataset.coords["longitudes"].shape == (3, 2048)
+    assert dataset.coords["latitudes"].shape == (3, 2048)
+    assert dataset["prt_counts"].shape == (3,)
+    assert dataset["ict_counts"].shape == (3, 3)
+    assert dataset["space_counts"].shape == (3, 3)

@@ -40,6 +40,64 @@ import numpy as np
 LOG = logging.getLogger(__name__)
 
 
+def calibrate(ds, custom_coeffs=None, coeffs_file=None):
+    channels = ds["channels"].data
+    times = ds.coords["times"].data
+    scan_line_numbers = ds["scan_line_index"].data
+
+    calibration_coeffs = Calibrator(
+            ds.attrs["spacecraft_name"],
+            custom_coeffs=custom_coeffs,
+            coeffs_file=coeffs_file
+        )
+
+    # `times` is in nanosecond resolution. However, convertion from datetime64[ns] to datetime objects
+    # does not work, and anyway only the date is needed.
+    start_time = times[0]
+    start_date = start_time.astype("datetime64[D]").item()
+    year = start_date.year
+
+    delta = (start_time.astype("datetime64[D]") - start_time.astype("datetime64[Y]")).astype(int)
+    jday = delta.astype(int) + 1
+
+    corr = ds.attrs['sun_earth_distance_correction_factor']
+
+    # how many reflective channels are there ?
+    tot_ref = channels.shape[2] - 3
+
+    channels[:, :, 0:tot_ref] = calibrate_solar(
+        channels[:, :, 0:tot_ref],
+        np.arange(tot_ref),
+        year, jday,
+        calibration_coeffs,
+        corr
+    )
+
+    prt = ds["prt_counts"].data
+    ict = ds["ict_counts"].data
+    space = ds["space_counts"].data
+
+    ir_channels_to_calibrate = [3, 4, 5]
+
+    for chan in ir_channels_to_calibrate:
+        channels[:, :, chan - 6] = calibrate_thermal(
+            channels[:, :, chan - 6],
+            prt,
+            ict[:, chan - 3],
+            space[:, chan - 3],
+            scan_line_numbers,
+            chan,
+            calibration_coeffs
+        )
+
+    new_ds = ds.copy()
+    new_ds["channels"].data = channels
+
+    new_ds.attrs["calib_coeffs_version"] = calibration_coeffs.version
+
+    return new_ds
+
+
 class CoeffStatus(Enum):
     """Indicates the status of calibration coefficients."""
     NOMINAL = 'nominal'
@@ -450,16 +508,18 @@ def calibrate_thermal(counts, prt, ict, space, line_numbers, channel, cal):
     if channel == 3:
         zeros = ict < ict_threshold
         nonzeros = np.logical_not(zeros)
-
-        ict[zeros] = np.interp((zeros).nonzero()[0],
-                               (nonzeros).nonzero()[0],
-                               ict[nonzeros])
+        try:
+            ict[zeros] = np.interp((zeros).nonzero()[0],
+                                (nonzeros).nonzero()[0],
+                                ict[nonzeros])
+        except ValueError: # 3b has no valid data
+            return counts
         zeros = space < space_threshold
         nonzeros = np.logical_not(zeros)
 
         space[zeros] = np.interp((zeros).nonzero()[0],
-                                 (nonzeros).nonzero()[0],
-                                 space[nonzeros])
+                                (nonzeros).nonzero()[0],
+                                space[nonzeros])
 
     # convolving and smoothing PRT, ICT and SPACE values
     if lines > 51:

@@ -24,26 +24,24 @@
 
 Can't be used as is, has to be subclassed to add specific read functions.
 """
-from abc import ABCMeta, abstractmethod
 import datetime
 import logging
-
-import numpy as np
 import os
 import re
-import six
 import types
 import warnings
-import pyorbital
+from abc import ABCMeta, abstractmethod
 
-from pygac.utils import (centered_modulus,
-                         calculate_sun_earth_distance_correction,
-                         get_absolute_azimuth_angle_diff)
-from pyorbital.orbital import Orbital
-from pyorbital import astronomy
-from pygac.calibration import Calibrator, calibrate_solar, calibrate_thermal
-from pygac import gac_io
+import numpy as np
+import pyorbital
+import six
 from packaging.version import Version
+from pyorbital import astronomy
+from pyorbital.orbital import Orbital
+
+from pygac import gac_io
+from pygac.noaa_calibration import calibrate
+from pygac.utils import calculate_sun_earth_distance_correction, centered_modulus, get_absolute_azimuth_angle_diff
 
 LOG = logging.getLogger(__name__)
 
@@ -162,16 +160,6 @@ class Reader(six.with_metaclass(ABCMeta)):
                 self._filename = match.group()
             else:
                 self._filename = os.path.basename(filepath)
-
-    @property
-    def calibration(self):
-        """Get the property 'calibration'."""
-        calibration = Calibrator(
-            self.spacecraft_name,
-            custom_coeffs=self.custom_calibration,
-            coeffs_file=self.calibration_file
-        )
-        return calibration
 
     @abstractmethod
     def read(self, filename, fileobj=None):  # pragma: no cover
@@ -509,55 +497,86 @@ class Reader(six.with_metaclass(ABCMeta)):
         return calculate_sun_earth_distance_correction(jday)
 
     def update_meta_data(self):
-        """Add some metd data to the meta_data dicitonary."""
-        if 'sun_earth_distance_correction_factor' not in self.meta_data:
-            self.meta_data['sun_earth_distance_correction_factor'] = (
+        """Add some meta data to the meta_data dicitonary."""
+        meta_data = self.meta_data
+        self._update_meta_data_object(meta_data)
+        if 'gac_header' not in meta_data:
+            meta_data['gac_header'] = self.head.copy()
+
+    def _update_meta_data_object(self, meta_data):
+        if 'sun_earth_distance_correction_factor' not in meta_data:
+            meta_data['sun_earth_distance_correction_factor'] = (
                 self.get_sun_earth_distance_correction())
-        if 'midnight_scanline' not in self.meta_data:
-            self.meta_data['midnight_scanline'] = self.get_midnight_scanline()
-        if 'missing_scanlines' not in self.meta_data:
-            self.meta_data['missing_scanlines'] = self.get_miss_lines()
-        if 'gac_header' not in self.meta_data:
-            self.meta_data['gac_header'] = self.head.copy()
-        self.meta_data['calib_coeffs_version'] = self.calibration.version
+        if 'midnight_scanline' not in meta_data:
+            meta_data['midnight_scanline'] = self.get_midnight_scanline()
+        if 'missing_scanlines' not in meta_data:
+            meta_data['missing_scanlines'] = self.get_miss_lines()
+
+    def read_as_dataset(self, file_to_read):
+        self.read(file_to_read)
+        return self.create_dataset()
+
+    def create_dataset(self):
+        import xarray as xr
+
+        head = dict(zip(self.head.dtype.names, self.head.item()))
+        scans = self.scans
+
+        times = self.get_times()
+        line_numbers = scans["scan_line_number"]
+        counts = self.get_counts()
+
+        scan_size = counts.shape[1]
+
+        if scan_size == 409:
+            sub_columns = np.arange(4, 405, 8)
+        else:
+            sub_columns = np.arange(24, 2048, 40)
+
+        if counts.shape[-1] == 5:
+            channel_names = ["1", "2", "3", "4", "5"]
+            ir_channel_names = ["3", "4", "5"]
+        else:
+            channel_names = ["1", "2", "3a", "3b", "4", "5"]
+            ir_channel_names = ["3b", "4", "5"]
+        channels = xr.DataArray(counts, dims=["scan_line_index", "columns", "channel_name"],
+                                coords=dict(scan_line_index=line_numbers, channel_name=channel_names,
+                                            columns=np.arange(scan_size))
+                                )
+        channels = channels.assign_coords(times=("scan_line_index", times))
+        lons, lats = self._get_lonlat()
+        longitudes = xr.DataArray(lons, dims=["scan_line_index", "columns"],
+                                  coords=dict(scan_line_index=line_numbers,
+                                              columns=sub_columns))
+        latitudes = xr.DataArray(lats, dims=["scan_line_index", "columns"],
+                                 coords=dict(scan_line_index=line_numbers,
+                                             columns=sub_columns))
+        channels = channels.assign_coords(longitudes=(("scan_line_index", "columns"),
+                                                      longitudes.reindex_like(channels).data),
+                                          latitudes=(("scan_line_index", "columns"),
+                                                     latitudes.reindex_like(channels).data))
+
+        prt, ict, space = self.get_telemetry()
+        prt = xr.DataArray(prt, dims=["scan_line_index"])
+        ict = xr.DataArray(ict, dims=["scan_line_index", "ir_channel_name"],
+                           coords=dict(ir_channel_name=ir_channel_names))
+        space = xr.DataArray(space, dims=["scan_line_index", "ir_channel_name"])
+        ds = xr.Dataset(dict(channels=channels, prt_counts=prt, ict_counts=ict, space_counts=space), attrs=head)
+
+
+        ds.attrs["spacecraft_name"] = self.spacecraft_name
+        self._update_meta_data_object(ds.attrs)
+        return ds
 
     def get_calibrated_channels(self):
         """Calibrate and return the channels."""
-        channels = self.get_counts()
-        self.get_times()
-        times = self.times
-        self.update_meta_data()
-        year = times[0].year
-        delta = times[0].date() - datetime.date(year, 1, 1)
-        jday = delta.days + 1
+        ds = self.create_dataset()
 
-        corr = self.meta_data['sun_earth_distance_correction_factor']
-        calibration_coeffs = self.calibration
-
-        # how many reflective channels are there ?
-        tot_ref = channels.shape[2] - 3
-
-        channels[:, :, 0:tot_ref] = calibrate_solar(
-            channels[:, :, 0:tot_ref],
-            np.arange(tot_ref),
-            year, jday,
-            calibration_coeffs,
-            corr
-        )
-        prt, ict, space = self.get_telemetry()
-
-        ir_channels_to_calibrate = self._get_ir_channels_to_calibrate()
-
-        for chan in ir_channels_to_calibrate:
-            channels[:, :, chan - 6] = calibrate_thermal(
-                channels[:, :, chan - 6],
-                prt,
-                ict[:, chan - 3],
-                space[:, chan - 3],
-                self.scans["scan_line_number"],
-                chan,
-                calibration_coeffs
-            )
+        noaa_calibration_kwargs = dict(custom_coeffs=self.custom_calibration,
+                                       coeffs_file=self.calibration_file)
+        calibrated_ds = calibrate(ds, **noaa_calibration_kwargs)
+        channels = calibrated_ds["channels"].data
+        self.meta_data["calib_coeffs_version"] = calibrated_ds.attrs["calib_coeffs_version"]
 
         # Mask out corrupt values
         channels[self.mask] = np.nan
