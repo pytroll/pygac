@@ -24,26 +24,24 @@
 
 Can't be used as is, has to be subclassed to add specific read functions.
 """
-from abc import ABCMeta, abstractmethod
 import datetime
 import logging
-
-import numpy as np
 import os
 import re
-import six
 import types
 import warnings
-import pyorbital
+from abc import ABCMeta, abstractmethod
 
-from pygac.utils import (centered_modulus,
-                         calculate_sun_earth_distance_correction,
-                         get_absolute_azimuth_angle_diff)
-from pyorbital.orbital import Orbital
-from pyorbital import astronomy
-from pygac.calibration import Calibrator, calibrate_solar, calibrate_thermal
-from pygac import gac_io
+import numpy as np
+import pyorbital
+import six
 from packaging.version import Version
+from pyorbital import astronomy
+from pyorbital.orbital import Orbital
+
+from pygac import gac_io
+from pygac.calibration import Calibrator, calibrate_solar, calibrate_thermal
+from pygac.utils import calculate_sun_earth_distance_correction, centered_modulus, get_absolute_azimuth_angle_diff
 
 LOG = logging.getLogger(__name__)
 
@@ -865,7 +863,7 @@ class Reader(six.with_metaclass(ABCMeta)):
 
         jday = np.where(np.logical_or(jday < 1, jday > 366),
                         np.median(jday), jday)
-        if_wrong_jday = np.ediff1d(jday, to_begin=0)
+        if_wrong_jday = np.ediff1d(jday, jday.dtype.type(0))
         jday = np.where(if_wrong_jday < 0, max(jday), jday)
 
         if_wrong_msec = np.where(msec < 1)
@@ -877,7 +875,7 @@ class Reader(six.with_metaclass(ABCMeta)):
                 msec0 = np.median(msec - msec_lineno)
                 msec = msec0 + msec_lineno
 
-        if_wrong_msec = np.ediff1d(msec, to_begin=0)
+        if_wrong_msec = np.ediff1d(msec, to_begin=msec.dtype.type(0))
         msec = np.where(np.logical_and(np.logical_or(if_wrong_msec < -1000, if_wrong_msec > 1000), if_wrong_jday != 1),
                         msec[0] + msec_lineno, msec)
 

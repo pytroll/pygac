@@ -112,7 +112,7 @@ class TestKLM:
             QFlag.CALIBRATION | QFlag.NO_EARTH_LOCATION,
             QFlag.TIME_ERROR | QFlag.DATA_GAP,
             QFlag.FATAL_FLAG
-        ], dtype=np.uint32)
+        ], dtype=np.int64)
         reader.scans = {self.reader._quality_indicators_key: quality_indicators}
         # test mask, i.e. QFlag.FATAL_FLAG | QFlag.CALIBRATION | QFlag.NO_EARTH_LOCATION
         expected_mask = np.array([False, True, True, False, True], dtype=bool)
