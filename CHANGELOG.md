@@ -1,3 +1,21 @@
+## Version 1.7.4 (2024/07/17)
+
+### Issues Closed
+
+* [Issue 128](https://github.com/pytroll/pygac/issues/128) - Reading of files broken for numpy 2.0.0
+* [Issue 114](https://github.com/pytroll/pygac/issues/114) - Feature request: Overlap Area Crop just like pygac-fdr
+
+In this release 2 issues were closed.
+
+### Pull Requests Merged
+
+#### Features added
+
+* [PR 126](https://github.com/pytroll/pygac/pull/126) - Switch to `pyproject.toml`entirely
+
+In this release 1 pull request was closed.
+
+
 ## Version 1.7.3 (2024/03/19)
 
 
