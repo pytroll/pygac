@@ -106,9 +106,12 @@ class TestKLM:
         """Test the quality indicator unpacking."""
         reader = self.reader
         QFlag = reader.QFlag
+
+        dtype = np.uint32
+
         quality_indicators = np.array([
             0,  # nothing flagged
-            -1,  # everything flagged
+            np.iinfo(dtype).max,  # everything flagged
             QFlag.CALIBRATION | QFlag.NO_EARTH_LOCATION,
             QFlag.TIME_ERROR | QFlag.DATA_GAP,
             QFlag.FATAL_FLAG

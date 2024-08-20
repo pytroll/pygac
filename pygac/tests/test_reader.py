@@ -40,7 +40,7 @@ from pygac.pod_reader import tbm_header as tbm_header_dtype
 from pygac.reader import NoTLEData
 
 
-class TestPath(os.PathLike):
+class FakePath(os.PathLike):
     """Fake path class."""
 
     def __init__(self, path):
@@ -70,7 +70,7 @@ class FakeGACReader(GACReader):
         scans["sensor_data"] = 128
         self.scans = scans
         self.head = {"foo": "bar"}
-        self.head = np.core.records.fromrecords([("bar", ),],names="foo")
+        self.head = np.rec.fromrecords([("bar", ),],names="foo")
         self.spacecraft_name = "noaa6"
 
     def _get_times(self):
@@ -140,7 +140,7 @@ class TestGacReader(unittest.TestCase):
         self.assertEqual(self.reader.filename, filename)
         self.reader.filename = None
         self.assertIsNone(self.reader.filename)
-        self.reader.filename = TestPath(filepath)
+        self.reader.filename = FakePath(filepath)
         self.assertEqual(self.reader.filename, filename)
 
     @unittest.skipIf(sys.version_info.major < 3, "Skipped in python2!")
@@ -230,7 +230,7 @@ class TestGacReader(unittest.TestCase):
         val_filepath = "path/to/" + val_filename
         val_head = {"data_set_name": b"NSS.GHRR.TN.D80001.S0332.E0526.B0627173.WI"}
 
-        fs_filepath = TestPath(val_filepath)
+        fs_filepath = FakePath(val_filepath)
         head = self.reader._correct_data_set_name(val_head.copy(), fs_filepath)
         self.assertEqual(head["data_set_name"], val_filename.encode())
 

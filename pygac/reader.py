@@ -896,7 +896,7 @@ class Reader(six.with_metaclass(ABCMeta)):
                 msec0 = np.median(msec - msec_lineno)
                 msec = msec0 + msec_lineno
 
-        if_wrong_msec = np.ediff1d(msec, to_begin=0)
+        if_wrong_msec = np.ediff1d(msec, to_begin=msec.dtype.type(0))
         msec = np.where(np.logical_and(np.logical_or(if_wrong_msec < -1000, if_wrong_msec > 1000), if_wrong_jday != 1),
                         msec[0] + msec_lineno, msec)
 
