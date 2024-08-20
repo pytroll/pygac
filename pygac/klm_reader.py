@@ -807,16 +807,15 @@ class KLMReader(Reader):
             ir_channels_to_calibrate = [4, 5]
         return ir_channels_to_calibrate
 
-    def postproc(self, channels):
+    def postproc(self, ds):
         """Apply KLM specific postprocessing.
 
         Masking out 3a/3b/transition.
         """
         switch = self.get_ch3_switch()
-        channels[:, :, 2][switch == 0] = np.nan
-        channels[:, :, 3][switch == 1] = np.nan
-        channels[:, :, 2][switch == 2] = np.nan
-        channels[:, :, 3][switch == 2] = np.nan
+        ds["channels"].loc[dict(channel_name="3a", scan_line_index=((switch==0) | (switch==2)))] = np.nan
+        ds["channels"].loc[dict(channel_name="3b", scan_line_index=((switch==1) | (switch==2)))] = np.nan
+
 
     def _adjust_clock_drift(self):
         """Adjust the geolocation to compensate for the clock error.

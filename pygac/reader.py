@@ -31,6 +31,8 @@ import re
 import types
 import warnings
 from abc import ABCMeta, abstractmethod
+from contextlib import suppress
+from importlib.metadata import entry_points
 
 import numpy as np
 import pyorbital
@@ -40,7 +42,6 @@ from pyorbital import astronomy
 from pyorbital.orbital import Orbital
 
 from pygac import gac_io
-from pygac.calibration.noaa import calibrate
 from pygac.utils import calculate_sun_earth_distance_correction, centered_modulus, get_absolute_azimuth_angle_diff
 
 LOG = logging.getLogger(__name__)
@@ -97,7 +98,8 @@ class Reader(six.with_metaclass(ABCMeta)):
 
     def __init__(self, interpolate_coords=True, adjust_clock_drift=True,
                  tle_dir=None, tle_name=None, tle_thresh=7, creation_site=None,
-                 custom_calibration=None, calibration_file=None, header_date="auto"):
+                 custom_calibration=None, calibration_file=None, header_date="auto",
+                 calibration_method="noaa", calibration_parameters=None):
         """Init the reader.
 
         Args:
@@ -123,8 +125,6 @@ class Reader(six.with_metaclass(ABCMeta)):
         self.tle_name = tle_name
         self.tle_thresh = tle_thresh
         self.creation_site = (creation_site or "NSS").encode("utf-8")
-        self.custom_calibration = custom_calibration
-        self.calibration_file = calibration_file
         self.header_date = header_date
         self.head = None
         self.scans = None
@@ -137,6 +137,19 @@ class Reader(six.with_metaclass(ABCMeta)):
         self.filename = None
         self._mask = None
         self._rpy = None
+
+        if calibration_method.lower() not in ["noaa"]:
+            raise ValueError(f"Unknown calibration method {calibration_method}.")
+        self.calibration_method = calibration_method
+        self.calibration_parameters = calibration_parameters or dict()
+        if custom_calibration is not None or calibration_file is not None:
+            warnings.warn("`custom_calibration` and `calibration_file` parameters will be deprecated soon. "
+                          "Please use `calibration_parameters` dictionary instead.",
+                          PendingDeprecationWarning)
+            if not self.calibration_parameters:
+                self.calibration_parameters = dict(custom_coeffs=custom_calibration,
+                                                   coeffs_file=calibration_file)
+
 
     @property
     def times(self):
@@ -514,9 +527,9 @@ class Reader(six.with_metaclass(ABCMeta)):
 
     def read_as_dataset(self, file_to_read):
         self.read(file_to_read)
-        return self.create_dataset()
+        return self.create_counts_dataset()
 
-    def create_dataset(self):
+    def create_counts_dataset(self):
         import xarray as xr
 
         head = dict(zip(self.head.dtype.names, self.head.item()))
@@ -570,24 +583,32 @@ class Reader(six.with_metaclass(ABCMeta)):
 
     def get_calibrated_channels(self):
         """Calibrate and return the channels."""
-        ds = self.create_dataset()
+        ds = self.create_counts_dataset()
 
-        noaa_calibration_kwargs = dict(custom_coeffs=self.custom_calibration,
-                                       coeffs_file=self.calibration_file)
-        calibrated_ds = calibrate(ds, **noaa_calibration_kwargs)
-        channels = calibrated_ds["channels"].data
-        self.meta_data["calib_coeffs_version"] = calibrated_ds.attrs["calib_coeffs_version"]
+        calibration_entrypoints = entry_points(group="pygac.calibration")
+        calibration_function = calibration_entrypoints[self.calibration_method].load()
+        calibrated_ds = calibration_function(ds, **self.calibration_parameters)
 
         # Mask out corrupt values
-        channels[self.mask] = np.nan
+        import xarray as xr
+        mask = xr.DataArray(self.mask==False, dims=["scan_line_index"])  # noqa
+        calibrated_ds = calibrated_ds.where(mask)
+
 
         # Apply KLM/POD specific postprocessing
-        self.postproc(channels)
+        self.postproc(calibrated_ds)
+
+        channels = calibrated_ds["channels"].data
+        with suppress(KeyError):
+            self.meta_data["calib_coeffs_version"] = calibrated_ds.attrs["calib_coeffs_version"]
+
 
         # Mask pixels affected by scan motor issue
         if self.is_tsm_affected():
             LOG.info("Correcting for temporary scan motor issue")
             self.mask_tsm_pixels(channels)
+
+
 
         return channels
 
@@ -677,7 +698,7 @@ class Reader(six.with_metaclass(ABCMeta)):
         return qual_flags
 
     @abstractmethod
-    def postproc(self, channels):  # pragma: no cover
+    def postproc(self, ds):  # pragma: no cover
         """Apply KLM/POD specific postprocessing."""
         raise NotImplementedError
 

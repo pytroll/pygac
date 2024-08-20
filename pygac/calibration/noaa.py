@@ -113,7 +113,7 @@ class CoeffStatus(Enum):
     EXPERIMENTAL = "experimental"
 
 
-class Calibrator(object):
+class Calibrator:
     """Factory class to create namedtuples holding the calibration coefficients.
 
     Attributes:
@@ -559,7 +559,7 @@ def calibrate_thermal(counts, prt, ict, space, line_numbers, channel, cal):
     # TsBB = A + B*TBB    (7.1.2.4-3)
     # NBB = c1*nu_e^3/(exp(c2*nu_e/TsBB) - 1)    (7.1.2.4-3)
     # where the constants of the Planck function are defined as c1 = 2*h*c^2, c2 = h*c/k_B.
-    # constatns
+    # constants
     c1 = 1.1910427e-5  # mW/m^2/sr/cm^{-4}
     c2 = 1.4387752  # cm K
     # coefficients

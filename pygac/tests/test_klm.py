@@ -28,6 +28,7 @@ from unittest import mock
 
 import numpy as np
 import numpy.testing
+import xarray as xr
 
 from pygac.gac_klm import GACKLMReader
 from pygac.klm_reader import header
@@ -99,7 +100,10 @@ class TestKLM:
                                 [1., 2., 3., np.nan]],
                                [[1., 2., np.nan, np.nan],
                                 [1., 2., np.nan, np.nan]]])
-        self.reader.postproc(channels)  # masks in-place
+        channels = xr.DataArray(channels, dims=["scan_line_index", "columns", "channel_name"],
+                                coords=dict(channel_name=["1", "2", "3a", "3b"] ))
+        ds = xr.Dataset(dict(channels=channels))
+        self.reader.postproc(ds)  # masks in-place
         numpy.testing.assert_array_equal(channels, masked_exp)
 
     def test_quality_indicators(self):

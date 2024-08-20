@@ -61,9 +61,9 @@ class FakeGACReader(GACReader):
     along_track = 3
     across_track = 409
 
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
         """Initialize the fake reader."""
-        super().__init__()
+        super().__init__(*args, **kwargs)
         self.scan_width = self.across_track
         scans = np.zeros(self.along_track, dtype=scanline)
         scans["scan_line_number"] = np.arange(self.along_track)
@@ -747,10 +747,11 @@ def pod_file_with_tbm_header(tmp_path):
                                    7966, 9288, 8073, 9253, 8181, 9216, 8291, 9177, 8403, 9135, 8518,
                                    9090, 8637, 9040, 8759, 8986, 8886, 8926, 9019, 8859, 9159, 8784,
                                    9307, 8697, 9466, 8596, 9637, 8476, 9824, 8327, 10033]
-    scanlines["telemetry"] = 0
+    scanlines["telemetry"] = 2047
     scanlines["sensor_data"] = 99
     scanlines["add_on_zenith"] = 0
     scanlines["clock_drift_delta"] = 0
+    scanlines["sensor_data"] = 2047
 
     pod_filename = tmp_path / "image.l1b"
     offset = 14800
@@ -789,3 +790,30 @@ def test_read_to_dataset(pod_file_with_tbm_header):
     assert dataset["prt_counts"].shape == (3,)
     assert dataset["ict_counts"].shape == (3, 3)
     assert dataset["space_counts"].shape == (3, 3)
+
+
+def test_passing_calibration_coeffs_to_reader_init_is_deprecated():
+    """Test that passing calibration-specific info to the reader's init is not allowed anymore."""
+    with pytest.warns(PendingDeprecationWarning):
+        FakeGACReader(calibration_method="noaa", custom_calibration=dict(a="1"))
+    with pytest.warns(PendingDeprecationWarning):
+        FakeGACReader(calibration_method="noaa", calibration_file="somefile")
+
+
+def test_passing_calibration_to_reader():
+    """Test passing calibration info to `get_calibrated_channels`."""
+    #reader = LACPODReader(interpolate_coords=False)
+    #ds = reader.read_as_dataset(pod_file_with_tbm_header)
+    #from pygac.calibration.noaa import calibrate
+
+    method = "InvalidMethod"
+    with pytest.raises(ValueError, match=method):
+        reader = FakeGACReader(calibration_method=method)
+
+    reader = FakeGACReader(calibration_method="noaa")
+
+    res = reader.get_calibrated_channels()
+
+    np.testing.assert_allclose(res[:, 1, 0], 8.84714652)
+    np.testing.assert_allclose(res[:, 2, 1], 10.23511303)
+    assert reader.meta_data["calib_coeffs_version"] == "PATMOS-x, v2023"

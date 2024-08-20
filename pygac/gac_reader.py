@@ -44,7 +44,7 @@ class GACReader(Reader):
 
     def __init__(self, *args, **kwargs):
         """Init the GAC reader."""
-        super(GACReader, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.scan_width = 409
         self.lonlat_interpolator = gtp.gac_lat_lon_interpolator
 

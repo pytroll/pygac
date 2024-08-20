@@ -43,6 +43,9 @@ dev = ['pytest', 'pre-commit', 'ruff']
 [project.scripts]
 pygac-convert-patmosx-coefficients = "pygac.patmosx_coeff_reader:main"
 
+[project.entry-points."pygac.calibration"]
+noaa = "pygac.calibration.noaa:calibrate"
+
 [build-system]
 requires = ["hatchling", "hatch-vcs"]
 build-backend = "hatchling.build"
