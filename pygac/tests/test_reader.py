@@ -29,6 +29,7 @@ from unittest import mock
 import numpy as np
 import numpy.testing
 import pytest
+import xarray as xr
 
 from pygac.gac_pod import scanline
 from pygac.gac_reader import GACReader, ReaderError
@@ -549,15 +550,20 @@ class TestGacReader(unittest.TestCase):
         """Test masking of pixels affected by the scan motor issue."""
         get_tsm_pixels.return_value = ([0, 1], [0, 1])
         channels = np.array([[[1., 2., 3.],
-                              [1., 2., 3.]],
-                             [[1., 2., 3.],
-                              [1., 2., 3.]]])  # (lines, pixels, channels)
+                              [4., 5., 6.]],
+                             [[7., 8., 9.],
+                              [10., 11., 12.]]])  # (lines, pixels, channels)
         masked_exp = np.array([[[np.nan, np.nan, np.nan],
-                                [1., 2., 3.]],
-                               [[1., 2., 3.],
+                                [4., 5., 6.]],
+                               [[7., 8., 9.],
                                 [np.nan, np.nan, np.nan]]])
-        self.reader.mask_tsm_pixels(channels)  # masks in-place
-        numpy.testing.assert_array_equal(channels, masked_exp)
+
+        channels = xr.DataArray(channels, dims=["scan_line_index", "columns", "channel_name"],
+                                coords=dict(channel_name=["1", "2", "3a"] ))
+        ds = xr.Dataset(dict(channels=channels))
+
+        self.reader.mask_tsm_pixels(ds)  # masks in-place
+        numpy.testing.assert_array_equal(ds["channels"].values, masked_exp)
 
     def test_correct_scan_line_numbers(self):
         """Test scanline number correction."""

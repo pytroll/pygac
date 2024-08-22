@@ -583,7 +583,18 @@ class Reader(six.with_metaclass(ABCMeta)):
 
     def get_calibrated_channels(self):
         """Calibrate and return the channels."""
+        calibrated_ds = self.get_calibrated_dataset()
+
+        channels = calibrated_ds["channels"].data
+        with suppress(KeyError):
+            self.meta_data["calib_coeffs_version"] = calibrated_ds.attrs["calib_coeffs_version"]
+
+        return channels
+
+    def get_calibrated_dataset(self):
+        """Create and calibrate the dataset for the pass."""
         ds = self.create_counts_dataset()
+        # calibration = {"1": "mitram", "2": "mitram", "4": {"method":"noaa", "coeff_file": "myfile.json"}}
 
         calibration_entrypoints = entry_points(group="pygac.calibration")
         calibration_function = calibration_entrypoints[self.calibration_method].load()
@@ -598,19 +609,11 @@ class Reader(six.with_metaclass(ABCMeta)):
         # Apply KLM/POD specific postprocessing
         self.postproc(calibrated_ds)
 
-        channels = calibrated_ds["channels"].data
-        with suppress(KeyError):
-            self.meta_data["calib_coeffs_version"] = calibrated_ds.attrs["calib_coeffs_version"]
-
-
         # Mask pixels affected by scan motor issue
         if self.is_tsm_affected():
             LOG.info("Correcting for temporary scan motor issue")
-            self.mask_tsm_pixels(channels)
-
-
-
-        return channels
+            self.mask_tsm_pixels(calibrated_ds)
+        return calibrated_ds
 
     @abstractmethod
     def get_telemetry(self):  # pragma: no cover
@@ -1186,10 +1189,11 @@ class Reader(six.with_metaclass(ABCMeta)):
         missing = sorted(ideal.difference(set(self.scans["scan_line_number"])))
         return np.array(missing, dtype=int)
 
-    def mask_tsm_pixels(self, channels):
+    def mask_tsm_pixels(self, ds):
         """Mask pixels affected by the scan motor issue."""
-        idx = self.get_tsm_pixels(channels)
-        channels[idx] = np.nan
+        idx = self.get_tsm_pixels(ds["channels"].values)
+        # This is because fancy/pixel indexing doesn't seem to work with xarray's `where` or `loc`
+        ds["channels"].data[idx] = np.nan
 
     @abstractmethod
     def get_tsm_pixels(self, channels):  # pragma: no cover
