@@ -740,19 +740,29 @@ def pod_file_with_tbm_header(tmp_path):
     scanlines["calibration_coefficients"] = [149722896, -23983736, 173651248, -27815402, -1803673, 6985664, -176321840,
                                              666680320, -196992576, 751880640]
     scanlines["number_of_meaningful_zenith_angles_and_earth_location_appended"] = 51
-    scanlines["solar_zenith_angles"] = [-24, -26, -28, -30, -32, -33, -34, -35, -37, -37, -38, -39, -40, -41, -41, -42,
-                                        -43, -43, -44, -45, -45, -46, -46, -47, -48, -48, -49, -49, -50, -50, -51, -52,
-                                        -52, -53, -53, -54, -55, -55, -56, -57, -58, -59, -60, -61, -62, -63, -64, -66,
-                                        -68, -70, -73]
-    scanlines["earth_location"] = [9929, -36, 9966, 747, 9983, 1415, 9988, 1991, 9984, 2492, 9975, 2931,
-                                   9963, 3320, 9948, 3667, 9931, 3979, 9913, 4262, 9895, 4519, 9875, 4755,
-                                   9856, 4972, 9836, 5174, 9816, 5362, 9796, 5538, 9775, 5703, 9755, 5860,
-                                   9734, 6009, 9713, 6150, 9692, 6286, 9671, 6416, 9650, 6542, 9628, 6663,
-                                   9606, 6781, 9583, 6896, 9560, 7009, 9537, 7119, 9513, 7227, 9488, 7334,
-                                   9463, 7440, 9437, 7545, 9409, 7650, 9381, 7755, 9351, 7860, 9320,
-                                   7966, 9288, 8073, 9253, 8181, 9216, 8291, 9177, 8403, 9135, 8518,
-                                   9090, 8637, 9040, 8759, 8986, 8886, 8926, 9019, 8859, 9159, 8784,
-                                   9307, 8697, 9466, 8596, 9637, 8476, 9824, 8327, 10033]
+
+    one_line_angles = np.array([-24, -26, -28, -30, -32, -33, -34, -35, -37, -37, -38, -39, -40, -41, -41, -42,
+                                -43, -43, -44, -45, -45, -46, -46, -47, -48, -48, -49, -49, -50, -50, -51, -52,
+                                -52, -53, -53, -54, -55, -55, -56, -57, -58, -59, -60, -61, -62, -63, -64, -66,
+                                -68, -70, -73])
+    scanlines["solar_zenith_angles"] = [one_line_angles, one_line_angles + 1, one_line_angles + 2]
+
+    one_line_lats = np.array([9929, 9966, 9983, 9988, 9984, 9975, 9963, 9948, 9931, 9913, 9895, 9875,
+                              9856, 9836, 9816, 9796, 9775, 9755, 9734, 9713, 9692, 9671, 9650, 9628,
+                              9606, 9583, 9560, 9537, 9513, 9488, 9463, 9437, 9409, 9381, 9351, 9320,
+                              9288, 9253, 9216, 9177, 9135, 9090, 9040, 8986, 8926, 8859, 8784, 8697,
+                              8596, 8476, 8327])
+
+    scanlines["earth_location"]["lats"] = [one_line_lats - 1, one_line_lats, one_line_lats + 1]
+
+    one_line_lons = np.array([-36, 747, 1415, 1991, 2492, 2931, 3320, 3667, 3979, 4262, 4519, 4755, 4972,
+                              5174, 5362, 5538, 5703, 5860, 6009, 6150, 6286, 6416, 6542, 6663, 6781,
+                              6896, 7009, 7119, 7227, 7334, 7440, 7545, 7650, 7755, 7860, 7966, 8073,
+                              8181, 8291, 8403, 8518, 8637, 8759, 8886, 9019, 9159, 9307, 9466, 9637,
+                              9824, 10033])
+
+    scanlines["earth_location"]["lons"] = [one_line_lons, one_line_lons + 1, one_line_lons + 2]
+
     scanlines["telemetry"] = 2047
     scanlines["sensor_data"] = 99
     scanlines["add_on_zenith"] = 0
@@ -771,6 +781,18 @@ def pod_file_with_tbm_header(tmp_path):
     return pod_filename
 
 
+@pytest.fixture()
+def pod_tle(tmp_path):
+    lines = ("1 23455U 94089A   00322.04713399  .00000318  00000-0  19705-3 0  5298\n"
+             "2 23455  99.1591 303.5706 0010037  25.7760 334.3905 14.12496755303183\n"
+             "1 23455U 94089A   00322.96799836  .00000229  00000-0  14918-3 0  5303\n"
+             "2 23455  99.1590 304.5117 0009979  23.1101 337.0518 14.12496633303313\n")
+    tle_filename = tmp_path / "noaa14.tle"
+    with tle_filename.open("w") as fd:
+        fd.write(lines)
+    return tle_filename
+
+
 def test_podlac_eosip(pod_file_with_tbm_header):
     """Test reading a real podlac file."""
     reader = LACPODReader(interpolate_coords=False)
@@ -778,12 +800,13 @@ def test_podlac_eosip(pod_file_with_tbm_header):
     assert reader.head.itemsize == header3.itemsize
     # this is broken in eosip pod data, tbm data set name has start and end times reversed.
     # assert reader.head["data_set_name"] == reader.tbm_head["data_set_name"]
+    # todo: test that duplicate lines are removed and recomputed
 
 
-def test_read_to_dataset(pod_file_with_tbm_header):
+def test_read_to_dataset_is_a_dataset_including_channels_and_telemetry(pod_file_with_tbm_header, pod_tle):
     """Test creating an xr.Dataset from a gac file."""
     import xarray as xr
-    reader = LACPODReader(interpolate_coords=False)
+    reader = LACPODReader(interpolate_coords=False, tle_dir=pod_tle.parent, tle_name=os.path.basename(pod_tle))
     dataset = reader.read_as_dataset(pod_file_with_tbm_header)
     assert isinstance(dataset, xr.Dataset)
     assert dataset["channels"].shape == (3, 2048, 5)
@@ -791,11 +814,27 @@ def test_read_to_dataset(pod_file_with_tbm_header):
     assert "times" in dataset.coords
     assert "scan_line_index" in dataset.coords
     assert "channel_name" in dataset.coords
-    assert dataset.coords["longitudes"].shape == (3, 2048)
-    assert dataset.coords["latitudes"].shape == (3, 2048)
     assert dataset["prt_counts"].shape == (3,)
     assert dataset["ict_counts"].shape == (3, 3)
     assert dataset["space_counts"].shape == (3, 3)
+
+
+def test_read_to_dataset_without_interpolation(pod_file_with_tbm_header, pod_tle):
+    """Test creating an xr.Dataset from a gac file."""
+    reader = LACPODReader(interpolate_coords=False, tle_dir=pod_tle.parent, tle_name=os.path.basename(pod_tle))
+    dataset = reader.read_as_dataset(pod_file_with_tbm_header)
+
+    assert dataset["longitude"].shape == (3, 51)
+    assert dataset["latitude"].shape == (3, 51)
+
+
+def test_read_to_dataset_with_interpolation(pod_file_with_tbm_header, pod_tle):
+    """Test creating an xr.Dataset from a gac file."""
+    reader = LACPODReader(interpolate_coords=True, tle_dir=pod_tle.parent, tle_name=os.path.basename(pod_tle))
+    dataset = reader.read_as_dataset(pod_file_with_tbm_header)
+
+    assert dataset.coords["longitude"].shape == (3, 2048)
+    assert dataset.coords["latitude"].shape == (3, 2048)
 
 
 def test_passing_calibration_coeffs_to_reader_init_is_deprecated():

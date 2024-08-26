@@ -438,10 +438,9 @@ class PODReader(Reader):
     def _compute_missing_lonlat(self, missed_utcs):
         """Compute lon lat values using pyorbital."""
         tic = datetime.datetime.now()
-
         scan_rate = datetime.timedelta(milliseconds=1/self.scan_freq).total_seconds()
         sgeom = avhrr_gac(missed_utcs.astype(datetime.datetime),
-                          self.scan_points, frequency=scan_rate)
+                          self.lonlat_sample_points, frequency=scan_rate)
         t0 = missed_utcs[0].astype(datetime.datetime)
         s_times = sgeom.times(t0)
         tle1, tle2 = self.get_tle_lines()
@@ -539,8 +538,8 @@ class PODReader(Reader):
         LOG.debug("clock drift adjustment took %s", str(toc - tic))
 
     def _get_lonlat(self):
-        lats = self.scans["earth_location"][:, 0::2] / 128.0
-        lons = self.scans["earth_location"][:, 1::2] / 128.0
+        lats = self.scans["earth_location"]["lats"] / 128.0
+        lons = self.scans["earth_location"]["lons"] / 128.0
         return lons, lats
 
     def get_telemetry(self):

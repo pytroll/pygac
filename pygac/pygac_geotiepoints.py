@@ -27,6 +27,9 @@
 import geotiepoints as gtp
 import numpy as np
 
+GAC_LONLAT_SAMPLE_POINTS = np.arange(4, 405, 8)
+LAC_LONLAT_SAMPLE_POINTS = np.arange(24, 2048, 40)
+
 
 def gac_lat_lon_interpolator(lons_subset, lats_subset):
     """Interpolate lat-lon values in the AVHRR GAC data.
@@ -36,16 +39,15 @@ def gac_lat_lon_interpolator(lons_subset, lats_subset):
     ranging from 5 to 405. Interpolate to full resolution.
 
     """
-    cols_subset = np.arange(4, 405, 8)
     cols_full = np.arange(409)
-    return lat_lon_interpolator(lons_subset, lats_subset, cols_subset, cols_full)
+    return lat_lon_interpolator(lons_subset, lats_subset, GAC_LONLAT_SAMPLE_POINTS, cols_full)
+
 
 
 def lac_lat_lon_interpolator(lons_subset, lats_subset):
     """Interpolate lat-lon values in the AVHRR LAC data."""
-    cols_subset = np.arange(24, 2048, 40)
     cols_full = np.arange(2048)
-    return lat_lon_interpolator(lons_subset, lats_subset, cols_subset, cols_full)
+    return lat_lon_interpolator(lons_subset, lats_subset, LAC_LONLAT_SAMPLE_POINTS, cols_full)
 
 
 def lat_lon_interpolator(lons_subset, lats_subset, cols_subset, cols_full):

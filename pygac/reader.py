@@ -541,41 +541,54 @@ class Reader(six.with_metaclass(ABCMeta)):
 
         scan_size = counts.shape[1]
 
-        if scan_size == 409:
-            sub_columns = np.arange(4, 405, 8)
-        else:
-            sub_columns = np.arange(24, 2048, 40)
-
         if counts.shape[-1] == 5:
             channel_names = ["1", "2", "3", "4", "5"]
             ir_channel_names = ["3", "4", "5"]
         else:
             channel_names = ["1", "2", "3a", "3b", "4", "5"]
             ir_channel_names = ["3b", "4", "5"]
+
+        columns = np.arange(scan_size)
+
         channels = xr.DataArray(counts, dims=["scan_line_index", "columns", "channel_name"],
-                                coords=dict(scan_line_index=line_numbers, channel_name=channel_names,
-                                            columns=np.arange(scan_size))
-                                )
-        channels = channels.assign_coords(times=("scan_line_index", times))
-        lons, lats = self._get_lonlat()
-        longitudes = xr.DataArray(lons, dims=["scan_line_index", "columns"],
-                                  coords=dict(scan_line_index=line_numbers,
-                                              columns=sub_columns))
-        latitudes = xr.DataArray(lats, dims=["scan_line_index", "columns"],
-                                 coords=dict(scan_line_index=line_numbers,
-                                             columns=sub_columns))
-        channels = channels.assign_coords(longitudes=(("scan_line_index", "columns"),
-                                                      longitudes.reindex_like(channels).data),
-                                          latitudes=(("scan_line_index", "columns"),
-                                                     latitudes.reindex_like(channels).data))
+                                coords=dict(scan_line_index=line_numbers,
+                                            channel_name=channel_names,
+                                            columns=columns,
+                                            times=("scan_line_index", times)))
 
         prt, ict, space = self.get_telemetry()
-        prt = xr.DataArray(prt, dims=["scan_line_index"])
-        ict = xr.DataArray(ict, dims=["scan_line_index", "ir_channel_name"],
-                           coords=dict(ir_channel_name=ir_channel_names))
-        space = xr.DataArray(space, dims=["scan_line_index", "ir_channel_name"])
-        ds = xr.Dataset(dict(channels=channels, prt_counts=prt, ict_counts=ict, space_counts=space), attrs=head)
 
+        prt = xr.DataArray(prt, dims=["scan_line_index"], coords=dict(scan_line_index=line_numbers))
+        ict = xr.DataArray(ict, dims=["scan_line_index", "ir_channel_name"],
+                           coords=dict(ir_channel_name=ir_channel_names, scan_line_index=line_numbers))
+        space = xr.DataArray(space, dims=["scan_line_index", "ir_channel_name"],
+                             coords=dict(ir_channel_name=ir_channel_names, scan_line_index=line_numbers))
+
+        lons, lats = self.get_lonlat()
+        lon_lat_columns = columns if self.interpolate_coords is True else self.lonlat_sample_points
+
+        if self.interpolate_coords:
+            longitudes = xr.DataArray(lons, dims=["scan_line_index", "columns"],
+                                      coords={"scan_line_index": line_numbers,
+                                              "columns": lon_lat_columns})
+            latitudes = xr.DataArray(lats, dims=["scan_line_index", "columns"],
+                                     coords={"scan_line_index": line_numbers,
+                                              "columns": lon_lat_columns})
+            channels = channels.assign_coords(longitude=(("scan_line_index", "columns"),
+                                                        longitudes.reindex_like(channels).data),
+                                            latitude=(("scan_line_index", "columns"),
+                                                        latitudes.reindex_like(channels).data))
+        else:
+            longitudes = xr.DataArray(lons, dims=["scan_line_index", "subsampled_columns"],
+                                      coords={"scan_line_index": line_numbers,
+                                              "subsampled_columns": lon_lat_columns})
+            latitudes = xr.DataArray(lats, dims=["scan_line_index", "subsampled_columns"],
+                                     coords={"scan_line_index": line_numbers,
+                                             "subsampled_columns": lon_lat_columns})
+
+        ds = xr.Dataset(dict(channels=channels, prt_counts=prt, ict_counts=ict, space_counts=space,
+                             longitude=longitudes, latitude=latitudes),
+                             attrs=head)
 
         ds.attrs["spacecraft_name"] = self.spacecraft_name
         self._update_meta_data_object(ds.attrs)
@@ -629,14 +642,14 @@ class Reader(six.with_metaclass(ABCMeta)):
             self.lons, self.lats = self._get_lonlat()
             self.update_meta_data()
 
+            # Adjust clock drift
+            if self.adjust_clock_drift:
+                self._adjust_clock_drift()
+
             # Interpolate from every eighth pixel to all pixels.
             if self.interpolate_coords:
                 self.lons, self.lats = self.lonlat_interpolator(
                     self.lons, self.lats)
-
-            # Adjust clock drift
-            if self.adjust_clock_drift:
-                self._adjust_clock_drift()
 
             # Mask out corrupt scanlines
             self.lons[self.mask] = np.nan

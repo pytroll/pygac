@@ -27,6 +27,7 @@
 import logging
 
 import pygac.pygac_geotiepoints as gtp
+from pygac.pygac_geotiepoints import LAC_LONLAT_SAMPLE_POINTS
 from pygac.reader import Reader, ReaderError
 
 LOG = logging.getLogger(__name__)
@@ -39,6 +40,7 @@ class LACReader(Reader):
     scan_freq = 6.0 / 1000.0
     # Max scanlines
     max_scanlines = 65535
+    lonlat_sample_points = LAC_LONLAT_SAMPLE_POINTS
 
     def __init__(self, *args, **kwargs):
         """Init the LAC reader."""

@@ -762,8 +762,8 @@ class KLMReader(Reader):
 
     def _get_lonlat(self):
         """Get the longitudes and latitudes."""
-        lats = self.scans["earth_location"][:, 0::2] / 1e4
-        lons = self.scans["earth_location"][:, 1::2] / 1e4
+        lats = self.scans["earth_location"]["lats"] / 1e4
+        lons = self.scans["earth_location"]["lons"] / 1e4
         return lons, lats
 
     def get_header_timestamp(self):

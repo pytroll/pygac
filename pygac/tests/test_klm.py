@@ -45,14 +45,13 @@ class TestKLM:
 
     def test_get_lonlat(self):
         """Test readout of lon/lat coordinates."""
-        earth_loc = 1e4 * np.array([[1, 2, 3, 4],
-                                    [5, 6, 7, 8]])
-        self.reader.scans = {"earth_location": earth_loc}
-
         lons_exp = np.array([[2, 4],
                              [6, 8]])
         lats_exp = np.array([[1, 3],
                              [5, 7]])
+
+        self.reader.scans = {"earth_location": {"lats": lats_exp * 1e4,
+                                                "lons": lons_exp * 1e4}}
 
         lons, lats = self.reader._get_lonlat()
         numpy.testing.assert_array_equal(lons, lons_exp)
