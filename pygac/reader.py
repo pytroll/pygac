@@ -30,13 +30,12 @@ import os
 import re
 import types
 import warnings
-from abc import ABCMeta, abstractmethod
+from abc import ABC, abstractmethod
 from contextlib import suppress
 from importlib.metadata import entry_points
 
 import numpy as np
 import pyorbital
-import six
 from packaging.version import Version
 from pyorbital import astronomy
 from pyorbital.orbital import Orbital
@@ -89,7 +88,7 @@ class DecodingError(ValueError):
     """Raised when decoding of some value fails."""
 
 
-class Reader(six.with_metaclass(ABCMeta)):
+class Reader(ABC):
     """Reader for GAC and LAC format, POD and KLM platforms."""
 
     # data set header format, see _validate_header for more details
