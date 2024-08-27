@@ -38,6 +38,7 @@ Format specification can be found in chapters 2 & 3 of the `POD user guide`_.
 
 import datetime
 import logging
+
 try:
     from enum import IntFlag
 except ImportError:
@@ -45,13 +46,12 @@ except ImportError:
     IntFlag = object
 
 import numpy as np
-
-from pyorbital.geoloc_instrument_definitions import avhrr_gac
 from pyorbital.geoloc import compute_pixels, get_lonlatalt
+from pyorbital.geoloc_instrument_definitions import avhrr_gac
 
 from pygac.clock_offsets_converter import get_offsets
 from pygac.correct_tsm_issue import TSM_AFFECTED_INTERVALS_POD, get_tsm_idx
-from pygac.reader import Reader, ReaderError, NoTLEData
+from pygac.reader import NoTLEData, Reader, ReaderError
 from pygac.slerp import slerp
 from pygac.utils import file_opener
 
@@ -321,9 +321,14 @@ class PODReader(Reader):
             _tbm_head, = np.frombuffer(
                 fd_.read(tbm_header.itemsize),
                 dtype=tbm_header, count=1)
-            try:
-                data_set_name = _tbm_head['data_set_name'].decode()
-            except UnicodeDecodeError:
+            for encoding in ("utf-8", "cp500"):
+                try:
+                    data_set_name = _tbm_head['data_set_name'].decode(encoding)
+                except ValueError:
+                    continue
+                else:
+                    break
+            else:
                 data_set_name = '---'
             allowed_empty = (42*b'\x00' + b'  ')
             if (cls.data_set_pattern.match(data_set_name)
