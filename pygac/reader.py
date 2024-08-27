@@ -921,7 +921,7 @@ class Reader(six.with_metaclass(ABCMeta)):
 
         jday = np.where(np.logical_or(jday < 1, jday > 366),
                         np.median(jday), jday)
-        if_wrong_jday = np.ediff1d(jday, to_begin=0)
+        if_wrong_jday = np.ediff1d(jday, to_begin=jday.dtype.type(0))
         jday = np.where(if_wrong_jday < 0, max(jday), jday)
 
         if_wrong_msec = np.where(msec < 1)
