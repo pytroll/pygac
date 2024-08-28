@@ -31,6 +31,8 @@ import logging
 import pygac.pygac_geotiepoints as gtp
 from pygac.pygac_geotiepoints import GAC_LONLAT_SAMPLE_POINTS
 from pygac.reader import Reader, ReaderError
+import pygac.pygac_geotiepoints as gtp
+
 
 LOG = logging.getLogger(__name__)
 

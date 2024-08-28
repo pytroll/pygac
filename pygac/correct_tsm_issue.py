@@ -23,10 +23,9 @@
 an orbit contain corrupt data. This module identifies affected pixels and flags
 them with fill values."""
 
-import datetime
-
-import bottleneck as bn
 import numpy as np
+import bottleneck as bn
+import datetime
 
 TSM_AFFECTED_INTERVALS_POD = {
     3: [(datetime.datetime(2001, 10, 19, 4, 50), datetime.datetime(2001, 10, 19, 13, 38)),

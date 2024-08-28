@@ -22,6 +22,7 @@
 import gzip
 import io
 import logging
+
 from contextlib import contextmanager, nullcontext
 
 import numpy as np
@@ -198,9 +199,9 @@ def _slice(ch, start_line, end_line, update=None):
         ch_slc = ch[start_line:end_line + 1, :].copy()
 
     if update:
-        updated = [_update_scanline(line, start_line, end_line)
-                   if line is not None else None
-                   for line in update]
+        updated = [_update_scanline(l, start_line, end_line)
+                   if l is not None else None
+                   for l in update]
         return ch_slc, updated
 
     return ch_slc

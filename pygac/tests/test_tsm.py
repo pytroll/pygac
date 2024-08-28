@@ -21,11 +21,10 @@
 """Test TSM module."""
 
 import unittest
+import pygac.correct_tsm_issue as tsm
 
 import numpy as np
 import numpy.testing
-
-import pygac.correct_tsm_issue as tsm
 
 
 class TSMTest(unittest.TestCase):

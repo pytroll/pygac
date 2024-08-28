@@ -28,8 +28,8 @@ import logging
 
 import numpy as np
 
-from pygac.lac_reader import LACReader
 from pygac.pod_reader import PODReader, main_pod
+from pygac.lac_reader import LACReader
 
 LOG = logging.getLogger(__name__)
 
