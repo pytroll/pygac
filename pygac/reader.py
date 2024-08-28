@@ -211,16 +211,10 @@ class Reader(ABC):
             filename (str): path to file
         """
         filename = str(filename)
-        for encoding in "utf-8", "cp500":
-            data_set_name = header["data_set_name"]
-            try:
-                data_set_name = cls._decode_data_set_name(data_set_name, encoding)
-            except DecodingError as err:
-                LOG.debug(str(err))
-            else:
-                header["data_set_name"] = data_set_name
-                break
-        else:
+        data_set_name = header["data_set_name"]
+        try:
+            header["data_set_name"] = cls._decode_data_set_name(data_set_name)
+        except DecodingError:
             LOG.debug(f'The data_set_name in header {header["data_set_name"]} does not match.'
                       ' Use filename instead.')
             match = cls.data_set_pattern.search(filename)
@@ -234,7 +228,19 @@ class Reader(ABC):
         return header
 
     @classmethod
-    def _decode_data_set_name(cls, data_set_name, encoding):
+    def _decode_data_set_name(cls, data_set_name):
+        for encoding in "utf-8", "cp500":
+            try:
+                data_set_name = cls._decode_data_set_name_for_encoding(data_set_name, encoding)
+            except DecodingError as err:
+                LOG.debug(str(err))
+            else:
+                return data_set_name
+        else:
+            raise DecodingError("Could not reliably decode the dataset name.")
+
+    @classmethod
+    def _decode_data_set_name_for_encoding(cls, data_set_name, encoding):
         data_set_name = data_set_name.decode(encoding, errors="ignore")
         if not cls.data_set_pattern.match(data_set_name):
             raise DecodingError(f"The data_set_name in header {data_set_name} "

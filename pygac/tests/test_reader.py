@@ -683,7 +683,7 @@ def pod_file_with_tbm_header(tmp_path):
     number_of_scans = 3
 
     tbm_header = np.zeros(1, dtype=tbm_header_dtype)
-    tbm_header["data_set_name"] = b"BRN.HRPT.NJ.D00322.S0334.E0319.B3031919.BL  "
+    tbm_header["data_set_name"] = "BRN.HRPT.NJ.D00322.S0334.E0319.B3031919.BL\x80\x80".encode("cp500")
     tbm_header["select_flag"] = b"S"
     tbm_header["beginning_latitude"] = b"+77"
     tbm_header["ending_latitude"] = b"+22"
