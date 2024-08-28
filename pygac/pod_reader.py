@@ -38,6 +38,7 @@ Format specification can be found in chapters 2 & 3 of the `POD user guide`_.
 
 import datetime
 import logging
+
 try:
     from enum import IntFlag
 except ImportError:
@@ -45,13 +46,12 @@ except ImportError:
     IntFlag = object
 
 import numpy as np
-
-from pyorbital.geoloc_instrument_definitions import avhrr_gac
 from pyorbital.geoloc import compute_pixels, get_lonlatalt
+from pyorbital.geoloc_instrument_definitions import avhrr_gac
 
 from pygac.clock_offsets_converter import get_offsets
 from pygac.correct_tsm_issue import TSM_AFFECTED_INTERVALS_POD, get_tsm_idx
-from pygac.reader import Reader, ReaderError, NoTLEData
+from pygac.reader import DecodingError, NoTLEData, Reader, ReaderError
 from pygac.slerp import slerp
 from pygac.utils import file_opener
 
@@ -322,18 +322,13 @@ class PODReader(Reader):
                 fd_.read(tbm_header.itemsize),
                 dtype=tbm_header, count=1)
             try:
-                data_set_name = _tbm_head['data_set_name'].decode()
-            except UnicodeDecodeError:
-                data_set_name = '---'
-            allowed_empty = (42*b'\x00' + b'  ')
-            if (cls.data_set_pattern.match(data_set_name)
-                    or (_tbm_head['data_set_name'] == allowed_empty)):
-                tbm_head = _tbm_head.copy()
+                tbm_head = cls._validate_tbm_header(_tbm_head)
                 tbm_offset = tbm_header.itemsize
-            else:
-                fd_.seek(0)
+            except DecodingError:
                 tbm_head = None
                 tbm_offset = 0
+
+            fd_.seek(tbm_offset, 0)
             header = cls.choose_header_based_on_timestamp(header_date, fd_)
             fd_.seek(tbm_offset, 0)
             # need to copy frombuffer to have write access on head
@@ -343,6 +338,18 @@ class PODReader(Reader):
         head = cls._correct_data_set_name(head, filename)
         cls._validate_header(head)
         return tbm_head, head
+
+    @classmethod
+    def _validate_tbm_header(cls, potential_tbm_header):
+        data_set_name = potential_tbm_header['data_set_name']
+        allowed_empty = (42*b'\x00' + b'  ')
+        if data_set_name == allowed_empty:
+            return potential_tbm_header.copy()
+
+        # This will raise a DecodingError if the data_set_name is not valid.
+        cls._decode_data_set_name(data_set_name)
+        return potential_tbm_header.copy()
+
 
     @classmethod
     def choose_header_based_on_timestamp(cls, header_date, fd_):

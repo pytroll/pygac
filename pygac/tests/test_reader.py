@@ -24,20 +24,20 @@ import datetime
 import os
 import sys
 import unittest
-import pytest
-
 from unittest import mock
+
 import numpy as np
 import numpy.testing
-from pygac.gac_reader import GACReader, ReaderError
-from pygac.lac_reader import LACReader
-from pygac.pod_reader import POD_QualityIndicator
-from pygac.gac_pod import scanline
-from pygac.reader import NoTLEData
-from pygac.lac_pod import LACPODReader
+import pytest
 
-from pygac.pod_reader import tbm_header as tbm_header_dtype, header3
+from pygac.gac_pod import scanline
+from pygac.gac_reader import GACReader, ReaderError
+from pygac.lac_pod import LACPODReader
 from pygac.lac_pod import scanline as lacpod_scanline
+from pygac.lac_reader import LACReader
+from pygac.pod_reader import POD_QualityIndicator, header3
+from pygac.pod_reader import tbm_header as tbm_header_dtype
+from pygac.reader import NoTLEData
 
 
 class TestPath(os.PathLike):
@@ -688,7 +688,7 @@ def pod_file_with_tbm_header(tmp_path):
     number_of_scans = 3
 
     tbm_header = np.zeros(1, dtype=tbm_header_dtype)
-    tbm_header["data_set_name"] = b"BRN.HRPT.NJ.D00322.S0334.E0319.B3031919.BL  "
+    tbm_header["data_set_name"] = "BRN.HRPT.NJ.D00322.S0334.E0319.B3031919.BL\x80\x80".encode("cp500")
     tbm_header["select_flag"] = b"S"
     tbm_header["beginning_latitude"] = b"+77"
     tbm_header["ending_latitude"] = b"+22"
