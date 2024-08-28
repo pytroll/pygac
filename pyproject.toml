@@ -14,7 +14,7 @@ dependencies = [
     "python-geotiepoints>=1.1.8",
     "scipy>=0.8.0",
     "packaging",
-    "xarray"
+    "xarray>=2024.1.0"
 ]
 readme = "README.md"
 requires-python = ">=3.8"
