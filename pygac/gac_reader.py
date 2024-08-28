@@ -58,9 +58,9 @@ class GACReader(Reader):
         # call super to enter the Method Resolution Order (MRO)
         super(GACReader, cls)._validate_header(header)
         LOG.debug("validate header")
-        data_set_name = header["data_set_name"].decode()
+        data_set_name = header['data_set_name'].decode()
         # split header into parts
         creation_site, transfer_mode, platform_id = (
-            data_set_name.split(".")[:3])
-        if transfer_mode != "GHRR":
+            data_set_name.split('.')[:3])
+        if transfer_mode != 'GHRR':
             raise ReaderError('Improper transfer mode "%s"!' % transfer_mode)

@@ -409,7 +409,7 @@ def std_filter(data, box_size):
     # need to surround the data with NaNs to calculate values at the boundary
     padded_data = np.pad(
         data, (border, border),
-        mode="constant",
+        mode='constant',
         constant_values=np.nan
     )
     windows = _rolling_window(padded_data, size)

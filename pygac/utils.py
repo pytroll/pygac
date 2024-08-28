@@ -33,7 +33,7 @@ LOG = logging.getLogger(__name__)
 def gzip_inspected(open_file):
     """Try to gzip decompress the file object if applicable."""
     try:
-        file_object = gzip.GzipFile(mode="rb", fileobj=open_file)
+        file_object = gzip.GzipFile(mode='rb', fileobj=open_file)
         file_object.read(1)
     except OSError:
         file_object = open_file
@@ -47,13 +47,13 @@ def file_opener(file):
     if isinstance(file, io.IOBase) and file.seekable():
         # avoid closing the file using nullcontext
         open_file = nullcontext(file)
-    elif hasattr(file, "open"):
+    elif hasattr(file, 'open'):
         try:
-            open_file = file.open(mode="rb")
+            open_file = file.open(mode='rb')
         except TypeError:
             open_file = file.open()
     else:
-        open_file = open(file, mode="rb")
+        open_file = open(file, mode='rb')
     # set open_file into context in case of lazy loading in __enter__ method.
     with open_file as file_object:
         yield gzip_inspected(file_object)
@@ -108,7 +108,7 @@ def check_user_scanlines(start_line, end_line, first_valid_lat=None,
         num_valid_lines = last_valid_lat - first_valid_lat + 1
     else:
         if along_track is None:
-            raise ValueError("Need along_track")
+            raise ValueError('Need along_track')
         num_valid_lines = along_track
 
     start_line = int(start_line)
@@ -119,10 +119,10 @@ def check_user_scanlines(start_line, end_line, first_valid_lat=None,
         end_line = num_valid_lines - 1
     elif end_line >= num_valid_lines:
         end_line = num_valid_lines - 1
-        LOG.warning("Given end line exceeds scanline range, resetting "
-                    "to {}".format(end_line))
+        LOG.warning('Given end line exceeds scanline range, resetting '
+                    'to {}'.format(end_line))
     if start_line > num_valid_lines:
-        raise ValueError("Given start line {} exceeds scanline range {}"
+        raise ValueError('Given start line {} exceeds scanline range {}'
                          .format(start_line, num_valid_lines))
     return start_line, end_line
 
@@ -239,13 +239,13 @@ def plot_correct_times_thresh(res, filename=None):
     """Visualize results of GACReader.correct_times_thresh."""
     import matplotlib.pyplot as plt
 
-    t = res["t"]
-    tcorr = res.get("tcorr")
-    n = res["n"]
-    offsets = res.get("offsets")
-    t0_head = res.get("t0_head")
-    max_diff_from_t0_head = res.get("max_diff_from_t0_head")
-    fail_reason = res.get("fail_reason", "Failed for unknown reason")
+    t = res['t']
+    tcorr = res.get('tcorr')
+    n = res['n']
+    offsets = res.get('offsets')
+    t0_head = res.get('t0_head')
+    max_diff_from_t0_head = res.get('max_diff_from_t0_head')
+    fail_reason = res.get('fail_reason', 'Failed for unknown reason')
 
     # Setup figure
     along_track = np.arange(t.size)
@@ -295,13 +295,13 @@ def plot_correct_scanline_numbers(res, filename=None):
     """Visualize results of GACReader.correct_scanline_numbers."""
     import matplotlib.pyplot as plt
 
-    along_track = res["along_track"]
-    n_orig = res["n_orig"]
-    n_corr = res["n_corr"]
-    within_range = res["within_range"]
-    thresh = res["thresh"]
-    diffs = res["diffs"]
-    nz_diffs = res["nz_diffs"]
+    along_track = res['along_track']
+    n_orig = res['n_orig']
+    n_corr = res['n_corr']
+    within_range = res['within_range']
+    thresh = res['thresh']
+    diffs = res['diffs']
+    nz_diffs = res['nz_diffs']
 
     # Setup figure
     _, (ax0, ax1) = plt.subplots(nrows=2)
@@ -327,6 +327,6 @@ def plot_correct_scanline_numbers(res, filename=None):
     plt.tight_layout()
 
     if filename:
-        plt.savefig(filename, bbox_inches="tight")
+        plt.savefig(filename, bbox_inches='tight')
     else:
         plt.show()

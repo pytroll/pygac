@@ -579,60 +579,60 @@ analog_telemetry_v5 = np.dtype([("patch_temperature_conversion_coefficient_1", "
                                 ("zero_fill9", ">i2")])
 
 
-ars_header = np.dtype([("COST_number", "S6"),
-                       ("SAA_number", "S8"),
-                       ("order_creation_year", "S4"),
-                       ("order_creation_day_of_year", "S3"),
-                       ("processing_site_code", "S1"),
-                       ("processing_software", "S8"),
+ars_header = np.dtype([('COST_number', 'S6'),
+                       ('SAA_number', 'S8'),
+                       ('order_creation_year', 'S4'),
+                       ('order_creation_day_of_year', 'S3'),
+                       ('processing_site_code', 'S1'),
+                       ('processing_software', 'S8'),
                        # data selection criteria
-                       ("data_set_name", "S42"),
-                       ("ascii_blank_", "S2"),
-                       ("select_flag", "S1"),
-                       ("beginning_latitude", "S3"),
-                       ("ending_latitude", "S3"),
-                       ("beginning_longitude", "S4"),
-                       ("ending_longitude", "S4"),
-                       ("start_hour", "S2"),
-                       ("start_minute", "S2"),
-                       ("number_of_minutes", "S3"),
-                       ("appended_data_flag", "S1"),
-                       ("channel_select_flag", "S1", (20, )),
+                       ('data_set_name', 'S42'),
+                       ('ascii_blank_', 'S2'),
+                       ('select_flag', 'S1'),
+                       ('beginning_latitude', 'S3'),
+                       ('ending_latitude', 'S3'),
+                       ('beginning_longitude', 'S4'),
+                       ('ending_longitude', 'S4'),
+                       ('start_hour', 'S2'),
+                       ('start_minute', 'S2'),
+                       ('number_of_minutes', 'S3'),
+                       ('appended_data_flag', 'S1'),
+                       ('channel_select_flag', 'S1', (20, )),
                        # dataset summary
-                       ("ascii_blank__", "S29"),
-                       ("ascend_descend_flag", "S1"),
-                       ("first_latitude", "S3"),
-                       ("last_latitude", "S3"),
-                       ("first_longitude", "S4"),
-                       ("last_longitude", "S4"),
-                       ("data_format", "S20"),
-                       ("size_of_record", "S6"),
-                       ("number_of_records", "S6"),
+                       ('ascii_blank__', 'S29'),
+                       ('ascend_descend_flag', 'S1'),
+                       ('first_latitude', 'S3'),
+                       ('last_latitude', 'S3'),
+                       ('first_longitude', 'S4'),
+                       ('last_longitude', 'S4'),
+                       ('data_format', 'S20'),
+                       ('size_of_record', 'S6'),
+                       ('number_of_records', 'S6'),
                        # filler
-                       ("ascii_blank", "S319")
+                       ('ascii_blank', 'S319')
                        ])
 
 
 class KLMReader(Reader):
     """Reader for KLM data."""
 
-    spacecraft_names = {4: "noaa15",
-                        2: "noaa16",
-                        6: "noaa17",
-                        7: "noaa18",
-                        8: "noaa19",
-                        12: "metopa",
-                        11: "metopb",
-                        13: "metopc",
+    spacecraft_names = {4: 'noaa15',
+                        2: 'noaa16',
+                        6: 'noaa17',
+                        7: 'noaa18',
+                        8: 'noaa19',
+                        12: 'metopa',
+                        11: 'metopb',
+                        13: 'metopc',
                         }
-    spacecrafts_orbital = {4: "noaa 15",
-                           2: "noaa 16",
-                           6: "noaa 17",
-                           7: "noaa 18",
-                           8: "noaa 19",
-                           12: "metop 02",
-                           11: "metop 01",
-                           13: "metop 03",
+    spacecrafts_orbital = {4: 'noaa 15',
+                           2: 'noaa 16',
+                           6: 'noaa 17',
+                           7: 'noaa 18',
+                           8: 'noaa 19',
+                           12: 'metop 02',
+                           11: 'metop 01',
+                           13: 'metop 03',
                            }
 
     tsm_affected_intervals = TSM_AFFECTED_INTERVALS_KLM
@@ -659,7 +659,7 @@ class KLMReader(Reader):
         # file objects to (io.FileIO, io.BufferedReader, io.BufferedWriter)
         # see: numpy.compat.py3k.isfileobj
         self.filename = filename
-        LOG.info("Reading %s", self.filename)
+        LOG.info('Reading %s', self.filename)
         with file_opener(fileobj or filename) as fd_:
             self.ars_head, self.head = self.read_header(
                 filename, fileobj=fd_)
@@ -678,7 +678,7 @@ class KLMReader(Reader):
                     fd_.read(analog_telemetry_v2.itemsize),
                     dtype=analog_telemetry_v2, count=1)
             # LAC: 1, GAC: 2, ...
-            self.data_type = self.head["data_type_code"]
+            self.data_type = self.head['data_type_code']
             # read until end of file
             fd_.seek(self.offset + ars_offset, 0)
             buffer = fd_.read()
@@ -705,7 +705,7 @@ class KLMReader(Reader):
             _ars_head, = np.frombuffer(
                 fd_.read(ars_header.itemsize),
                 dtype=ars_header, count=1)
-            if _ars_head["data_format"].startswith(b"NOAA Level 1b"):
+            if _ars_head['data_format'].startswith(b'NOAA Level 1b'):
                 ars_head = _ars_head.copy()
             else:
                 fd_.seek(0)
@@ -724,11 +724,11 @@ class KLMReader(Reader):
         # call super to enter the Method Resolution Order (MRO)
         super(KLMReader, cls)._validate_header(header)
         LOG.debug("validate header")
-        data_set_name = header["data_set_name"].decode()
+        data_set_name = header['data_set_name'].decode()
         # split header into parts
         creation_site, transfer_mode, platform_id = (
-            data_set_name.split(".")[:3])
-        allowed_ids = ["NK", "NL", "NM", "NN", "NP", "M1", "M2", "M3"]
+            data_set_name.split('.')[:3])
+        allowed_ids = ['NK', 'NL', 'NM', 'NN', 'NP', 'M1', 'M2', 'M3']
         if platform_id not in allowed_ids:
             raise ReaderError('Improper platform id "%s"!' % platform_id)
 
@@ -741,7 +741,7 @@ class KLMReader(Reader):
             space_counts: np.array
 
         """
-        prt_counts = np.mean(self.scans["telemetry"]["PRT"], axis=1)
+        prt_counts = np.mean(self.scans["telemetry"]['PRT'], axis=1)
 
         # getting ICT counts
 
@@ -775,14 +775,14 @@ class KLMReader(Reader):
             A ValueError if the timestamp is corrupt.
 
         """
-        year = self.head["start_of_data_set_year"]
-        jday = self.head["start_of_data_set_day_of_year"]
-        msec = self.head["start_of_data_set_utc_time_of_day"]
+        year = self.head['start_of_data_set_year']
+        jday = self.head['start_of_data_set_day_of_year']
+        msec = self.head['start_of_data_set_utc_time_of_day']
         try:
             return self.to_datetime(self.to_datetime64(year=year, jday=jday,
                                                        msec=msec))
         except ValueError as err:
-            raise ValueError("Corrupt header timestamp: {0}".format(err))
+            raise ValueError('Corrupt header timestamp: {0}'.format(err))
 
     def _get_times(self):
         """Get the times of the scanlines."""
