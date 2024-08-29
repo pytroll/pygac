@@ -680,12 +680,6 @@ class Reader(ABC):
 
         return self.lons, self.lats
 
-    def navigate(self, ds):
-        """Navigate the data."""
-        navigation_entrypoints = entry_points(group="pygac.navigation")
-        navigation_function = navigation_entrypoints[self.navigation_method].load()
-        return navigation_function(ds, **self.calibration_parameters)
-
     @abstractmethod
     def _get_lonlat_from_file(self):  # pragma: no cover
         """KLM/POD specific readout of lat/lon coordinates."""
