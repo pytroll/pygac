@@ -563,14 +563,25 @@ class Reader(ABC):
                                             columns=columns,
                                             times=("scan_line_index", times)))
 
-        prt, ict, space = self.get_telemetry()
+        prt, ict, space = self._get_telemetry_dataarrays(line_numbers, ir_channel_names)
 
-        prt = xr.DataArray(prt, dims=["scan_line_index"], coords=dict(scan_line_index=line_numbers))
-        ict = xr.DataArray(ict, dims=["scan_line_index", "ir_channel_name"],
-                           coords=dict(ir_channel_name=ir_channel_names, scan_line_index=line_numbers))
-        space = xr.DataArray(space, dims=["scan_line_index", "ir_channel_name"],
-                             coords=dict(ir_channel_name=ir_channel_names, scan_line_index=line_numbers))
+        longitudes, latitudes = self._get_lonlat_dataarrays(line_numbers, columns)
 
+        if self.interpolate_coords:
+            channels = channels.assign_coords(longitude=(("scan_line_index", "columns"),
+                                                        longitudes.reindex_like(channels).data),
+                                            latitude=(("scan_line_index", "columns"),
+                                                        latitudes.reindex_like(channels).data))
+
+        ds = xr.Dataset(dict(channels=channels, prt_counts=prt, ict_counts=ict, space_counts=space,
+                             longitude=longitudes, latitude=latitudes),
+                             attrs=head)
+
+        ds.attrs["spacecraft_name"] = self.spacecraft_name
+        self._update_meta_data_object(ds.attrs)
+        return ds
+
+    def _get_lonlat_dataarrays(self, line_numbers, columns):
         lons, lats = self.get_lonlat()
         lon_lat_columns = columns if self.interpolate_coords is True else self.lonlat_sample_points
 
@@ -581,10 +592,7 @@ class Reader(ABC):
             latitudes = xr.DataArray(lats, dims=["scan_line_index", "columns"],
                                      coords={"scan_line_index": line_numbers,
                                               "columns": lon_lat_columns})
-            channels = channels.assign_coords(longitude=(("scan_line_index", "columns"),
-                                                        longitudes.reindex_like(channels).data),
-                                            latitude=(("scan_line_index", "columns"),
-                                                        latitudes.reindex_like(channels).data))
+
         else:
             longitudes = xr.DataArray(lons, dims=["scan_line_index", "subsampled_columns"],
                                       coords={"scan_line_index": line_numbers,
@@ -593,13 +601,18 @@ class Reader(ABC):
                                      coords={"scan_line_index": line_numbers,
                                              "subsampled_columns": lon_lat_columns})
 
-        ds = xr.Dataset(dict(channels=channels, prt_counts=prt, ict_counts=ict, space_counts=space,
-                             longitude=longitudes, latitude=latitudes),
-                             attrs=head)
+        return longitudes,latitudes
 
-        ds.attrs["spacecraft_name"] = self.spacecraft_name
-        self._update_meta_data_object(ds.attrs)
-        return ds
+    def _get_telemetry_dataarrays(self, line_numbers, ir_channel_names):
+        prt, ict, space = self.get_telemetry()
+
+        prt = xr.DataArray(prt, dims=["scan_line_index"], coords=dict(scan_line_index=line_numbers))
+        ict = xr.DataArray(ict, dims=["scan_line_index", "ir_channel_name"],
+                           coords=dict(ir_channel_name=ir_channel_names, scan_line_index=line_numbers))
+        space = xr.DataArray(space, dims=["scan_line_index", "ir_channel_name"],
+                             coords=dict(ir_channel_name=ir_channel_names, scan_line_index=line_numbers))
+
+        return prt,ict,space
 
     def get_calibrated_channels(self):
         """Calibrate and return the channels."""
