@@ -74,7 +74,7 @@ class FakeGACReader(GACReader):
         self.head = np.rec.fromrecords([("bar", ),],names='foo')
         self.spacecraft_name = 'noaa6'
 
-    def _get_times(self):
+    def _get_times_from_file(self):
         year = np.full(self.along_track, 1970, dtype=int)
         jday = np.full(self.along_track, 1, dtype=int)
         msec = 1000 * np.arange(1, self.along_track+1, dtype=int)
@@ -94,7 +94,7 @@ class FakeGACReader(GACReader):
     def _adjust_clock_drift(self):
         pass
 
-    def _get_lonlat(self):
+    def _get_lonlat_from_file(self):
         return np.zeros((self.along_track, 51)), np.zeros((self.along_track, 51))
 
     @staticmethod
@@ -373,7 +373,7 @@ class TestGacReader(unittest.TestCase):
         scanline2 = None
 
         for utcs, scan_line in zip((utcs1, utcs2), (scanline1, scanline2)):
-            self.reader.utcs = utcs
+            self.reader._utcs = utcs
             self.assertEqual(self.reader.get_midnight_scanline(), scan_line,
                              msg='Incorrect midnight scanline')
 
@@ -422,7 +422,7 @@ class TestGacReader(unittest.TestCase):
 
         read_tle_file.return_value = tle_data
         for time, tle_idx in expected.items():
-            self.reader.utcs = np.array([time], dtype='datetime64[ms]')
+            self.reader._utcs = np.array([time], dtype='datetime64[ms]')
             self.reader.tle_lines = None
             if tle_idx is None:
                 self.assertRaises(NoTLEData, self.reader.get_tle_lines)
@@ -438,7 +438,7 @@ class TestGacReader(unittest.TestCase):
         rng = np.random.RandomState(125)
         self.reader.lons = rng.rand(100, 409) * 90
         self.reader.lats = rng.rand(100, 409) * 90
-        self.reader.utcs = np.array(
+        self.reader._utcs = np.array(
             [numpy.datetime64(datetime.datetime(1980, 1, 3, 11, 47, 15, 469000)) for date in range(100)])
         sat_azi, sat_elev = self.reader.get_sat_angles()
         self.assertEqual(np.sum(np.isnan(sat_elev)), 0)
@@ -481,7 +481,7 @@ class TestGacReader(unittest.TestCase):
                                      [71.7390608, 71.78108857, 70.01126173, 69.99449392, 69.97770882,
                                       69.9609375, 69.9442054, 69.92751555, 69.91086544, 61.67769951,
                                       61.52802445]])
-        self.reader.utcs = np.array([numpy.datetime64(datetime.datetime(1980, 1, 3, 11, 47, 15, 469000)),
+        self.reader._utcs = np.array([numpy.datetime64(datetime.datetime(1980, 1, 3, 11, 47, 15, 469000)),
                                      numpy.datetime64(datetime.datetime(1980, 1, 3, 11, 47, 15, 969000)),
                                      numpy.datetime64(datetime.datetime(1980, 1, 3, 11, 47, 16, 469000)),
                                      numpy.datetime64(datetime.datetime(1980, 1, 3, 11, 47, 16, 969000)),
@@ -512,7 +512,7 @@ class TestGacReader(unittest.TestCase):
         self.reader.tle_lines = [
             '1 11060U 78096A   80003.54792075  .00000937  00000-0  52481-3 0  2588\r\n',  # noqa
             '2 11060  98.9783 332.1605 0012789  88.8047 271.4583 14.11682873 63073\r\n']  # noqa
-        self.reader.utcs = np.array(
+        self.reader._utcs = np.array(
             [315748035469, 315748359969,
              315751135469, 315754371969,
              315754371969]).astype('datetime64[ms]')
@@ -592,17 +592,17 @@ class TestGacReader(unittest.TestCase):
 
         # Mock reader
         get_header_timestamp.return_value = header_time
-        self.reader.utcs = msecs.astype(">M8[ms]")
+        self.reader._utcs = msecs.astype(">M8[ms]")
         self.reader.scans = np.array(scan_line_numbers,
                                      dtype=[("scan_line_number", ">u2")])
 
         # Test correction
         self.reader.correct_times_thresh()
-        numpy.testing.assert_array_equal(self.reader.utcs, utcs_expected)
+        numpy.testing.assert_array_equal(self.reader._utcs, utcs_expected)
 
     def test_calculate_sun_earth_distance_correction(self):
         """Test the calculate sun earth distance correction method."""
-        self.reader.utcs = np.array([315748035469, 315748359969,
+        self.reader._utcs = np.array([315748035469, 315748359969,
                                      315751135469, 315754371969,
                                      315754371969]).astype('datetime64[ms]')
         corr = self.reader.get_sun_earth_distance_correction()

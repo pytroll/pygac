@@ -759,10 +759,10 @@ class KLMReader(Reader):
 
         return prt_counts, ict_counts, space_counts
 
-    def _get_lonlat(self):
+    def _get_lonlat_from_file(self):
         """Get the longitudes and latitudes."""
-        lats = self.scans["earth_location"]["lats"] / 1e4
-        lons = self.scans["earth_location"]["lons"] / 1e4
+        lats = self.scans["earth_location"]["lats"] / np.float32(1e4)
+        lons = self.scans["earth_location"]["lons"] / np.float32(1e4)
         return lons, lats
 
     def get_header_timestamp(self):
@@ -784,7 +784,7 @@ class KLMReader(Reader):
         except ValueError as err:
             raise ValueError('Corrupt header timestamp: {0}'.format(err))
 
-    def _get_times(self):
+    def _get_times_from_file(self):
         """Get the times of the scanlines."""
         year = self.scans["scan_line_year"]
         jday = self.scans["scan_line_day_of_year"]

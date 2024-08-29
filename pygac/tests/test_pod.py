@@ -115,7 +115,7 @@ class TestPOD(unittest.TestCase):
     def test_get_times(self, decode_timestamps):
         """Test getting times."""
         self.reader.scans = {'time_code': 123}
-        self.reader._get_times()
+        self.reader._get_times_from_file()
         decode_timestamps.assert_called_with(123)
 
     def test_get_lonlat(self):
@@ -128,7 +128,7 @@ class TestPOD(unittest.TestCase):
         self.reader.scans = {"earth_location": {"lats": lats_exp * 128,
                                                 "lons": lons_exp * 128}}
 
-        lons, lats = self.reader._get_lonlat()
+        lons, lats = self.reader._get_lonlat_from_file()
         numpy.testing.assert_array_equal(lons, lons_exp)
         numpy.testing.assert_array_equal(lats, lats_exp)
 
@@ -242,7 +242,7 @@ class TestPOD(unittest.TestCase):
 
         # prepare the reader
         reader.scans = {"scan_line_number": scan_lines}
-        reader.utcs = scan_utcs
+        reader._utcs = scan_utcs
         reader.lons = scan_lons
         reader.lats = scan_lats
         reader.spacecraft_name = sat_name
@@ -276,7 +276,7 @@ class TestPOD(unittest.TestCase):
         # check output
         # use allclose for geolocations, because the slerp interpolation
         # includes a transormation to cartesian coordinates and back to lon, lats.
-        numpy.testing.assert_array_equal(reader.utcs, expected_utcs)
+        numpy.testing.assert_array_equal(reader._utcs, expected_utcs)
         numpy.testing.assert_allclose(reader.lons, expected_lons)
         numpy.testing.assert_allclose(reader.lats, expected_lats)
 
@@ -288,7 +288,7 @@ class TestPOD(unittest.TestCase):
     def test__adjust_clock_drift_without_tle(self, get_tle_lines, get_offsets):
         """Test that clockdrift adjustment can handle missing TLE data."""
         reader = self.reader
-        reader.utcs = np.zeros(10, dtype='datetime64[ms]')
+        reader._utcs = np.zeros(10, dtype='datetime64[ms]')
         reader.scans = {"scan_line_number": np.arange(10)}
         get_offsets.return_value = np.zeros(10), np.zeros(10)
         get_tle_lines.side_effect = NoTLEData('No TLE data available')

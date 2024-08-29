@@ -53,7 +53,7 @@ class TestKLM:
         self.reader.scans = {"earth_location": {"lats": lats_exp * 1e4,
                                                 "lons": lons_exp * 1e4}}
 
-        lons, lats = self.reader._get_lonlat()
+        lons, lats = self.reader._get_lonlat_from_file()
         numpy.testing.assert_array_equal(lons, lons_exp)
         numpy.testing.assert_array_equal(lats, lats_exp)
 
@@ -72,7 +72,7 @@ class TestKLM:
         self.reader.scans = {'scan_line_year': 1,
                              'scan_line_day_of_year': 2,
                              'scan_line_utc_time_of_day': 3}
-        assert self.reader._get_times() == (1, 2, 3)
+        assert self.reader._get_times_from_file() == (1, 2, 3)
 
     def test_get_ch3_switch(self):
         """Test channel 3 identification."""
