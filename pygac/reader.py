@@ -89,6 +89,10 @@ class DecodingError(ValueError):
     """Raised when decoding of some value fails."""
 
 
+class TimestampMismatch(IndexError):
+    """Raise when matching timestamps doesn't work."""
+
+
 class Reader(ABC):
     """Reader for GAC and LAC format, POD and KLM platforms."""
 
@@ -457,7 +461,10 @@ class Reader(ABC):
             year, jday, msec = self.correct_times_median(year=year, jday=jday,
                                                          msec=msec)
             self._utcs = self.to_datetime64(year=year, jday=jday, msec=msec)
-            self._utcs = self.correct_times_thresh()
+            try:
+                self._utcs = self.correct_times_thresh()
+            except TimestampMismatch as err:
+                LOG.error(str(err))
 
         return self._utcs
 
@@ -550,7 +557,6 @@ class Reader(ABC):
             ir_channel_names = ["3b", "4", "5"]
 
         columns = np.arange(scan_size)
-
         channels = xr.DataArray(counts, dims=["scan_line_index", "columns", "channel_name"],
                                 coords=dict(scan_line_index=line_numbers,
                                             channel_name=channel_names,
@@ -1123,9 +1129,8 @@ class Reader(ABC):
         if near_t0_head.size / float(nums.size) >= min_frac_near_t0_head:
             t0 = np.median(offsets[near_t0_head])
         else:
-            LOG.error("Timestamp mismatch. Cannot perform correction.")
             results['fail_reason'] = "Timestamp mismatch"
-            return results
+            raise TimestampMismatch("Timestamp mismatch. Cannot perform correction.")
 
         # Add estimated offset to the ideal timestamps
         tn += t0

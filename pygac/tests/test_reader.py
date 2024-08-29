@@ -272,7 +272,7 @@ class TestGacReader(unittest.TestCase):
         self.assertEqual(self.reader.lineno2msec(12345), 6172000)
 
     @mock.patch('pygac.reader.Reader.update_meta_data')
-    @mock.patch('pygac.gac_reader.GACReader._get_lonlat')
+    @mock.patch('pygac.gac_reader.GACReader._get_lonlat_from_file')
     @mock.patch('pygac.gac_reader.GACReader._get_corrupt_mask')
     @mock.patch('pygac.gac_reader.GACReader._adjust_clock_drift')
     def test_get_lonlat(self, adjust_clockdrift,
@@ -333,7 +333,7 @@ class TestGacReader(unittest.TestCase):
     @mock.patch('pygac.reader.Reader.update_meta_data')
     @mock.patch('pygac.gac_reader.GACReader._get_corrupt_mask')
     @mock.patch('pygac.gac_reader.GACReader._adjust_clock_drift')
-    @mock.patch('pygac.gac_reader.GACReader._get_lonlat')
+    @mock.patch('pygac.gac_reader.GACReader._get_lonlat_from_file')
     def test_interpolate(self, _get_lonlat, _adjust_clock_drift,
                          _get_corrupt_mask, update_meta_data):
         """Test interpolate method in get_lonlat."""
