@@ -481,7 +481,7 @@ class PODReader(Reader):
         error_utcs = np.array(error_utcs, dtype='datetime64[ms]')
         # interpolate to get the clock offsets at the scan line utcs
         # the clock_error is given in seconds, so offsets are in seconds, too.
-        offsets = np.interp(self._utcs.astype(np.uint64),
+        offsets = np.interp(self._times_as_np_datetime64.astype(np.uint64),
                             error_utcs.astype(np.uint64),
                             clock_error)
         LOG.info("Adjusting for clock drift of %s to %s seconds.",
@@ -506,7 +506,7 @@ class PODReader(Reader):
         num_lines = max_line - min_line + 1
         missed_lines = np.setdiff1d(np.arange(min_line, max_line+1), scan_lines)
         missed_utcs = ((missed_lines - scan_lines[0])*np.timedelta64(scan_rate, "ms")
-                       + self._utcs[0])
+                       + self._times_as_np_datetime64[0])
         # calculate the missing geo locations
         try:
             missed_lons, missed_lats = self._compute_missing_lonlat(missed_utcs)
@@ -539,7 +539,7 @@ class PODReader(Reader):
         # set corrected values
         self.lons = slerp_res[:, :, 0]
         self.lats = slerp_res[:, :, 1]
-        self._utcs -= (offsets * 1000).astype('timedelta64[ms]')
+        self._times_as_np_datetime64 -= (offsets * 1000).astype('timedelta64[ms]')
 
         toc = datetime.datetime.now()
         LOG.debug("clock drift adjustment took %s", str(toc - tic))
