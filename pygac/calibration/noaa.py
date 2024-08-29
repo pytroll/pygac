@@ -50,7 +50,7 @@ def calibrate(ds, custom_coeffs=None, coeffs_file=None):
         calibration_file: path to json file containing default calibrations
     """
     channels = ds["channels"].data
-    times = ds.coords["times"].data
+    times = ds.coords["times"]
     scan_line_numbers = ds["scan_line_index"].data
 
     calibration_coeffs = Calibrator(
@@ -61,12 +61,10 @@ def calibrate(ds, custom_coeffs=None, coeffs_file=None):
 
     # `times` is in nanosecond resolution. However, convertion from datetime64[ns] to datetime objects
     # does not work, and anyway only the date is needed.
-    start_time = times[0]
-    start_date = start_time.astype("datetime64[D]").item()
-    year = start_date.year
+    start_time = times[0].dt
+    year = start_time.year.item()
+    jday = start_time.dayofyear.item()
 
-    delta = (start_time.astype("datetime64[D]") - start_time.astype("datetime64[Y]")).astype(int)
-    jday = delta.astype(int) + 1
 
     corr = ds.attrs['sun_earth_distance_correction_factor']
 
