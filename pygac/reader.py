@@ -39,6 +39,7 @@ import pyorbital
 from packaging.version import Version
 from pyorbital import astronomy
 from pyorbital.orbital import Orbital
+import xarray as xr
 
 from pygac import gac_io
 from pygac.utils import calculate_sun_earth_distance_correction, centered_modulus, get_absolute_azimuth_angle_diff
@@ -129,7 +130,7 @@ class Reader(ABC):
         self.scans = None
         self.spacecraft_name = None
         self.spacecraft_id = None
-        self.utcs = None
+        self._utcs = None
         self.lats = None
         self.lons = None
         self.tle_lines = None
@@ -151,9 +152,9 @@ class Reader(ABC):
 
 
     @property
-    def times(self):
+    def _times(self):
         """Get the UTCs as datetime.datetime."""
-        return self.to_datetime(self.utcs)
+        return self.to_datetime(self._utcs)
 
     @property
     def filename(self):
@@ -373,7 +374,7 @@ class Reader(ABC):
             raise ValueError("All data is masked out.")
         gac_io.save_gac(
             self.spacecraft_name,
-            self.utcs, self.lats, self.lons,
+            self._utcs, self.lats, self.lons,
             channels[:, :, 0], channels[:, :, 1],
             channels[:, :, 2], channels[:, :, 3],
             channels[:, :, 4], channels[:, :, 5],
@@ -430,8 +431,8 @@ class Reader(ABC):
             return channels
 
     @abstractmethod
-    def _get_times(self):  # pragma: no cover
-        """Specify how to read scanline timestamps from GAC data.
+    def _get_times_from_file(self):  # pragma: no cover
+        """Specify how to read scanline timestamps from data.
 
         Returns:
             int: year
@@ -444,24 +445,21 @@ class Reader(ABC):
     def get_times(self):
         """Read scanline timestamps and try to correct invalid values.
 
-        Note:
-            Also sets self.utcs and self.times!
-
         Returns:
             UTC timestamps
 
         """
-        if self.utcs is None:
+        if self._utcs is None:
             # Read timestamps
-            year, jday, msec = self._get_times()
+            year, jday, msec = self._get_times_from_file()
 
             # Correct invalid values
             year, jday, msec = self.correct_times_median(year=year, jday=jday,
                                                          msec=msec)
-            self.utcs = self.to_datetime64(year=year, jday=jday, msec=msec)
-            self.correct_times_thresh()
+            self._utcs = self.to_datetime64(year=year, jday=jday, msec=msec)
+            self._utcs = self.correct_times_thresh()
 
-        return self.utcs
+        return self._utcs
 
     @staticmethod
     def to_datetime64(year, jday, msec):
@@ -511,7 +509,7 @@ class Reader(ABC):
     def get_sun_earth_distance_correction(self):
         """Get the julian day and the sun-earth distance correction."""
         self.get_times()
-        jday = self.times[0].timetuple().tm_yday
+        jday = self._times[0].timetuple().tm_yday
         return calculate_sun_earth_distance_correction(jday)
 
     def update_meta_data(self):
@@ -535,8 +533,6 @@ class Reader(ABC):
         return self.create_counts_dataset()
 
     def create_counts_dataset(self):
-        import xarray as xr
-
         head = dict(zip(self.head.dtype.names, self.head.item()))
         scans = self.scans
 
@@ -619,7 +615,6 @@ class Reader(ABC):
         calibrated_ds = calibration_function(ds, **self.calibration_parameters)
 
         # Mask out corrupt values
-        import xarray as xr
         mask = xr.DataArray(self.mask==False, dims=["scan_line_index"])  # noqa
         calibrated_ds = calibrated_ds.where(mask)
 
@@ -644,7 +639,7 @@ class Reader(ABC):
         TODO: Switch to faster interpolator?
         """
         if self.lons is None and self.lats is None:
-            self.lons, self.lats = self._get_lonlat()
+            self.lons, self.lats = self._get_lonlat_from_file()
             self.update_meta_data()
 
             # Adjust clock drift
@@ -666,8 +661,14 @@ class Reader(ABC):
 
         return self.lons, self.lats
 
+    def navigate(self, ds):
+        """Navigate the data."""
+        navigation_entrypoints = entry_points(group="pygac.navigation")
+        navigation_function = navigation_entrypoints[self.navigation_method].load()
+        return navigation_function(ds, **self.calibration_parameters)
+
     @abstractmethod
-    def _get_lonlat(self):  # pragma: no cover
+    def _get_lonlat_from_file(self):  # pragma: no cover
         """KLM/POD specific readout of lat/lon coordinates."""
         raise NotImplementedError
 
@@ -778,7 +779,7 @@ class Reader(ABC):
             return self.tle_lines
         self.get_times()
         tle_data = self.read_tle_file(self.get_tle_file())
-        sdate = self.utcs[0]
+        sdate = self._utcs[0]
         dates = self.tle2datetime64(
             np.array([float(line[18:32]) for line in tle_data[::2]]))
 
@@ -835,7 +836,7 @@ class Reader(ABC):
         tle1, tle2 = self.get_tle_lines()
         orb = Orbital(self.spacecrafts_orbital[self.spacecraft_id],
                       line1=tle1, line2=tle2)
-        sat_azi, sat_elev = orb.get_observer_look(self.times[:, np.newaxis],
+        sat_azi, sat_elev = orb.get_observer_look(self._times[:, np.newaxis],
                                                   self.lons, self.lats, 0)
         return sat_azi, sat_elev
 
@@ -849,7 +850,7 @@ class Reader(ABC):
             self.lons[:, mid_column][:, np.newaxis],
             self.lats[:, mid_column][:, np.newaxis],  # approximate satellite position
             sat_alt,  # approximate satellite altitude
-            self.times[:, np.newaxis],
+            self._times[:, np.newaxis],
             self.lons, self.lats, 0)
         # Sometimes (pyorbital <= 1.6.1) the get_observer_look_not_tle returns nodata instead of 90.
         # Problem solved with https://github.com/pytroll/pyorbital/pull/77
@@ -881,7 +882,7 @@ class Reader(ABC):
         """
         self.get_times()
         self.get_lonlat()
-        times = self.times
+        times = self._times
         sat_azi, sat_elev = self.get_sat_angles()
 
         sat_zenith = 90 - sat_elev
@@ -1081,7 +1082,7 @@ class Reader(ABC):
 
         # Check whether scanline number increases monotonically
         nums = self.scans["scan_line_number"]
-        results.update({'t': self.utcs.copy(), 'n': nums})
+        results.update({'t': self._utcs.copy(), 'n': nums})
         if np.any(np.diff(nums) < 0):
             LOG.error("Cannot perform timestamp correction. Scanline number "
                       "does not increase monotonically.")
@@ -1089,7 +1090,7 @@ class Reader(ABC):
             return results
 
         # Convert time to milliseconds since 1970-01-01
-        t = self.utcs.astype("i8")
+        t = self._utcs.astype("i8")
         try:
             t0_head = np.array([self.get_header_timestamp().isoformat()],
                                dtype="datetime64[ms]").astype("i8")[0]
@@ -1132,11 +1133,10 @@ class Reader(ABC):
         # Replace timestamps deviating more than a certain threshold from the
         # ideal timestamp with the ideal timestamp.
         corrupt_lines = np.where(np.fabs(t - tn) > max_diff_from_ideal_t)
-        self.utcs[corrupt_lines] = tn[corrupt_lines].astype(dt64_msec)
+        self._utcs[corrupt_lines] = tn[corrupt_lines].astype(dt64_msec)
         LOG.debug("Corrected %s timestamp(s)", str(len(corrupt_lines[0])))
 
-        results.update({'tn': tn, 'tcorr': self.utcs, 't0': t0})
-        return results
+        return self._utcs
 
     @property
     @abstractmethod
@@ -1159,7 +1159,7 @@ class Reader(ABC):
 
         """
         self.get_times()
-        ts, te = self.to_datetime(self.utcs[[0, -1]])
+        ts, te = self.to_datetime(self._utcs[[0, -1]])
         try:
             for interval in self.tsm_affected_intervals[self.spacecraft_id]:
                 if ts >= interval[0] and te <= interval[1]:
@@ -1182,7 +1182,7 @@ class Reader(ABC):
         """
         self.get_times()
         d0 = np.datetime64(datetime.date(1970, 1, 1), 'D')
-        days = (self.utcs.astype('datetime64[D]') - d0).astype(int)
+        days = (self._utcs.astype('datetime64[D]') - d0).astype(int)
         incr = np.where(np.diff(days) == 1)[0]
         if len(incr) != 1:
             if len(incr) > 1:
