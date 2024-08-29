@@ -457,14 +457,15 @@ def calibrate_thermal(counts, prt, ict, space, line_numbers, channel, cal):
     # Note that the prt values are the average value of the three readings from one of the four
     # PRTs. See reader.get_telemetry implementations.
     prt_threshold = 50  # empirically found and set by Abhay Devasthale
-    offset = 0
 
-    for i, prt_val in enumerate(prt):
+    for offset in range(5):
         # According to the KLM Guide the fill value between PRT measurments is 0, but we search
-        # for the first measurment gap using the threshold. Is this on purpose?
-        if prt_val < prt_threshold:
-            offset = i
+        # for the first measurement gap using the threshold, because the fill value is in practice
+        # not always exactly 0.
+        if np.median(prt[(line_numbers - line_numbers[0]) % 5 == offset]) < prt_threshold:
             break
+    else:
+        raise IndexError("No PRT 0-index found!")
 
     # get the PRT index, iprt equals to 0 corresponds to the measurement gaps
     iprt = (line_numbers - line_numbers[0] + 5 - offset) % 5

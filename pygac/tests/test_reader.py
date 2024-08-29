@@ -87,6 +87,7 @@ class FakeGACReader(GACReader):
     def get_telemetry(self):
         """Get the telemetry."""
         prt = 51 * np.ones(self.along_track)  # prt threshold is 50
+        prt[::5] = 0
         ict = 101 * np.ones((self.along_track, 3))  # ict threshold is 100
         space = 101 * np.ones((self.along_track, 3))  # space threshold is 100
         return prt, ict, space
@@ -117,6 +118,15 @@ class FakeGACReader(GACReader):
     def get_tsm_pixels(self, channels):
         """Get the tsm pixels."""
         pass
+
+
+class FakeGACReaderWithWrongPRTs(FakeGACReader):
+
+    along_track = 10
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.scans["scan_line_number"] = np.array([1, 3, 4, 5, 6, 7, 8, 9, 10, 11])
 
 
 class TestGacReader(unittest.TestCase):
@@ -247,6 +257,15 @@ class TestGacReader(unittest.TestCase):
     def test_get_calibrated_channels(self):
         """Test getting calibrated channels."""
         reader = FakeGACReader()
+        res = reader.get_calibrated_channels()
+
+        np.testing.assert_allclose(res[:, 1, 0], 8.84714652)
+        np.testing.assert_allclose(res[:, 2, 1], 10.23511303)
+        assert reader.meta_data["calib_coeffs_version"] == "PATMOS-x, v2023"
+
+    def test_get_calibrated_channels_with_wrong_prts(self):
+        """Test getting calibrated channels."""
+        reader = FakeGACReaderWithWrongPRTs()
         res = reader.get_calibrated_channels()
 
         np.testing.assert_allclose(res[:, 1, 0], 8.84714652)
@@ -847,10 +866,6 @@ def test_passing_calibration_coeffs_to_reader_init_is_deprecated():
 
 def test_passing_calibration_to_reader():
     """Test passing calibration info to `get_calibrated_channels`."""
-    #reader = LACPODReader(interpolate_coords=False)
-    #ds = reader.read_as_dataset(pod_file_with_tbm_header)
-    #from pygac.calibration.noaa import calibrate
-
     method = "InvalidMethod"
     with pytest.raises(ValueError, match=method):
         reader = FakeGACReader(calibration_method=method)
