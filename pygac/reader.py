@@ -516,8 +516,7 @@ class Reader(ABC):
         """Get the julian day and the sun-earth distance correction."""
         self.get_times()
         # Shouldn't we use the start time from the header if available?
-        start_time = self._times_as_np_datetime64[0]
-        jday = (start_time - start_time.astype("datetime64[Y]")).astype("timedelta64[D]").astype(int) + 1
+        jday = self._times[0].timetuple().tm_yday
         return calculate_sun_earth_distance_correction(jday)
 
     def update_meta_data(self):
