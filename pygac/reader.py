@@ -30,17 +30,18 @@ import os
 import re
 import types
 import warnings
-from abc import ABCMeta, abstractmethod
+from abc import ABC, abstractmethod
+from contextlib import suppress
+from importlib.metadata import entry_points
 
 import numpy as np
 import pyorbital
-import six
+import xarray as xr
 from packaging.version import Version
 from pyorbital import astronomy
 from pyorbital.orbital import Orbital
 
 from pygac import gac_io
-from pygac.calibration import Calibrator, calibrate_solar, calibrate_thermal
 from pygac.utils import calculate_sun_earth_distance_correction, centered_modulus, get_absolute_azimuth_angle_diff
 
 LOG = logging.getLogger(__name__)
@@ -48,29 +49,29 @@ LOG = logging.getLogger(__name__)
 # rpy values from
 # here:http://yyy.rsmas.miami.edu/groups/rrsl/pathfinder/Processing/proc_app_a.html
 rpy_coeffs = {
-    'noaa7': {'roll': 0.000,
-              'pitch': 0.000,
-              'yaw': 0.000,
+    "noaa7": {"roll": 0.000,
+              "pitch": 0.000,
+              "yaw": 0.000,
               },
-    'noaa9': {'roll': 0.000,
-              'pitch': 0.0025,
-              'yaw': 0.000,
+    "noaa9": {"roll": 0.000,
+              "pitch": 0.0025,
+              "yaw": 0.000,
               },
-    'noaa10': {'roll': 0.000,
-               'pitch': 0.000,
-               'yaw': 0.000,
+    "noaa10": {"roll": 0.000,
+               "pitch": 0.000,
+               "yaw": 0.000,
                },
-    'noaa11': {'roll': -0.0019,
-               'pitch': -0.0037,
-               'yaw': 0.000,
+    "noaa11": {"roll": -0.0019,
+               "pitch": -0.0037,
+               "yaw": 0.000,
                },
-    'noaa12': {'roll': 0.000,
-               'pitch': 0.000,
-               'yaw': 0.000,
+    "noaa12": {"roll": 0.000,
+               "pitch": 0.000,
+               "yaw": 0.000,
                },
-    'noaa14': {'roll': 0.000,
-               'pitch': 0.000,
-               'yaw': 0.000,
+    "noaa14": {"roll": 0.000,
+               "pitch": 0.000,
+               "yaw": 0.000,
                }}
 
 
@@ -88,16 +89,21 @@ class DecodingError(ValueError):
     """Raised when decoding of some value fails."""
 
 
-class Reader(six.with_metaclass(ABCMeta)):
+class TimestampMismatch(IndexError):
+    """Raise when matching timestamps doesn't work."""
+
+
+class Reader(ABC):
     """Reader for GAC and LAC format, POD and KLM platforms."""
 
     # data set header format, see _validate_header for more details
     data_set_pattern = re.compile(
-        r'\w{3}\.\w{4}\.\w{2}.D\d{5}\.S\d{4}\.E\d{4}\.B\d{7}\.\w{2}')
+        r"\w{3}\.\w{4}\.\w{2}.D\d{5}\.S\d{4}\.E\d{4}\.B\d{7}\.\w{2}")
 
     def __init__(self, interpolate_coords=True, adjust_clock_drift=True,
                  tle_dir=None, tle_name=None, tle_thresh=7, creation_site=None,
-                 custom_calibration=None, calibration_file=None, header_date="auto"):
+                 custom_calibration=None, calibration_file=None, header_date="auto",
+                 calibration_method="noaa", calibration_parameters=None):
         """Init the reader.
 
         Args:
@@ -122,15 +128,13 @@ class Reader(six.with_metaclass(ABCMeta)):
         self.tle_dir = tle_dir
         self.tle_name = tle_name
         self.tle_thresh = tle_thresh
-        self.creation_site = (creation_site or 'NSS').encode('utf-8')
-        self.custom_calibration = custom_calibration
-        self.calibration_file = calibration_file
+        self.creation_site = (creation_site or "NSS").encode("utf-8")
         self.header_date = header_date
         self.head = None
         self.scans = None
         self.spacecraft_name = None
         self.spacecraft_id = None
-        self.utcs = None
+        self._times_as_np_datetime64 = None
         self.lats = None
         self.lons = None
         self.tle_lines = None
@@ -138,10 +142,22 @@ class Reader(six.with_metaclass(ABCMeta)):
         self._mask = None
         self._rpy = None
 
+        if calibration_method.lower() not in ["noaa"]:
+            raise ValueError(f"Unknown calibration method {calibration_method}.")
+        self.calibration_method = calibration_method
+        self.calibration_parameters = calibration_parameters or dict()
+        if custom_calibration is not None or calibration_file is not None:
+            warnings.warn("`custom_calibration` and `calibration_file` parameters will be deprecated soon. "
+                          "Please use `calibration_parameters` dictionary instead.",
+                          PendingDeprecationWarning)
+            if not self.calibration_parameters:
+                self.calibration_parameters = dict(custom_coeffs=custom_calibration,
+                                                   coeffs_file=calibration_file)
+
     @property
     def times(self):
         """Get the UTCs as datetime.datetime."""
-        return self.to_datetime(self.utcs)
+        return self.to_datetime(self._times_as_np_datetime64)
 
     @property
     def filename(self):
@@ -160,16 +176,6 @@ class Reader(six.with_metaclass(ABCMeta)):
                 self._filename = match.group()
             else:
                 self._filename = os.path.basename(filepath)
-
-    @property
-    def calibration(self):
-        """Get the property 'calibration'."""
-        calibration = Calibrator(
-            self.spacecraft_name,
-            custom_coeffs=self.custom_calibration,
-            coeffs_file=self.calibration_file
-        )
-        return calibration
 
     @abstractmethod
     def read(self, filename, fileobj=None):  # pragma: no cover
@@ -209,7 +215,7 @@ class Reader(six.with_metaclass(ABCMeta)):
             filename (str): path to file
         """
         filename = str(filename)
-        data_set_name = header['data_set_name']
+        data_set_name = header["data_set_name"]
         try:
             header["data_set_name"] = cls._decode_data_set_name(data_set_name)
         except DecodingError:
@@ -219,10 +225,10 @@ class Reader(six.with_metaclass(ABCMeta)):
             if match:
                 data_set_name = match.group()
                 LOG.debug(f"Set data_set_name, to filename {data_set_name}")
-                header['data_set_name'] = data_set_name.encode()
+                header["data_set_name"] = data_set_name.encode()
             else:
                 LOG.debug(f"header['data_set_name']={header['data_set_name']}; filename='{filename}'")
-                raise ReaderError('Cannot determine data_set_name!')
+                raise ReaderError("Cannot determine data_set_name!")
         return header
 
     @classmethod
@@ -239,10 +245,10 @@ class Reader(six.with_metaclass(ABCMeta)):
 
     @classmethod
     def _decode_data_set_name_for_encoding(cls, data_set_name, encoding):
-        data_set_name = data_set_name.decode(encoding, errors='ignore')
+        data_set_name = data_set_name.decode(encoding, errors="ignore")
         if not cls.data_set_pattern.match(data_set_name):
-            raise DecodingError(f'The data_set_name in header {data_set_name} '
-                                f'does not seem correct using encoding {encoding}.')
+            raise DecodingError(f"The data_set_name in header {data_set_name} "
+                                f"does not seem correct using encoding {encoding}.")
         else:
             data_set_name = data_set_name.encode()
         return data_set_name
@@ -280,10 +286,10 @@ class Reader(six.with_metaclass(ABCMeta)):
         # second use case "diamond diagrams".
         # Check if the data set name matches the pattern
         LOG.debug("validate header")
-        data_set_name = header['data_set_name'].decode(errors='ignore')
+        data_set_name = header["data_set_name"].decode(errors="ignore")
         if not cls.data_set_pattern.match(data_set_name):
-            raise ReaderError('Data set name %s does not match!'
-                              % header['data_set_name'])
+            raise ReaderError("Data set name %s does not match!"
+                              % header["data_set_name"])
 
     def _read_scanlines(self, buffer, count):
         """Read the scanlines from the given buffer.
@@ -371,7 +377,7 @@ class Reader(six.with_metaclass(ABCMeta)):
             raise ValueError("All data is masked out.")
         gac_io.save_gac(
             self.spacecraft_name,
-            self.utcs, self.lats, self.lons,
+            self._times_as_np_datetime64, self.lats, self.lons,
             channels[:, :, 0], channels[:, :, 1],
             channels[:, :, 2], channels[:, :, 3],
             channels[:, :, 4], channels[:, :, 5],
@@ -428,8 +434,8 @@ class Reader(six.with_metaclass(ABCMeta)):
             return channels
 
     @abstractmethod
-    def _get_times(self):  # pragma: no cover
-        """Specify how to read scanline timestamps from GAC data.
+    def _get_times_from_file(self):  # pragma: no cover
+        """Specify how to read scanline timestamps from data.
 
         Returns:
             int: year
@@ -442,24 +448,24 @@ class Reader(six.with_metaclass(ABCMeta)):
     def get_times(self):
         """Read scanline timestamps and try to correct invalid values.
 
-        Note:
-            Also sets self.utcs and self.times!
-
         Returns:
             UTC timestamps
 
         """
-        if self.utcs is None:
+        if self._times_as_np_datetime64 is None:
             # Read timestamps
-            year, jday, msec = self._get_times()
+            year, jday, msec = self._get_times_from_file()
 
             # Correct invalid values
             year, jday, msec = self.correct_times_median(year=year, jday=jday,
                                                          msec=msec)
-            self.utcs = self.to_datetime64(year=year, jday=jday, msec=msec)
-            self.correct_times_thresh()
+            self._times_as_np_datetime64 = self.to_datetime64(year=year, jday=jday, msec=msec)
+            try:
+                self._times_as_np_datetime64 = self.correct_times_thresh()
+            except TimestampMismatch as err:
+                LOG.error(str(err))
 
-        return self.utcs
+        return self._times_as_np_datetime64
 
     @staticmethod
     def to_datetime64(year, jday, msec):
@@ -474,9 +480,9 @@ class Reader(six.with_metaclass(ABCMeta)):
             numpy.datetime64: Converted timestamps
 
         """
-        return (year.astype(str).astype('datetime64[Y]')
-                + (jday - 1).astype('timedelta64[D]')
-                + msec.astype('timedelta64[ms]'))
+        return (year.astype(str).astype("datetime64[Y]")
+                + (jday - 1).astype("timedelta64[D]")
+                + msec.astype("timedelta64[ms]"))
 
     @staticmethod
     def to_datetime(datetime64):
@@ -509,72 +515,138 @@ class Reader(six.with_metaclass(ABCMeta)):
     def get_sun_earth_distance_correction(self):
         """Get the julian day and the sun-earth distance correction."""
         self.get_times()
-        jday = self.times[0].timetuple().tm_yday
+        # Shouldn't we use the start time from the header if available?
+        start_time = self._times_as_np_datetime64[0]
+        jday = (start_time - start_time.astype("datetime64[Y]")).astype("timedelta64[D]").astype(int) + 1
         return calculate_sun_earth_distance_correction(jday)
 
     def update_meta_data(self):
-        """Add some metd data to the meta_data dicitonary."""
-        if 'sun_earth_distance_correction_factor' not in self.meta_data:
-            self.meta_data['sun_earth_distance_correction_factor'] = (
+        """Add some meta data to the meta_data dicitonary."""
+        meta_data = self.meta_data
+        self._update_meta_data_object(meta_data)
+        if "gac_header" not in meta_data:
+            meta_data["gac_header"] = self.head.copy()
+
+    def _update_meta_data_object(self, meta_data):
+        if "sun_earth_distance_correction_factor" not in meta_data:
+            meta_data["sun_earth_distance_correction_factor"] = (
                 self.get_sun_earth_distance_correction())
-        if 'midnight_scanline' not in self.meta_data:
-            self.meta_data['midnight_scanline'] = self.get_midnight_scanline()
-        if 'missing_scanlines' not in self.meta_data:
-            self.meta_data['missing_scanlines'] = self.get_miss_lines()
-        if 'gac_header' not in self.meta_data:
-            self.meta_data['gac_header'] = self.head.copy()
-        self.meta_data['calib_coeffs_version'] = self.calibration.version
+        if "midnight_scanline" not in meta_data:
+            meta_data["midnight_scanline"] = self.get_midnight_scanline()
+        if "missing_scanlines" not in meta_data:
+            meta_data["missing_scanlines"] = self.get_miss_lines()
+
+    def read_as_dataset(self, file_to_read):
+        self.read(file_to_read)
+        return self.create_counts_dataset()
+
+    def create_counts_dataset(self):
+        head = dict(zip(self.head.dtype.names, self.head.item()))
+        scans = self.scans
+
+        times = self.get_times()
+        line_numbers = scans["scan_line_number"]
+        counts = self.get_counts()
+
+        scan_size = counts.shape[1]
+
+        if counts.shape[-1] == 5:
+            channel_names = ["1", "2", "3", "4", "5"]
+            ir_channel_names = ["3", "4", "5"]
+        else:
+            channel_names = ["1", "2", "3a", "3b", "4", "5"]
+            ir_channel_names = ["3b", "4", "5"]
+
+        columns = np.arange(scan_size)
+        channels = xr.DataArray(counts, dims=["scan_line_index", "columns", "channel_name"],
+                                coords=dict(scan_line_index=line_numbers,
+                                            channel_name=channel_names,
+                                            columns=columns,
+                                            times=("scan_line_index", times)))
+
+        prt, ict, space = self._get_telemetry_dataarrays(line_numbers, ir_channel_names)
+
+        longitudes, latitudes = self._get_lonlat_dataarrays(line_numbers, columns)
+
+        if self.interpolate_coords:
+            channels = channels.assign_coords(longitude=(("scan_line_index", "columns"),
+                                                        longitudes.reindex_like(channels).data),
+                                            latitude=(("scan_line_index", "columns"),
+                                                        latitudes.reindex_like(channels).data))
+
+        ds = xr.Dataset(dict(channels=channels, prt_counts=prt, ict_counts=ict, space_counts=space,
+                             longitude=longitudes, latitude=latitudes),
+                             attrs=head)
+
+        ds.attrs["spacecraft_name"] = self.spacecraft_name
+        self._update_meta_data_object(ds.attrs)
+        return ds
+
+    def _get_lonlat_dataarrays(self, line_numbers, columns):
+        lons, lats = self.get_lonlat()
+        lon_lat_columns = columns if self.interpolate_coords is True else self.lonlat_sample_points
+
+        if self.interpolate_coords:
+            longitudes = xr.DataArray(lons, dims=["scan_line_index", "columns"],
+                                      coords={"scan_line_index": line_numbers,
+                                              "columns": lon_lat_columns})
+            latitudes = xr.DataArray(lats, dims=["scan_line_index", "columns"],
+                                     coords={"scan_line_index": line_numbers,
+                                              "columns": lon_lat_columns})
+
+        else:
+            longitudes = xr.DataArray(lons, dims=["scan_line_index", "subsampled_columns"],
+                                      coords={"scan_line_index": line_numbers,
+                                              "subsampled_columns": lon_lat_columns})
+            latitudes = xr.DataArray(lats, dims=["scan_line_index", "subsampled_columns"],
+                                     coords={"scan_line_index": line_numbers,
+                                             "subsampled_columns": lon_lat_columns})
+
+        return longitudes,latitudes
+
+    def _get_telemetry_dataarrays(self, line_numbers, ir_channel_names):
+        prt, ict, space = self.get_telemetry()
+
+        prt = xr.DataArray(prt, dims=["scan_line_index"], coords=dict(scan_line_index=line_numbers))
+        ict = xr.DataArray(ict, dims=["scan_line_index", "ir_channel_name"],
+                           coords=dict(ir_channel_name=ir_channel_names, scan_line_index=line_numbers))
+        space = xr.DataArray(space, dims=["scan_line_index", "ir_channel_name"],
+                             coords=dict(ir_channel_name=ir_channel_names, scan_line_index=line_numbers))
+
+        return prt,ict,space
 
     def get_calibrated_channels(self):
         """Calibrate and return the channels."""
-        channels = self.get_counts()
-        self.get_times()
-        times = self.times
-        self.update_meta_data()
-        year = times[0].year
-        delta = times[0].date() - datetime.date(year, 1, 1)
-        jday = delta.days + 1
+        calibrated_ds = self.get_calibrated_dataset()
 
-        corr = self.meta_data['sun_earth_distance_correction_factor']
-        calibration_coeffs = self.calibration
+        channels = calibrated_ds["channels"].data
+        with suppress(KeyError):
+            self.meta_data["calib_coeffs_version"] = calibrated_ds.attrs["calib_coeffs_version"]
 
-        # how many reflective channels are there ?
-        tot_ref = channels.shape[2] - 3
+        return channels
 
-        channels[:, :, 0:tot_ref] = calibrate_solar(
-            channels[:, :, 0:tot_ref],
-            np.arange(tot_ref),
-            year, jday,
-            calibration_coeffs,
-            corr
-        )
-        prt, ict, space = self.get_telemetry()
+    def get_calibrated_dataset(self):
+        """Create and calibrate the dataset for the pass."""
+        ds = self.create_counts_dataset()
+        # calibration = {"1": "mitram", "2": "mitram", "4": {"method":"noaa", "coeff_file": "myfile.json"}}
 
-        ir_channels_to_calibrate = self._get_ir_channels_to_calibrate()
-
-        for chan in ir_channels_to_calibrate:
-            channels[:, :, chan - 6] = calibrate_thermal(
-                channels[:, :, chan - 6],
-                prt,
-                ict[:, chan - 3],
-                space[:, chan - 3],
-                self.scans["scan_line_number"],
-                chan,
-                calibration_coeffs
-            )
+        calibration_entrypoints = entry_points(group="pygac.calibration")
+        calibration_function = calibration_entrypoints[self.calibration_method].load()
+        calibrated_ds = calibration_function(ds, **self.calibration_parameters)
 
         # Mask out corrupt values
-        channels[self.mask] = np.nan
+        mask = xr.DataArray(self.mask==False, dims=["scan_line_index"])  # noqa
+        calibrated_ds = calibrated_ds.where(mask)
+
 
         # Apply KLM/POD specific postprocessing
-        self.postproc(channels)
+        self.postproc(calibrated_ds)
 
         # Mask pixels affected by scan motor issue
         if self.is_tsm_affected():
-            LOG.info('Correcting for temporary scan motor issue')
-            self.mask_tsm_pixels(channels)
-
-        return channels
+            LOG.info("Correcting for temporary scan motor issue")
+            self.mask_tsm_pixels(calibrated_ds)
+        return calibrated_ds
 
     @abstractmethod
     def get_telemetry(self):  # pragma: no cover
@@ -587,17 +659,17 @@ class Reader(six.with_metaclass(ABCMeta)):
         TODO: Switch to faster interpolator?
         """
         if self.lons is None and self.lats is None:
-            self.lons, self.lats = self._get_lonlat()
+            self.lons, self.lats = self._get_lonlat_from_file()
             self.update_meta_data()
+
+            # Adjust clock drift
+            if self.adjust_clock_drift:
+                self._adjust_clock_drift()
 
             # Interpolate from every eighth pixel to all pixels.
             if self.interpolate_coords:
                 self.lons, self.lats = self.lonlat_interpolator(
                     self.lons, self.lats)
-
-            # Adjust clock drift
-            if self.adjust_clock_drift:
-                self._adjust_clock_drift()
 
             # Mask out corrupt scanlines
             self.lons[self.mask] = np.nan
@@ -610,7 +682,7 @@ class Reader(six.with_metaclass(ABCMeta)):
         return self.lons, self.lats
 
     @abstractmethod
-    def _get_lonlat(self):  # pragma: no cover
+    def _get_lonlat_from_file(self):  # pragma: no cover
         """KLM/POD specific readout of lat/lon coordinates."""
         raise NotImplementedError
 
@@ -662,7 +734,7 @@ class Reader(six.with_metaclass(ABCMeta)):
         return qual_flags
 
     @abstractmethod
-    def postproc(self, channels):  # pragma: no cover
+    def postproc(self, ds):  # pragma: no cover
         """Apply KLM/POD specific postprocessing."""
         raise NotImplementedError
 
@@ -682,13 +754,13 @@ class Reader(six.with_metaclass(ABCMeta)):
         times = np.where(times > 50000, times + 1900000, times + 2000000)
 
         # Convert float to datetime64
-        doys = (times % 1000).astype('int') - 1
-        years = (times // 1000).astype('int')
+        doys = (times % 1000).astype("int") - 1
+        years = (times // 1000).astype("int")
         msecs = np.rint(24 * 3600 * 1000 * (times % 1))
         times64 = (
-            years - 1970).astype('datetime64[Y]').astype('datetime64[ms]')
-        times64 += doys.astype('timedelta64[D]')
-        times64 += msecs.astype('timedelta64[ms]')
+            years - 1970).astype("datetime64[Y]").astype("datetime64[ms]")
+        times64 += doys.astype("timedelta64[D]")
+        times64 += msecs.astype("timedelta64[ms]")
 
         return times64
 
@@ -701,13 +773,13 @@ class Reader(six.with_metaclass(ABCMeta)):
             raise RuntimeError("TLE name not specified!")
         values = {"satname": self.spacecraft_name, }
         tle_filename = os.path.join(tle_dir, tle_name % values)
-        LOG.info('TLE filename = ' + str(tle_filename))
+        LOG.info("TLE filename = " + str(tle_filename))
 
         return tle_filename
 
     def read_tle_file(self, tle_filename):
         """Read TLE file."""
-        with open(tle_filename, 'r') as fp_:
+        with open(tle_filename, "r") as fp_:
             return fp_.readlines()
 
     def get_tle_lines(self):
@@ -721,7 +793,7 @@ class Reader(six.with_metaclass(ABCMeta)):
             return self.tle_lines
         self.get_times()
         tle_data = self.read_tle_file(self.get_tle_file())
-        sdate = self.utcs[0]
+        sdate = self._times_as_np_datetime64[0]
         dates = self.tle2datetime64(
             np.array([float(line[18:32]) for line in tle_data[::2]]))
 
@@ -740,7 +812,7 @@ class Reader(six.with_metaclass(ABCMeta)):
             iindex -= 1
 
         # Make sure the TLE we found is within the threshold
-        delta_days = abs(sdate - dates[iindex]) / np.timedelta64(1, 'D')
+        delta_days = abs(sdate - dates[iindex]) / np.timedelta64(1, "D")
         if delta_days > self.tle_thresh:
             raise NoTLEData(
                 "Can't find tle data for %s within +/- %d days around %s" %
@@ -769,8 +841,8 @@ class Reader(six.with_metaclass(ABCMeta)):
             return self._get_sat_angles_with_tle()
         except NoTLEData:
             LOG.warning(
-                'No TLE data available. Falling back to approximate '
-                'calculation of satellite angles.'
+                "No TLE data available. Falling back to approximate "
+                "calculation of satellite angles."
             )
             return self._get_sat_angles_without_tle()
 
@@ -778,25 +850,25 @@ class Reader(six.with_metaclass(ABCMeta)):
         tle1, tle2 = self.get_tle_lines()
         orb = Orbital(self.spacecrafts_orbital[self.spacecraft_id],
                       line1=tle1, line2=tle2)
-        sat_azi, sat_elev = orb.get_observer_look(self.times[:, np.newaxis],
+        sat_azi, sat_elev = orb.get_observer_look(self._times_as_np_datetime64[:, np.newaxis],
                                                   self.lons, self.lats, 0)
         return sat_azi, sat_elev
 
     def _get_sat_angles_without_tle(self):
         """Get satellite angles using lat/lon from data to approximate satellite postition instead of TLE."""
         from pyorbital.orbital import get_observer_look as get_observer_look_no_tle
-        LOG.warning('Approximating satellite height to 850km (TIROS-N OSCAR)!')
+        LOG.warning("Approximating satellite height to 850km (TIROS-N OSCAR)!")
         sat_alt = 850.0  # km  TIROS-N OSCAR
         mid_column = int(0.5*self.lons.shape[1])
         sat_azi, sat_elev = get_observer_look_no_tle(
             self.lons[:, mid_column][:, np.newaxis],
             self.lats[:, mid_column][:, np.newaxis],  # approximate satellite position
             sat_alt,  # approximate satellite altitude
-            self.times[:, np.newaxis],
+            self._times_as_np_datetime64[:, np.newaxis],
             self.lons, self.lats, 0)
         # Sometimes (pyorbital <= 1.6.1) the get_observer_look_not_tle returns nodata instead of 90.
         # Problem solved with https://github.com/pytroll/pyorbital/pull/77
-        if Version(pyorbital.__version__) <= Version('1.6.1'):
+        if Version(pyorbital.__version__) <= Version("1.6.1"):
             sat_elev[:, mid_column] = 90
         return sat_azi, sat_elev
 
@@ -824,7 +896,7 @@ class Reader(six.with_metaclass(ABCMeta)):
         """
         self.get_times()
         self.get_lonlat()
-        times = self.times
+        times = self._times_as_np_datetime64
         sat_azi, sat_elev = self.get_sat_angles()
 
         sat_zenith = 90 - sat_elev
@@ -922,8 +994,8 @@ class Reader(six.with_metaclass(ABCMeta)):
 
         """
         along_track = np.arange(1, len(self.scans["scan_line_number"])+1)
-        results = {'along_track': along_track,
-                   'n_orig': self.scans['scan_line_number'].copy()}
+        results = {"along_track": along_track,
+                   "n_orig": self.scans["scan_line_number"].copy()}
 
         # Remove scanlines whose scanline number is outside the valid range
         within_range = np.logical_and(self.scans["scan_line_number"] < self.max_scanlines,
@@ -966,14 +1038,14 @@ class Reader(six.with_metaclass(ABCMeta)):
                 thresh = max(500, med_nz_diffs + 3*mad_nz_diffs)
         self.scans = self.scans[diffs <= thresh]
 
-        LOG.debug('Removed %s scanline(s) with corrupt scanline numbers',
+        LOG.debug("Removed %s scanline(s) with corrupt scanline numbers",
                   str(len(along_track) - len(self.scans)))
 
-        results.update({'n_corr': self.scans['scan_line_number'],
-                        'within_range': within_range,
-                        'diffs': diffs,
-                        'thresh': thresh,
-                        'nz_diffs': nz_diffs})
+        results.update({"n_corr": self.scans["scan_line_number"],
+                        "within_range": within_range,
+                        "diffs": diffs,
+                        "thresh": thresh,
+                        "nz_diffs": nz_diffs})
         return results
 
     def correct_times_thresh(self, max_diff_from_t0_head=6*60*1000,
@@ -1024,15 +1096,15 @@ class Reader(six.with_metaclass(ABCMeta)):
 
         # Check whether scanline number increases monotonically
         nums = self.scans["scan_line_number"]
-        results.update({'t': self.utcs.copy(), 'n': nums})
+        results.update({"t": self._times_as_np_datetime64.copy(), "n": nums})
         if np.any(np.diff(nums) < 0):
             LOG.error("Cannot perform timestamp correction. Scanline number "
                       "does not increase monotonically.")
-            results['fail_reason'] = "Scanline number jumps backwards"
+            results["fail_reason"] = "Scanline number jumps backwards"
             return results
 
         # Convert time to milliseconds since 1970-01-01
-        t = self.utcs.astype("i8")
+        t = self._times_as_np_datetime64.astype("i8")
         try:
             t0_head = np.array([self.get_header_timestamp().isoformat()],
                                dtype="datetime64[ms]").astype("i8")[0]
@@ -1059,15 +1131,14 @@ class Reader(six.with_metaclass(ABCMeta)):
         #    we do not have reliable information and cannot proceed.
         near_t0_head = np.where(
             np.fabs(offsets - t0_head) <= max_diff_from_t0_head)[0]
-        results.update({'offsets': offsets,
-                        't0_head': t0_head,
-                        'max_diff_from_t0_head': max_diff_from_t0_head})
+        results.update({"offsets": offsets,
+                        "t0_head": t0_head,
+                        "max_diff_from_t0_head": max_diff_from_t0_head})
         if near_t0_head.size / float(nums.size) >= min_frac_near_t0_head:
             t0 = np.median(offsets[near_t0_head])
         else:
-            LOG.error("Timestamp mismatch. Cannot perform correction.")
-            results['fail_reason'] = "Timestamp mismatch"
-            return results
+            results["fail_reason"] = "Timestamp mismatch"
+            raise TimestampMismatch("Timestamp mismatch. Cannot perform correction.")
 
         # Add estimated offset to the ideal timestamps
         tn += t0
@@ -1075,11 +1146,10 @@ class Reader(six.with_metaclass(ABCMeta)):
         # Replace timestamps deviating more than a certain threshold from the
         # ideal timestamp with the ideal timestamp.
         corrupt_lines = np.where(np.fabs(t - tn) > max_diff_from_ideal_t)
-        self.utcs[corrupt_lines] = tn[corrupt_lines].astype(dt64_msec)
+        self._times_as_np_datetime64[corrupt_lines] = tn[corrupt_lines].astype(dt64_msec)
         LOG.debug("Corrected %s timestamp(s)", str(len(corrupt_lines[0])))
 
-        results.update({'tn': tn, 'tcorr': self.utcs, 't0': t0})
-        return results
+        return self._times_as_np_datetime64
 
     @property
     @abstractmethod
@@ -1102,7 +1172,7 @@ class Reader(six.with_metaclass(ABCMeta)):
 
         """
         self.get_times()
-        ts, te = self.to_datetime(self.utcs[[0, -1]])
+        ts, te = self.to_datetime(self._times_as_np_datetime64[[0, -1]])
         try:
             for interval in self.tsm_affected_intervals[self.spacecraft_id]:
                 if ts >= interval[0] and te <= interval[1]:
@@ -1124,13 +1194,13 @@ class Reader(six.with_metaclass(ABCMeta)):
 
         """
         self.get_times()
-        d0 = np.datetime64(datetime.date(1970, 1, 1), 'D')
-        days = (self.utcs.astype('datetime64[D]') - d0).astype(int)
+        d0 = np.datetime64(datetime.date(1970, 1, 1), "D")
+        days = (self._times_as_np_datetime64.astype("datetime64[D]") - d0).astype(int)
         incr = np.where(np.diff(days) == 1)[0]
         if len(incr) != 1:
             if len(incr) > 1:
-                LOG.warning('Unable to determine midnight scanline: '
-                            'UTC date increases more than once. ')
+                LOG.warning("Unable to determine midnight scanline: "
+                            "UTC date increases more than once. ")
             return None
         else:
             return incr[0]
@@ -1146,14 +1216,15 @@ class Reader(six.with_metaclass(ABCMeta)):
         """
         # Compare scanline number against the ideal case (1, 2, 3, ...) and
         # find the missing line numbers.
-        ideal = set(range(1, self.scans['scan_line_number'][-1] + 1))
-        missing = sorted(ideal.difference(set(self.scans['scan_line_number'])))
+        ideal = set(range(1, self.scans["scan_line_number"][-1] + 1))
+        missing = sorted(ideal.difference(set(self.scans["scan_line_number"])))
         return np.array(missing, dtype=int)
 
-    def mask_tsm_pixels(self, channels):
+    def mask_tsm_pixels(self, ds):
         """Mask pixels affected by the scan motor issue."""
-        idx = self.get_tsm_pixels(channels)
-        channels[idx] = np.nan
+        idx = self.get_tsm_pixels(ds["channels"].values)
+        # This is because fancy/pixel indexing doesn't seem to work with xarray's `where` or `loc`
+        ds["channels"].data[idx] = np.nan
 
     @abstractmethod
     def get_tsm_pixels(self, channels):  # pragma: no cover
@@ -1196,7 +1267,7 @@ def inherit_doc(cls):
         if isinstance(func, types.FunctionType) and not func.__doc__:
             for parent in cls.__bases__:
                 parfunc = getattr(parent, name, None)
-                if parfunc and getattr(parfunc, '__doc__', None):
+                if parfunc and getattr(parfunc, "__doc__", None):
                     func.__doc__ = parfunc.__doc__
                     break
     return cls

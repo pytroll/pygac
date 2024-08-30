@@ -21,19 +21,17 @@
 """Test module for the pod reading."""
 
 import datetime as dt
+import sys
 import unittest
+from unittest import mock
+
 import numpy as np
 import numpy.testing
-import sys
-try:
-    from unittest import mock
-except ImportError:
-    import mock
 
 from pygac.clock_offsets_converter import txt as clock_offsets_txt
-from pygac.reader import ReaderError, NoTLEData
 from pygac.gac_pod import GACPODReader
 from pygac.lac_pod import LACPODReader
+from pygac.reader import NoTLEData, ReaderError
 from pygac.tests.utils import CalledWithArray
 
 
@@ -51,31 +49,31 @@ class TestPOD(unittest.TestCase):
 
     def test__validate_header(self):
         """Test the header validation"""
-        filename = b'NSS.GHRR.TN.D80001.S0332.E0526.B0627173.WI'
-        head = {'data_set_name': filename}
+        filename = b"NSS.GHRR.TN.D80001.S0332.E0526.B0627173.WI"
+        head = {"data_set_name": filename}
         GACPODReader._validate_header(head)
         # wrong name pattern
         with self.assertRaisesRegex(ReaderError,
-                                    'Data set name .* does not match!'):
-            head = {'data_set_name': b'abc.txt'}
+                                    "Data set name .* does not match!"):
+            head = {"data_set_name": b"abc.txt"}
             GACPODReader._validate_header(head)
         # wrong platform
-        name = b'NSS.GHRR.NL.D02187.S1904.E2058.B0921517.GC'
+        name = b"NSS.GHRR.NL.D02187.S1904.E2058.B0921517.GC"
         with self.assertRaisesRegex(ReaderError,
                                     'Improper platform id "NL"!'):
-            head = {'data_set_name': name}
+            head = {"data_set_name": name}
             GACPODReader._validate_header(head)
         # wrong transfer mode
-        name = filename.replace(b'GHRR', b'LHRR')
+        name = filename.replace(b"GHRR", b"LHRR")
         with self.assertRaisesRegex(ReaderError,
                                     'Improper transfer mode "LHRR"!'):
-            head = {'data_set_name': name}
+            head = {"data_set_name": name}
             GACPODReader._validate_header(head)
         # other change reader
-        head = {'data_set_name': name}
+        head = {"data_set_name": name}
         LACPODReader._validate_header(head)
 
-    @mock.patch('pygac.reader.Reader.get_calibrated_channels')
+    @mock.patch("pygac.reader.Reader.get_calibrated_channels")
     def test__get_calibrated_channels_uniform_shape(self, get_channels):
         """Test the uniform shape as required by gac_io.save_gac."""
         channels = np.arange(2*2*5, dtype=float).reshape((2, 2, 5))
@@ -97,43 +95,42 @@ class TestPOD(unittest.TestCase):
 
         # Test whether PODReader decodes them correctly
         self.assertEqual(GACPODReader.decode_timestamps(t2000_enc), t2000_ref,
-                         msg='Timestamp after 2000 was decoded incorrectly')
+                         msg="Timestamp after 2000 was decoded incorrectly")
         self.assertEqual(GACPODReader.decode_timestamps(t1900_enc), t1900_ref,
-                         msg='Timestamp before 2000 was decoded incorrectly')
+                         msg="Timestamp before 2000 was decoded incorrectly")
 
-    @mock.patch('pygac.gac_pod.GACPODReader.decode_timestamps')
+    @mock.patch("pygac.gac_pod.GACPODReader.decode_timestamps")
     def test_get_header_timestamp(self, decode_timestamps):
         """Test readout of header timestamp."""
-        self.reader.head = {'start_time': 123}
+        self.reader.head = {"start_time": 123}
         decode_timestamps.return_value = np.array(
             [2019]), np.array([123]), np.array([123456])
         time = self.reader.get_header_timestamp()
         decode_timestamps.assert_called_with(123)
         self.assertEqual(time, dt.datetime(2019, 5, 3, 0, 2, 3, 456000))
 
-    @mock.patch('pygac.gac_pod.GACPODReader.decode_timestamps')
+    @mock.patch("pygac.gac_pod.GACPODReader.decode_timestamps")
     def test_get_times(self, decode_timestamps):
         """Test getting times."""
-        self.reader.scans = {'time_code': 123}
-        self.reader._get_times()
+        self.reader.scans = {"time_code": 123}
+        self.reader._get_times_from_file()
         decode_timestamps.assert_called_with(123)
 
     def test_get_lonlat(self):
         """Test readout of lon/lat coordinates."""
-        earth_loc = 128 * np.array([[1, 2, 3, 4],
-                                    [5, 6, 7, 8]])
-        self.reader.scans = {'earth_location': earth_loc}
-
         lons_exp = np.array([[2, 4],
                              [6, 8]])
         lats_exp = np.array([[1, 3],
                              [5, 7]])
 
-        lons, lats = self.reader._get_lonlat()
+        self.reader.scans = {"earth_location": {"lats": lats_exp * 128,
+                                                "lons": lons_exp * 128}}
+
+        lons, lats = self.reader._get_lonlat_from_file()
         numpy.testing.assert_array_equal(lons, lons_exp)
         numpy.testing.assert_array_equal(lats, lats_exp)
 
-    @mock.patch('pygac.pod_reader.get_tsm_idx')
+    @mock.patch("pygac.pod_reader.get_tsm_idx")
     def test_get_tsm_pixels(self, get_tsm_idx):
         """Test channel set used for TSM correction."""
         ones = np.ones((409, 100))
@@ -158,7 +155,7 @@ class TestPOD(unittest.TestCase):
             QFlag.FATAL_FLAG,  # 100...00
             QFlag.CALIBRATION | QFlag.NO_EARTH_LOCATION,
             QFlag.TIME_ERROR | QFlag.DATA_GAP,
-        ], dtype='>u4')
+        ], dtype=">u4")
         # check if the bits look as expected
         bits = np.unpackbits(quality_indicators.view(np.uint8)).reshape((-1, 32))
         # For a big endian integer, the number 1 fills only the last of the 32 bits
@@ -189,10 +186,10 @@ class TestPOD(unittest.TestCase):
             expected_mask
         )
 
-    @mock.patch('pygac.pod_reader.get_lonlatalt')
-    @mock.patch('pygac.pod_reader.compute_pixels')
-    @mock.patch('pygac.reader.Reader.get_tle_lines')
-    @mock.patch('pygac.pod_reader.avhrr_gac')
+    @mock.patch("pygac.pod_reader.get_lonlatalt")
+    @mock.patch("pygac.pod_reader.compute_pixels")
+    @mock.patch("pygac.reader.Reader.get_tle_lines")
+    @mock.patch("pygac.pod_reader.avhrr_gac")
     def test__adjust_clock_drift(self, avhrr_gac, get_tle_lines,
                                  compute_pixels, get_lonlatalt):
         """Test the clock drift adjustment."""
@@ -210,7 +207,7 @@ class TestPOD(unittest.TestCase):
         #  '1980-01-01T00:00:03.500', '1980-01-01T00:00:04.000',
         #  '1980-01-01T00:00:04.500', '1980-01-01T00:00:05.000']
         scan_utcs = (
-            (1000 * scan_rate * (scan_lines - scan_lines[0])).astype('timedelta64[ms]')
+            (1000 * scan_rate * (scan_lines - scan_lines[0])).astype("timedelta64[ms]")
             + np.datetime64("1980", "ms")
         )
         # For the geolocations, we assume an artificial swath of two pixels width
@@ -230,7 +227,7 @@ class TestPOD(unittest.TestCase):
         #  '1980-01-01T00:00:00.750', '1980-01-01T00:00:01.250']
         offset = 3.75
         scan_offsets = offset*np.ones_like(scan_lines, dtype=float)  # seconds
-        expected_utcs = scan_utcs - (1000*scan_offsets).astype('timedelta64[ms]')
+        expected_utcs = scan_utcs - (1000*scan_offsets).astype("timedelta64[ms]")
 
         # the adjustment of geolocations should keep the lons unchanged,
         # but should shift the lats by scan_angel * offset / scan_rate
@@ -243,7 +240,7 @@ class TestPOD(unittest.TestCase):
 
         # prepare the reader
         reader.scans = {"scan_line_number": scan_lines}
-        reader.utcs = scan_utcs
+        reader._times_as_np_datetime64 = scan_utcs
         reader.lons = scan_lons
         reader.lats = scan_lats
         reader.spacecraft_name = sat_name
@@ -277,20 +274,20 @@ class TestPOD(unittest.TestCase):
         # check output
         # use allclose for geolocations, because the slerp interpolation
         # includes a transormation to cartesian coordinates and back to lon, lats.
-        numpy.testing.assert_array_equal(reader.utcs, expected_utcs)
+        numpy.testing.assert_array_equal(reader._times_as_np_datetime64, expected_utcs)
         numpy.testing.assert_allclose(reader.lons, expected_lons)
         numpy.testing.assert_allclose(reader.lats, expected_lats)
 
         # undo changes to clock_offsets_txt
         clock_offsets_txt.pop(sat_name)
 
-    @mock.patch('pygac.pod_reader.get_offsets')
-    @mock.patch('pygac.reader.Reader.get_tle_lines')
+    @mock.patch("pygac.pod_reader.get_offsets")
+    @mock.patch("pygac.reader.Reader.get_tle_lines")
     def test__adjust_clock_drift_without_tle(self, get_tle_lines, get_offsets):
         """Test that clockdrift adjustment can handle missing TLE data."""
         reader = self.reader
-        reader.utcs = np.zeros(10, dtype='datetime64[ms]')
+        reader._times_as_np_datetime64 = np.zeros(10, dtype="datetime64[ms]")
         reader.scans = {"scan_line_number": np.arange(10)}
         get_offsets.return_value = np.zeros(10), np.zeros(10)
-        get_tle_lines.side_effect = NoTLEData('No TLE data available')
+        get_tle_lines.side_effect = NoTLEData("No TLE data available")
         reader._adjust_clock_drift()  # should pass without errors

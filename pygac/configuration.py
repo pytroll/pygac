@@ -27,6 +27,7 @@ Read and manage module configuration.
 import logging
 import os
 import sys
+
 try:
     import configparser
 except ImportError:
@@ -42,7 +43,7 @@ LOG = logging.getLogger(__name__)
 class Configuration(configparser.ConfigParser, object):
     """Configuration container for pygac."""
 
-    config_file = ''
+    config_file = ""
 
     def read(self, config_file):
         """Read and parse the configuration file
@@ -69,8 +70,8 @@ class Configuration(configparser.ConfigParser, object):
     def get(self, *args, **kwargs):
         """python 2 compatibility for fallback attribute"""
         if sys.version_info.major < 3:
-            if 'fallback' in kwargs:
-                fallback = kwargs.pop('fallback')
+            if "fallback" in kwargs:
+                fallback = kwargs.pop("fallback")
             else:
                 fallback = None
             try:
@@ -99,7 +100,7 @@ def get_config(initialized=True):
         try:
             config_file = os.environ["PYGAC_CONFIG_FILE"]
         except KeyError:
-            LOG.error('Environment variable PYGAC_CONFIG_FILE not set!')
+            LOG.error("Environment variable PYGAC_CONFIG_FILE not set!")
             raise
         _config.read(config_file)
     return _config

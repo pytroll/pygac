@@ -26,9 +26,9 @@
 
 import logging
 
-from pygac.reader import Reader, ReaderError
 import pygac.pygac_geotiepoints as gtp
-
+from pygac.pygac_geotiepoints import LAC_LONLAT_SAMPLE_POINTS
+from pygac.reader import Reader, ReaderError
 
 LOG = logging.getLogger(__name__)
 
@@ -40,6 +40,7 @@ class LACReader(Reader):
     scan_freq = 6.0 / 1000.0
     # Max scanlines
     max_scanlines = 65535
+    lonlat_sample_points = LAC_LONLAT_SAMPLE_POINTS
 
     def __init__(self, *args, **kwargs):
         """Init the LAC reader."""
@@ -53,9 +54,9 @@ class LACReader(Reader):
         # call super to enter the Method Resolution Order (MRO)
         super(LACReader, cls)._validate_header(header)
         LOG.debug("validate header")
-        data_set_name = header['data_set_name'].decode()
+        data_set_name = header["data_set_name"].decode()
         # split header into parts
         creation_site, transfer_mode, platform_id = (
-            data_set_name.split('.')[:3])
+            data_set_name.split(".")[:3])
         if transfer_mode not in ["LHRR", "HRPT", "FRAC"]:
             raise ReaderError('Improper transfer mode "%s"!' % transfer_mode)

@@ -28,9 +28,9 @@ Can't be used as is, has to be subclassed to add specific read functions.
 
 import logging
 
-from pygac.reader import Reader, ReaderError
 import pygac.pygac_geotiepoints as gtp
-
+from pygac.pygac_geotiepoints import GAC_LONLAT_SAMPLE_POINTS
+from pygac.reader import Reader, ReaderError
 
 LOG = logging.getLogger(__name__)
 
@@ -42,10 +42,11 @@ class GACReader(Reader):
     scan_freq = 2.0 / 1000.0
     # Max scanlines
     max_scanlines = 15000
+    lonlat_sample_points = GAC_LONLAT_SAMPLE_POINTS
 
     def __init__(self, *args, **kwargs):
         """Init the GAC reader."""
-        super(GACReader, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.scan_width = 409
         self.lonlat_interpolator = gtp.gac_lat_lon_interpolator
 
@@ -55,9 +56,9 @@ class GACReader(Reader):
         # call super to enter the Method Resolution Order (MRO)
         super(GACReader, cls)._validate_header(header)
         LOG.debug("validate header")
-        data_set_name = header['data_set_name'].decode()
+        data_set_name = header["data_set_name"].decode()
         # split header into parts
         creation_site, transfer_mode, platform_id = (
-            data_set_name.split('.')[:3])
-        if transfer_mode != 'GHRR':
+            data_set_name.split(".")[:3])
+        if transfer_mode != "GHRR":
             raise ReaderError('Improper transfer mode "%s"!' % transfer_mode)

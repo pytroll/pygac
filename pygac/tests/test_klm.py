@@ -28,6 +28,7 @@ from unittest import mock
 
 import numpy as np
 import numpy.testing
+import xarray as xr
 
 from pygac.gac_klm import GACKLMReader
 from pygac.klm_reader import header
@@ -44,40 +45,39 @@ class TestKLM:
 
     def test_get_lonlat(self):
         """Test readout of lon/lat coordinates."""
-        earth_loc = 1e4 * np.array([[1, 2, 3, 4],
-                                    [5, 6, 7, 8]])
-        self.reader.scans = {'earth_location': earth_loc}
-
         lons_exp = np.array([[2, 4],
                              [6, 8]])
         lats_exp = np.array([[1, 3],
                              [5, 7]])
 
-        lons, lats = self.reader._get_lonlat()
+        self.reader.scans = {"earth_location": {"lats": lats_exp * 1e4,
+                                                "lons": lons_exp * 1e4}}
+
+        lons, lats = self.reader._get_lonlat_from_file()
         numpy.testing.assert_array_equal(lons, lons_exp)
         numpy.testing.assert_array_equal(lats, lats_exp)
 
     def test_get_header_timestamp(self):
         """Test readout of header timestamp."""
         self.reader.head = {
-            'start_of_data_set_year': np.array([2019]),
-            'start_of_data_set_day_of_year': np.array([123]),
-            'start_of_data_set_utc_time_of_day': np.array([123456])
+            "start_of_data_set_year": np.array([2019]),
+            "start_of_data_set_day_of_year": np.array([123]),
+            "start_of_data_set_utc_time_of_day": np.array([123456])
         }
         time = self.reader.get_header_timestamp()
         assert time == dt.datetime(2019, 5, 3, 0, 2, 3, 456000)
 
     def test_get_times(self):
         """Test readout of scanline timestamps."""
-        self.reader.scans = {'scan_line_year': 1,
-                             'scan_line_day_of_year': 2,
-                             'scan_line_utc_time_of_day': 3}
-        assert self.reader._get_times() == (1, 2, 3)
+        self.reader.scans = {"scan_line_year": 1,
+                             "scan_line_day_of_year": 2,
+                             "scan_line_utc_time_of_day": 3}
+        assert self.reader._get_times_from_file() == (1, 2, 3)
 
     def test_get_ch3_switch(self):
         """Test channel 3 identification."""
         self.reader.scans = {
-            'scan_line_bit_field': np.array([1, 2, 3, 4, 5, 6])}
+            "scan_line_bit_field": np.array([1, 2, 3, 4, 5, 6])}
         switch_exp = np.array([1, 2, 3, 0, 1, 2])
         numpy.testing.assert_array_equal(
             self.reader.get_ch3_switch(), switch_exp)
@@ -85,7 +85,7 @@ class TestKLM:
     def test_postproc(self):
         """Test KLM specific postprocessing."""
         self.reader.scans = {
-            'scan_line_bit_field': np.array([0, 1, 2])}
+            "scan_line_bit_field": np.array([0, 1, 2])}
         channels = np.array([[[1., 2., 3., 4.],
                               [1., 2., 3., 4.]],
                              [[1., 2., 3., 4.],
@@ -99,16 +99,22 @@ class TestKLM:
                                 [1., 2., 3., np.nan]],
                                [[1., 2., np.nan, np.nan],
                                 [1., 2., np.nan, np.nan]]])
-        self.reader.postproc(channels)  # masks in-place
+        channels = xr.DataArray(channels, dims=["scan_line_index", "columns", "channel_name"],
+                                coords=dict(channel_name=["1", "2", "3a", "3b"] ))
+        ds = xr.Dataset(dict(channels=channels))
+        self.reader.postproc(ds)  # masks in-place
         numpy.testing.assert_array_equal(channels, masked_exp)
 
     def test_quality_indicators(self):
         """Test the quality indicator unpacking."""
         reader = self.reader
         QFlag = reader.QFlag
+
+        dtype = np.uint32
+
         quality_indicators = np.array([
             0,  # nothing flagged
-            -1,  # everything flagged
+            np.iinfo(dtype).max,  # everything flagged
             QFlag.CALIBRATION | QFlag.NO_EARTH_LOCATION,
             QFlag.TIME_ERROR | QFlag.DATA_GAP,
             QFlag.FATAL_FLAG
@@ -130,7 +136,7 @@ class TestGACKLM:
         """Set up the tests."""
         self.reader = GACKLMReader()
 
-    @mock.patch('pygac.klm_reader.get_tsm_idx')
+    @mock.patch("pygac.klm_reader.get_tsm_idx")
     def test_get_tsm_pixels(self, get_tsm_idx):
         """Test channel set used for TSM correction."""
         ones = np.ones((409, 100))
@@ -154,6 +160,8 @@ class TestLACKLM:
         """Set up the tests."""
         self.reader = LACKLMReader()
         self.reader.scans = np.ones(100, dtype=scanline)
+        self.reader.scans["scan_line_year"] = 2001
+        self.reader.scans["sensor_data"] = 2047
         self.reader.head = np.ones(1, dtype=header)[0]
         self.reader.spacecraft_id = 12
         self.reader.head["noaa_spacecraft_identification_code"] = self.reader.spacecraft_id
@@ -166,7 +174,7 @@ class TestLACKLM:
     def test_get_ch3_switch(self):
         """Test channel 3 identification."""
         self.reader.scans = {
-            'scan_line_bit_field': np.array([1, 2, 3, 4, 5, 6])}
+            "scan_line_bit_field": np.array([1, 2, 3, 4, 5, 6])}
         switch_exp = np.array([1, 2, 3, 0, 1, 2])
         numpy.testing.assert_array_equal(
             self.reader.get_ch3_switch(), switch_exp)

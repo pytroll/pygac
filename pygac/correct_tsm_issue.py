@@ -23,9 +23,10 @@
 an orbit contain corrupt data. This module identifies affected pixels and flags
 them with fill values."""
 
-import numpy as np
-import bottleneck as bn
 import datetime
+
+import bottleneck as bn
+import numpy as np
 
 TSM_AFFECTED_INTERVALS_POD = {
     3: [(datetime.datetime(2001, 10, 19, 4, 50), datetime.datetime(2001, 10, 19, 13, 38)),
@@ -409,7 +410,7 @@ def std_filter(data, box_size):
     # need to surround the data with NaNs to calculate values at the boundary
     padded_data = np.pad(
         data, (border, border),
-        mode='constant',
+        mode="constant",
         constant_values=np.nan
     )
     windows = _rolling_window(padded_data, size)

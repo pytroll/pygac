@@ -198,44 +198,44 @@ header3 = np.dtype([("noaa_spacecraft_identification_code", ">u1"),
                     ("pitch_fixed_error_correction", ">i2")])
 
 # archive header
-tbm_header = np.dtype([('fill', 'S30'),
-                       ('data_set_name', 'S44'),
-                       ('select_flag', 'S1'),
-                       ('beginning_latitude', 'S3'),
-                       ('ending_latitude', 'S3'),
-                       ('beginning_longitude', 'S4'),
-                       ('ending_longitude', 'S4'),
-                       ('start_hour', 'S2'),
-                       ('start_minute', 'S2'),
-                       ('number_of_minutes', 'S3'),
-                       ('appended_data_flag', 'S1'),
-                       ('channel_select_flag', 'S1', (20, )),
-                       ('sensor_data_word_size', 'S2'),
-                       ('fill2', 'S3')])
+tbm_header = np.dtype([("fill", "S30"),
+                       ("data_set_name", "S44"),
+                       ("select_flag", "S1"),
+                       ("beginning_latitude", "S3"),
+                       ("ending_latitude", "S3"),
+                       ("beginning_longitude", "S4"),
+                       ("ending_longitude", "S4"),
+                       ("start_hour", "S2"),
+                       ("start_minute", "S2"),
+                       ("number_of_minutes", "S3"),
+                       ("appended_data_flag", "S1"),
+                       ("channel_select_flag", "S1", (20, )),
+                       ("sensor_data_word_size", "S2"),
+                       ("fill2", "S3")])
 
 
 class PODReader(Reader):
     """The POD reader."""
 
-    spacecrafts_orbital = {25: 'tiros n',
-                           2: 'noaa 6',
-                           4: 'noaa 7',
-                           6: 'noaa 8',
-                           7: 'noaa 9',
-                           8: 'noaa 10',
-                           1: 'noaa 11',
-                           5: 'noaa 12',
-                           3: 'noaa 14',
+    spacecrafts_orbital = {25: "tiros n",
+                           2: "noaa 6",
+                           4: "noaa 7",
+                           6: "noaa 8",
+                           7: "noaa 9",
+                           8: "noaa 10",
+                           1: "noaa 11",
+                           5: "noaa 12",
+                           3: "noaa 14",
                            }
-    spacecraft_names = {25: 'tirosn',
-                        2: 'noaa6',
-                        4: 'noaa7',
-                        6: 'noaa8',
-                        7: 'noaa9',
-                        8: 'noaa10',
-                        1: 'noaa11',
-                        5: 'noaa12',
-                        3: 'noaa14',
+    spacecraft_names = {25: "tirosn",
+                        2: "noaa6",
+                        4: "noaa7",
+                        6: "noaa8",
+                        7: "noaa9",
+                        8: "noaa10",
+                        1: "noaa11",
+                        5: "noaa12",
+                        3: "noaa14",
                         }
 
     tsm_affected_intervals = TSM_AFFECTED_INTERVALS_POD
@@ -246,7 +246,7 @@ class PODReader(Reader):
     def correct_scan_line_numbers(self):
         """Correct the scan line numbers."""
         # Perform common corrections first.
-        super(PODReader, self).correct_scan_line_numbers()
+        super().correct_scan_line_numbers()
 
         # cleaning up the data
         min_scanline_number = np.amin(
@@ -275,7 +275,7 @@ class PODReader(Reader):
 
         """
         self.filename = filename
-        LOG.info('Reading %s', self.filename)
+        LOG.info("Reading %s", self.filename)
         # choose the right header depending on the date
         with file_opener(fileobj or filename) as fd_:
             self.tbm_head, self.head = self.read_header(
@@ -341,8 +341,8 @@ class PODReader(Reader):
 
     @classmethod
     def _validate_tbm_header(cls, potential_tbm_header):
-        data_set_name = potential_tbm_header['data_set_name']
-        allowed_empty = (42*b'\x00' + b'  ')
+        data_set_name = potential_tbm_header["data_set_name"]
+        allowed_empty = (42*b"\x00" + b"  ")
         if data_set_name == allowed_empty:
             return potential_tbm_header.copy()
 
@@ -382,12 +382,12 @@ class PODReader(Reader):
         # call super to enter the Method Resolution Order (MRO)
         super(PODReader, cls)._validate_header(header)
         LOG.debug("validate header")
-        data_set_name = header['data_set_name'].decode()
+        data_set_name = header["data_set_name"].decode()
         # split header into parts
         creation_site, transfer_mode, platform_id = (
-            data_set_name.split('.')[:3])
-        allowed_ids = ['TN', 'NA', 'NB', 'NC', 'ND', 'NE', 'NF', 'NG',
-                       'NH', 'NI', 'NJ']
+            data_set_name.split(".")[:3])
+        allowed_ids = ["TN", "NA", "NB", "NC", "ND", "NE", "NF", "NG",
+                       "NH", "NI", "NJ"]
         if platform_id not in allowed_ids:
             raise ReaderError('Improper platform id "%s"!' % platform_id)
 
@@ -406,7 +406,7 @@ class PODReader(Reader):
             return self.to_datetime(self.to_datetime64(year=year, jday=jday,
                                                        msec=msec))
         except ValueError as err:
-            raise ValueError('Corrupt header timestamp: {0}'.format(err))
+            raise ValueError("Corrupt header timestamp: {0}".format(err))
 
     @staticmethod
     def decode_timestamps(encoded):
@@ -430,7 +430,7 @@ class PODReader(Reader):
             enc1 = encoded[:, 1]
             enc2 = encoded[:, 2]
         else:
-            raise ValueError('Invalid timestamp dimension')
+            raise ValueError("Invalid timestamp dimension")
 
         year = enc0 >> 9
         year = np.where(year > 75, year + 1900, year + 2000)
@@ -439,16 +439,15 @@ class PODReader(Reader):
 
         return year, jday, msec
 
-    def _get_times(self):
+    def _get_times_from_file(self):
         return self.decode_timestamps(self.scans["time_code"])
 
     def _compute_missing_lonlat(self, missed_utcs):
         """Compute lon lat values using pyorbital."""
         tic = datetime.datetime.now()
-
         scan_rate = datetime.timedelta(milliseconds=1/self.scan_freq).total_seconds()
         sgeom = avhrr_gac(missed_utcs.astype(datetime.datetime),
-                          self.scan_points, frequency=scan_rate)
+                          self.lonlat_sample_points, frequency=scan_rate)
         t0 = missed_utcs[0].astype(datetime.datetime)
         s_times = sgeom.times(t0)
         tle1, tle2 = self.get_tle_lines()
@@ -479,10 +478,10 @@ class PODReader(Reader):
                      self.spacecraft_name)
             return
 
-        error_utcs = np.array(error_utcs, dtype='datetime64[ms]')
+        error_utcs = np.array(error_utcs, dtype="datetime64[ms]")
         # interpolate to get the clock offsets at the scan line utcs
         # the clock_error is given in seconds, so offsets are in seconds, too.
-        offsets = np.interp(self.utcs.astype(np.uint64),
+        offsets = np.interp(self._times_as_np_datetime64.astype(np.uint64),
                             error_utcs.astype(np.uint64),
                             clock_error)
         LOG.info("Adjusting for clock drift of %s to %s seconds.",
@@ -507,12 +506,12 @@ class PODReader(Reader):
         num_lines = max_line - min_line + 1
         missed_lines = np.setdiff1d(np.arange(min_line, max_line+1), scan_lines)
         missed_utcs = ((missed_lines - scan_lines[0])*np.timedelta64(scan_rate, "ms")
-                       + self.utcs[0])
+                       + self._times_as_np_datetime64[0])
         # calculate the missing geo locations
         try:
             missed_lons, missed_lats = self._compute_missing_lonlat(missed_utcs)
         except NoTLEData as err:
-            LOG.warning('Cannot perform clock drift correction: %s', str(err))
+            LOG.warning("Cannot perform clock drift correction: %s", str(err))
             return
 
         # create arrays of lons and lats for interpolation. The locations
@@ -540,14 +539,14 @@ class PODReader(Reader):
         # set corrected values
         self.lons = slerp_res[:, :, 0]
         self.lats = slerp_res[:, :, 1]
-        self.utcs -= (offsets * 1000).astype('timedelta64[ms]')
+        self._times_as_np_datetime64 -= (offsets * 1000).astype("timedelta64[ms]")
 
         toc = datetime.datetime.now()
         LOG.debug("clock drift adjustment took %s", str(toc - tic))
 
-    def _get_lonlat(self):
-        lats = self.scans["earth_location"][:, 0::2] / 128.0
-        lons = self.scans["earth_location"][:, 1::2] / 128.0
+    def _get_lonlat_from_file(self):
+        lats = self.scans["earth_location"]["lats"] / np.float32(128.0)
+        lons = self.scans["earth_location"]["lons"] / np.float32(128.0)
         return lons, lats
 
     def get_telemetry(self):

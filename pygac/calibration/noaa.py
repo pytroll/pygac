@@ -40,14 +40,78 @@ import numpy as np
 LOG = logging.getLogger(__name__)
 
 
+def calibrate(ds, custom_coeffs=None, coeffs_file=None):
+    """Calibrate the dataset `ds`, possibly using custom_coeffs or a coeff file.
+
+    Args:
+        ds: xarray Dataset object containing the data to calibrate.
+        custom_calibration: dictionary with a subset of user defined satellite specific
+                            calibration coefficients
+        calibration_file: path to json file containing default calibrations
+    """
+    channels = ds["channels"].data
+    times = ds.coords["times"]
+    scan_line_numbers = ds["scan_line_index"].data
+
+    calibration_coeffs = Calibrator(
+            ds.attrs["spacecraft_name"],
+            custom_coeffs=custom_coeffs,
+            coeffs_file=coeffs_file
+        )
+
+    # `times` is in nanosecond resolution. However, convertion from datetime64[ns] to datetime objects
+    # does not work, and anyway only the date is needed.
+    start_time = times[0].dt
+    year = start_time.year.item()
+    jday = start_time.dayofyear.item()
+
+
+    corr = ds.attrs["sun_earth_distance_correction_factor"]
+
+    # how many reflective channels are there ?
+    tot_ref = channels.shape[2] - 3
+
+    channels[:, :, 0:tot_ref] = calibrate_solar(
+        channels[:, :, 0:tot_ref],
+        np.arange(tot_ref),
+        year, jday,
+        calibration_coeffs,
+        corr
+    )
+
+    prt = ds["prt_counts"].data
+    ict = ds["ict_counts"].data
+    space = ds["space_counts"].data
+
+    ir_channels_to_calibrate = [3, 4, 5]
+
+    for chan in ir_channels_to_calibrate:
+        channels[:, :, chan - 6] = calibrate_thermal(
+            channels[:, :, chan - 6],
+            prt,
+            ict[:, chan - 3],
+            space[:, chan - 3],
+            scan_line_numbers,
+            chan,
+            calibration_coeffs
+        )
+
+    new_ds = ds.copy()
+    new_ds["channels"].data = channels
+
+    new_ds.attrs["calib_coeffs_version"] = calibration_coeffs.version
+
+    return new_ds
+
+
 class CoeffStatus(Enum):
     """Indicates the status of calibration coefficients."""
-    NOMINAL = 'nominal'
-    PROVISIONAL = 'provisional'
-    EXPERIMENTAL = 'experimental'
+    NOMINAL = "nominal"
+    PROVISIONAL = "provisional"
+    EXPERIMENTAL = "experimental"
 
 
-class Calibrator(object):
+class Calibrator:
     """Factory class to create namedtuples holding the calibration coefficients.
 
     Attributes:
@@ -56,17 +120,17 @@ class Calibrator(object):
         default_coeffs: dictonary containing default values for all spacecrafts
     """
     version_hashs = {
-        '963af9b66268475ed500ad7b37da33c5': {
-            'name': 'PATMOS-x, v2017r1',
-            'status': CoeffStatus.NOMINAL
+        "963af9b66268475ed500ad7b37da33c5": {
+            "name": "PATMOS-x, v2017r1",
+            "status": CoeffStatus.NOMINAL
         },
-        '689386c822de18a07194ac7fd71652ea': {
-            'name': 'PATMOS-x, v2017r1, with provisional coefficients for MetOp-C',
-            'status': CoeffStatus.PROVISIONAL
+        "689386c822de18a07194ac7fd71652ea": {
+            "name": "PATMOS-x, v2017r1, with provisional coefficients for MetOp-C",
+            "status": CoeffStatus.PROVISIONAL
         },
-        'e8735ec394ecdb87b7edcd261e72d2eb': {
-            'name': 'PATMOS-x, v2023',
-            'status': CoeffStatus.PROVISIONAL
+        "e8735ec394ecdb87b7edcd261e72d2eb": {
+            "name": "PATMOS-x, v2023",
+            "status": CoeffStatus.PROVISIONAL
         },
     }
     fields = [
@@ -75,7 +139,7 @@ class Calibrator(object):
         "to_eff_blackbody_slope", "date_of_launch", "d", "spacecraft", "version"
     ]
 
-    Calibrator = namedtuple('Calibrator', fields)
+    Calibrator = namedtuple("Calibrator", fields)
     default_coeffs = None
     default_file = None
     default_version = None
@@ -112,21 +176,21 @@ class Calibrator(object):
         for key in ("dark_count", "gain_switch", "s0", "s1", "s2"):
             arraycoeffs[key] = np.array([
                 coeffs[channel][key]
-                for channel in ('channel_1', 'channel_2', 'channel_3a')
+                for channel in ("channel_1", "channel_2", "channel_3a")
             ], dtype=float)
         # thermal channels
         for key in ("centroid_wavenumber", "space_radiance",
                     "to_eff_blackbody_intercept", "to_eff_blackbody_slope"):
             arraycoeffs[key] = np.array([
                 coeffs[channel][key]
-                for channel in ('channel_3b', 'channel_4', 'channel_5')
+                for channel in ("channel_3b", "channel_4", "channel_5")
             ], dtype=float)
         arraycoeffs["b"] = np.array([
             [
                 coeffs[channel][key]
                 for key in ("b0", "b1", "b2")
             ]
-            for channel in ('channel_3b', 'channel_4', 'channel_5')
+            for channel in ("channel_3b", "channel_4", "channel_5")
         ], dtype=float)
         # thermometers
         # Note, that "thermometer_0" does not exists, and is filled with zeros to
@@ -139,7 +203,7 @@ class Calibrator(object):
             for d in range(5)
         ], dtype=float)
         # parse date of launch
-        date_of_launch_str = coeffs["date_of_launch"].replace('Z', '+00:00')
+        date_of_launch_str = coeffs["date_of_launch"].replace("Z", "+00:00")
         if sys.version_info < (3, 7):
             # Note that here any time information is lost
             import dateutil.parser
@@ -174,7 +238,7 @@ class Calibrator(object):
         else:
             LOG.debug("Read PyGAC internal calibration coefficients.")
             coeffs_file = files("pygac") / "data/calibration.json"
-        with open(coeffs_file, mode='rb') as json_file:
+        with open(coeffs_file, mode="rb") as json_file:
             content = json_file.read()
             coeffs = json.loads(content)
             version = cls._get_coeffs_version(content)
@@ -187,10 +251,10 @@ class Calibrator(object):
         digest = md5_hash.hexdigest()
         version_dict = cls.version_hashs.get(
             digest,
-            {'name': None, 'status': None}
+            {"name": None, "status": None}
         )
-        version = version_dict['name']
-        status = version_dict['status']
+        version = version_dict["name"]
+        status = version_dict["status"]
         if version is None:
             warning = "Unknown calibration coefficients version!"
             warnings.warn(warning, RuntimeWarning)
@@ -199,7 +263,7 @@ class Calibrator(object):
             LOG.info('Identified calibration coefficients version "%s".',
                      version)
             if status != CoeffStatus.NOMINAL:
-                warning = 'Using {} calibration coefficients'.format(status)
+                warning = "Using {} calibration coefficients".format(status)
                 warnings.warn(warning, RuntimeWarning)
                 LOG.warning(warning)
         return version
@@ -393,14 +457,15 @@ def calibrate_thermal(counts, prt, ict, space, line_numbers, channel, cal):
     # Note that the prt values are the average value of the three readings from one of the four
     # PRTs. See reader.get_telemetry implementations.
     prt_threshold = 50  # empirically found and set by Abhay Devasthale
-    offset = 0
 
-    for i, prt_val in enumerate(prt):
+    for offset in range(5):
         # According to the KLM Guide the fill value between PRT measurments is 0, but we search
-        # for the first measurment gap using the threshold. Is this on purpose?
-        if prt_val < prt_threshold:
-            offset = i
+        # for the first measurement gap using the threshold, because the fill value is in practice
+        # not always exactly 0.
+        if np.median(prt[(line_numbers - line_numbers[0]) % 5 == offset]) < prt_threshold:
             break
+    else:
+        raise IndexError("No PRT 0-index found!")
 
     # get the PRT index, iprt equals to 0 corresponds to the measurement gaps
     iprt = (line_numbers - line_numbers[0] + 5 - offset) % 5
@@ -450,16 +515,18 @@ def calibrate_thermal(counts, prt, ict, space, line_numbers, channel, cal):
     if channel == 3:
         zeros = ict < ict_threshold
         nonzeros = np.logical_not(zeros)
-
-        ict[zeros] = np.interp((zeros).nonzero()[0],
-                               (nonzeros).nonzero()[0],
-                               ict[nonzeros])
+        try:
+            ict[zeros] = np.interp((zeros).nonzero()[0],
+                                (nonzeros).nonzero()[0],
+                                ict[nonzeros])
+        except ValueError: # 3b has no valid data
+            return counts
         zeros = space < space_threshold
         nonzeros = np.logical_not(zeros)
 
         space[zeros] = np.interp((zeros).nonzero()[0],
-                                 (nonzeros).nonzero()[0],
-                                 space[nonzeros])
+                                (nonzeros).nonzero()[0],
+                                space[nonzeros])
 
     # convolving and smoothing PRT, ICT and SPACE values
     if lines > 51:
@@ -468,9 +535,9 @@ def calibrate_thermal(counts, prt, ict, space, line_numbers, channel, cal):
         wlength = 3
 
     weighting_function = np.ones(wlength, dtype=float) / wlength
-    tprt_convolved = np.convolve(tprt, weighting_function, 'same')
-    ict_convolved = np.convolve(ict, weighting_function, 'same')
-    space_convolved = np.convolve(space, weighting_function, 'same')
+    tprt_convolved = np.convolve(tprt, weighting_function, "same")
+    ict_convolved = np.convolve(ict, weighting_function, "same")
+    space_convolved = np.convolve(space, weighting_function, "same")
 
     # take care of the beginning and end
     tprt_convolved[0:(wlength - 1) // 2] = tprt_convolved[(wlength - 1) // 2]
@@ -491,7 +558,7 @@ def calibrate_thermal(counts, prt, ict, space, line_numbers, channel, cal):
     # TsBB = A + B*TBB    (7.1.2.4-3)
     # NBB = c1*nu_e^3/(exp(c2*nu_e/TsBB) - 1)    (7.1.2.4-3)
     # where the constants of the Planck function are defined as c1 = 2*h*c^2, c2 = h*c/k_B.
-    # constatns
+    # constants
     c1 = 1.1910427e-5  # mW/m^2/sr/cm^{-4}
     c2 = 1.4387752  # cm K
     # coefficients

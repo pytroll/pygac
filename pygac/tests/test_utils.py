@@ -31,7 +31,7 @@ from unittest import mock
 
 import numpy as np
 
-from pygac.utils import file_opener, calculate_sun_earth_distance_correction
+from pygac.utils import calculate_sun_earth_distance_correction, file_opener
 
 
 class TestUtils(unittest.TestCase):
@@ -39,20 +39,20 @@ class TestUtils(unittest.TestCase):
 
     longMessage = True
 
-    @mock.patch('pygac.utils.open', mock.MagicMock(return_value=io.BytesIO(b'file content')))
+    @mock.patch("pygac.utils.open", mock.MagicMock(return_value=io.BytesIO(b"file content")))
     def test_file_opener_1(self):
         """Test if a file is redirected correctly through file_opener."""
-        with file_opener('path/to/file') as f:
+        with file_opener("path/to/file") as f:
             content = f.read()
-        self.assertEqual(content, b'file content')
+        self.assertEqual(content, b"file content")
 
     def test_file_opener_2(self):
         """Test file_opener with file objects and compression"""
         # prepare test
-        normal_message = b'normal message'
-        gzip_message_decoded = b'gzip message'
+        normal_message = b"normal message"
+        gzip_message_decoded = b"gzip message"
         with io.BytesIO() as f:
-            with gzip.open(f, mode='wb') as g:
+            with gzip.open(f, mode="wb") as g:
                 g.write(gzip_message_decoded)
             f.seek(0)
             gzip_message_encoded = f.read()
@@ -68,7 +68,7 @@ class TestUtils(unittest.TestCase):
                 message = g.read()
         self.assertEqual(message, gzip_message_decoded)
 
-    @mock.patch('pygac.utils.open', mock.MagicMock(side_effect=FileNotFoundError))
+    @mock.patch("pygac.utils.open", mock.MagicMock(side_effect=FileNotFoundError))
     def test_file_opener_3(self):
         """Test file_opener with PathLike object"""
         # prepare test
@@ -83,8 +83,8 @@ class TestUtils(unittest.TestCase):
             def open(self):
                 return io.BytesIO(self.raw_bytes)
 
-        filename = '/path/to/file'
-        file_bytes = b'TestTestTest'
+        filename = "/path/to/file"
+        file_bytes = b"TestTestTest"
         test_pathlike = RawBytes(filename, file_bytes)
         with file_opener(test_pathlike) as f:
             content = f.read()

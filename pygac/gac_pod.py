@@ -30,8 +30,8 @@ import logging
 
 import numpy as np
 
-from pygac.pod_reader import PODReader, main_pod
 from pygac.gac_reader import GACReader
+from pygac.pod_reader import PODReader, main_pod
 
 LOG = logging.getLogger(__name__)
 
@@ -42,7 +42,8 @@ scanline = np.dtype([("scan_line_number", ">i2"),
                      ("number_of_meaningful_zenith_angles_and_earth_location_appended",
                       ">u1"),
                      ("solar_zenith_angles", "i1", (51, )),
-                     ("earth_location", ">i2", (102, )),
+                     ("earth_location", [("lats", ">i2"),
+                                         ("lons", ">i2")], (51,)),
                      ("telemetry", ">u4", (35, )),
                      ("sensor_data", ">u4", (682, )),
                      ("add_on_zenith", ">u2", (10, )),
