@@ -21,19 +21,17 @@
 """Test module for the pod reading."""
 
 import datetime as dt
+import sys
 import unittest
+from unittest import mock
+
 import numpy as np
 import numpy.testing
-import sys
-try:
-    from unittest import mock
-except ImportError:
-    import mock
 
 from pygac.clock_offsets_converter import txt as clock_offsets_txt
-from pygac.reader import ReaderError, NoTLEData
 from pygac.gac_pod import GACPODReader
 from pygac.lac_pod import LACPODReader
+from pygac.reader import NoTLEData, ReaderError
 from pygac.tests.utils import CalledWithArray
 
 

@@ -27,6 +27,7 @@ Read and manage module configuration.
 import logging
 import os
 import sys
+
 try:
     import configparser
 except ImportError:

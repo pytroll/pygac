@@ -36,10 +36,10 @@ from importlib.metadata import entry_points
 
 import numpy as np
 import pyorbital
+import xarray as xr
 from packaging.version import Version
 from pyorbital import astronomy
 from pyorbital.orbital import Orbital
-import xarray as xr
 
 from pygac import gac_io
 from pygac.utils import calculate_sun_earth_distance_correction, centered_modulus, get_absolute_azimuth_angle_diff

@@ -20,12 +20,11 @@
 """Test the I/O."""
 
 import unittest
-try:
-    import mock
-except ImportError:
-    from unittest import mock
+from unittest import mock
+
 import numpy as np
 import numpy.testing
+
 import pygac.gac_io as gac_io
 import pygac.utils as utils
 

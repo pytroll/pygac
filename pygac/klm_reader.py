@@ -36,6 +36,7 @@ Format specification can be found in section 8 of the `KLM user guide`_.
 
 import datetime
 import logging
+
 try:
     from enum import IntFlag
 except ImportError:

@@ -500,11 +500,12 @@ class TestGacReader(unittest.TestCase):
                                      [71.7390608, 71.78108857, 70.01126173, 69.99449392, 69.97770882,
                                       69.9609375, 69.9442054, 69.92751555, 69.91086544, 61.67769951,
                                       61.52802445]])
-        self.reader._times_as_np_datetime64 = np.array([numpy.datetime64(datetime.datetime(1980, 1, 3, 11, 47, 15, 469000)),
-                                     numpy.datetime64(datetime.datetime(1980, 1, 3, 11, 47, 15, 969000)),
-                                     numpy.datetime64(datetime.datetime(1980, 1, 3, 11, 47, 16, 469000)),
-                                     numpy.datetime64(datetime.datetime(1980, 1, 3, 11, 47, 16, 969000)),
-                                     numpy.datetime64(datetime.datetime(1980, 1, 3, 11, 47, 17, 469000))])
+        self.reader._times_as_np_datetime64 = np.array(
+            [numpy.datetime64(datetime.datetime(1980, 1, 3, 11, 47, 15, 469000)),
+             numpy.datetime64(datetime.datetime(1980, 1, 3, 11, 47, 15, 969000)),
+             numpy.datetime64(datetime.datetime(1980, 1, 3, 11, 47, 16, 469000)),
+             numpy.datetime64(datetime.datetime(1980, 1, 3, 11, 47, 16, 969000)),
+             numpy.datetime64(datetime.datetime(1980, 1, 3, 11, 47, 17, 469000))])
         expected_sat_azi_0 = np.array([283.09872924, 283.12775589, 283.13951497, 283.14786413, 283.19638805])
         expected_sat_azi_201 = np.array([272.85051989, 273.79847634, 272.04794616, 273.01363377, 274.00055397])
         expected_sat_azi_408 = np.array([39.77021472, 39.71516966, 39.68104134, 39.60503726, 39.5403431])

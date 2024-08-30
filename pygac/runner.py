@@ -31,13 +31,12 @@ import datetime
 import logging
 import os
 
+from pygac.configuration import get_config
 from pygac.gac_klm import GACKLMReader
 from pygac.gac_pod import GACPODReader
 from pygac.lac_klm import LACKLMReader
 from pygac.lac_pod import LACPODReader
 from pygac.utils import file_opener
-from pygac.configuration import get_config
-
 
 LOG = logging.getLogger(__name__)
 

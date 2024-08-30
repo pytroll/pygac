@@ -25,7 +25,6 @@
 
 
 import geotiepoints as gtp
-
 import numpy as np
 
 GAC_LONLAT_SAMPLE_POINTS = np.arange(4, 405, 8)

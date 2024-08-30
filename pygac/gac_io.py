@@ -33,7 +33,7 @@ import time
 import h5py
 import numpy as np
 
-from pygac.utils import slice_channel, strip_invalid_lat, check_user_scanlines
+from pygac.utils import check_user_scanlines, slice_channel, strip_invalid_lat
 
 LOG = logging.getLogger(__name__)
 
