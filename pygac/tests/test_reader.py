@@ -358,13 +358,14 @@ class TestGacReader(unittest.TestCase):
         """Test interpolate method in get_lonlat."""
         self.lons = None
         self.lats = None
-        lr_lons = 90 * np.random.rand(17, 51)
-        lr_lats = 90 * np.random.rand(17, 51)
+        rng = np.random.default_rng()
+        lr_lons = 90 * rng.random((17, 51))
+        lr_lats = 90 * rng.random((17, 51))
         _get_lonlat.return_value = lr_lons, lr_lats
         self.interpolate_coors = True
         self.interpolator.reset_mock()
-        self.interpolator.return_value = (90 * np.random.rand(17, 409),
-                                          90 * np.random.rand(17, 409))
+        self.interpolator.return_value = (90 * rng.random((17, 409)),
+                                          90 * rng.random((17, 409)))
         lons, lats = self.reader.get_lonlat()
         self.assertEqual(lons.shape[1], 409)
         self.interpolator.assert_called_once_with(lr_lons, lr_lats)

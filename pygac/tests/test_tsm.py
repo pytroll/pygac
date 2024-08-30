@@ -52,9 +52,9 @@ class TSMTest(unittest.TestCase):
         # Add rectangle with noise to channel 1 and 4
         noise_cols, noise_rows = np.meshgrid(np.arange(200, 300),
                                              np.arange(1000, 2000))
+        rng = np.random.default_rng()
         for ch in [ch1, ch4]:
-            ch[noise_rows, noise_cols] += 1000 + 1000*np.random.rand(
-                noise_rows.shape[0], noise_rows.shape[1])
+            ch[noise_rows, noise_cols] += 1000 + 1000*rng.random(size=noise_rows.shape)
 
         # We expect the filter to also detect the edges of the noisy
         # rectangle: At the edges there is a transition from zero to
