@@ -66,7 +66,7 @@ def calibrate(ds, custom_coeffs=None, coeffs_file=None):
     jday = start_time.dayofyear.item()
 
 
-    corr = ds.attrs['sun_earth_distance_correction_factor']
+    corr = ds.attrs["sun_earth_distance_correction_factor"]
 
     # how many reflective channels are there ?
     tot_ref = channels.shape[2] - 3
@@ -106,9 +106,9 @@ def calibrate(ds, custom_coeffs=None, coeffs_file=None):
 
 class CoeffStatus(Enum):
     """Indicates the status of calibration coefficients."""
-    NOMINAL = 'nominal'
-    PROVISIONAL = 'provisional'
-    EXPERIMENTAL = 'experimental'
+    NOMINAL = "nominal"
+    PROVISIONAL = "provisional"
+    EXPERIMENTAL = "experimental"
 
 
 class Calibrator:
@@ -120,17 +120,17 @@ class Calibrator:
         default_coeffs: dictonary containing default values for all spacecrafts
     """
     version_hashs = {
-        '963af9b66268475ed500ad7b37da33c5': {
-            'name': 'PATMOS-x, v2017r1',
-            'status': CoeffStatus.NOMINAL
+        "963af9b66268475ed500ad7b37da33c5": {
+            "name": "PATMOS-x, v2017r1",
+            "status": CoeffStatus.NOMINAL
         },
-        '689386c822de18a07194ac7fd71652ea': {
-            'name': 'PATMOS-x, v2017r1, with provisional coefficients for MetOp-C',
-            'status': CoeffStatus.PROVISIONAL
+        "689386c822de18a07194ac7fd71652ea": {
+            "name": "PATMOS-x, v2017r1, with provisional coefficients for MetOp-C",
+            "status": CoeffStatus.PROVISIONAL
         },
-        'e8735ec394ecdb87b7edcd261e72d2eb': {
-            'name': 'PATMOS-x, v2023',
-            'status': CoeffStatus.PROVISIONAL
+        "e8735ec394ecdb87b7edcd261e72d2eb": {
+            "name": "PATMOS-x, v2023",
+            "status": CoeffStatus.PROVISIONAL
         },
     }
     fields = [
@@ -139,7 +139,7 @@ class Calibrator:
         "to_eff_blackbody_slope", "date_of_launch", "d", "spacecraft", "version"
     ]
 
-    Calibrator = namedtuple('Calibrator', fields)
+    Calibrator = namedtuple("Calibrator", fields)
     default_coeffs = None
     default_file = None
     default_version = None
@@ -176,21 +176,21 @@ class Calibrator:
         for key in ("dark_count", "gain_switch", "s0", "s1", "s2"):
             arraycoeffs[key] = np.array([
                 coeffs[channel][key]
-                for channel in ('channel_1', 'channel_2', 'channel_3a')
+                for channel in ("channel_1", "channel_2", "channel_3a")
             ], dtype=float)
         # thermal channels
         for key in ("centroid_wavenumber", "space_radiance",
                     "to_eff_blackbody_intercept", "to_eff_blackbody_slope"):
             arraycoeffs[key] = np.array([
                 coeffs[channel][key]
-                for channel in ('channel_3b', 'channel_4', 'channel_5')
+                for channel in ("channel_3b", "channel_4", "channel_5")
             ], dtype=float)
         arraycoeffs["b"] = np.array([
             [
                 coeffs[channel][key]
                 for key in ("b0", "b1", "b2")
             ]
-            for channel in ('channel_3b', 'channel_4', 'channel_5')
+            for channel in ("channel_3b", "channel_4", "channel_5")
         ], dtype=float)
         # thermometers
         # Note, that "thermometer_0" does not exists, and is filled with zeros to
@@ -203,7 +203,7 @@ class Calibrator:
             for d in range(5)
         ], dtype=float)
         # parse date of launch
-        date_of_launch_str = coeffs["date_of_launch"].replace('Z', '+00:00')
+        date_of_launch_str = coeffs["date_of_launch"].replace("Z", "+00:00")
         if sys.version_info < (3, 7):
             # Note that here any time information is lost
             import dateutil.parser
@@ -238,7 +238,7 @@ class Calibrator:
         else:
             LOG.debug("Read PyGAC internal calibration coefficients.")
             coeffs_file = files("pygac") / "data/calibration.json"
-        with open(coeffs_file, mode='rb') as json_file:
+        with open(coeffs_file, mode="rb") as json_file:
             content = json_file.read()
             coeffs = json.loads(content)
             version = cls._get_coeffs_version(content)
@@ -251,10 +251,10 @@ class Calibrator:
         digest = md5_hash.hexdigest()
         version_dict = cls.version_hashs.get(
             digest,
-            {'name': None, 'status': None}
+            {"name": None, "status": None}
         )
-        version = version_dict['name']
-        status = version_dict['status']
+        version = version_dict["name"]
+        status = version_dict["status"]
         if version is None:
             warning = "Unknown calibration coefficients version!"
             warnings.warn(warning, RuntimeWarning)
@@ -263,7 +263,7 @@ class Calibrator:
             LOG.info('Identified calibration coefficients version "%s".',
                      version)
             if status != CoeffStatus.NOMINAL:
-                warning = 'Using {} calibration coefficients'.format(status)
+                warning = "Using {} calibration coefficients".format(status)
                 warnings.warn(warning, RuntimeWarning)
                 LOG.warning(warning)
         return version
@@ -535,9 +535,9 @@ def calibrate_thermal(counts, prt, ict, space, line_numbers, channel, cal):
         wlength = 3
 
     weighting_function = np.ones(wlength, dtype=float) / wlength
-    tprt_convolved = np.convolve(tprt, weighting_function, 'same')
-    ict_convolved = np.convolve(ict, weighting_function, 'same')
-    space_convolved = np.convolve(space, weighting_function, 'same')
+    tprt_convolved = np.convolve(tprt, weighting_function, "same")
+    ict_convolved = np.convolve(ict, weighting_function, "same")
+    space_convolved = np.convolve(space, weighting_function, "same")
 
     # take care of the beginning and end
     tprt_convolved[0:(wlength - 1) // 2] = tprt_convolved[(wlength - 1) // 2]

@@ -67,4 +67,4 @@ version-file = "pygac/version.py"
 line-length = 120
 
 [tool.ruff.lint]
-select = ["E", "W", "F", "I"]
+select = ["E", "W", "F", "I", "Q"]

@@ -52,20 +52,20 @@ def save_gac(satellite_name,
              gac_file, meta_data,
              output_file_prefix, avhrr_dir, qual_dir, sunsatangles_dir):
 
-    midnight_scanline = meta_data['midnight_scanline']
-    miss_lines = meta_data['missing_scanlines']
-    corr = meta_data['sun_earth_distance_correction_factor']
+    midnight_scanline = meta_data["midnight_scanline"]
+    miss_lines = meta_data["missing_scanlines"]
+    corr = meta_data["sun_earth_distance_correction_factor"]
 
     last_scan_line_number = qual_flags[-1, 0]
 
     # Strip invalid coordinates
     first_valid_lat, last_valid_lat = strip_invalid_lat(lats)
     if first_valid_lat > start_line:
-        LOG.info('New start_line chosen (due to invalid lat/lon '
-                 'info) = ' + str(first_valid_lat))
+        LOG.info("New start_line chosen (due to invalid lat/lon "
+                 "info) = " + str(first_valid_lat))
     if end_line > last_valid_lat:
-        LOG.info('New end_line chosen (due to invalid lat/lon '
-                 'info) = ' + str(last_valid_lat))
+        LOG.info("New end_line chosen (due to invalid lat/lon "
+                 "info) = " + str(last_valid_lat))
 
     # Check user-defined scanlines
     start_line, end_line = check_user_scanlines(
@@ -209,35 +209,35 @@ def avhrrGAC_io(satellite_name, xutcs, startdate, enddate, starttime, endtime,
     t_obj = time.strptime(enddate + endtime[0:6], "%Y%m%d%H%M%S")
     endtime_sec1970 = calendar.timegm(t_obj)
 
-    LOG.info('Output file prefix = ' + str(output_file_prefix))
-    LOG.info('AVHRR data will be written to ' + str(avhrr_dir))
-    ofn = os.path.join(avhrr_dir, (output_file_prefix + '_avhrr_' +
-                                   satellite_name + '_99999_' +
-                                   startdate + 'T' + starttime + 'Z_' +
-                                   enddate + 'T' + endtime + 'Z.h5'))
+    LOG.info("Output file prefix = " + str(output_file_prefix))
+    LOG.info("AVHRR data will be written to " + str(avhrr_dir))
+    ofn = os.path.join(avhrr_dir, (output_file_prefix + "_avhrr_" +
+                                   satellite_name + "_99999_" +
+                                   startdate + "T" + starttime + "Z_" +
+                                   enddate + "T" + endtime + "Z.h5"))
 
-    LOG.info('Filename: ' + str(os.path.basename(ofn)))
+    LOG.info("Filename: " + str(os.path.basename(ofn)))
 
     fout = h5py.File(ofn, "w")
 
-    dset1 = fout.create_dataset("/image1/data", dtype='int16', data=ref1)
-    dset2 = fout.create_dataset("/image2/data", dtype='int16', data=ref2)
-    dset3 = fout.create_dataset("/image3/data", dtype='int16', data=bt3)
-    dset4 = fout.create_dataset("/image4/data", dtype='int16', data=bt4)
-    dset5 = fout.create_dataset("/image5/data", dtype='int16', data=bt5)
-    dset6 = fout.create_dataset("/image6/data", dtype='int16', data=ref3)
-    dset7 = fout.create_dataset("/where/lat/data", dtype='int32',
+    dset1 = fout.create_dataset("/image1/data", dtype="int16", data=ref1)
+    dset2 = fout.create_dataset("/image2/data", dtype="int16", data=ref2)
+    dset3 = fout.create_dataset("/image3/data", dtype="int16", data=bt3)
+    dset4 = fout.create_dataset("/image4/data", dtype="int16", data=bt4)
+    dset5 = fout.create_dataset("/image5/data", dtype="int16", data=bt5)
+    dset6 = fout.create_dataset("/image6/data", dtype="int16", data=ref3)
+    dset7 = fout.create_dataset("/where/lat/data", dtype="int32",
                                 data=arrLat_full)
-    dset8 = fout.create_dataset("/where/lon/data", dtype='int32',
+    dset8 = fout.create_dataset("/where/lon/data", dtype="int32",
                                 data=arrLon_full)
     del dset8
     channellist = []
-    channellist.append("channel1".encode('utf8'))
-    channellist.append("channel2".encode('utf8'))
-    channellist.append("channel3b".encode('utf8'))
-    channellist.append("channel4".encode('utf8'))
-    channellist.append("channel5".encode('utf8'))
-    channellist.append("channel3a".encode('utf8'))
+    channellist.append("channel1".encode("utf8"))
+    channellist.append("channel2".encode("utf8"))
+    channellist.append("channel3b".encode("utf8"))
+    channellist.append("channel4".encode("utf8"))
+    channellist.append("channel5".encode("utf8"))
+    channellist.append("channel3a".encode("utf8"))
     dset10 = fout.create_dataset("/how/channel_list",
                                  data=channellist)
     del dset10
@@ -282,8 +282,8 @@ def avhrrGAC_io(satellite_name, xutcs, startdate, enddate, starttime, endtime,
 
     g1.attrs["product"] = np.string_("SATCH")
     g1.attrs["quantity"] = np.string_("REFL")
-    g1.attrs["dataset_name"] = np.string_('Channel 1 reflectance')
-    g1.attrs["units"] = np.string_('%')
+    g1.attrs["dataset_name"] = np.string_("Channel 1 reflectance")
+    g1.attrs["units"] = np.string_("%")
     g1.attrs["gain"] = np.float32(0.01)
     g1.attrs["offset"] = np.float32(0.0)
     g1.attrs["missingdata"] = np.int32(MISSING_DATA)
@@ -295,8 +295,8 @@ def avhrrGAC_io(satellite_name, xutcs, startdate, enddate, starttime, endtime,
 
     g2.attrs["product"] = np.string_("SATCH")
     g2.attrs["quantity"] = np.string_("REFL")
-    g2.attrs["dataset_name"] = np.string_('Channel 2 reflectance')
-    g2.attrs["units"] = np.string_('%')
+    g2.attrs["dataset_name"] = np.string_("Channel 2 reflectance")
+    g2.attrs["units"] = np.string_("%")
     g2.attrs["gain"] = np.float32(0.01)
     g2.attrs["offset"] = np.float32(0.0)
     g2.attrs["missingdata"] = np.int32(MISSING_DATA)
@@ -308,8 +308,8 @@ def avhrrGAC_io(satellite_name, xutcs, startdate, enddate, starttime, endtime,
 
     g6.attrs["product"] = np.string_("SATCH")
     g6.attrs["quantity"] = np.string_("REFL")
-    g6.attrs["dataset_name"] = np.string_('Channel 3a reflectance')
-    g6.attrs["units"] = np.string_('%')
+    g6.attrs["dataset_name"] = np.string_("Channel 3a reflectance")
+    g6.attrs["units"] = np.string_("%")
     g6.attrs["gain"] = np.float32(0.01)
     g6.attrs["offset"] = np.float32(0.0)
     g6.attrs["missingdata"] = np.int32(MISSING_DATA)
@@ -321,8 +321,8 @@ def avhrrGAC_io(satellite_name, xutcs, startdate, enddate, starttime, endtime,
 
     g3.attrs["product"] = np.string_("SATCH")
     g3.attrs["quantity"] = np.string_("TB")
-    g3.attrs["dataset_name"] = np.string_('Channel 3b brightness temperature')
-    g3.attrs["units"] = np.string_('K')
+    g3.attrs["dataset_name"] = np.string_("Channel 3b brightness temperature")
+    g3.attrs["units"] = np.string_("K")
     g3.attrs["gain"] = np.float32(0.01)
     g3.attrs["offset"] = np.float32(273.15)
     g3.attrs["missingdata"] = np.int32(MISSING_DATA)
@@ -334,8 +334,8 @@ def avhrrGAC_io(satellite_name, xutcs, startdate, enddate, starttime, endtime,
 
     g4.attrs["product"] = np.string_("SATCH")
     g4.attrs["quantity"] = np.string_("TB")
-    g4.attrs["dataset_name"] = np.string_('Channel 4 brightness temperature')
-    g4.attrs["units"] = np.string_('K')
+    g4.attrs["dataset_name"] = np.string_("Channel 4 brightness temperature")
+    g4.attrs["units"] = np.string_("K")
     g4.attrs["gain"] = np.float32(0.01)
     g4.attrs["offset"] = np.float32(273.15)
     g4.attrs["missingdata"] = np.int32(MISSING_DATA)
@@ -347,8 +347,8 @@ def avhrrGAC_io(satellite_name, xutcs, startdate, enddate, starttime, endtime,
 
     g5.attrs["product"] = np.string_("SATCH")
     g5.attrs["quantity"] = np.string_("TB")
-    g5.attrs["dataset_name"] = np.string_('Channel 5 brightness temperature')
-    g5.attrs["units"] = np.string_('K')
+    g5.attrs["dataset_name"] = np.string_("Channel 5 brightness temperature")
+    g5.attrs["units"] = np.string_("K")
     g5.attrs["gain"] = np.float32(0.01)
     g5.attrs["offset"] = np.float32(273.15)
     g5.attrs["missingdata"] = np.int32(MISSING_DATA)
@@ -358,8 +358,8 @@ def avhrrGAC_io(satellite_name, xutcs, startdate, enddate, starttime, endtime,
     g5.attrs["startdate"] = np.string_(startdate)
     g5.attrs["enddate"] = np.string_(enddate)
 
-    g7.attrs["dataset_name"] = np.string_('Latitude')
-    g7.attrs["units"] = np.string_('Deg')
+    g7.attrs["dataset_name"] = np.string_("Latitude")
+    g7.attrs["units"] = np.string_("Deg")
     g7.attrs["gain"] = np.float32(0.0010)
     g7.attrs["offset"] = np.float32(0.0)
     g7.attrs["missingdata"] = np.int32(MISSING_DATA_LATLON)
@@ -369,8 +369,8 @@ def avhrrGAC_io(satellite_name, xutcs, startdate, enddate, starttime, endtime,
     g7.attrs["startdate"] = np.string_(startdate)
     g7.attrs["enddate"] = np.string_(enddate)
 
-    g8.attrs["dataset_name"] = np.string_('Longitude')
-    g8.attrs["units"] = np.string_('Deg')
+    g8.attrs["dataset_name"] = np.string_("Longitude")
+    g8.attrs["units"] = np.string_("Deg")
     g8.attrs["gain"] = np.float32(0.0010)
     g8.attrs["offset"] = np.float32(0.0)
     g8.attrs["missingdata"] = np.int32(MISSING_DATA_LATLON)
@@ -419,25 +419,25 @@ def avhrrGAC_io(satellite_name, xutcs, startdate, enddate, starttime, endtime,
 
     fout.close()
 
-    LOG.info('Sun and Satellite viewing angles will be ' +
-             'written to ' + str(sunsatangles_dir))
+    LOG.info("Sun and Satellite viewing angles will be " +
+             "written to " + str(sunsatangles_dir))
     ofn = os.path.join(sunsatangles_dir,
-                       (output_file_prefix + '_sunsatangles_' +
-                        satellite_name + '_99999_' + startdate +
-                        'T' + starttime + 'Z_' +
-                        enddate + 'T' + endtime + 'Z.h5'))
+                       (output_file_prefix + "_sunsatangles_" +
+                        satellite_name + "_99999_" + startdate +
+                        "T" + starttime + "Z_" +
+                        enddate + "T" + endtime + "Z.h5"))
 
-    LOG.info('Filename: ' + str(os.path.basename(ofn)))
+    LOG.info("Filename: " + str(os.path.basename(ofn)))
     fout = h5py.File(ofn, "w")
 
-    dset1 = fout.create_dataset("/image1/data", dtype='int16', data=arrSZA)
-    dset2 = fout.create_dataset("/image2/data", dtype='int16', data=arrSTZ)
-    dset3 = fout.create_dataset("/image3/data", dtype='int16', data=arrRAA)
-    dset4 = fout.create_dataset("/image4/data", dtype='int16', data=arrSAA)
-    dset5 = fout.create_dataset("/image5/data", dtype='int16', data=arrSTA)
-    dset6 = fout.create_dataset("/where/lat/data", dtype='int32',
+    dset1 = fout.create_dataset("/image1/data", dtype="int16", data=arrSZA)
+    dset2 = fout.create_dataset("/image2/data", dtype="int16", data=arrSTZ)
+    dset3 = fout.create_dataset("/image3/data", dtype="int16", data=arrRAA)
+    dset4 = fout.create_dataset("/image4/data", dtype="int16", data=arrSAA)
+    dset5 = fout.create_dataset("/image5/data", dtype="int16", data=arrSTA)
+    dset6 = fout.create_dataset("/where/lat/data", dtype="int32",
                                 data=arrLat_full)
-    dset7 = fout.create_dataset("/where/lon/data", dtype='int32',
+    dset7 = fout.create_dataset("/where/lon/data", dtype="int32",
                                 data=arrLon_full)
 
     del dset4, dset5, dset6, dset7
@@ -450,12 +450,12 @@ def avhrrGAC_io(satellite_name, xutcs, startdate, enddate, starttime, endtime,
     g5 = fout.require_group("/image5")
     g6 = fout.require_group("/where")
 
-    g1.attrs["description"] = np.string_('Solar zenith angle')
-    g2.attrs["description"] = np.string_('Satellite zenith angle')
+    g1.attrs["description"] = np.string_("Solar zenith angle")
+    g2.attrs["description"] = np.string_("Satellite zenith angle")
     g3.attrs["description"] = np.string_(
-        'Relative satellite-sun azimuth angle')
-    g4.attrs["description"] = np.string_('Solar azimuth angle')
-    g5.attrs["description"] = np.string_('Satellite azimuth angle')
+        "Relative satellite-sun azimuth angle")
+    g4.attrs["description"] = np.string_("Solar azimuth angle")
+    g5.attrs["description"] = np.string_("Satellite azimuth angle")
     g6.attrs["num_of_pixels"] = np.int32(arrSZA.shape[1])
     g6.attrs["num_of_lines"] = np.int32(arrSZA.shape[0])
     g6.attrs["xscale"] = np.float32(0.0)
@@ -476,8 +476,8 @@ def avhrrGAC_io(satellite_name, xutcs, startdate, enddate, starttime, endtime,
 
     g1.attrs["product"] = np.string_("SUNZ")
     g1.attrs["quantity"] = np.string_("DEG")
-    g1.attrs["dataset_name"] = np.string_('Solar zenith angle')
-    g1.attrs["units"] = np.string_('Deg')
+    g1.attrs["dataset_name"] = np.string_("Solar zenith angle")
+    g1.attrs["units"] = np.string_("Deg")
     g1.attrs["gain"] = np.float32(0.01)
     g1.attrs["offset"] = np.float32(0.0)
     g1.attrs["missingdata"] = np.int32(MISSING_DATA)
@@ -489,8 +489,8 @@ def avhrrGAC_io(satellite_name, xutcs, startdate, enddate, starttime, endtime,
 
     g2.attrs["product"] = np.string_("SATZ")
     g2.attrs["quantity"] = np.string_("DEG")
-    g2.attrs["dataset_name"] = np.string_('Satellite zenith angle')
-    g2.attrs["units"] = np.string_('Deg')
+    g2.attrs["dataset_name"] = np.string_("Satellite zenith angle")
+    g2.attrs["units"] = np.string_("Deg")
     g2.attrs["gain"] = np.float32(0.01)
     g2.attrs["offset"] = np.float32(0.0)
     g2.attrs["missingdata"] = np.int32(MISSING_DATA)
@@ -503,8 +503,8 @@ def avhrrGAC_io(satellite_name, xutcs, startdate, enddate, starttime, endtime,
     g3.attrs["product"] = np.string_("SSAZD")
     g3.attrs["quantity"] = np.string_("DEG")
     g3.attrs["dataset_name"] = np.string_(
-        'Relative satellite-sun azimuth angle')
-    g3.attrs["units"] = np.string_('Deg')
+        "Relative satellite-sun azimuth angle")
+    g3.attrs["units"] = np.string_("Deg")
     g3.attrs["gain"] = np.float32(0.01)
     g3.attrs["offset"] = np.float32(0.0)
     g3.attrs["missingdata"] = np.int32(MISSING_DATA)
@@ -516,8 +516,8 @@ def avhrrGAC_io(satellite_name, xutcs, startdate, enddate, starttime, endtime,
 
     g4.attrs["product"] = np.string_("SUNA")
     g4.attrs["quantity"] = np.string_("DEG")
-    g4.attrs["dataset_name"] = np.string_('Solar azimuth angle')
-    g4.attrs["units"] = np.string_('Deg')
+    g4.attrs["dataset_name"] = np.string_("Solar azimuth angle")
+    g4.attrs["units"] = np.string_("Deg")
     g4.attrs["gain"] = np.float32(0.01)
     g4.attrs["offset"] = np.float32(0.0)
     g4.attrs["missingdata"] = np.int32(MISSING_DATA)
@@ -529,8 +529,8 @@ def avhrrGAC_io(satellite_name, xutcs, startdate, enddate, starttime, endtime,
 
     g5.attrs["product"] = np.string_("SATA")
     g5.attrs["quantity"] = np.string_("DEG")
-    g5.attrs["dataset_name"] = np.string_('Satellite azimuth angle')
-    g5.attrs["units"] = np.string_('Deg')
+    g5.attrs["dataset_name"] = np.string_("Satellite azimuth angle")
+    g5.attrs["units"] = np.string_("Deg")
     g5.attrs["gain"] = np.float32(0.01)
     g5.attrs["offset"] = np.float32(0.0)
     g5.attrs["missingdata"] = np.int32(MISSING_DATA)
@@ -540,8 +540,8 @@ def avhrrGAC_io(satellite_name, xutcs, startdate, enddate, starttime, endtime,
     g5.attrs["startdate"] = np.string_(startdate)
     g5.attrs["enddate"] = np.string_(enddate)
 
-    g6.attrs["dataset_name"] = np.string_('Latitude')
-    g6.attrs["units"] = np.string_('Deg')
+    g6.attrs["dataset_name"] = np.string_("Latitude")
+    g6.attrs["units"] = np.string_("Deg")
     g6.attrs["gain"] = np.float32(0.0010)
     g6.attrs["offset"] = np.float32(0.0)
     g6.attrs["missingdata"] = np.int32(MISSING_DATA_LATLON)
@@ -551,8 +551,8 @@ def avhrrGAC_io(satellite_name, xutcs, startdate, enddate, starttime, endtime,
     g6.attrs["startdate"] = np.string_(startdate)
     g6.attrs["enddate"] = np.string_(enddate)
 
-    g7.attrs["dataset_name"] = np.string_('Longitude')
-    g7.attrs["units"] = np.string_('Deg')
+    g7.attrs["dataset_name"] = np.string_("Longitude")
+    g7.attrs["units"] = np.string_("Deg")
     g7.attrs["gain"] = np.float32(0.0010)
     g7.attrs["offset"] = np.float32(0.0)
     g7.attrs["missingdata"] = np.int32(MISSING_DATA_LATLON)
@@ -583,25 +583,25 @@ def avhrrGAC_io(satellite_name, xutcs, startdate, enddate, starttime, endtime,
 
     fout.close()
 
-    LOG.info('Quality flags will be ' +
-             'written to ' + str(qual_dir))
+    LOG.info("Quality flags will be " +
+             "written to " + str(qual_dir))
     ofn = os.path.join(qual_dir,
-                       (output_file_prefix + '_qualflags_' +
-                        satellite_name + '_99999_' + startdate +
-                        'T' + starttime + 'Z_' +
-                        enddate + 'T' + endtime + 'Z.h5'))
+                       (output_file_prefix + "_qualflags_" +
+                        satellite_name + "_99999_" + startdate +
+                        "T" + starttime + "Z_" +
+                        enddate + "T" + endtime + "Z.h5"))
 
-    LOG.info('Filename: ' + str(os.path.basename(ofn)))
+    LOG.info("Filename: " + str(os.path.basename(ofn)))
     fout = h5py.File(ofn, "w")
 
     g1 = fout.require_group("/qual_flags")
-    dset1 = g1.create_dataset("data", dtype='int16', data=qual_flags)
+    dset1 = g1.create_dataset("data", dtype="int16", data=qual_flags)
     del dset1
 
     g1.attrs["product"] = np.string_("QFLAG")
     g1.attrs["quantity"] = np.string_("INT")
-    g1.attrs["dataset_name"] = np.string_('Scanline quality flags')
-    g1.attrs["units"] = np.string_('None')
+    g1.attrs["dataset_name"] = np.string_("Scanline quality flags")
+    g1.attrs["units"] = np.string_("None")
     g1.attrs["gain"] = np.int32(1)
     g1.attrs["offset"] = np.int32(0)
     g1.attrs["missingdata"] = np.int32(MISSING_DATA)
@@ -615,13 +615,13 @@ def avhrrGAC_io(satellite_name, xutcs, startdate, enddate, starttime, endtime,
     g1.attrs["last_scan_line_number"] = last_scan_line_number
 
     g2 = fout.require_group("/ancillary")
-    dset2 = g2.create_dataset("missing_scanlines", dtype='int16',
+    dset2 = g2.create_dataset("missing_scanlines", dtype="int16",
                               data=miss_lines)
     del dset2
-    dset3 = g2.create_dataset("scanline_timestamps", dtype='int64',
-                              data=xutcs.astype('int64'))
-    dset3.attrs['units'] = 'Milliseconds since 1970-01-01 00:00:00 UTC'
-    dset3.attrs['calendar'] = 'standard'
+    dset3 = g2.create_dataset("scanline_timestamps", dtype="int64",
+                              data=xutcs.astype("int64"))
+    dset3.attrs["units"] = "Milliseconds since 1970-01-01 00:00:00 UTC"
+    dset3.attrs["calendar"] = "standard"
     g2.attrs["midnight_scanline"] = np.string_(midnight_scanline)
 
     fout.close()
