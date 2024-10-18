@@ -525,8 +525,8 @@ def calibrate_thermal(counts, prt, ict, space, line_numbers, channel, cal):
         nonzeros = np.logical_not(zeros)
 
         space[zeros] = np.interp((zeros).nonzero()[0],
-                                (nonzeros).nonzero()[0],
-                                space[nonzeros])
+                                 (nonzeros).nonzero()[0],
+                                 space[nonzeros])
 
     # convolving and smoothing PRT, ICT and SPACE values
     if lines > 51:

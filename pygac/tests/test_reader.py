@@ -86,11 +86,25 @@ class FakeGACReader(GACReader):
 
     def get_telemetry(self):
         """Get the telemetry."""
-        prt = 51 * np.ones(self.along_track)  # prt threshold is 50
-        prt[::5] = 0
-        ict = 101 * np.ones((self.along_track, 3))  # ict threshold is 100
-        space = 101 * np.ones((self.along_track, 3))  # space threshold is 100
-        return prt, ict, space
+        prt = 51 * np.ones((self.along_track, 3))  # prt threshold is 50
+        prt[::5, :] = 0
+        ict = 101 * np.ones((self.along_track, 10, 3))  # ict threshold is 100
+        space = 101 * np.ones((self.along_track, 10, 5))  # space threshold is 100
+
+        prt_counts = xr.DataArray(prt,
+                                  dims=["scan_line_index", "PRT_measurement"])
+
+        # getting ICT counts
+        ict_counts = xr.DataArray(ict,
+                                  dims=["scan_line_index", "back_scan", "channel_name"],
+                                  coords=dict(channel_name=["3", "4", "5"]))
+
+        # getting space counts
+        space_counts = xr.DataArray(self.split_array_along_channel_3(space),
+                                    dims=["scan_line_index", "back_scan", "channel_name"],
+                                    coords=dict(channel_name=["1", "2", "3", "4", "5"]))
+
+        return xr.Dataset(dict(PRT=prt_counts, ICT=ict_counts, space_counts=space_counts))
 
     def _adjust_clock_drift(self):
         pass
@@ -835,9 +849,10 @@ def test_read_to_dataset_is_a_dataset_including_channels_and_telemetry(pod_file_
     assert "times" in dataset.coords
     assert "scan_line_index" in dataset.coords
     assert "channel_name" in dataset.coords
-    assert dataset["prt_counts"].shape == (3,)
-    assert dataset["ict_counts"].shape == (3, 3)
-    assert dataset["space_counts"].shape == (3, 3)
+    assert dataset["PRT"].shape == (3, 3)
+    assert dataset["ICT"].shape == (3, 10, 5)
+    np.testing.assert_array_equal(dataset["ICT"].sel(channel_name=["1", "2"]), np.nan)
+    assert dataset["space_counts"].shape == (3, 10, 5)
 
 
 def test_read_to_dataset_without_interpolation(pod_file_with_tbm_header, pod_tle):
