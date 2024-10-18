@@ -618,7 +618,7 @@ class TestGacReader(unittest.TestCase):
                                      dtype=[("scan_line_number", ">u2")])
 
         # Test correction
-        self.reader.correct_times_thresh()
+        self.reader.correct_corrupted_times_using_thresholding()
         numpy.testing.assert_array_equal(self.reader._times_as_np_datetime64, utcs_expected)
 
     def test_calculate_sun_earth_distance_correction(self):

@@ -279,9 +279,9 @@ class PODReader(Reader):
         LOG.info("Reading %s", self.filename)
         # choose the right header depending on the date
         with file_opener(fileobj or filename) as fd_:
-            self.tbm_head, self.head = self.read_header(
+            self.archive_header, self.head = self.read_header(
                 filename, fileobj=fd_, header_date=self.header_date)
-            if self.tbm_head:
+            if self.archive_header:
                 tbm_offset = tbm_header.itemsize
             else:
                 tbm_offset = 0
@@ -348,8 +348,10 @@ class PODReader(Reader):
             return potential_tbm_header.copy()
 
         # This will raise a DecodingError if the data_set_name is not valid.
-        cls._decode_data_set_name(data_set_name)
-        return potential_tbm_header.copy()
+        data_set_name = cls._decode_data_set_name(data_set_name)
+        tbm_header = potential_tbm_header.copy()
+        tbm_header["data_set_name"] = data_set_name.decode().strip("\x80").encode()
+        return tbm_header
 
 
     @classmethod

@@ -658,9 +658,9 @@ class KLMReader(Reader):
         self.filename = filename
         LOG.info("Reading %s", self.filename)
         with file_opener(fileobj or filename) as fd_:
-            self.ars_head, self.head = self.read_header(
+            self.archive_header, self.head = self.read_header(
                 filename, fileobj=fd_)
-            if self.ars_head:
+            if self.archive_header:
                 ars_offset = ars_header.itemsize
             else:
                 ars_offset = 0

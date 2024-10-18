@@ -856,6 +856,60 @@ class Reader(ABC):
 
         return sat_azi, sat_zenith, sun_azi, sun_zenith, rel_azi
 
+    @abstractmethod
+    def _get_times_from_file(self):  # pragma: no cover
+        """Specify how to read scanline timestamps from data.
+
+        Returns:
+            int: year
+            int: day of year
+            int: milliseconds since 00:00
+
+        """
+        raise NotImplementedError
+
+    def get_times(self):
+        """Read scanline timestamps and try to correct invalid values.
+
+        Returns:
+            UTC timestamps
+
+        """
+        if self._times_as_np_datetime64 is None:
+            self._times_as_np_datetime64 = self._get_valid_datetime64s_from_file()
+            try:
+                self._times_as_np_datetime64 = self.correct_corrupted_times_using_thresholding()
+            except TimestampMismatch as err:
+                LOG.error(str(err))
+
+        return self._times_as_np_datetime64
+
+    def _get_valid_datetime64s_from_file(self):
+        # Read timestamps
+        year, jday, msec = self._get_times_from_file()
+
+        # Correct invalid values
+        year, jday, msec = self.correct_times_median(year=year, jday=jday, msec=msec)
+        times_as_np_datetime64 = self.to_datetime64(year=year, jday=jday, msec=msec)
+        return times_as_np_datetime64
+
+    @staticmethod
+    def to_datetime64(year, jday, msec):
+        """Convert timestamps to numpy.datetime64.
+
+        Args:
+            year: Year
+            jday: Day of the year (1-based)
+            msec: Milliseconds since 00:00
+
+        Returns:
+            numpy.datetime64: Converted timestamps
+
+        """
+        return (year.astype(str).astype("datetime64[Y]")
+                + (jday - 1).astype("timedelta64[D]")
+                + msec.astype("timedelta64[ms]"))
+
     def correct_times_median(self, year, jday, msec):
         """Replace invalid timestamps with statistical estimates (using median).
 
@@ -985,9 +1039,9 @@ class Reader(ABC):
                         "nz_diffs": nz_diffs})
         return results
 
-    def correct_times_thresh(self, max_diff_from_t0_head=6*60*1000,
-                             min_frac_near_t0_head=0.01,
-                             max_diff_from_ideal_t=10*1000):
+    def correct_corrupted_times_using_thresholding(self, max_diff_from_t0_head=6*60*1000,
+                                                   min_frac_near_t0_head=0.01,
+                                                   max_diff_from_ideal_t=10*1000):
         """Correct corrupted timestamps using a threshold approach.
 
         The threshold approach is based on the scanline number and the header
