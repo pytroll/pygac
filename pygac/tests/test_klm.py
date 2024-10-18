@@ -181,13 +181,15 @@ class TestLACKLM:
 
     def test_calibrate_channels(self):
         """Test channel calibration."""
+        # Switch on 3b
+        self.reader.scans["scan_line_bit_field"] = 0
         # ICT
         self.reader.scans["back_scan"] = 400
-        self.reader.scans["back_scan"][0::5, :] = 0
+        self.reader.scans["back_scan"][50, :, :] = 0
         # Space
         self.reader.scans["space_data"] = 400
-        self.reader.scans["space_data"][0::5, :] = 0
-
+        self.reader.scans["space_data"][50, :, :] = 0
+        self.reader.get_calibrated_channels()
         assert np.any(np.isfinite(self.reader.get_calibrated_channels()))
 
     def test_calibrate_inactive_3b(self):
