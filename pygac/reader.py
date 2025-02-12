@@ -405,7 +405,7 @@ class Reader(ABC):
 
         """
         packed_data = self.scans["sensor_data"]
-        counts = np.zeros((len(self.scans), self.scan_width * 5))
+        counts = np.zeros((len(self.scans), self.scan_width * 5))   #double type
         counts_nb = (self.scan_width * 5) // 3
         remainder = (self.scan_width * 5) % 3
         if remainder == 0:
@@ -427,6 +427,7 @@ class Reader(ABC):
         else:
             channels = np.zeros((len(self.scans), self.scan_width, 6),
                                 dtype=counts.dtype)
+            # ^^ make NaNs instead of zeros *****dont fix - leave to martin
             channels[:, :, :2] = counts[:, :, :2]
             channels[:, :, -2:] = counts[:, :, -2:]
             channels[:, :, 2][switch == 1] = counts[:, :, 2][switch == 1]
@@ -541,6 +542,18 @@ class Reader(ABC):
         return self.create_counts_dataset()
 
     def create_counts_dataset(self):
+        """Created output xarray containing counts and information relevant
+        to calibration. Outputs:
+            channels: Earth scene counts
+            prt_counts: Counts from PRTs on ICT
+            ict_counts: Counts from observed ICT
+            space_counts: Counts from space observation
+            vis_space_counts: Counts from space observation (visible channels)
+            bad_space_scans: Scanlines with suspect space view information
+            noise: Noise estimates in counts
+            ict_noise: ICT noise estimates in counts
+            Longitude/latitude: pixel position
+        bad_space_view and noise added by J.Mittaz, UoR"""
         head = dict(zip(self.head.dtype.names, self.head.item()))
         scans = self.scans
 
@@ -553,9 +566,11 @@ class Reader(ABC):
         if counts.shape[-1] == 5:
             channel_names = ["1", "2", "3", "4", "5"]
             ir_channel_names = ["3", "4", "5"]
+            vis_channel_names = ["1", "2","3"]         # added
         else:
             channel_names = ["1", "2", "3a", "3b", "4", "5"]
             ir_channel_names = ["3b", "4", "5"]
+            vis_channel_names = ["1", "2", "3a"]
 
         columns = np.arange(scan_size)
         channels = xr.DataArray(counts, dims=["scan_line_index", "columns", "channel_name"],
@@ -564,18 +579,38 @@ class Reader(ABC):
                                             columns=columns,
                                             times=("scan_line_index", times)))
 
-        prt, ict, space = self._get_telemetry_dataarrays(line_numbers, ir_channel_names)
+        #
+        # Added bad_space_scans and noise to outputs
+        # J.Mittaz University of Reading
+        #
+        prt, ict, space, total_ict, total_space \
+            = self._get_telemetry_dataarrays(line_numbers, ir_channel_names)
+        #
+        # Added vis_space and total_vis_space to outputs
+        # N.Yaghnam, NPL
+        #
+        vis_space, total_vis_space \
+            = self._get_vis_telemetry_dataarrays(line_numbers, vis_channel_names)
 
         longitudes, latitudes = self._get_lonlat_dataarrays(line_numbers, columns)
-
         if self.interpolate_coords:
             channels = channels.assign_coords(longitude=(("scan_line_index", "columns"),
                                                         longitudes.reindex_like(channels).data),
                                             latitude=(("scan_line_index", "columns"),
                                                         latitudes.reindex_like(channels).data))
 
-        ds = xr.Dataset(dict(channels=channels, prt_counts=prt, ict_counts=ict, space_counts=space,
-                             longitude=longitudes, latitude=latitudes),
+        #
+        # Added space_views and noise entries
+        #
+        # Added vis_space and total_vis_space - NY
+        #
+        ds = xr.Dataset(dict(channels=channels, prt_counts=prt, \
+                             ict_counts=ict, space_counts=space,\
+                             total_ict_counts=total_ict,\
+                             total_space_counts=total_space,\
+                             vis_space_counts=vis_space,\
+                             total_vis_space_counts=total_vis_space,\
+                             longitude=longitudes, latitude=latitudes),\
                              attrs=head)
 
         ds.attrs["spacecraft_name"] = self.spacecraft_name
@@ -605,15 +640,41 @@ class Reader(ABC):
         return longitudes,latitudes
 
     def _get_telemetry_dataarrays(self, line_numbers, ir_channel_names):
-        prt, ict, space = self.get_telemetry()
+        """Get data from lower telemetry including bad_scans and noise added
+        by J.Mittaz UoR"""
+        prt, ict, space, total_space, total_ict = self.get_telemetry()
 
         prt = xr.DataArray(prt, dims=["scan_line_index"], coords=dict(scan_line_index=line_numbers))
         ict = xr.DataArray(ict, dims=["scan_line_index", "ir_channel_name"],
                            coords=dict(ir_channel_name=ir_channel_names, scan_line_index=line_numbers))
         space = xr.DataArray(space, dims=["scan_line_index", "ir_channel_name"],
                              coords=dict(ir_channel_name=ir_channel_names, scan_line_index=line_numbers))
+        #
+        # New entries for calibration uncertainty work
+        #
+        pixel_index = np.arange(10,dtype=np.int8)
+        total_ict = xr.DataArray(total_ict, \
+                                 dims=["scan_line_index", "pixel_index", "ir_channel_name"],\
+                                 coords=dict(ir_channel_name=ir_channel_names, scan_line_index=line_numbers))
+        total_space = xr.DataArray(total_space, \
+                                 dims=["scan_line_index", "pixel_index", "ir_channel_name"],\
+                                   coords=dict(ir_channel_name=ir_channel_names, scan_line_index=line_numbers,pixel_index=pixel_index))
 
-        return prt,ict,space
+        return prt,ict,space,total_ict,total_space
+
+    def _get_vis_telemetry_dataarrays(self, line_numbers, vis_channel_names):
+        """Get data from lower telemetry for the visible channels. Added by N.Yaghnam, NPL"""
+        vis_space, total_vis_space = self.get_vis_telemetry()
+
+        pixel_index = np.arange(10, dtype=np.int8)
+        vis_space = xr.DataArray(vis_space, dims=["scan_line_index", "vis_channel_name"],
+                             coords=dict(vis_channel_name=vis_channel_names, scan_line_index=line_numbers))
+        total_vis_space = xr.DataArray(total_vis_space, \
+                                   dims=["scan_line_index", "pixel_index", "vis_channel_name"], \
+                                   coords=dict(vis_channel_name=vis_channel_names, scan_line_index=line_numbers,
+                                               pixel_index=pixel_index))
+
+        return vis_space,total_vis_space
 
     def get_calibrated_channels(self):
         """Calibrate and return the channels."""
@@ -651,6 +712,11 @@ class Reader(ABC):
     @abstractmethod
     def get_telemetry(self):  # pragma: no cover
         """KLM/POD specific readout of telemetry."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_vis_telemetry(self):
+        """KLM/POD specific readout of visible channel telemetry."""
         raise NotImplementedError
 
     def get_lonlat(self):
@@ -696,7 +762,7 @@ class Reader(ABC):
     @property
     @abstractmethod
     def QFlag(self):  # pragma: no cover
-        """KLM/POD specific quality indicators."""
+        """ /POD specific quality indicators."""
         raise NotImplementedError
 
     @property

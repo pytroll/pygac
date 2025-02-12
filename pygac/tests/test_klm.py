@@ -194,3 +194,14 @@ class TestLACKLM:
         """Test calibration of an inactive 3b."""
         channels = self.reader.get_calibrated_channels()
         assert np.all(np.isnan(channels[:, :, 3]))
+
+
+def test_gac_scanline_dtype():
+    """Test the gac scanline size."""
+    from pygac.gac_klm import scanline
+    assert scanline.itemsize == 4608
+
+def test_lac_scanline_dtype():
+    """Test the lac scanline size."""
+    from pygac.lac_klm import scanline
+    assert scanline.itemsize == 15872
