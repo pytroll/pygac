@@ -144,9 +144,22 @@ def get_random(noise,av_noise,s0,s1,s2,cal,year,jday,C,D):
 
     return np.sqrt(uncert), Rcal
 
-# def get_sys(channel,
-#
-#     return np.sqrt(uncert)
+def get_sys(channel, C, D):
+    """Get the systematic parts of the vis calibration uncertainty."""
+    dRcal_dS = (C-D)
+    usys = np.sqrt(0.025**2 + 0.025**2 + 0.01**2 + 0.015**2 + 0.02**2 + 0.025**2) #* fix - don;t think percentages need to be converted as they are multiplied by rcal below
+    #
+    # If channel = 2, add water vapour uncertainty
+    #
+    U_WV = 0.015
+    if channel == 2:
+        usys_tot = np.sqrt(usys**2 + U_WV**2)
+    else:
+        usys_tot = usys
+
+    uncert = (dRcal_dS**2)*(usys_tot**2)
+
+    return np.sqrt(uncert)
 
 def get_vars(ds,channel,wlength,space_threshold,mask):
     """Get variables from xarray"""
@@ -156,11 +169,11 @@ def get_vars(ds,channel,wlength,space_threshold,mask):
 
     # Thresholds to flag missing/wrong data for interpolation
     # Remove masked data
-    space[mask] = 0
+    space[mask] = 0        #*fix - use this as example for flagging
     zeros = space < space_threshold
     nonzeros = np.logical_not(zeros)
 
-    # space[zeros] = np.interp((zeros).nonzero()[0],
+    # space[zeros] = np.interp((zeros).nonzero()[0],  **fix
     #                          (nonzeros).nonzero()[0],
     #                          space[nonzeros])
     #
@@ -180,10 +193,14 @@ def vis_uncertainty(ds,mask,plot=False):
     """Create the uncertainty components for the vis channels. These include
     
     1) Random 
-          a) Noise
-          b) Digitisation
+        a) Noise
+        b) Digitisation
     2) Systematic
-
+        a) MODIS Reflectance uncertainty
+        b) SBAF Correction uncertainty
+        c) Water Vapour effects
+        d) Surface Reflectance variation
+        e) Temporal Stability
     
     Inputs:
           ds : Input xarray dataset containing data for calibration
@@ -208,7 +225,6 @@ def vis_uncertainty(ds,mask,plot=False):
     #
     # Test for channel 3a
     #
-
     if KLMReader._get_vis_channels_to_calibrate == [0,1,2]:
         if ds['channels'].value == np.nan:
             chan_3a = False
@@ -285,8 +301,8 @@ def vis_uncertainty(ds,mask,plot=False):
         plt.tight_layout()
 
     #
-    # Systematic components
-    #
+    # Systematic components *fix - check through patmos - are uncertainties on calibration or on specific parameters - do i need to calculate uncertainty overall on cal?
+    # if above not necessary, delete this section
 
     #
     # Loop round scanlines
@@ -310,10 +326,10 @@ def vis_uncertainty(ds,mask,plot=False):
             rcal_rand_86[i,:] = np.nan
             if chan_3a:
                 rcal_rand_12[i,:] = np.nan
-            rcal_sys_63[i,:] = np.nan
-            rcal_sys_86[i,:] = np.nan
+            rcal_sys_63 = np.nan
+            rcal_sys_86 = np.nan
             if chan_3a:
-                rcal_sys_12[i,:] = np.nan
+                rcal_sys_12 = np.nan
             continue
 
 
@@ -335,6 +351,10 @@ def vis_uncertainty(ds,mask,plot=False):
         #
         # Get systematic uncertainty through the measurement equation
         #
+        rcal_sys_63 = get_sys(1, C_1[i,:], D_1[i])
+        rcal_sys_86 = get_sys(2, C_2[i,:], D_2[i])
+        if chan_3a:
+            rcal_sys_12 = get_sys(3, C_3[i,:], D_3[i])
 
     if plot:
         if chan_3a:
