@@ -147,8 +147,7 @@ def get_random(noise,av_noise,s0,s1,s2,cal,year,jday,C,D):
 def get_sys(channel, C, D):
     """Get the systematic parts of the vis calibration uncertainty."""
     dRcal_dS = (C-D)
-    usys = np.sqrt(0.025**2 + 0.025**2 + 0.01**2 + 0.015**2 + 0.02**2 + 0.025**2) #* fix - don;t think percentages need to be converted as they are multiplied by rcal below
-    #
+    usys = np.sqrt(0.025**2 + 0.025**2 + 0.01**2 + 0.015**2 + 0.02**2 + 0.025**2)
     # If channel = 2, add water vapour uncertainty
     #
     U_WV = 0.015
@@ -169,22 +168,9 @@ def get_vars(ds,channel,wlength,space_threshold,mask):
 
     # Thresholds to flag missing/wrong data for interpolation
     # Remove masked data
-    space[mask] = 0        #*fix - use this as example for flagging
+    space[mask] = 0
     zeros = space < space_threshold
     nonzeros = np.logical_not(zeros)
-
-    # space[zeros] = np.interp((zeros).nonzero()[0],  **fix
-    #                          (nonzeros).nonzero()[0],
-    #                          space[nonzeros])
-    #
-    # Make averages and do using pygacs method at this point
-    #
-    weighting_function = np.ones(wlength, dtype=float) / wlength
-    space_convolved = np.convolve(space, weighting_function, "same")
-
-    # take care of the beginning and end
-    space_convolved[0:(wlength - 1) // 2] = space_convolved[(wlength - 1) // 2]
-    space_convolved[-(wlength - 1) // 2:] = space_convolved[-((wlength + 1) // 2)]
 
     return space, counts
 
@@ -301,8 +287,7 @@ def vis_uncertainty(ds,mask,plot=False):
         plt.tight_layout()
 
     #
-    # Systematic components *fix - check through patmos - are uncertainties on calibration or on specific parameters - do i need to calculate uncertainty overall on cal?
-    # if above not necessary, delete this section
+    # Systematic components
 
     #
     # Loop round scanlines
