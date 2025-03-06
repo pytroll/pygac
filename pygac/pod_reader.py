@@ -246,7 +246,7 @@ class PODReader(Reader):
     def correct_scan_line_numbers(self):
         """Correct the scan line numbers."""
         # Perform common corrections first.
-        super().correct_scan_line_numbers()
+        results = super().correct_scan_line_numbers()
 
         # cleaning up the data
         min_scanline_number = np.amin(
@@ -259,6 +259,7 @@ class PODReader(Reader):
                 self.scans = self.scans[1:]
 
         self.scans = self.scans[self.scans["scan_line_number"] != 0]
+        return results
 
     def read(self, filename, fileobj=None):
         """Read the data.
@@ -288,11 +289,20 @@ class PODReader(Reader):
             fd_.seek(self.offset + tbm_offset, 0)
             buffer = fd_.read()
             count = self.head["number_of_scans"]
+            # check if we have 2 scanlines per physical record
+            if self.offset // self.scanline_type.itemsize == 2:
+                # expect a half record of padding for an odd number of scanlines
+                rec_count = len(buffer) // self.scanline_type.itemsize
+                if rec_count % 2 == 1:
+                    LOG.warning("Unexpected record length for POD file")
+                if count % 2 == 1 and rec_count == count+1:
+                    buffer = buffer[:-self.scanline_type.itemsize]
             self._read_scanlines(buffer, count)
         year, jday, _ = self.decode_timestamps(self.head["start_time"])
         start_date = (datetime.date(year, 1, 1) +
                       datetime.timedelta(days=int(jday) - 1))
-        self.correct_scan_line_numbers()
+        if self.correct_scanlines:
+            self.correct_scan_line_numbers()
         self.spacecraft_id = self.head["noaa_spacecraft_identification_code"]
         if self.spacecraft_id == 1 and start_date < datetime.date(1982, 1, 1):
             self.spacecraft_id = 25

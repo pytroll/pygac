@@ -64,7 +64,7 @@ class GACPODReader(GACReader, PODReader):
         """Init the GAC POD reader."""
         GACReader.__init__(self, *args, **kwargs)
         self.scanline_type = scanline
-        self.offset = 3220
+        self.offset = 6440
         self.scan_points = np.arange(3.5, 2048, 5)
 
 

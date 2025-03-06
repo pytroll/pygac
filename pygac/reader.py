@@ -103,7 +103,8 @@ class Reader(ABC):
     def __init__(self, interpolate_coords=True, adjust_clock_drift=True,
                  tle_dir=None, tle_name=None, tle_thresh=7, creation_site=None,
                  custom_calibration=None, calibration_file=None, header_date="auto",
-                 calibration_method="noaa", calibration_parameters=None):
+                 calibration_method="noaa", calibration_parameters=None,
+                 correct_scanlines=True):
         """Init the reader.
 
         Args:
@@ -120,6 +121,7 @@ class Reader(ABC):
                                 calibration coefficients
             calibration_file: path to json file containing default calibrations
             header_date: the date to use for pod header choice. Defaults to "auto".
+            correct_scanlines: Remove corrrupt scanline numbers
 
         """
         self.meta_data = {}
@@ -130,6 +132,7 @@ class Reader(ABC):
         self.tle_thresh = tle_thresh
         self.creation_site = (creation_site or "NSS").encode("utf-8")
         self.header_date = header_date
+        self.correct_scanlines = correct_scanlines
         self.head = None
         self.scans = None
         self.spacecraft_name = None

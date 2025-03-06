@@ -685,7 +685,8 @@ class KLMReader(Reader):
             buffer = fd_.read()
             count = self.head["count_of_data_records"]
             self._read_scanlines(buffer, count)
-        self.correct_scan_line_numbers()
+        if self.correct_scanlines:
+            self.correct_scan_line_numbers()
         self.spacecraft_id = self.head["noaa_spacecraft_identification_code"]
         self.spacecraft_name = self.spacecraft_names[self.spacecraft_id]
 
