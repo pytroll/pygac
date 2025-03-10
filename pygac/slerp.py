@@ -20,9 +20,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-"""slerp implementation in numpy
-"""
-
+"""slerp implementation in numpy"""
 
 import numpy as np
 
@@ -49,6 +47,17 @@ def dot(a, b):
 def slerp(lon0, lat0, lon1, lat1, t):
     cp0 = tocart(lon0, lat0)
     cp1 = tocart(lon1, lat1)
-    omega = np.arccos(dot(cp0, cp1))[:, :, np.newaxis]
-    return toll(np.sin((1 - t) * omega) / np.sin(omega) * cp0 +
-                np.sin(t * omega) / np.sin(omega) * cp1)
+
+    dot_product = np.clip(dot(cp0, cp1), -1.0, 1.0)
+    identical_mask = np.isclose(dot_product, 1.0)
+
+    omega = np.arccos(dot_product)[:, :, np.newaxis]
+    sin_omega = np.sin(omega)
+
+    interp = (
+        np.sin((1 - t) * omega) / np.where(sin_omega == 0, 1, sin_omega) * cp0
+        + np.sin(t * omega) / np.where(sin_omega == 0, 1, sin_omega) * cp1
+    )
+
+    interp[identical_mask] = cp0[identical_mask]
+    return toll(interp)
