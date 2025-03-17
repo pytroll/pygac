@@ -291,3 +291,30 @@ class TestPOD(unittest.TestCase):
         get_offsets.return_value = np.zeros(10), np.zeros(10)
         get_tle_lines.side_effect = NoTLEData("No TLE data available")
         reader._adjust_clock_drift()  # should pass without errors
+
+    def test__truncate_padding_record(self):
+        """Test that truncate_padding_record is correctly dropping end padding"""
+        reader = self.reader
+        # GAC POD should have two logical records per physical
+        self.assertEqual(reader.offset // reader.scanline_type.itemsize, 2)
+        # Even number of scans, correct file length
+        reader.head = {'number_of_scans': 10}
+        buffer = reader._truncate_padding_record(bytes(10*3220))
+        self.assertEqual(len(buffer), 10*3220)
+        # Odd number of scans, correct file length (should truncate)
+        reader.head = {'number_of_scans': 9}
+        buffer = reader._truncate_padding_record(bytes(10*3220))
+        self.assertEqual(len(buffer), 9*3220)
+        # Odd number of scans, padding record is missing
+        with self.assertWarnsRegex(RuntimeWarning, "Incomplete POD physical record"):
+            reader.head = {'number_of_scans': 9}
+            buffer = reader._truncate_padding_record(bytes(9*3220))
+            self.assertEqual(len(buffer), 9*3220)
+        # File is too short (should do nothing)
+        reader.head = {'number_of_scans': 9}
+        buffer = reader._truncate_padding_record(bytes(8*3220))
+        self.assertEqual(len(buffer), 8*3220)
+        # File is too long (should do nothing)
+        reader.head = {'number_of_scans': 9}
+        buffer = reader._truncate_padding_record(bytes(12*3220))
+        self.assertEqual(len(buffer), 12*3220)
