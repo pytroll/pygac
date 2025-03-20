@@ -314,8 +314,8 @@ class PODReader(Reader):
         so an odd number of scanlines would result in the final physical record
         containing only one scanline and one "logical" record of padding.
         """
-        scanlines_per_record = self.offset // self.scanline_type.itemsize
-        assert scanlines_per_record in [1,2]
+        scanlines_per_record = 1+ self.offset // self.scanline_type.itemsize
+        assert scanlines_per_record in [1,2], f"POD files should have 1 or 2 logical records per physical, not {scanlines_per_record}"
         # Do nothing if the logical and physical records are the same size (LAC).
         if scanlines_per_record == 1:
             return buffer
@@ -323,7 +323,7 @@ class PODReader(Reader):
         n_logical = len(buffer) // self.scanline_type.itemsize
         if n_logical % scanlines_per_record != 0:
             LOG.warning("Unexpected record length for POD file (incomplete physical record?)")
-            warnings.warn("Incomplete POD physical record",
+            warnings.warn("Unexpected record length for POD file (incomplete physical record?)",
                           category=RuntimeWarning, stacklevel=2)
         # How many physical / logical records do we expect based on the file header?
         expected_scanlines = self.head["number_of_scans"]
