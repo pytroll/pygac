@@ -301,9 +301,6 @@ class TestPOD_truncate(unittest.TestCase):
     def setUp(self):
         """Set up the test."""
         self.reader = GACPODReader()
-        # python 2 compatibility
-        if sys.version_info.major < 3:
-            self.assertRaisesRegex = self.assertRaisesRegexp
 
     def test__two_logical_record(self):
         """Test that truncate_padding_record is correctly dropping end padding"""

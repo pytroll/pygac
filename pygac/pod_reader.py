@@ -315,7 +315,6 @@ class PODReader(Reader):
         containing only one scanline and one "logical" record of padding.
         """
         scanlines_per_record = self.offset // self.scanline_type.itemsize
-        assert scanlines_per_record in [1,2], f"POD files should have 1 or 2 logical records per physical, not {scanlines_per_record}"
         # Do nothing if the logical and physical records are the same size (LAC).
         if scanlines_per_record == 1:
             return buffer
