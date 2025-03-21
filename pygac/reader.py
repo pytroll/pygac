@@ -121,7 +121,7 @@ class Reader(ABC):
                                 calibration coefficients
             calibration_file: path to json file containing default calibrations
             header_date: the date to use for pod header choice. Defaults to "auto".
-            correct_scanlines: Remove corrrupt scanline numbers
+            correct_scanlines: Remove corrrupt scanline numbers. Defaults to True
 
         """
         self.meta_data = {}
