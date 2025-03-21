@@ -22,9 +22,9 @@ comprehensive `introduction`_.
 .. _NOAA CLASS:
     https://www.class.noaa.gov/
 .. _POD:
-    https://www.ncei.noaa.gov/pub/data/satellite/publications/podguides/TIROS-N%20thru%20N-14/
+    https://github.com/user-attachments/files/17407676/POD-Guide.pdf
 .. _KLM:
-    https://www.ncei.noaa.gov/pub/data/satellite/publications/podguides/N-15%20thru%20N-19/
+    https://github.com/user-attachments/files/17361330/NOAA_KLM_Users_Guide.pdf
 .. _introduction:
     https://www.class.noaa.gov/release/data_available/avhrr/index.htm
 
