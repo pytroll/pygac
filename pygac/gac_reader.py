@@ -33,9 +33,11 @@ try:
     from pyorbital.geoloc_instrument_definitions import avhrr_gac_from_times
 except ImportError:
     # In pyorbital 1.9.2 and earlier avhrr_gac returned LAC geometry
-    from pyorbital.geoloc_instrument_definitions import avhrr_gac as avhrr_gac_from_times
+    from pyorbital.geoloc_instrument_definitions import avhrr_gac
+    def avhrr_gac_from_times(times, points):
+        return avhrr_gac(times, points*5+3.5)
     warnings.warn('pyorbital version does not support avhrr_gac_from_times. ' +
-                  'Computation of missing longitude/latitudes will be incorrect.')
+                  'Computation of missing longitude/latitudes may be incorrect.')
 
 
 import pygac.pygac_geotiepoints as gtp
