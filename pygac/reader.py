@@ -40,6 +40,7 @@ import xarray as xr
 from packaging.version import Version
 from pyorbital import astronomy
 from pyorbital.orbital import Orbital
+from pyorbital.geoloc import compute_pixels, get_lonlatalt
 
 from pygac import gac_io
 from pygac.utils import calculate_sun_earth_distance_correction, centered_modulus, get_absolute_azimuth_angle_diff
@@ -1259,6 +1260,30 @@ class Reader(ABC):
             LOG.info("Using rpy: %s", str(rpy))
             self._rpy = rpy
         return self._rpy
+
+    def _compute_missing_lonlat(self, missed_utcs):
+        """Compute lon lat values using pyorbital."""
+        tic = datetime.datetime.now()
+        sgeom = self.geoloc_definition(missed_utcs.astype(datetime.datetime),
+                          self.lonlat_sample_points)
+        t0 = missed_utcs[0].astype(datetime.datetime)
+        s_times = sgeom.times(t0)
+        tle1, tle2 = self.get_tle_lines()
+
+        rpy = self.get_attitude_coeffs()
+        pixels_pos = compute_pixels((tle1, tle2), sgeom, s_times, rpy)
+        pos_time = get_lonlatalt(pixels_pos, s_times)
+
+        missed_lons, missed_lats = pos_time[:2]
+
+        pixels_per_line = self.lats.shape[1]
+        missed_lons = missed_lons.reshape(-1, pixels_per_line)
+        missed_lats = missed_lats.reshape(-1, pixels_per_line)
+
+        toc = datetime.datetime.now()
+        LOG.warning("Computation of geolocation: %s", str(toc - tic))
+
+        return missed_lons, missed_lats
 
 
 def inherit_doc(cls):

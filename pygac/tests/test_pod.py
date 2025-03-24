@@ -186,10 +186,10 @@ class TestPOD(unittest.TestCase):
             expected_mask
         )
 
-    @mock.patch("pygac.pod_reader.get_lonlatalt")
-    @mock.patch("pygac.pod_reader.compute_pixels")
+    @mock.patch("pygac.reader.get_lonlatalt")
+    @mock.patch("pygac.reader.compute_pixels")
     @mock.patch("pygac.reader.Reader.get_tle_lines")
-    @mock.patch("pygac.pod_reader.avhrr_gac")
+    @mock.patch("pygac.gac_reader.avhrr_gac_from_times")
     def test__adjust_clock_drift(self, avhrr_gac, get_tle_lines,
                                  compute_pixels, get_lonlatalt):
         """Test the clock drift adjustment."""
