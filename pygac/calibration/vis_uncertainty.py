@@ -27,41 +27,14 @@ import numpy as np
 import xarray as xr
 from importlib.resources import files
 import argparse
+import seaborn as sns
 import matplotlib.pyplot as plt
-
 from pygac import get_reader_class
-from pygac.calibration.noaa import Calibrator
-from pygac.utils import allan_deviation
+from pygac.calibration.noaa import Calibrator, calibrate_solar
+from pygac.utils import allan_deviation, get_bad_space_counts
 from pygac.klm_reader import KLMReader
+from pygac.reader import Reader
 
-
-def get_bad_space_counts(sp_data):
-    """Find bad space count data (space count data is voltage clamped so
-    should have very close to the same value close to 950 - 960
-    Written by J.Mittaz / University of Reading 6 Oct 2024"""
-
-    #
-    # Use robust estimators to get thresholds for space counts
-    # Use 4 sigma threshold from median
-    # Ensure only for good data
-    #
-    gd = np.isfinite(sp_data)
-    if np.sum(gd) == 0:
-        sp_bad_data = np.zeros(sp_data.shape,dtype=bool)
-        sp_bad_data[:,:] = True
-        return sp_bad_data
-
-    quantile = np.quantile(sp_data[gd].flatten(),[0.25,0.75])
-    if quantile[0] == quantile[1]:
-        quantile[1] = quantile[1]+0.5
-    std = (quantile[1]-quantile[0])/1.349
-    sp_bad_data = np.zeros(sp_data.shape,dtype=bool)
-    sp_bad_data[:,:] = True
-    gd = np.isfinite(sp_data)
-    sp_bad_data[gd] = ~((np.abs(sp_data[gd] - np.median(sp_data[gd].flatten()))/\
-                         std < 5.))
-
-    return sp_bad_data
 
 def get_noise(total_space,window,chan_3a):
     """Get noise estimates from the counts"""
@@ -122,7 +95,7 @@ def get_noise(total_space,window,chan_3a):
     return noise1,noise2,noise3,av_noise1,av_noise2,av_noise3,bad_scans
 
 
-def get_random(noise,av_noise,s0,s1,s2,cal,year,jday,C,D):
+def get_random(noise,av_noise,gain,cal,year,jday,C,D):
     """Get the random parts of the vis calibration uncertainty. Done per
     scanline"""
     #
@@ -133,18 +106,24 @@ def get_random(noise,av_noise,s0,s1,s2,cal,year,jday,C,D):
     #
     # Measurement Function
     #
-    Rcal = s0*(100 + s1*t + s2*t**2)*(C-D)/100
+    Rcal = gain*(C-D)
     #
     # Gain part for all noise sources
     #
-    dRcal_dC = s0*(100 + s1*t + s2*t**2)/100
-    dRcal_dD = -s0*(100 + s1*t + s2*t**2)/100
+    dRcal_dC = gain
+    dRcal_dD = -gain
 
     uncert = (dRcal_dD**2)*(av_noise**2) + (dRcal_dC**2)*(noise**2)
 
     return np.sqrt(uncert), Rcal
 
-def get_sys(channel, C, D):
+def get_reflectance(Rcal, d_se, sza):
+    refl = (Rcal*d_se**2)/np.cos(sza)/100
+
+    return refl
+
+
+def get_sys(channel, C, D, gain):
     """Get the systematic parts of the vis calibration uncertainty."""
     dRcal_dS = (C-D)
     usys = np.sqrt(0.025**2 + 0.025**2 + 0.01**2 + 0.015**2 + 0.02**2 + 0.025**2)
@@ -156,21 +135,17 @@ def get_sys(channel, C, D):
     else:
         usys_tot = usys
 
+    usys_tot *= gain
+
     uncert = (dRcal_dS**2)*(usys_tot**2)
 
     return np.sqrt(uncert)
 
-def get_vars(ds,channel,wlength,space_threshold,mask):
+def get_vars(ds,channel):
     """Get variables from xarray"""
 
     space = ds['vis_space_counts'].values[:,channel]
     counts = ds['channels'].values[:,:,channel-3]
-
-    # Thresholds to flag missing/wrong data for interpolation
-    # Remove masked data
-    space[mask] = 0
-    zeros = space < space_threshold
-    nonzeros = np.logical_not(zeros)
 
     return space, counts
 
@@ -199,7 +174,7 @@ def vis_uncertainty(ds,mask,plot=False):
     # Define averaging kernel based on value in noaa.py
     #
     window=51
-    space_threshold = 100
+
 
     if ds['channels'].values.shape[1] == 409:
         gacdata = True
@@ -259,7 +234,7 @@ def vis_uncertainty(ds,mask,plot=False):
     if plot:
         plt.figure(1)
 
-    D_1,C_1= get_vars(ds,0,window,space_threshold,mask)
+    D_1,C_1= get_vars(ds,0)
     if plot:
         plt.subplot(131)
         plt.plot(np.arange(len(D_1)),D_1,',')
@@ -267,7 +242,7 @@ def vis_uncertainty(ds,mask,plot=False):
         plt.ylabel('Space Cnts')
         plt.xlabel('Scanline')
 
-    D_2,C_2 = get_vars(ds,1,window,space_threshold,mask)
+    D_2,C_2 = get_vars(ds,1)
     if plot:
         plt.subplot(132)
         plt.plot(np.arange(len(D_2)),D_2,',')
@@ -276,7 +251,7 @@ def vis_uncertainty(ds,mask,plot=False):
         plt.xlabel('Scanline')
         
     if chan_3a:
-        D_3,C_3 = get_vars(ds,2,window,space_threshold,mask)
+        D_3,C_3 = get_vars(ds,2)
         if plot:
             plt.subplot(133)
             plt.plot(np.arange(len(D_3)),D_3,',')
@@ -311,21 +286,27 @@ def vis_uncertainty(ds,mask,plot=False):
             rcal_rand_86[i,:] = np.nan
             if chan_3a:
                 rcal_rand_12[i,:] = np.nan
-            rcal_sys_63 = np.nan
-            rcal_sys_86 = np.nan
+            rcal_sys_63[i,:] = np.nan
+            rcal_sys_86[i,:] = np.nan
             if chan_3a:
-                rcal_sys_12 = np.nan
+                rcal_sys_12[i,:] = np.nan
             continue
 
-
-
         #
-        # Get noise in scaled radiance space  (rename)
+        # Get calibration slope
         #
-        rad_noise_63, Rcal_1 = get_random(noise1,av_noise1,s0_1,s1_1,s2_1,cal,year,jday, C_1[i,:], D_1[i])
-        rad_noise_86, Rcal_2 = get_random(noise2,av_noise2,s0_2,s1_2,s2_2,cal,year,jday, C_2[i,:], D_2[i])
+        gain_1 = calibrate_solar(C_1[i, :], 0, year, jday, cal, corr=1)/(C_1[i, :]-D_1[i])
+        gain_2 = calibrate_solar(C_2[i, :], 1, year, jday, cal, corr=1)/(C_2[i, :]-D_2[i])
         if chan_3a:
-            rad_noise_12, Rcal_3 = get_random(noise3,av_noise3,s0_3,s1_3,s2_3,cal,year,jday, C_3[i,:], D_3[i])
+            gain_3 = calibrate_solar(C_3[i, :], 2, year, jday, cal, corr=1)/(C_3[i, :]-D_3[i])
+
+        #
+        # Get noise in scaled radiance space
+        #
+        rad_noise_63, Rcal_1 = get_random(noise1,av_noise1,gain_1,cal,year,jday, C_1[i,:], D_1[i])
+        rad_noise_86, Rcal_2 = get_random(noise2,av_noise2,gain_2,cal,year,jday, C_2[i,:], D_2[i])
+        if chan_3a:
+            rad_noise_12, Rcal_3 = get_random(noise3,av_noise3,gain_3,cal,year,jday, C_3[i,:], D_3[i])
 
 
         rcal_rand_63[i,:] = rad_noise_63
@@ -336,10 +317,33 @@ def vis_uncertainty(ds,mask,plot=False):
         #
         # Get systematic uncertainty through the measurement equation
         #
-        rcal_sys_63 = get_sys(1, C_1[i,:], D_1[i])
-        rcal_sys_86 = get_sys(2, C_2[i,:], D_2[i])
+        rcal_sys_63[i,:] = get_sys(1, C_1[i,:], D_1[i], gain_1)
+        rcal_sys_86[i,:] = get_sys(2, C_2[i,:], D_2[i], gain_2)
         if chan_3a:
-            rcal_sys_12 = get_sys(3, C_3[i,:], D_3[i])
+            rcal_sys_12[i,:] = get_sys(3, C_3[i,:], D_3[i], gain_3)
+
+    # define flag for solar contamination data
+    d_se = ds.attrs["sun_earth_distance_correction_factor"]
+    solar_contam_threshold = 0.05
+    sza_threshold = 102
+
+    angles = reader_cls.get_angles()
+    sza = angles["sun_zenith"]
+    refl_1 = get_reflectance(Rcal_1, d_se, 2*np.pi/3)
+    for i in range(len(D_1)):
+        contam_pixels_1 = np.where(np.logical_and(refl_1>solar_contam_threshold, sza>sza_threshold),
+                                 "Pixel is contaminated", refl_1)
+
+    refl_2 = get_reflectance(Rcal_2, d_se, 2 * np.pi / 3)
+    for i in range(len(D_2)):
+        contam_pixels_2 = np.where(np.logical_and(refl_2 > solar_contam_threshold, sza > sza_threshold),
+                                 "Pixel is contaminated", refl_2)
+
+    if chan_3a:
+        refl_3 = get_reflectance(Rcal_3, d_se, 2 * np.pi / 3)
+        for i in range(len(D_3)):
+            contam_pixels_3 = np.where(np.logical_and(refl_3 > solar_contam_threshold, sza > sza_threshold),
+                                     "Pixel is contaminated", refl_3)
 
     if plot:
         if chan_3a:
@@ -420,9 +424,90 @@ def vis_uncertainty(ds,mask,plot=False):
             plt.hist(rcal_sys_86.flatten(),bins=100)
             plt.title('0.86$\mu$m (Systematic)')
             plt.xlabel('Uncertainty')
+            plt.tight_layout()
+
+            plt.figure(3)
+            plt.subplot(231)
+            im = plt.imshow(rcal_rand_63)
+            plt.colorbar(im)
+            plt.title('0.63$\mu$m (Random)')
+
+            plt.subplot(232)
+            im = plt.imshow(rcal_rand_86)
+            plt.colorbar(im)
+            plt.title('0.86$\mu$m (Random)')
+
+            plt.subplot(233)
+            im = plt.imshow(rcal_sys_63)
+            plt.colorbar(im)
+            plt.title('0.63$\mu$m (Systematic)')
+
+            plt.subplot(234)
+            im = plt.imshow(rcal_sys_86)
+            plt.colorbar(im)
+            plt.title('0.86$\mu$m (Systematic)')
 
             plt.tight_layout()
+
         plt.show()
+
+        if chan_3a:
+            plt.figure(2)
+            plt.subplot(231)
+            plt.hist((rcal_rand_63+rcal_sys_63).flatten(), bins=100)
+            plt.title('0.63$\mu$m')
+
+            plt.subplot(232)
+            plt.hist((rcal_rand_86+rcal_sys_86).flatten(), bins=100)
+            plt.title('0.86$\mu$m (Total Uncertainty)')
+
+            plt.subplot(233)
+            plt.hist((rcal_rand_12+rcal_sys_12).flatten(), bins=100)
+            plt.title('1.2$\mu$m')
+            plt.tight_layout()
+
+        else:
+            plt.figure(2)
+            plt.subplot(221)
+            plt.hist((rcal_rand_63+rcal_sys_63).flatten(), bins=100)
+            plt.title('0.63$\mu$m (Total Uncertainty)')
+
+            plt.subplot(222)
+            plt.hist((rcal_rand_86+rcal_sys_86).flatten(), bins=100)
+            plt.title('0.86$\mu$m (Total Uncertainty)')
+            plt.tight_layout()
+
+        plt.show()
+
+        if chan_3a:
+            cov_chan_rand = np.array([rcal_rand_63[0, :], rcal_rand_86[0, :]], rcal_rand_12[0, :])
+            cov = np.cov(cov_chan_rand, bias=True)
+            labels = ['0.63$\mu$m', '0.86$\mu$m', '1.2$\mu$m']
+            sns.heatmap(cov, annot=True, fmt='g', xticklabels=labels, yticklabels=labels)
+
+
+        else:
+            cov_chan_rand = np.array([rcal_rand_63[0, :], rcal_rand_86[0, :]])
+            cov = np.cov(cov_chan_rand, bias=True)
+            labels = ['0.63$\mu$m', '0.86$\mu$m']
+            sns.heatmap(cov, annot=True, fmt='g', xticklabels=labels, yticklabels=labels)
+        plt.title('Covariance Matrix (Random)')
+        plt.show()
+
+        if chan_3a:
+            cov_chan_sys = np.array([rcal_sys_63[0, :], rcal_sys_86[0, :]], rcal_sys_12[0, :])
+            cov = np.cov(cov_chan_sys, bias=True)
+            labels = ['0.63$\mu$m', '0.86$\mu$m', '1.2$\mu$m']
+            sns.heatmap(cov, annot=True, fmt='g', xticklabels=labels, yticklabels=labels)
+
+        else:
+            cov_chan_sys = np.array([rcal_sys_63[0, :], rcal_sys_86[0, :]])
+            cov = np.cov(cov_chan_sys, bias=True)
+            labels = ['0.63$\mu$m', '0.86$\mu$m']
+            sns.heatmap(cov, annot=True, fmt='g', xticklabels=labels, yticklabels=labels, cmap='YlGnBu')
+        plt.title('Covariance Matrix (Systematic')
+        plt.show()
+
     #
     # Output uncertainties
     #
@@ -458,7 +543,8 @@ def vis_uncertainty(ds,mask,plot=False):
                                vis_channels=vis_channels_da,\
                                     random=random_da,systematic=sys_da))
 
-    return uncertainties
+
+    return uncertainties, gain_1, gain_2, gain_3, contam_pixels_1, contam_pixels_2, contam_pixels_3
 
 
 if __name__ == "__main__":
