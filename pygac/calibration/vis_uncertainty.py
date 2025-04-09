@@ -25,10 +25,12 @@ from __future__ import division
 
 import numpy as np
 import xarray as xr
+import pandas as pd
 from importlib.resources import files
 import argparse
 import seaborn as sns
 import matplotlib.pyplot as plt
+from pyorbital import astronomy
 from pygac import get_reader_class
 from pygac.calibration.noaa import Calibrator, calibrate_solar
 from pygac.utils import allan_deviation, get_bad_space_counts
@@ -121,7 +123,6 @@ def get_reflectance(Rcal, d_se, sza):
     refl = (Rcal*d_se**2)/np.cos(sza)/100
 
     return refl
-
 
 def get_sys(channel, C, D, gain):
     """Get the systematic parts of the vis calibration uncertainty."""
@@ -279,9 +280,10 @@ def vis_uncertainty(ds,mask,plot=False):
         rcal_sys_12[:,:] = np.nan
     for i in range(len(D_2)):
         #
-        # Check for bad scanlines
+        # Check for bad scanlines and add flag
         #
         if bad_scan[i] == 1:
+            print(i, "Bad Space Count Data")
             rcal_rand_63[i,:] = np.nan
             rcal_rand_86[i,:] = np.nan
             if chan_3a:
@@ -327,20 +329,28 @@ def vis_uncertainty(ds,mask,plot=False):
     solar_contam_threshold = 0.05
     sza_threshold = 102
 
-    angles = reader_cls.get_angles()
-    sza = angles["sun_zenith"]
-    refl_1 = get_reflectance(Rcal_1, d_se, 2*np.pi/3)
+    #read = Reader()
+    #angles = read.get_angles()
+    #sza = angles["sun_zenith"]
+    lons, lats = KLMReader()._get_lonlat_from_file()
+    times = ds["times"].values
+    sza = astronomy.sun_zenith_angle(times[:, np.newaxis],
+                                                lons, lats)
+
+    refl_1 = get_reflectance(Rcal_1, d_se, sza)
+    refl_2 = get_reflectance(Rcal_2, d_se, sza)
+    refl_3 = get_reflectance(Rcal_3, d_se, sza)
+
+
     for i in range(len(D_1)):
-        contam_pixels_1 = np.where(np.logical_and(refl_1>solar_contam_threshold, sza>sza_threshold),
+        contam_pixels_1 = np.where(np.logical_and(refl_1>solar_contam_threshold, sza > sza_threshold),
                                  "Pixel is contaminated", refl_1)
 
-    refl_2 = get_reflectance(Rcal_2, d_se, 2 * np.pi / 3)
     for i in range(len(D_2)):
         contam_pixels_2 = np.where(np.logical_and(refl_2 > solar_contam_threshold, sza > sza_threshold),
                                  "Pixel is contaminated", refl_2)
 
     if chan_3a:
-        refl_3 = get_reflectance(Rcal_3, d_se, 2 * np.pi / 3)
         for i in range(len(D_3)):
             contam_pixels_3 = np.where(np.logical_and(refl_3 > solar_contam_threshold, sza > sza_threshold),
                                      "Pixel is contaminated", refl_3)
@@ -527,7 +537,6 @@ def vis_uncertainty(ds,mask,plot=False):
     else:
         systematic[:,:,2] = np.nan
 
-
     time = (ds["times"].values - np.datetime64("1970-01-01 00:00:00"))/\
            np.timedelta64(1,'s')
     time_da = xr.DataArray(time,dims=["times"],attrs={"long_name":"scanline time",\
@@ -543,9 +552,10 @@ def vis_uncertainty(ds,mask,plot=False):
                                vis_channels=vis_channels_da,\
                                     random=random_da,systematic=sys_da))
 
-
-    return uncertainties, gain_1, gain_2, gain_3, contam_pixels_1, contam_pixels_2, contam_pixels_3
-
+    if chan_3a:
+        return uncertainties, gain_1, gain_2, gain_3, contam_pixels_1, contam_pixels_2, contam_pixels_3
+    else:
+        return uncertainties, gain_1, gain_2, contam_pixels_1, contam_pixels_2
 
 if __name__ == "__main__":
 
