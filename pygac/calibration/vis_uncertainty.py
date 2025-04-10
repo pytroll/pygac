@@ -125,7 +125,15 @@ def get_reflectance(Rcal, d_se, sza):
     return refl
 
 def get_sys(channel, C, D, gain):
-    """Get the systematic parts of the vis calibration uncertainty."""
+    """Get the systematic parts of the vis calibration uncertainty. Comprised of:
+        MODIS Reflectance uncertainty - 2.5%
+        SBAF Correction uncertainty (MODIS SNOs) - 2.5%
+        Dome-C Surface Reflectance variation - 1%
+        Temporal Stability - 1.5%
+        Libya Surface Reflectance variation - 2%
+        SBAF Correction uncertainty (PICS) - 2.5%
+        Water Vapour effects (Channel 2 only) - 1.5%
+    """
     dRcal_dS = (C-D)
     usys = np.sqrt(0.025**2 + 0.025**2 + 0.01**2 + 0.015**2 + 0.02**2 + 0.025**2)
     # If channel = 2, add water vapour uncertainty
@@ -136,7 +144,7 @@ def get_sys(channel, C, D, gain):
     else:
         usys_tot = usys
 
-    usys_tot *= gain
+    usys_tot *= gain/(C-D)
 
     uncert = (dRcal_dS**2)*(usys_tot**2)
 
@@ -146,7 +154,7 @@ def get_vars(ds,channel):
     """Get variables from xarray"""
 
     space = ds['vis_space_counts'].values[:,channel]
-    counts = ds['channels'].values[:,:,channel-3]
+    counts = ds['channels'].values[:,:,channel]
 
     return space, counts
 
@@ -186,9 +194,10 @@ def vis_uncertainty(ds,mask,plot=False):
 
     #
     # Test for channel 3a
+    # Testing for the 3a/3b toggle needs to be added at the scanline level
     #
     if KLMReader._get_vis_channels_to_calibrate == [0,1,2]:
-        if ds['channels'].value == np.nan:
+        if np.all(ds['channels'].value[:,:,2] == np.nan):
             chan_3a = False
         else:
             chan_3a = True
@@ -324,7 +333,7 @@ def vis_uncertainty(ds,mask,plot=False):
         if chan_3a:
             rcal_sys_12[i,:] = get_sys(3, C_3[i,:], D_3[i], gain_3)
 
-    # define flag for solar contamination data
+    # define flag for solar contamination (sun glint) data
     d_se = ds.attrs["sun_earth_distance_correction_factor"]
     solar_contam_threshold = 0.05
     sza_threshold = 102
@@ -343,17 +352,11 @@ def vis_uncertainty(ds,mask,plot=False):
 
 
     for i in range(len(D_1)):
-        contam_pixels_1 = np.where(np.logical_and(refl_1>solar_contam_threshold, sza > sza_threshold),
-                                 "Pixel is contaminated", refl_1)
+        if refl_1>solar_contam_threshold:
+            if sza > sza_threshold:
+                contam_pixels = D_1[i]
+                print(i, "Pixel is contaminated")
 
-    for i in range(len(D_2)):
-        contam_pixels_2 = np.where(np.logical_and(refl_2 > solar_contam_threshold, sza > sza_threshold),
-                                 "Pixel is contaminated", refl_2)
-
-    if chan_3a:
-        for i in range(len(D_3)):
-            contam_pixels_3 = np.where(np.logical_and(refl_3 > solar_contam_threshold, sza > sza_threshold),
-                                     "Pixel is contaminated", refl_3)
 
     if plot:
         if chan_3a:
@@ -552,10 +555,7 @@ def vis_uncertainty(ds,mask,plot=False):
                                vis_channels=vis_channels_da,\
                                     random=random_da,systematic=sys_da))
 
-    if chan_3a:
-        return uncertainties, gain_1, gain_2, gain_3, contam_pixels_1, contam_pixels_2, contam_pixels_3
-    else:
-        return uncertainties, gain_1, gain_2, contam_pixels_1, contam_pixels_2
+    return uncertainties
 
 if __name__ == "__main__":
 
