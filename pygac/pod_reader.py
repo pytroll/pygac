@@ -47,8 +47,6 @@ except ImportError:
     IntFlag = object
 
 import numpy as np
-from pyorbital.geoloc import compute_pixels, get_lonlatalt
-from pyorbital.geoloc_instrument_definitions import avhrr_gac
 
 from pygac.clock_offsets_converter import get_offsets
 from pygac.correct_tsm_issue import TSM_AFFECTED_INTERVALS_POD, get_tsm_idx
@@ -474,31 +472,6 @@ class PODReader(Reader):
 
     def _get_times_from_file(self):
         return self.decode_timestamps(self.scans["time_code"])
-
-    def _compute_missing_lonlat(self, missed_utcs):
-        """Compute lon lat values using pyorbital."""
-        tic = datetime.datetime.now()
-        scan_rate = datetime.timedelta(milliseconds=1/self.scan_freq).total_seconds()
-        sgeom = avhrr_gac(missed_utcs.astype(datetime.datetime),
-                          self.lonlat_sample_points, frequency=scan_rate)
-        t0 = missed_utcs[0].astype(datetime.datetime)
-        s_times = sgeom.times(t0)
-        tle1, tle2 = self.get_tle_lines()
-
-        rpy = self.get_attitude_coeffs()
-        pixels_pos = compute_pixels((tle1, tle2), sgeom, s_times, rpy)
-        pos_time = get_lonlatalt(pixels_pos, s_times)
-
-        missed_lons, missed_lats = pos_time[:2]
-
-        pixels_per_line = self.lats.shape[1]
-        missed_lons = missed_lons.reshape(-1, pixels_per_line)
-        missed_lats = missed_lats.reshape(-1, pixels_per_line)
-
-        toc = datetime.datetime.now()
-        LOG.warning("Computation of geolocation: %s", str(toc - tic))
-
-        return missed_lons, missed_lats
 
     def _adjust_clock_drift(self):
         """Adjust the geolocation to compensate for the clock error."""

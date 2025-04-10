@@ -26,6 +26,12 @@
 
 import logging
 
+try:
+    from pyorbital.geoloc_instrument_definitions import avhrr_from_times
+except ImportError:
+    # In pyorbital 1.9.2 and earlier avhrr_gac returned LAC geometry
+    from pyorbital.geoloc_instrument_definitions import avhrr_gac as avhrr_from_times
+
 import pygac.pygac_geotiepoints as gtp
 from pygac.pygac_geotiepoints import LAC_LONLAT_SAMPLE_POINTS
 from pygac.reader import Reader, ReaderError
@@ -47,6 +53,7 @@ class LACReader(Reader):
         super(LACReader, self).__init__(*args, **kwargs)
         self.scan_width = 2048
         self.lonlat_interpolator = gtp.lac_lat_lon_interpolator
+        self.geoloc_definition = avhrr_from_times
 
     @classmethod
     def _validate_header(cls, header):
