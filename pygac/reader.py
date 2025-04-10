@@ -423,69 +423,20 @@ class Reader(ABC):
         counts[:, 1::3] = ((packed_data >> 10) & 1023)[:, :nb2]
         counts[:, 2::3] = (packed_data & 1023)[:, :nb3]
         counts = counts.reshape((-1, self.scan_width, 5))
+        return self.split_array_along_channel_3(counts)
+
+    def split_array_along_channel_3(self, array_to_split):
         try:
             switch = self.get_ch3_switch()
         except AttributeError:
-            return counts
-        else:
-            channels = np.zeros((len(self.scans), self.scan_width, 6),
-                                dtype=counts.dtype)
-            channels[:, :, :2] = counts[:, :, :2]
-            channels[:, :, -2:] = counts[:, :, -2:]
-            channels[:, :, 2][switch == 1] = counts[:, :, 2][switch == 1]
-            channels[:, :, 3][switch == 0] = counts[:, :, 2][switch == 0]
-            return channels
-
-    @abstractmethod
-    def _get_times_from_file(self):  # pragma: no cover
-        """Specify how to read scanline timestamps from data.
-
-        Returns:
-            int: year
-            int: day of year
-            int: milliseconds since 00:00
-
-        """
-        raise NotImplementedError
-
-    def get_times(self):
-        """Read scanline timestamps and try to correct invalid values.
-
-        Returns:
-            UTC timestamps
-
-        """
-        if self._times_as_np_datetime64 is None:
-            # Read timestamps
-            year, jday, msec = self._get_times_from_file()
-
-            # Correct invalid values
-            year, jday, msec = self.correct_times_median(year=year, jday=jday,
-                                                         msec=msec)
-            self._times_as_np_datetime64 = self.to_datetime64(year=year, jday=jday, msec=msec)
-            try:
-                self._times_as_np_datetime64 = self.correct_times_thresh()
-            except TimestampMismatch as err:
-                LOG.error(str(err))
-
-        return self._times_as_np_datetime64
-
-    @staticmethod
-    def to_datetime64(year, jday, msec):
-        """Convert timestamps to numpy.datetime64.
-
-        Args:
-            year: Year
-            jday: Day of the year (1-based)
-            msec: Milliseconds since 00:00
-
-        Returns:
-            numpy.datetime64: Converted timestamps
-
-        """
-        return (year.astype(str).astype("datetime64[Y]")
-                + (jday - 1).astype("timedelta64[D]")
-                + msec.astype("timedelta64[ms]"))
+            return array_to_split
+        vis = array_to_split[:, :, :2]
+        tir = array_to_split[:, :, -2:]
+        nir = np.zeros([*array_to_split.shape[:2], 2], dtype=array_to_split.dtype)
+        nir[:, :, 0][switch == 1] = array_to_split[:, :, 2][switch == 1]
+        nir[:, :, 1][switch == 0] = array_to_split[:, :, 2][switch == 0]
+        split_array = np.dstack([vis, nir, tir])
+        return split_array
 
     @staticmethod
     def to_datetime(datetime64):
@@ -555,10 +506,8 @@ class Reader(ABC):
 
         if counts.shape[-1] == 5:
             channel_names = ["1", "2", "3", "4", "5"]
-            ir_channel_names = ["3", "4", "5"]
         else:
             channel_names = ["1", "2", "3a", "3b", "4", "5"]
-            ir_channel_names = ["3b", "4", "5"]
 
         columns = np.arange(scan_size)
         channels = xr.DataArray(counts, dims=["scan_line_index", "columns", "channel_name"],
@@ -567,20 +516,19 @@ class Reader(ABC):
                                             columns=columns,
                                             times=("scan_line_index", times)))
 
-        prt, ict, space = self._get_telemetry_dataarrays(line_numbers, ir_channel_names)
+        ds = self.get_telemetry()
 
         longitudes, latitudes = self._get_lonlat_dataarrays(line_numbers, columns)
 
         if self.interpolate_coords:
             channels = channels.assign_coords(longitude=(("scan_line_index", "columns"),
-                                                        longitudes.reindex_like(channels).data),
-                                            latitude=(("scan_line_index", "columns"),
+                                                         longitudes.reindex_like(channels).data),
+                                              latitude=(("scan_line_index", "columns"),
                                                         latitudes.reindex_like(channels).data))
-
-        ds = xr.Dataset(dict(channels=channels, prt_counts=prt, ict_counts=ict, space_counts=space,
-                             longitude=longitudes, latitude=latitudes),
-                             attrs=head)
-
+        ds["channels"] = channels
+        ds["longitude"] = longitudes
+        ds["latitude"] = latitudes
+        ds.attrs.update(head)
         ds.attrs["spacecraft_name"] = self.spacecraft_name
         self._update_meta_data_object(ds.attrs)
         return ds
@@ -606,17 +554,6 @@ class Reader(ABC):
                                              "subsampled_columns": lon_lat_columns})
 
         return longitudes,latitudes
-
-    def _get_telemetry_dataarrays(self, line_numbers, ir_channel_names):
-        prt, ict, space = self.get_telemetry()
-
-        prt = xr.DataArray(prt, dims=["scan_line_index"], coords=dict(scan_line_index=line_numbers))
-        ict = xr.DataArray(ict, dims=["scan_line_index", "ir_channel_name"],
-                           coords=dict(ir_channel_name=ir_channel_names, scan_line_index=line_numbers))
-        space = xr.DataArray(space, dims=["scan_line_index", "ir_channel_name"],
-                             coords=dict(ir_channel_name=ir_channel_names, scan_line_index=line_numbers))
-
-        return prt,ict,space
 
     def get_calibrated_channels(self):
         """Calibrate and return the channels."""
@@ -922,6 +859,60 @@ class Reader(ABC):
 
         return sat_azi, sat_zenith, sun_azi, sun_zenith, rel_azi
 
+    @abstractmethod
+    def _get_times_from_file(self):  # pragma: no cover
+        """Specify how to read scanline timestamps from data.
+
+        Returns:
+            int: year
+            int: day of year
+            int: milliseconds since 00:00
+
+        """
+        raise NotImplementedError
+
+    def get_times(self):
+        """Read scanline timestamps and try to correct invalid values.
+
+        Returns:
+            UTC timestamps
+
+        """
+        if self._times_as_np_datetime64 is None:
+            self._times_as_np_datetime64 = self._get_valid_datetime64s_from_file()
+            try:
+                self._times_as_np_datetime64 = self.correct_corrupted_times_using_thresholding()
+            except TimestampMismatch as err:
+                LOG.error(str(err))
+
+        return self._times_as_np_datetime64
+
+    def _get_valid_datetime64s_from_file(self):
+        # Read timestamps
+        year, jday, msec = self._get_times_from_file()
+
+        # Correct invalid values
+        year, jday, msec = self.correct_times_median(year=year, jday=jday, msec=msec)
+        times_as_np_datetime64 = self.to_datetime64(year=year, jday=jday, msec=msec)
+        return times_as_np_datetime64
+
+    @staticmethod
+    def to_datetime64(year, jday, msec):
+        """Convert timestamps to numpy.datetime64.
+
+        Args:
+            year: Year
+            jday: Day of the year (1-based)
+            msec: Milliseconds since 00:00
+
+        Returns:
+            numpy.datetime64: Converted timestamps
+
+        """
+        return (year.astype(str).astype("datetime64[Y]")
+                + (jday - 1).astype("timedelta64[D]")
+                + msec.astype("timedelta64[ms]"))
+
     def correct_times_median(self, year, jday, msec):
         """Replace invalid timestamps with statistical estimates (using median).
 
@@ -1051,9 +1042,9 @@ class Reader(ABC):
                         "nz_diffs": nz_diffs})
         return results
 
-    def correct_times_thresh(self, max_diff_from_t0_head=6*60*1000,
-                             min_frac_near_t0_head=0.01,
-                             max_diff_from_ideal_t=10*1000):
+    def correct_corrupted_times_using_thresholding(self, max_diff_from_t0_head=6*60*1000,
+                                                   min_frac_near_t0_head=0.01,
+                                                   max_diff_from_ideal_t=10*1000):
         """Correct corrupted timestamps using a threshold approach.
 
         The threshold approach is based on the scanline number and the header

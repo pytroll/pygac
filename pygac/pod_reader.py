@@ -47,6 +47,7 @@ except ImportError:
     IntFlag = object
 
 import numpy as np
+import xarray as xr
 from pyorbital.geoloc import compute_pixels, get_lonlatalt
 from pyorbital.geoloc_instrument_definitions import avhrr_gac
 
@@ -280,9 +281,9 @@ class PODReader(Reader):
         LOG.info("Reading %s", self.filename)
         # choose the right header depending on the date
         with file_opener(fileobj or filename) as fd_:
-            self.tbm_head, self.head = self.read_header(
+            self.archive_header, self.head = self.read_header(
                 filename, fileobj=fd_, header_date=self.header_date)
-            if self.tbm_head:
+            if self.archive_header:
                 tbm_offset = tbm_header.itemsize
             else:
                 tbm_offset = 0
@@ -380,8 +381,10 @@ class PODReader(Reader):
             return potential_tbm_header.copy()
 
         # This will raise a DecodingError if the data_set_name is not valid.
-        cls._decode_data_set_name(data_set_name)
-        return potential_tbm_header.copy()
+        data_set_name = cls._decode_data_set_name(data_set_name)
+        tbm_header = potential_tbm_header.copy()
+        tbm_header["data_set_name"] = data_set_name.decode().strip("\x80").encode()
+        return tbm_header
 
 
     @classmethod
@@ -591,29 +594,49 @@ class PODReader(Reader):
             space_counts: np.array
 
         """
-        number_of_scans = self.scans["telemetry"].shape[0]
-        decode_tele = np.zeros((int(number_of_scans), 105))
-        decode_tele[:, ::3] = (self.scans["telemetry"] >> 20) & 1023
-        decode_tele[:, 1::3] = (self.scans["telemetry"] >> 10) & 1023
-        decode_tele[:, 2::3] = self.scans["telemetry"] & 1023
+        telemetry = self.scans["telemetry"]
+        decode_tele = self.unpack_telemetry(telemetry)
 
-        prt_counts = np.mean(decode_tele[:, 17:20], axis=1)
+        hmf_dtype = np.dtype([("frame_sync", "u2", (6, )),
+                              ("id", [("id", "u2"),
+                              ("spare", "u2")]),
+                              ("timecode", "u2", (4, )),
+                              ("telemetry", [("ramp_calibration", "u2", (5, )),
+                                             ("PRT", "u2", (3, )),
+                                             ("ch3_patch_temp", "u2"),
+                                             ("spare", "u2"), ]),
+                              ("back_scan", "u2", (10, 3)),
+                              ("space_data", "u2", (10, 5)),
+                              ("sync", "u2")])
+
+        hmf_array = decode_tele[:, :103].view(dtype=hmf_dtype).squeeze()
+        prt_counts = xr.DataArray(hmf_array["telemetry"]["PRT"],
+                                  dims=["scan_line_index", "PRT_measurement"])
 
         # getting ICT counts
-
-        ict_counts = np.zeros((int(number_of_scans), 3))
-        ict_counts[:, 0] = np.mean(decode_tele[:, 22:50:3], axis=1)
-        ict_counts[:, 1] = np.mean(decode_tele[:, 23:51:3], axis=1)
-        ict_counts[:, 2] = np.mean(decode_tele[:, 24:52:3], axis=1)
+        ict_counts = xr.DataArray(hmf_array["back_scan"],
+                                  dims=["scan_line_index", "back_scan", "channel_name"],
+                                  coords=dict(channel_name=["3", "4", "5"]))
 
         # getting space counts
+        space_counts = xr.DataArray(hmf_array["space_data"],
+                                    dims=["scan_line_index", "back_scan", "channel_name"],
+                                    coords=dict(channel_name=["1", "2", "3", "4", "5"]))
 
-        space_counts = np.zeros((int(number_of_scans), 3))
-        space_counts[:, 0] = np.mean(decode_tele[:, 54:100:5], axis=1)
-        space_counts[:, 1] = np.mean(decode_tele[:, 55:101:5], axis=1)
-        space_counts[:, 2] = np.mean(decode_tele[:, 56:102:5], axis=1)
+        return xr.Dataset(dict(PRT=prt_counts, ICT=ict_counts, space_counts=space_counts))
 
-        return prt_counts, ict_counts, space_counts
+    def unpack_telemetry(self, telemetry):
+        """Unpack the telemetry from 10 to 16 bits."""
+        # Documentation (POD guide, section 3) says:
+        # "The telemetry data are stored in 140 bytes. The first 103 (10 bit) words are packed three (10 bit) words in
+        # four bytes, right justified. The last four byte group contains one (10 bit) word with 20 trailing bits. All
+        # unused bits are set to zero."
+        number_of_scans = telemetry.shape[0]
+        decode_tele = np.zeros((int(number_of_scans), 105), dtype=np.uint16)
+        decode_tele[:, ::3] = (telemetry >> 20) & 1023
+        decode_tele[:, 1::3] = (telemetry >> 10) & 1023
+        decode_tele[:, 2::3] = telemetry & 1023
+        return decode_tele
 
     @staticmethod
     def _get_ir_channels_to_calibrate():

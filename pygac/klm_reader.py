@@ -36,14 +36,10 @@ Format specification can be found in section 8 of the `KLM user guide`_.
 
 import datetime
 import logging
-
-try:
-    from enum import IntFlag
-except ImportError:
-    # python version < 3.6, use a simple object without nice representation
-    IntFlag = object
+from enum import IntFlag
 
 import numpy as np
+import xarray as xr
 
 from pygac.correct_tsm_issue import TSM_AFFECTED_INTERVALS_KLM, get_tsm_idx
 from pygac.reader import Reader, ReaderError
@@ -662,9 +658,9 @@ class KLMReader(Reader):
         self.filename = filename
         LOG.info("Reading %s", self.filename)
         with file_opener(fileobj or filename) as fd_:
-            self.ars_head, self.head = self.read_header(
+            self.archive_header, self.head = self.read_header(
                 filename, fileobj=fd_)
-            if self.ars_head:
+            if self.archive_header:
                 ars_offset = ars_header.itemsize
             else:
                 ars_offset = 0
@@ -743,23 +739,21 @@ class KLMReader(Reader):
             space_counts: np.array
 
         """
-        prt_counts = np.mean(self.scans["telemetry"]["PRT"], axis=1)
+        hmf_array = self.scans
+        prt_counts = xr.DataArray(hmf_array["telemetry"]["PRT"],
+                                  dims=["scan_line_index", "PRT_measurement"])
 
         # getting ICT counts
-
-        ict_counts = np.zeros((len(self.scans), 3))
-        ict_counts[:, 0] = np.mean(self.scans["back_scan"][:, 0::3], axis=1)
-        ict_counts[:, 1] = np.mean(self.scans["back_scan"][:, 1::3], axis=1)
-        ict_counts[:, 2] = np.mean(self.scans["back_scan"][:, 2::3], axis=1)
+        ict_counts = xr.DataArray(hmf_array["back_scan"],
+                                  dims=["scan_line_index", "back_scan", "channel_name"],
+                                  coords=dict(channel_name=["3b", "4", "5"]))
 
         # getting space counts
+        space_counts = xr.DataArray(self.split_array_along_channel_3(hmf_array["space_data"]),
+                                    dims=["scan_line_index", "back_scan", "channel_name"],
+                                    coords=dict(channel_name=["1", "2", "3a", "3b", "4", "5"]))
 
-        space_counts = np.zeros((len(self.scans), 3))
-        space_counts[:, 0] = np.mean(self.scans["space_data"][:, 2::5], axis=1)
-        space_counts[:, 1] = np.mean(self.scans["space_data"][:, 3::5], axis=1)
-        space_counts[:, 2] = np.mean(self.scans["space_data"][:, 4::5], axis=1)
-
-        return prt_counts, ict_counts, space_counts
+        return xr.Dataset(dict(PRT=prt_counts, ICT=ict_counts, space_counts=space_counts))
 
     def _get_lonlat_from_file(self):
         """Get the longitudes and latitudes."""

@@ -79,9 +79,9 @@ def calibrate(ds, custom_coeffs=None, coeffs_file=None):
         corr
     )
 
-    prt = ds["prt_counts"].data
-    ict = ds["ict_counts"].data
-    space = ds["space_counts"].data
+    prt = ds["PRT"].mean(dim="PRT_measurement").data
+    ict = ds["ICT"].mean(dim="back_scan").data[:, -3:]
+    space = ds["space_counts"].mean(dim="back_scan").data[:, -3:]
 
     ir_channels_to_calibrate = [3, 4, 5]
 
@@ -525,8 +525,8 @@ def calibrate_thermal(counts, prt, ict, space, line_numbers, channel, cal):
         nonzeros = np.logical_not(zeros)
 
         space[zeros] = np.interp((zeros).nonzero()[0],
-                                (nonzeros).nonzero()[0],
-                                space[nonzeros])
+                                 (nonzeros).nonzero()[0],
+                                 space[nonzeros])
 
     # convolving and smoothing PRT, ICT and SPACE values
     if lines > 51:
