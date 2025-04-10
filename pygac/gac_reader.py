@@ -40,7 +40,6 @@ except ImportError:
                   'Computation of missing longitude/latitudes may be incorrect.')
 
 
-import pygac.pygac_geotiepoints as gtp
 from pygac.pygac_geotiepoints import GAC_LONLAT_SAMPLE_POINTS
 from pygac.reader import Reader, ReaderError
 
@@ -60,7 +59,6 @@ class GACReader(Reader):
         """Init the GAC reader."""
         super().__init__(*args, **kwargs)
         self.scan_width = 409
-        self.lonlat_interpolator = gtp.gac_lat_lon_interpolator
         self.geoloc_definition = avhrr_gac_from_times
 
     @classmethod
