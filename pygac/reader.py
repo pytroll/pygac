@@ -41,6 +41,7 @@ import xarray as xr
 from georeferencer.georeferencer import offset_calibrated_channels
 from packaging.version import Version
 from pyorbital import astronomy
+from pyorbital.geoloc import compute_pixels, get_lonlatalt
 from pyorbital.orbital import Orbital
 
 from pygac import gac_io
@@ -121,6 +122,7 @@ class Reader(ABC):
         header_date="auto",
         calibration_method="noaa",
         calibration_parameters=None,
+        correct_scanlines=True,
         reference_image=None,
     ):
         """Init the reader.
@@ -139,6 +141,7 @@ class Reader(ABC):
                                 calibration coefficients
             calibration_file: path to json file containing default calibrations
             header_date: the date to use for pod header choice. Defaults to "auto".
+            correct_scanlines: Remove corrrupt scanline numbers. Defaults to True
 
         """
         self.meta_data = {}
@@ -149,6 +152,7 @@ class Reader(ABC):
         self.tle_thresh = tle_thresh
         self.creation_site = (creation_site or "NSS").encode("utf-8")
         self.header_date = header_date
+        self.correct_scanlines = correct_scanlines
         self.head = None
         self.scans = None
         self.spacecraft_name = None
@@ -700,6 +704,7 @@ class Reader(ABC):
         # Mask out corrupt values
         mask = xr.DataArray(self.mask == False, dims=["scan_line_index"])  # noqa
         calibrated_ds = calibrated_ds.where(mask)
+
 
         # Apply KLM/POD specific postprocessing
         self.postproc(calibrated_ds)
@@ -1318,6 +1323,30 @@ class Reader(ABC):
             LOG.info("Using rpy: %s", str(rpy))
             self._rpy = rpy
         return self._rpy
+
+    def _compute_missing_lonlat(self, missed_utcs):
+        """Compute lon lat values using pyorbital."""
+        tic = datetime.datetime.now()
+        sgeom = self.geoloc_definition(missed_utcs.astype(datetime.datetime),
+                          self.lonlat_sample_points)
+        t0 = missed_utcs[0].astype(datetime.datetime)
+        s_times = sgeom.times(t0)
+        tle1, tle2 = self.get_tle_lines()
+
+        rpy = self.get_attitude_coeffs()
+        pixels_pos = compute_pixels((tle1, tle2), sgeom, s_times, rpy)
+        pos_time = get_lonlatalt(pixels_pos, s_times)
+
+        missed_lons, missed_lats = pos_time[:2]
+
+        pixels_per_line = self.lats.shape[1]
+        missed_lons = missed_lons.reshape(-1, pixels_per_line)
+        missed_lats = missed_lats.reshape(-1, pixels_per_line)
+
+        toc = datetime.datetime.now()
+        LOG.warning("Computation of geolocation: %s", str(toc - tic))
+
+        return missed_lons, missed_lats
 
 
 def inherit_doc(cls):

@@ -64,7 +64,13 @@ class GACPODReader(GACReader, PODReader):
         """Init the GAC POD reader."""
         GACReader.__init__(self, *args, **kwargs)
         self.scanline_type = scanline
-        self.offset = 3220
+        # GAC POD files were originally written to tapes using 6440 byte physical records
+        # with two 3220 logical records per physical record. As the header is in the first
+        # physical record the scanline data will start at offset 6440 in the filestream.
+        # This means the second logical record (at offset 3220) is not used and contains
+        # junk / padding data. The data often appears to be a valid scanline, but it is a
+        # duplicate of a data appearing later in the file and should not be used.
+        self.offset = 6440
         self.scan_points = np.arange(3.5, 2048, 5)
 
 

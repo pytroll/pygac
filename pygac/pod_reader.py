@@ -38,6 +38,7 @@ Format specification can be found in chapters 2 & 3 of the `POD user guide`_.
 
 import datetime
 import logging
+import warnings
 
 try:
     from enum import IntFlag
@@ -46,8 +47,6 @@ except ImportError:
     IntFlag = object
 
 import numpy as np
-from pyorbital.geoloc import compute_pixels, get_lonlatalt
-from pyorbital.geoloc_instrument_definitions import avhrr_gac
 
 from pygac.clock_offsets_converter import get_offsets
 from pygac.correct_tsm_issue import TSM_AFFECTED_INTERVALS_POD, get_tsm_idx
@@ -246,7 +245,7 @@ class PODReader(Reader):
     def correct_scan_line_numbers(self):
         """Correct the scan line numbers."""
         # Perform common corrections first.
-        super().correct_scan_line_numbers()
+        results = super().correct_scan_line_numbers()
 
         # cleaning up the data
         min_scanline_number = np.amin(
@@ -259,6 +258,7 @@ class PODReader(Reader):
                 self.scans = self.scans[1:]
 
         self.scans = self.scans[self.scans["scan_line_number"] != 0]
+        return results
 
     def read(self, filename, fileobj=None):
         """Read the data.
@@ -287,12 +287,14 @@ class PODReader(Reader):
             # read scan lines until end of file
             fd_.seek(self.offset + tbm_offset, 0)
             buffer = fd_.read()
+            buffer = self._truncate_padding_record(buffer)
             count = self.head["number_of_scans"]
             self._read_scanlines(buffer, count)
         year, jday, _ = self.decode_timestamps(self.head["start_time"])
         start_date = (datetime.date(year, 1, 1) +
                       datetime.timedelta(days=int(jday) - 1))
-        self.correct_scan_line_numbers()
+        if self.correct_scanlines:
+            self.correct_scan_line_numbers()
         self.spacecraft_id = self.head["noaa_spacecraft_identification_code"]
         if self.spacecraft_id == 1 and start_date < datetime.date(1982, 1, 1):
             self.spacecraft_id = 25
@@ -300,6 +302,35 @@ class PODReader(Reader):
         LOG.info(
             "Reading %s data", self.spacecrafts_orbital[self.spacecraft_id])
         return self.head, self.scans
+
+    def _truncate_padding_record(self, buffer):
+        """Remove the padding record (if present) from the data stream.
+
+        In POD files each scanline was stored as a "logical" record, and these
+        were written to the tapes in "physical" records. In the case of GAC
+        data there were two logical records (scanlines) per physical record,
+        so an odd number of scanlines would result in the final physical record
+        containing only one scanline and one "logical" record of padding.
+        """
+        scanlines_per_record = self.offset // self.scanline_type.itemsize
+        # Do nothing if the logical and physical records are the same size (LAC).
+        if scanlines_per_record == 1:
+            return buffer
+        # File should contain an integer number of physical records
+        n_logical = len(buffer) // self.scanline_type.itemsize
+        if n_logical % scanlines_per_record != 0:
+            LOG.warning("Unexpected record length for POD file (incomplete physical record?)")
+            warnings.warn("Unexpected record length for POD file (incomplete physical record?)",
+                          category=RuntimeWarning, stacklevel=2)
+        # How many physical / logical records do we expect based on the file header?
+        expected_scanlines = self.head["number_of_scans"]
+        expected_physical = (expected_scanlines + scanlines_per_record - 1) // scanlines_per_record
+        expected_logical = expected_physical * scanlines_per_record
+        # Only trim the padding if the file is the expected size, so any unexpected
+        # cases will still be dealt with in _read_scanlines
+        if n_logical == expected_logical and n_logical > expected_scanlines:
+            buffer = buffer[:expected_scanlines * self.scanline_type.itemsize]
+        return buffer
 
     @classmethod
     def read_header(cls, filename, fileobj=None, header_date="auto"):
@@ -441,31 +472,6 @@ class PODReader(Reader):
 
     def _get_times_from_file(self):
         return self.decode_timestamps(self.scans["time_code"])
-
-    def _compute_missing_lonlat(self, missed_utcs):
-        """Compute lon lat values using pyorbital."""
-        tic = datetime.datetime.now()
-        scan_rate = datetime.timedelta(milliseconds=1/self.scan_freq).total_seconds()
-        sgeom = avhrr_gac(missed_utcs.astype(datetime.datetime),
-                          self.lonlat_sample_points, frequency=scan_rate)
-        t0 = missed_utcs[0].astype(datetime.datetime)
-        s_times = sgeom.times(t0)
-        tle1, tle2 = self.get_tle_lines()
-
-        rpy = self.get_attitude_coeffs()
-        pixels_pos = compute_pixels((tle1, tle2), sgeom, s_times, rpy)
-        pos_time = get_lonlatalt(pixels_pos, s_times)
-
-        missed_lons, missed_lats = pos_time[:2]
-
-        pixels_per_line = self.lats.shape[1]
-        missed_lons = missed_lons.reshape(-1, pixels_per_line)
-        missed_lats = missed_lats.reshape(-1, pixels_per_line)
-
-        toc = datetime.datetime.now()
-        LOG.warning("Computation of geolocation: %s", str(toc - tic))
-
-        return missed_lons, missed_lats
 
     def _adjust_clock_drift(self):
         """Adjust the geolocation to compensate for the clock error."""
