@@ -187,6 +187,7 @@ class GACKLMReader(GACReader, KLMReader):
 
     The offset attribute tells where in the file the scanline data starts.
     """
+    lonlat_sample_points = np.arange(4.5, 405, 8)
 
     def __init__(self, *args, **kwargs):
         """Init the GAC KLM reader."""
