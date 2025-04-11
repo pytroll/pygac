@@ -34,6 +34,7 @@ from abc import ABC, abstractmethod
 from contextlib import suppress
 from importlib.metadata import entry_points
 
+import geotiepoints as gtp
 import numpy as np
 import pyorbital
 import xarray as xr
@@ -656,6 +657,31 @@ class Reader(ABC):
     def get_telemetry(self):  # pragma: no cover
         """KLM/POD specific readout of telemetry."""
         raise NotImplementedError
+
+    def lonlat_interpolator(self, lons, lats):
+        """Interpolate from lat-lon tie-points to pixel locations
+
+        Args:
+            lons: Longitude tie-points
+            lats: Latitude tie-points
+
+        Returns:
+            pixel_longitudes, pixel_latitudes
+        """
+        cols_subset = self.lonlat_sample_points
+        cols_full = np.arange(self.scan_width)
+        rows = np.arange(len(lats))
+
+        along_track_order = 1
+        cross_track_order = 3
+
+        satint = gtp.SatelliteInterpolator((lons, lats),
+                                           (rows, cols_subset),
+                                           (rows, cols_full),
+                                           along_track_order,
+                                           cross_track_order)
+
+        return satint.interpolate()
 
     def get_lonlat(self):
         """Compute lat/lon coordinates.
