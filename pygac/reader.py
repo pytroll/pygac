@@ -38,7 +38,6 @@ from importlib.metadata import entry_points
 import numpy as np
 import pyorbital
 import xarray as xr
-from georeferencer.georeferencer import offset_calibrated_channels
 from packaging.version import Version
 from pyorbital import astronomy
 from pyorbital.geoloc import compute_pixels, get_lonlatalt
@@ -714,6 +713,7 @@ class Reader(ABC):
             LOG.info("Correcting for temporary scan motor issue")
             self.mask_tsm_pixels(calibrated_ds)
         if self.reference_image:
+            from georeferencer.georeferencer import offset_calibrated_channels
             calibrated_ds = offset_calibrated_channels(calibrated_ds, self.reference_image)
         return calibrated_ds
 
