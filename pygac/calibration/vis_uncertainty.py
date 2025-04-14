@@ -144,7 +144,7 @@ def get_sys(channel, C, D, gain):
     else:
         usys_tot = usys
 
-    usys_tot *= gain/(C-D)
+    usys_tot *= gain
 
     uncert = (dRcal_dS**2)*(usys_tot**2)
 
