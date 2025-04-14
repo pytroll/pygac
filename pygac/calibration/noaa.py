@@ -79,9 +79,10 @@ def calibrate(ds, custom_coeffs=None, coeffs_file=None):
         corr
     )
 
-    prt = ds["prt_counts"].data
-    ict = ds["ict_counts"].data
-    space = ds["space_counts"].data
+    # Ensure data isn't overwritten
+    prt = np.copy(ds["prt_counts"].data)
+    ict = np.copy(ds["ict_counts"].data)
+    space = np.copy( ds["space_counts"].data)
 
     ir_channels_to_calibrate = [3, 4, 5]
 
@@ -415,6 +416,42 @@ def calibrate_solar(counts, chan, year, jday, cal, corr=1):
 
     return r_cal
 
+def get_prt_nos(prt,prt_threshold,linenumbers,gac):
+    '''Get PRT numbering based on zero PRT count values''' 
+    # Original PRT code - which can go wrong when zero PRT counts start missing
+    # zero PRT number
+    #      iprt = (line_numbers - line_numbers[0] + 5 - offset) % 5
+    # get the PRT index, iprt equals to 0 corresponds to the measurement gaps
+    #
+    # Data actually setup with zero PRT counts indicating the start of a
+    # set of 4 PRT indices
+    # Get index to run 1,2,3,4 between PRT counts of zero (sometimes not
+    # quite zero so use PRT threshold
+    #
+    gd = np.where(prt < prt_threshold)[0]
+    iprt = np.zeros(len(prt),dtype=np.int8)
+    iprt_orig = np.zeros(len(prt),dtype=np.int8)
+    for i in range(len(gd)):
+        for j in range(4):
+            # Check to make sure we are within iprt array
+            if gd[i]+j+1 == len(iprt):
+                break
+            # Check to see if we've got a zero
+            if prt[gd[i]+j+1] < prt_threshold:
+                break
+            # Add in index using line numbers data
+            iprt_orig[gd[i]+j+1] = linenumbers[gd[i]+j+1]-linenumbers[gd[i]]
+    #
+    # Note for GAC we have PRT nos 3 1 4 2 not 1 2 3 4
+    #
+    if gac:
+        prt_nos = [3,1,4,2]
+    else:
+        prt_nos = [1,2,3,4]
+    for i in [1,2,3,4]:
+        gd = (iprt_orig == i)
+        iprt[gd] = prt_nos[i-1]
+    return iprt
 
 def calibrate_thermal(counts, prt, ict, space, line_numbers, channel, cal):
     """Do the thermal calibration and return brightness temperatures (K).
@@ -457,19 +494,27 @@ def calibrate_thermal(counts, prt, ict, space, line_numbers, channel, cal):
     # Note that the prt values are the average value of the three readings from one of the four
     # PRTs. See reader.get_telemetry implementations.
     prt_threshold = 50  # empirically found and set by Abhay Devasthale
-
-    for offset in range(5):
-        # According to the KLM Guide the fill value between PRT measurments is 0, but we search
-        # for the first measurement gap using the threshold, because the fill value is in practice
-        # not always exactly 0.
-        if np.median(prt[(line_numbers - line_numbers[0]) % 5 == offset]) < prt_threshold:
-            break
+    
+    # Following section removed by J.Mittaz University of Reading 17 Feb 2025
+    #    for offset in range(5):
+    #        # According to the KLM Guide the fill value between PRT measurments is 0, but we search
+    #        # for the first measurement gap using the threshold, because the fill value is in practice
+    #        # not always exactly 0.
+    #        if np.median(prt[(line_numbers - line_numbers[0]) % 5 == offset]) < prt_threshold:
+    #            break
+    #    else:
+    #        raise IndexError("No PRT 0-index found!")
+    #
+    #    # get the PRT index, iprt equals to 0 corresponds to the measurement gaps
+    #    iprt = (line_numbers - line_numbers[0] + 5 - offset) % 5
+    # Replaced by new method which takes into account PRT counts==0 as a
+    # reset as well as gac PRT indexing (J.Mittaz UoR)
+    if columns == 409:
+        gacdata = True
     else:
-        raise IndexError("No PRT 0-index found!")
-
-    # get the PRT index, iprt equals to 0 corresponds to the measurement gaps
-    iprt = (line_numbers - line_numbers[0] + 5 - offset) % 5
-
+        gacdata = False
+    iprt = get_prt_nos(prt,prt_threshold,line_numbers,gacdata)
+    
     # fill measured values below threshold by interpolation
     ifix = np.where(np.logical_and(iprt == 1, prt < prt_threshold))
     if len(ifix[0]):

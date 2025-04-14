@@ -25,6 +25,7 @@ import logging
 from contextlib import contextmanager, nullcontext
 
 import numpy as np
+import matplotlib.pyplot as plt
 
 LOG = logging.getLogger(__name__)
 
@@ -329,3 +330,46 @@ def plot_correct_scanline_numbers(res, filename=None):
         plt.savefig(filename, bbox_inches="tight")
     else:
         plt.show()
+
+def allan_deviation(space,bad_scan=None):
+    """Determine the Allan deviation (noise) from space view counts filtering
+    out bad space view lines. Written by J.Mittaz, University of Reading"""
+
+    if len(space.shape) != 2:
+        raise Exception("utils.allan_deviation input space view not 2-dimensional")
+    #
+    # Get good scanlines if filter present
+    #
+    if bad_scan is not None:
+        gd = (bad_scan == 0)
+        newsp = space[bad_scan,:]
+    else:
+        newsp = space
+
+    #
+    # Allan deviation is sqrt of allan variance which is
+    #
+    #        allan_variance = 0.5 <(y_n+1-y_n)**2>
+    #
+    allan = 0.
+    nline = newsp.shape[0]
+    nscan = newsp.shape[1]
+    #
+    # Sum of squared pixel differences
+    #
+    for i in range(nline):
+        allan += np.sum((newsp[i,1:]-newsp[i,0:-1])**2)
+        
+    #
+    # Mean of squared pixel to pixel difference (expectation)
+    #
+    allan /= (nline*(nscan-1))
+    #
+    # And 1/2 term
+    #
+    allan *= 0.5
+
+    #
+    # Return the Allan deviation in counts (sqrt Allan variance)
+    #
+    return np.sqrt(allan)
