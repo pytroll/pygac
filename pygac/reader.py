@@ -405,7 +405,7 @@ class Reader(ABC):
 
         """
         packed_data = self.scans["sensor_data"]
-        counts = np.zeros((len(self.scans), self.scan_width * 5))   #double type
+        counts = np.zeros((len(self.scans), self.scan_width * 5))
         counts_nb = (self.scan_width * 5) // 3
         remainder = (self.scan_width * 5) % 3
         if remainder == 0:
@@ -427,7 +427,6 @@ class Reader(ABC):
         else:
             channels = np.zeros((len(self.scans), self.scan_width, 6),
                                 dtype=counts.dtype)
-            # ^^ make NaNs instead of zeros *****dont fix - leave to martin
             channels[:, :, :2] = counts[:, :, :2]
             channels[:, :, -2:] = counts[:, :, -2:]
             channels[:, :, 2][switch == 1] = counts[:, :, 2][switch == 1]
@@ -548,12 +547,11 @@ class Reader(ABC):
             prt_counts: Counts from PRTs on ICT
             ict_counts: Counts from observed ICT
             space_counts: Counts from space observation
-            vis_space_counts: Counts from space observation (visible channels)
             bad_space_scans: Scanlines with suspect space view information
             noise: Noise estimates in counts
             ict_noise: ICT noise estimates in counts
             Longitude/latitude: pixel position
-        bad_space_view and noise added by J.Mittaz, UoR"""
+        bad_space_view and noise and angles added by J.Mittaz, UoR"""
         head = dict(zip(self.head.dtype.names, self.head.item()))
         scans = self.scans
 
@@ -580,19 +578,28 @@ class Reader(ABC):
                                             times=("scan_line_index", times)))
 
         #
-        # Added bad_space_scans and noise to outputs
+        # Added total (10 per scan line) arrays
         # J.Mittaz University of Reading
         #
         prt, ict, space, total_ict, total_space \
             = self._get_telemetry_dataarrays(line_numbers, ir_channel_names)
+
         #
         # Added vis_space and total_vis_space to outputs
         # N.Yaghnam, NPL
         #
         vis_space, total_vis_space \
             = self._get_vis_telemetry_dataarrays(line_numbers, vis_channel_names)
-
         longitudes, latitudes = self._get_lonlat_dataarrays(line_numbers, columns)
+        #
+        # Get angles - need sun_zen for solar contamination in
+        # calibration routines - Added by J.Mittaz / UoR
+        #
+        sat_azi, sat_zen, sun_azi, sun_zen, rel_azi = self.get_angles()
+        sun_zen = xr.DataArray(sun_zen, \
+                                 dims=["scan_line_index", "columns"],\
+                                   coords=dict(scan_line_index=line_numbers,columns=columns))
+        
         if self.interpolate_coords:
             channels = channels.assign_coords(longitude=(("scan_line_index", "columns"),
                                                         longitudes.reindex_like(channels).data),
@@ -602,7 +609,7 @@ class Reader(ABC):
         #
         # Added space_views and noise entries
         #
-        # Added vis_space and total_vis_space - NY
+        # Added vis_space and total_vis_space - N.Yagnam / NPL
         #
         ds = xr.Dataset(dict(channels=channels, prt_counts=prt, \
                              ict_counts=ict, space_counts=space,\
@@ -610,7 +617,8 @@ class Reader(ABC):
                              total_space_counts=total_space,\
                              vis_space_counts=vis_space,\
                              total_vis_space_counts=total_vis_space,\
-                             longitude=longitudes, latitude=latitudes),\
+                             longitude=longitudes, latitude=latitudes,\
+                             sun_zen=sun_zen),\
                              attrs=head)
 
         ds.attrs["spacecraft_name"] = self.spacecraft_name
@@ -659,7 +667,7 @@ class Reader(ABC):
         total_space = xr.DataArray(total_space, \
                                  dims=["scan_line_index", "pixel_index", "ir_channel_name"],\
                                    coords=dict(ir_channel_name=ir_channel_names, scan_line_index=line_numbers,pixel_index=pixel_index))
-
+        
         return prt,ict,space,total_ict,total_space
 
     def _get_vis_telemetry_dataarrays(self, line_numbers, vis_channel_names):
@@ -714,11 +722,6 @@ class Reader(ABC):
         """KLM/POD specific readout of telemetry."""
         raise NotImplementedError
 
-    @abstractmethod
-    def get_vis_telemetry(self):
-        """KLM/POD specific readout of visible channel telemetry."""
-        raise NotImplementedError
-
     def get_lonlat(self):
         """Compute lat/lon coordinates.
 
@@ -762,7 +765,7 @@ class Reader(ABC):
     @property
     @abstractmethod
     def QFlag(self):  # pragma: no cover
-        """ /POD specific quality indicators."""
+        """KLM/POD specific quality indicators."""
         raise NotImplementedError
 
     @property

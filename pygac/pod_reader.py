@@ -576,20 +576,18 @@ class PODReader(Reader):
 
         # getting ICT counts
         ict_counts = np.zeros((int(number_of_scans), 3))
-        ict_counts[:, 0] = np.mean(decode_tele[:, 22:50:3], axis=1)   # [start:stop:step]
+        ict_counts[:, 0] = np.mean(decode_tele[:, 22:50:3], axis=1)
         ict_counts[:, 1] = np.mean(decode_tele[:, 23:51:3], axis=1)
         ict_counts[:, 2] = np.mean(decode_tele[:, 24:52:3], axis=1)
 
-        # getting IR space counts
+        # getting space counts
         space_counts = np.zeros((int(number_of_scans), 3))
         space_counts[:, 0] = np.mean(decode_tele[:, 54:100:5], axis=1)
         space_counts[:, 1] = np.mean(decode_tele[:, 55:101:5], axis=1)
         space_counts[:, 2] = np.mean(decode_tele[:, 56:102:5], axis=1)
 
         #
-        # Now work out bad scanlines from space counts/ict counts
-        # Code for uncertainty calculations
-        #
+        # getting space counts
         # Index 0 - 3.7mu
         sp_data_0 = decode_tele[:, 54:100:5]
         ict_data_0 = decode_tele[:, 22:50:3]
@@ -615,7 +613,6 @@ class PODReader(Reader):
         total_ict_counts[:,:,0] = ict_data_0[:,:]
         total_ict_counts[:,:,1] = ict_data_1[:,:]
         total_ict_counts[:,:,2] = ict_data_2[:,:]
-
         
         return prt_counts, ict_counts, space_counts, total_space_counts,\
             total_ict_counts
@@ -652,8 +649,7 @@ class PODReader(Reader):
         total_vis_space_counts[:, :, 1] = vis_sp_data_1[:, :]
 
         return vis_space_counts, total_vis_space_counts
-
-
+        
     @staticmethod
     def _get_ir_channels_to_calibrate():
         ir_channels_to_calibrate = [3, 4, 5]

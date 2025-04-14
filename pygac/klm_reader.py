@@ -757,7 +757,7 @@ class KLMReader(Reader):
         ict_counts[:, 1] = np.mean(self.scans["back_scan"][:, 1::3], axis=1)
         ict_counts[:, 2] = np.mean(self.scans["back_scan"][:, 2::3], axis=1)
 
-        # getting IR space counts
+        # getting space counts
 
         space_counts = np.zeros((len(self.scans), 3))
         space_counts[:, 0] = np.mean(self.scans["space_data"][:, 2::5], axis=1)
@@ -779,8 +779,7 @@ class KLMReader(Reader):
                 
         return prt_counts, ict_counts, space_counts, total_space_counts,\
             total_ict_counts
-
-
+    
     def get_vis_telemetry(self):
         """Get the telemetry for the visible channels. Added by N.Yaghnam / National Physical Laboratory
         to return complete (scanline x 10 views) space views.
@@ -859,7 +858,7 @@ class KLMReader(Reader):
         if np.all(self.get_ch3_switch() != 1):
             vis_channels_to_calibrate = [0, 1]
         return vis_channels_to_calibrate
-
+    
     def postproc(self, ds):
         """Apply KLM specific postprocessing.
 

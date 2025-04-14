@@ -33,7 +33,8 @@ import matplotlib.pyplot as plt
 from pyorbital import astronomy
 from pygac import get_reader_class
 from pygac.calibration.noaa import Calibrator, calibrate_solar
-from pygac.utils import allan_deviation, get_bad_space_counts
+from pygac.calibration.ir_uncertainty import get_bad_space_counts, get_uncert_parameter_thresholds
+from pygac.utils import allan_deviation
 from pygac.klm_reader import KLMReader
 from pygac.reader import Reader
 
@@ -64,19 +65,19 @@ def get_noise(total_space,window,chan_3a):
     #
     # 0.63 micron space counts
     #
-    noise1 = allan_deviation(ds["total_vis_space_counts"].values[:, :, 0], bad_scan=bad_scans)
+    noise1 = allan_deviation(total_space[:, :, 0], bad_scan=bad_scans)
     noise1 = np.sqrt(noise1 * noise1 + 1. / 3)
     #
     # 0.86 micron space counts
     #
-    noise2 = allan_deviation(ds["total_vis_space_counts"].values[:, :, 1], bad_scan=bad_scans)
+    noise2 = allan_deviation(total_space[:, :, 1], bad_scan=bad_scans)
     noise2 = np.sqrt(noise2 * noise2 + 1. / 3)
 
     #
     # 1.2 micron space counts
     #
     if chan_3a:
-        noise3 = allan_deviation(ds["total_vis_space_counts"].values[:, :, 2], bad_scan=bad_scans)
+        noise3 = allan_deviation(total_space[:, :, 2], bad_scan=bad_scans)
         noise3 = np.sqrt(noise3 * noise3 + 1. / 3)
     else:
         noise3 = None
@@ -95,7 +96,6 @@ def get_noise(total_space,window,chan_3a):
 
 
     return noise1,noise2,noise3,av_noise1,av_noise2,av_noise3,bad_scans
-
 
 def get_random(noise,av_noise,gain,cal,year,jday,C,D):
     """Get the random parts of the vis calibration uncertainty. Done per
@@ -144,7 +144,7 @@ def get_sys(channel, C, D, gain):
     else:
         usys_tot = usys
 
-    usys_tot *= gain/(C-D)
+    usys_tot *= gain
 
     uncert = (dRcal_dS**2)*(usys_tot**2)
 
@@ -181,9 +181,10 @@ def vis_uncertainty(ds,mask,plot=False):
     """
     #
     # Define averaging kernel based on value in noaa.py
+    # Also get the thresholds for solar contamination detection
     #
-    window=51
-
+    window, solar_contam_threshold, sza_threshold = \
+        get_uncert_parameter_thresholds(vischans=True)
 
     if ds['channels'].values.shape[1] == 409:
         gacdata = True
@@ -292,7 +293,7 @@ def vis_uncertainty(ds,mask,plot=False):
         # Check for bad scanlines and add flag
         #
         if bad_scan[i] == 1:
-            print(i, "Bad Space Count Data")
+            # print(i, "Bad Space Count Data")
             rcal_rand_63[i,:] = np.nan
             rcal_rand_86[i,:] = np.nan
             if chan_3a:
@@ -335,28 +336,28 @@ def vis_uncertainty(ds,mask,plot=False):
 
     # define flag for solar contamination (sun glint) data
     d_se = ds.attrs["sun_earth_distance_correction_factor"]
-    solar_contam_threshold = 0.05
-    sza_threshold = 102
 
-    #read = Reader()
-    #angles = read.get_angles()
-    #sza = angles["sun_zenith"]
-    lons, lats = KLMReader()._get_lonlat_from_file()
-    times = ds["times"].values
-    sza = astronomy.sun_zenith_angle(times[:, np.newaxis],
-                                                lons, lats)
-
+    #
+    # Solar zenith angle already computed
+    #
+    #lons, lats = KLMReader()._get_lonlat_from_file()
+    #times = ds["times"].values
+    #sza = astronomy.sun_zenith_angle(times[:, np.newaxis],
+    #                                            lons, lats)
+    sza = ds["sun_zen"].values
+    
     refl_1 = get_reflectance(Rcal_1, d_se, sza)
     refl_2 = get_reflectance(Rcal_2, d_se, sza)
-    refl_3 = get_reflectance(Rcal_3, d_se, sza)
+    if chan_3a:
+        refl_3 = get_reflectance(Rcal_3, d_se, sza)
 
-
-    for i in range(len(D_1)):
-        if refl_1>solar_contam_threshold:
-            if sza > sza_threshold:
-                contam_pixels = D_1[i]
-                print(i, "Pixel is contaminated")
-
+    #
+    # Check for inview solar contamination
+    #
+    contam_pixels = np.zeros(refl_1.shape,dtype=np.int8)
+    gd = (refl_1 > solar_contam_threshold)&(sza > sza_threshold)
+    if np.sum(gd) > 0:
+        contam_pixels[gd] = 1
 
     if plot:
         if chan_3a:
@@ -551,10 +552,12 @@ def vis_uncertainty(ds,mask,plot=False):
     sys_da = xr.DataArray(systematic,dims=["times","across_track","vis_channels"],\
                           attrs={"long_name":"Systematic uncertainties","units":""})
 
+    solar_contam_da = xr.DataArray(contam_pixels,dims=["times","across_track"],\
+                          attrs={"long_name":"Flag for in FOV solar contamination (0=none, 1=contaminated)","units":""})
     uncertainties = xr.Dataset(dict(times=time_da,across_track=across_da,\
-                               vis_channels=vis_channels_da,\
-                                    random=random_da,systematic=sys_da))
-
+                                    vis_channels=vis_channels_da,\
+                                    random=random_da,systematic=sys_da,
+                                    solar_fov_contam=solar_contam_da))
     return uncertainties
 
 if __name__ == "__main__":
@@ -568,9 +571,10 @@ if __name__ == "__main__":
     # Read data
     #
     reader_cls = get_reader_class(args.filename)
-
+    #"/gws/nopw/j04/npl_eo/users/nyaghnam/pygac/gapfilled_tles"
+    #"/gws/nopw/j04/nceo_uor/users/jmittaz/NPL/AVHRR/TLE"
     reader = reader_cls(tle_dir="/gws/nopw/j04/npl_eo/users/nyaghnam/pygac/gapfilled_tles",
-                        tle_name="TLE_%(satname).txt",
+                        tle_name="TLE_%(satname)s.txt",
                         calibration_method="noaa",
                         adjust_clock_drift=False)
     reader.read(args.filename)

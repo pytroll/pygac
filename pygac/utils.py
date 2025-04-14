@@ -373,37 +373,3 @@ def allan_deviation(space,bad_scan=None):
     # Return the Allan deviation in counts (sqrt Allan variance)
     #
     return np.sqrt(allan)
-
-
-def get_bad_space_counts(sp_data, ict_data=None):
-    """Find bad space count data (space count data is voltage clamped so
-    should have very close to the same value close to 950 - 960
-    Written by J.Mittaz / University of Reading 6 Oct 2024"""
-
-    #
-    # Use robust estimators to get thresholds for space counts
-    # Use 4 sigma threshold from median
-    # Ensure only for good data
-    #
-    gd = np.isfinite(sp_data)
-    if np.sum(gd) == 0:
-        sp_bad_data = np.zeros(sp_data.shape, dtype=bool)
-        sp_bad_data[:, :] = True
-        return sp_bad_data
-
-    quantile = np.quantile(sp_data[gd].flatten(), [0.25, 0.75])
-    if quantile[0] == quantile[1]:
-        quantile[1] = quantile[1] + 0.5
-    std = (quantile[1] - quantile[0]) / 1.349
-    sp_bad_data = np.zeros(sp_data.shape, dtype=bool)
-    sp_bad_data[:, :] = True
-    gd = np.isfinite(sp_data)
-
-    if ict_data is not None:
-        sp_bad_data[gd] = ~((np.abs(sp_data[gd] - np.median(sp_data[gd].flatten())) / \
-                         std < 5.) & (ict_data[gd] > 0))
-    else:
-        sp_bad_data[gd] = ~((np.abs(sp_data[gd] - np.median(sp_data[gd].flatten())) / \
-                            std < 5.))
-
-    return sp_bad_data
