@@ -743,12 +743,12 @@ class Reader(ABC):
         """KLM/POD specific readout of telemetry."""
         raise NotImplementedError
 
-    def get_lonlat(self, recompute=False):
+    def get_lonlat(self):
         """Compute lat/lon coordinates.
 
         TODO: Switch to faster interpolator?
         """
-        if recompute or self.lons is None or self.lats is None:
+        if self.lons is None or self.lats is None:
             return self._compute_lonlats()
 
         return self.lons, self.lats
