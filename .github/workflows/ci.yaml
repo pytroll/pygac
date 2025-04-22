@@ -34,7 +34,7 @@ jobs:
       - name: Install pygac
         shell: bash -l {0}
         run: |
-          pip install --no-deps -e .[georefencer]
+          pip install --no-deps -e .[georef]
 
       - name: Run unit tests
         shell: bash -l {0}
