@@ -901,3 +901,24 @@ def test_recomputing_lonlats_with_time_offset(pod_file_with_tbm_header, pod_tle)
     lons, lats = reader._compute_lonlats(time_offset=np.timedelta64(500, "ms"))
     assert lons[0, 0] == pytest.approx(-4.714710005688344)
     assert lons[0, -1] == pytest.approx(79.44587709203307)
+
+
+def test_georeferencing(pod_file_with_tbm_header, pod_tle, monkeypatch):
+    """Test computing lons and lats from TLE data."""
+
+    def mock_cal(counts, *args, **kwargs):
+        return counts * 1.0
+    import pygac.calibration.noaa
+    monkeypatch.setattr(pygac.calibration.noaa, "calibrate_thermal", mock_cal)
+
+    def mock_disp(*args):
+        return 0.5, 0, 0, 0
+    from georeferencer import georeferencer
+    monkeypatch.setattr(georeferencer, "get_swath_displacement", mock_disp)
+    reader = LACPODReader(tle_dir=pod_tle.parent, tle_name=os.path.basename(pod_tle), compute_lonlats_from_tles=True,
+                          reference_image="some_world_image.tif")
+    reader.read(pod_file_with_tbm_header)
+    dataset = reader.get_calibrated_dataset()
+    lons = dataset["longitude"].values
+    assert lons[0, 0] == pytest.approx(-4.714710005688344)
+    assert lons[0, -1] == pytest.approx(79.44587709203307)
