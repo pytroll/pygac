@@ -269,6 +269,8 @@ class TestPOD(unittest.TestCase):
         get_lonlatalt.return_value = [missed_lons, missed_lats]
 
         # adjust clock drift
+        reader.lonlat_sample_points = [0, 2]
+
         reader._adjust_clock_drift()
 
         # check output
@@ -312,7 +314,7 @@ class TestPOD_truncate(unittest.TestCase):
         """Test that truncate_padding_record is correctly dropping end padding"""
         # Even number of scans, correct file length
         reader = self.reader
-        reader.head = {'number_of_scans': 10}
+        reader.head = {"number_of_scans": 10}
         buffer = reader._truncate_padding_record(bytes(10*3220))
         self.assertEqual(len(buffer), 10*3220)
 
@@ -322,7 +324,7 @@ class TestPOD_truncate(unittest.TestCase):
         # Even number of scans, correct file length
         reader = self.reader
         # Odd number of scans, correct file length (should truncate)
-        reader.head = {'number_of_scans': 9}
+        reader.head = {"number_of_scans": 9}
         buffer = reader._truncate_padding_record(bytes(10*3220))
         self.assertEqual(len(buffer), 9*3220)
 
@@ -334,7 +336,7 @@ class TestPOD_truncate(unittest.TestCase):
 
         # Odd number of scans, padding record is missing
         with self.assertWarnsRegex(RuntimeWarning, "incomplete physical record"):
-            reader.head = {'number_of_scans': 9}
+            reader.head = {"number_of_scans": 9}
             buffer = reader._truncate_padding_record(bytes(9*3220))
             self.assertEqual(len(buffer), 9*3220)
 
@@ -344,7 +346,7 @@ class TestPOD_truncate(unittest.TestCase):
         reader = self.reader
 
         # File is too short (should do nothing)
-        reader.head = {'number_of_scans': 9}
+        reader.head = {"number_of_scans": 9}
         buffer = reader._truncate_padding_record(bytes(8*3220))
         self.assertEqual(len(buffer), 8*3220)
 
@@ -354,6 +356,6 @@ class TestPOD_truncate(unittest.TestCase):
         reader = self.reader
 
         # File is too long (should do nothing)
-        reader.head = {'number_of_scans': 9}
+        reader.head = {"number_of_scans": 9}
         buffer = reader._truncate_padding_record(bytes(12*3220))
         self.assertEqual(len(buffer), 12*3220)

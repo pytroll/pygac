@@ -119,6 +119,9 @@ class FakeGACReader(GACReader):
         """Get the tsm pixels."""
         pass
 
+    def get_tle_lines(self):
+        """Get tle lines."""
+        pass
 
 class FakeGACReaderWithWrongPRTs(FakeGACReader):
 
@@ -319,6 +322,7 @@ class TestGacReader(unittest.TestCase):
         # Interpolation disabled
         self.interpolator.reset_mock()
         adjust_clockdrift.reset_mock()
+        self.reader.clock_drift_correction_applied = False
         self.reader.interpolate_coords = False
         self.reader.adjust_clock_drift = True
         self.reader.lons = self.reader.lats = None
@@ -879,3 +883,21 @@ def test_passing_calibration_to_reader():
     np.testing.assert_allclose(res[:, 1, 0], 8.84714652)
     np.testing.assert_allclose(res[:, 2, 1], 10.23511303)
     assert reader.meta_data["calib_coeffs_version"] == "PATMOS-x, v2023"
+
+
+def test_computing_lonlats(pod_file_with_tbm_header, pod_tle):
+    """Test computing lons and lats from TLE data."""
+    reader = LACPODReader(tle_dir=pod_tle.parent, tle_name=os.path.basename(pod_tle), compute_lonlats_from_tles=True)
+    dataset = reader.read_as_dataset(pod_file_with_tbm_header)
+    lons = dataset["longitude"].values
+    assert lons[0, 0] == pytest.approx(-4.756486)
+    assert lons[0, -1] == pytest.approx(79.505688)
+
+
+def test_recomputing_lonlats_with_time_offset(pod_file_with_tbm_header, pod_tle):
+    """Test computing lons and lats from TLE data with time offset."""
+    reader = LACPODReader(tle_dir=pod_tle.parent, tle_name=os.path.basename(pod_tle), compute_lonlats_from_tles=True)
+    reader.read(pod_file_with_tbm_header)
+    lons, lats = reader._compute_lonlats(time_offset=np.timedelta64(500, "ms"))
+    assert lons[0, 0] == pytest.approx(-4.714710005688344)
+    assert lons[0, -1] == pytest.approx(79.44587709203307)

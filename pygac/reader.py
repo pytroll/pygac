@@ -33,6 +33,7 @@ import types
 import warnings
 from abc import ABC, abstractmethod
 from contextlib import suppress
+from functools import cache
 from importlib.metadata import entry_points
 
 import numpy as np
@@ -123,6 +124,7 @@ class Reader(ABC):
         calibration_parameters=None,
         correct_scanlines=True,
         reference_image=None,
+        compute_lonlats_from_tles: bool = False,
     ):
         """Init the reader.
 
@@ -141,6 +143,9 @@ class Reader(ABC):
             calibration_file: path to json file containing default calibrations
             header_date: the date to use for pod header choice. Defaults to "auto".
             correct_scanlines: Remove corrrupt scanline numbers. Defaults to True
+            reference_image: the reference image to use for georeferencing
+            compute_lonlats_from_tles: Do not use the longitudes and latitudes provided in the file, rather compute them
+                                       from the TLE.
 
         """
         self.meta_data = {}
@@ -164,6 +169,9 @@ class Reader(ABC):
         self._mask = None
         self._rpy = None
         self.reference_image = reference_image
+        self.compute_lonlats_from_tles: bool = compute_lonlats_from_tles
+
+        self.clock_drift_correction_applied = False
 
         if calibration_method.lower() not in ["noaa"]:
             raise ValueError(f"Unknown calibration method {calibration_method}.")
@@ -691,6 +699,7 @@ class Reader(ABC):
 
         return channels
 
+    @cache
     def get_calibrated_dataset(self):
         """Create and calibrate the dataset for the pass."""
         ds = self.create_counts_dataset()
@@ -708,44 +717,78 @@ class Reader(ABC):
         # Apply KLM/POD specific postprocessing
         self.postproc(calibrated_ds)
 
+        calibrated_ds.attrs["tle"] = self.get_tle_lines()
+
         # Mask pixels affected by scan motor issue
         if self.is_tsm_affected():
             LOG.info("Correcting for temporary scan motor issue")
             self.mask_tsm_pixels(calibrated_ds)
         if self.reference_image:
-            from georeferencer.georeferencer import offset_calibrated_channels
-            calibrated_ds = offset_calibrated_channels(calibrated_ds, self.reference_image)
+            self._georeference_data(calibrated_ds)
         return calibrated_ds
+
+    def _georeference_data(self, calibrated_ds):
+        if np.max(np.diff(self._times_as_np_datetime64)) > np.timedelta64(167, "ms"):
+            raise RuntimeError("Missing scanlines in swath, cannot georeference")
+        from georeferencer.georeferencer import get_swath_displacement
+        time_diff, roll, pitch, yaw = get_swath_displacement(calibrated_ds, self.reference_image)
+        self._rpy = roll, pitch, yaw
+        time_diff = np.timedelta64(int(time_diff * 1e9), "ns")
+        lons, lats = self._compute_lonlats(time_offset=time_diff)
+        calibrated_ds["longitude"].data = lons
+        calibrated_ds["latitude"].data = lats
 
     @abstractmethod
     def get_telemetry(self):  # pragma: no cover
         """KLM/POD specific readout of telemetry."""
         raise NotImplementedError
 
-    def get_lonlat(self):
+    def get_lonlat(self, recompute=False):
         """Compute lat/lon coordinates.
 
         TODO: Switch to faster interpolator?
         """
-        if self.lons is None and self.lats is None:
+        if recompute or self.lons is None or self.lats is None:
+            return self._compute_lonlats()
+
+        return self.lons, self.lats
+
+    def _compute_lonlats(self, time_offset=None):
+        if not self.compute_lonlats_from_tles:
             self.lons, self.lats = self._get_lonlat_from_file()
-            self.update_meta_data()
-
             # Adjust clock drift
-            if self.adjust_clock_drift:
+            if self.adjust_clock_drift and not self.clock_drift_correction_applied:
                 self._adjust_clock_drift()
+                self.clock_drift_correction_applied = True
+        else:
+            self.get_times()
+            if self.adjust_clock_drift and not self.clock_drift_correction_applied:
+                try:
+                    offsets = self.compute_clock_offsets()
+                    self._times_as_np_datetime64 -= (offsets * 1000).astype("timedelta64[ms]")
+                    self.clock_drift_correction_applied = True
+                    LOG.debug("Applied clock drift correction")
+                except AttributeError:
+                    LOG.debug("No clock drift correction applied")
+            if time_offset:
+                new_times = self._times_as_np_datetime64 + time_offset
+                self.lons, self.lats = self._compute_lonlat_from_tles(new_times.astype("datetime64[ms]"))
+            else:
+                self.lons, self.lats = self._compute_lonlat_from_tles(self._times_as_np_datetime64)
+        self.update_meta_data()
 
-            # Interpolate from every eighth pixel to all pixels.
-            if self.interpolate_coords:
-                self.lons, self.lats = self.lonlat_interpolator(self.lons, self.lats)
 
-            # Mask out corrupt scanlines
-            self.lons[self.mask] = np.nan
-            self.lats[self.mask] = np.nan
+        # Interpolate from every eighth pixel to all pixels.
+        if self.interpolate_coords:
+            self.lons, self.lats = self.lonlat_interpolator(self.lons, self.lats)
 
-            # Mask values outside the valid range
-            self.lats[np.fabs(self.lats) > 90.0] = np.nan
-            self.lons[np.fabs(self.lons) > 180.0] = np.nan
+        # Mask out corrupt scanlines
+        self.lons[self.mask] = np.nan
+        self.lats[self.mask] = np.nan
+
+        # Mask values outside the valid range
+        self.lats[np.fabs(self.lats) > 90.0] = np.nan
+        self.lons[np.fabs(self.lons) > 180.0] = np.nan
 
         return self.lons, self.lats
 
@@ -1202,7 +1245,7 @@ class Reader(ABC):
             t0 = np.median(offsets[near_t0_head])
         else:
             results["fail_reason"] = "Timestamp mismatch"
-            raise TimestampMismatch("Timestamp mismatch. Cannot perform correction.")
+            raise TimestampMismatch("Timestamp mismatch. Cannot perform timestamp correction.")
 
         # Add estimated offset to the ideal timestamps
         tn += t0
@@ -1324,22 +1367,23 @@ class Reader(ABC):
             self._rpy = rpy
         return self._rpy
 
-    def _compute_missing_lonlat(self, missed_utcs):
+    def _compute_lonlat_from_tles(self, utcs):
         """Compute lon lat values using pyorbital."""
         tic = datetime.datetime.now()
-        sgeom = self.geoloc_definition(missed_utcs.astype(datetime.datetime),
-                          self.lonlat_sample_points)
-        t0 = missed_utcs[0].astype(datetime.datetime)
+        sgeom = self.geoloc_definition(utcs.astype(datetime.datetime),
+                                       self.lonlat_sample_points)
+        t0 = utcs[0].astype(datetime.datetime)
         s_times = sgeom.times(t0)
         tle1, tle2 = self.get_tle_lines()
 
         rpy = self.get_attitude_coeffs()
+        LOG.debug(f"Computing lon/lats with attitude {rpy}")
         pixels_pos = compute_pixels((tle1, tle2), sgeom, s_times, rpy)
         pos_time = get_lonlatalt(pixels_pos, s_times)
 
         missed_lons, missed_lats = pos_time[:2]
 
-        pixels_per_line = self.lats.shape[1]
+        pixels_per_line = len(self.lonlat_sample_points)
         missed_lons = missed_lons.reshape(-1, pixels_per_line)
         missed_lats = missed_lats.reshape(-1, pixels_per_line)
 
