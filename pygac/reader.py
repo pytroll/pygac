@@ -591,11 +591,13 @@ class Reader(ABC):
         head = dict(zip(self.head.dtype.names, self.head.item()))
         scans = self.scans
 
-        times = self.get_times()
-        line_numbers = scans["scan_line_number"]
         counts = self.get_counts()
-
+        line_numbers = scans["scan_line_number"]
         scan_size = counts.shape[1]
+        columns = np.arange(scan_size)
+        longitudes, latitudes = self._get_lonlat_dataarrays(line_numbers, columns)
+
+        times = self.get_times()
 
         if counts.shape[-1] == 5:
             channel_names = ["1", "2", "3", "4", "5"]
@@ -604,7 +606,6 @@ class Reader(ABC):
             channel_names = ["1", "2", "3a", "3b", "4", "5"]
             ir_channel_names = ["3b", "4", "5"]
 
-        columns = np.arange(scan_size)
         channels = xr.DataArray(
             counts,
             dims=["scan_line_index", "columns", "channel_name"],
@@ -617,8 +618,6 @@ class Reader(ABC):
         )
 
         prt, ict, space = self._get_telemetry_dataarrays(line_numbers, ir_channel_names)
-
-        longitudes, latitudes = self._get_lonlat_dataarrays(line_numbers, columns)
 
         if self.interpolate_coords:
             channels = channels.assign_coords(
@@ -738,6 +737,7 @@ class Reader(ABC):
         lons, lats = self._compute_lonlats(time_offset=time_diff)
         calibrated_ds["longitude"].data = lons
         calibrated_ds["latitude"].data = lats
+        calibrated_ds["times"].data = self._times_as_np_datetime64
 
     @abstractmethod
     def get_telemetry(self):  # pragma: no cover
