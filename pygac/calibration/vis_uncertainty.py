@@ -211,13 +211,13 @@ def vis_uncertainty(ds,mask,plot=False):
     cal = Calibrator(
         ds.attrs["spacecraft_name"])
     s0_1 = cal.s0[0]
-    s1_1 = cal.s0[1]
-    s2_1 = cal.s0[2]
-    s0_2 = cal.s1[0]
+    s0_2 = cal.s0[1]
+    s0_3 = cal.s0[2]
+    s1_1 = cal.s1[0]
     s1_2 = cal.s1[1]
-    s2_2 = cal.s1[2]
-    s0_3 = cal.s2[0]
-    s1_3 = cal.s2[1]
+    s1_3 = cal.s1[2]
+    s2_1 = cal.s2[0]
+    s2_2 = cal.s2[1]
     s2_3 = cal.s2[2]
 
     #
@@ -307,10 +307,35 @@ def vis_uncertainty(ds,mask,plot=False):
         #
         # Get calibration slope
         #
-        gain_1 = calibrate_solar(C_1[i, :], 0, year, jday, cal, corr=1)/(C_1[i, :]-D_1[i])
-        gain_2 = calibrate_solar(C_2[i, :], 1, year, jday, cal, corr=1)/(C_2[i, :]-D_2[i])
+        # gain_1 = calibrate_solar(C_1[i, :], 0, year, jday, cal, corr=1)/(C_1[i, :]-D_1[i])
+        l_date = Calibrator.date2float(cal.date_of_launch)
+        t = (year + jday/365.0) - l_date
+        if np.isnan(cal.gain_switch).all():
+            glow = ghigh = 1
+        else:
+            if chan_3a:
+                glow = 0.25
+                ghigh = 1.75
+            else:
+                glow = 0.5
+                ghigh = 1.5
+        s0_1_l = glow*s0_1
+        s0_1_h = ghigh*s0_1
+        stl_1 = (s0_1_l*(100.0 + s1_1*t + s2_1*t**2))/100
+        sth_1 = (s0_1_h*(100.0 + s1_1*t + s2_1*t**2))/100
+        gain_1 = (stl_1 + sth_1)/2
+
+        s0_2_l = glow*s0_2
+        s0_2_h = ghigh*s0_2
+        stl_2 = (s0_2_l*(100.0 + s1_2*t + s2_2*t**2))/100
+        sth_2 = (s0_2_h*(100.0 + s1_2*t + s2_2*t**2))/100
+        gain_2 = (stl_2 + sth_2)/2
         if chan_3a:
-            gain_3 = calibrate_solar(C_3[i, :], 2, year, jday, cal, corr=1)/(C_3[i, :]-D_3[i])
+            s0_3_l = glow * s0_3
+            s0_3_h = ghigh * s0_3
+            stl_3 = (s0_3_l * (100.0 + s1_3*t + s2_3 * t**2))/100
+            sth_3 = (s0_3_h * (100.0 + s1_3*t + s2_3 * t**2))/100
+            gain_3 = (stl_3 + sth_3)/2
 
         #
         # Get noise in scaled radiance space
@@ -558,6 +583,7 @@ def vis_uncertainty(ds,mask,plot=False):
                                     vis_channels=vis_channels_da,\
                                     random=random_da,systematic=sys_da,
                                     solar_fov_contam=solar_contam_da))
+
     return uncertainties
 
 if __name__ == "__main__":
@@ -573,7 +599,7 @@ if __name__ == "__main__":
     reader_cls = get_reader_class(args.filename)
     #"/gws/nopw/j04/npl_eo/users/nyaghnam/pygac/gapfilled_tles"
     #"/gws/nopw/j04/nceo_uor/users/jmittaz/NPL/AVHRR/TLE"
-    reader = reader_cls(tle_dir="/gws/nopw/j04/npl_eo/users/nyaghnam/pygac/gapfilled_tles",
+    reader = reader_cls(tle_dir="C:/Users/ny2/projectdir/pygac/gapfilled_tles",
                         tle_name="TLE_%(satname)s.txt",
                         calibration_method="noaa",
                         adjust_clock_drift=False)
