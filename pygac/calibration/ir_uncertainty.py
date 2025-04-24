@@ -738,7 +738,7 @@ def get_vars(ds,channel,convT,wlength,prt_threshold,ict_threshold,
     space = ds['space_counts'].values[:,channel]
     prt = ds["prt_counts"].values[:]
     ict = ds['ict_counts'].values[:,channel]
-    ce = ds['channels'].values[:,:,channel-3]
+    ce = ds['counts'].values[:,:,channel-3]
     midpoint = ds['sun_zen'].shape[1]//2
     line_numbers = ds["scan_line_index"].data
     

@@ -29,12 +29,10 @@ import pandas as pd
 from importlib.resources import files
 import argparse
 import seaborn as sns
-import matplotlib.pyplot as plt
 from pyorbital import astronomy
 from pygac import get_reader_class
 from pygac.calibration.noaa import Calibrator, calibrate_solar
-from pygac.calibration.ir_uncertainty import get_bad_space_counts, get_uncert_parameter_thresholds
-from pygac.utils import allan_deviation
+from pygac.calibration.ir_uncertainty import get_bad_space_counts, get_uncert_parameter_thresholds, allan_deviation
 from pygac.klm_reader import KLMReader
 from pygac.reader import Reader
 
@@ -143,7 +141,7 @@ def get_sys(channel, C, D, gain):
         usys_tot = np.sqrt(usys**2 + U_WV**2)
     else:
         usys_tot = usys
-
+        
     usys_tot *= gain
 
     uncert = (dRcal_dS**2)*(usys_tot**2)
@@ -154,8 +152,8 @@ def get_vars(ds,channel):
     """Get variables from xarray"""
 
     space = ds['vis_space_counts'].values[:,channel]
-    counts = ds['channels'].values[:,:,channel]
-
+    counts = ds['counts'].values[:,:,channel]
+    
     return space, counts
 
 def get_gain(s0, s1, s2, t, cal, channel):
@@ -260,6 +258,7 @@ def vis_uncertainty(ds,mask,plot=False):
     # Get variables used on the calibration
     #
     if plot:
+        import matplotlib.pyplot as plt
         plt.figure(1)
 
     D_1,C_1= get_vars(ds,0)
@@ -562,19 +561,19 @@ def vis_uncertainty(ds,mask,plot=False):
 
     time = (ds["times"].values - np.datetime64("1970-01-01 00:00:00"))/\
            np.timedelta64(1,'s')
-    time_da = xr.DataArray(time,dims=["times"],attrs={"long_name":"scanline time",\
+    time_da = xr.DataArray(time,dims=["times"],attrs={"long_name":"scanline time",
                                                      "units":"seconds since 1970-01-01"})
     across_da = xr.DataArray(np.arange(random.shape[1]),dims=["across_track"])
     vis_channels_da = xr.DataArray(np.array([1,2,3]),dims=["vis_channels"])
-    random_da = xr.DataArray(random,dims=["times","across_track","vis_channels"],\
+    random_da = xr.DataArray(random,dims=["times","across_track","vis_channels"],
                              attrs={"long_name":"Random uncertainties","units":""})
-    sys_da = xr.DataArray(systematic,dims=["times","across_track","vis_channels"],\
+    sys_da = xr.DataArray(systematic,dims=["times","across_track","vis_channels"],
                           attrs={"long_name":"Systematic uncertainties","units":""})
 
-    solar_contam_da = xr.DataArray(contam_pixels,dims=["times","across_track"],\
+    solar_contam_da = xr.DataArray(contam_pixels,dims=["times","across_track"],
                           attrs={"long_name":"Flag for in FOV solar contamination (0=none, 1=contaminated)","units":""})
-    uncertainties = xr.Dataset(dict(times=time_da,across_track=across_da,\
-                                    vis_channels=vis_channels_da,\
+    uncertainties = xr.Dataset(dict(times=time_da,across_track=across_da,
+                                    vis_channels=vis_channels_da,
                                     random=random_da,systematic=sys_da,
                                     solar_fov_contam=solar_contam_da))
 

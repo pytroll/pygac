@@ -36,6 +36,7 @@ from enum import Enum
 from importlib.resources import files
 
 import numpy as np
+import xarray as xr
 
 LOG = logging.getLogger(__name__)
 
@@ -49,6 +50,17 @@ def calibrate(ds, custom_coeffs=None, coeffs_file=None):
                             calibration coefficients
         calibration_file: path to json file containing default calibrations
     """
+    #
+    # Make sure earth counts are kept for uncertainty calculation
+    #
+    counts = xr.DataArray(name="counts",
+                          data=np.copy(ds["channels"].data),
+                          dims=ds["channels"].dims,
+                          coords=ds["channels"].coords)
+
+    #
+    # Map to other data
+    #
     channels = ds["channels"].data
     times = ds.coords["times"]
     scan_line_numbers = ds["scan_line_index"].data
@@ -82,8 +94,8 @@ def calibrate(ds, custom_coeffs=None, coeffs_file=None):
     # Ensure data isn't overwritten
     prt = np.copy(ds["prt_counts"].data)
     ict = np.copy(ds["ict_counts"].data)
-    space = np.copy( ds["space_counts"].data)
-
+    space = np.copy(ds["space_counts"].data)
+    
     ir_channels_to_calibrate = [3, 4, 5]
 
     for chan in ir_channels_to_calibrate:
@@ -99,7 +111,8 @@ def calibrate(ds, custom_coeffs=None, coeffs_file=None):
 
     new_ds = ds.copy()
     new_ds["channels"].data = channels
-
+    new_ds["counts"] = counts
+    
     new_ds.attrs["calib_coeffs_version"] = calibration_coeffs.version
 
     return new_ds
