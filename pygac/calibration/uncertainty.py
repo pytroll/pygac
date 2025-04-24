@@ -26,11 +26,9 @@ from __future__ import division
 import numpy as np
 import xarray as xr
 import argparse
-import matplotlib.pyplot as plt
 
 from pygac import get_reader_class
-from pygac.utils import allan_deviation
-from pygac.calibration.ir_uncertainty import ir_uncertainty
+from pygac.calibration.ir_uncertainty import ir_uncertainty, allan_deviation
 from pygac.calibration.vis_uncertainty import vis_uncertainty
 
 #
@@ -54,7 +52,7 @@ def uncertainty(ds,mask,plot=False):
     #
     time = (ds["times"].values - np.datetime64("1970-01-01 00:00:00"))/\
            np.timedelta64(1,'s')
-    time_da = xr.DataArray(time,dims=["times"],attrs={"long_name":"scanline time",\
+    time_da = xr.DataArray(time,dims=["times"],attrs={"long_name":"scanline time",
                                                      "units":"seconds since 1970-01-01"})
     across_da = xr.DataArray(np.arange(ds['channels'].shape[1]),dims=["across_track"])
     if fivechan:
@@ -84,13 +82,13 @@ def uncertainty(ds,mask,plot=False):
     #
     # Make xarray data arrays
     #
-    random_da = xr.DataArray(random,dims=["times","across_track","channels"],\
+    random_da = xr.DataArray(random,dims=["times","across_track","channels"],
                              attrs={"long_name":"Random uncertainties","units":"Albedo/K"})
-    sys_da = xr.DataArray(systematic,dims=["times","across_track","channels"],\
+    sys_da = xr.DataArray(systematic,dims=["times","across_track","channels"],
                           attrs={"long_name":"Systematic uncertainties","units":"Albedo/K"})
 
     uratio_da = xr.DataArray(irdata['chan_covar_ratio'].values,
-                             dims=["times","across_track","ir_channels"],\
+                             dims=["times","across_track","ir_channels"],
                              attrs={"long_name":"Channel-to-channel covariance  ratio"})
 
     #
@@ -104,17 +102,18 @@ def uncertainty(ds,mask,plot=False):
         gd = (visdata['solar_fov_contam'].values[i,:] == 1)
         uflags[i,gd] = (uflags[i,gd]|4)
 
-    uflags_da = xr.DataArray(uflags,dims=["times","across_track"],\
+    uflags_da = xr.DataArray(uflags,dims=["times","across_track"],
                              attrs={"long_name":"Uncertainty flags (bit 1==bad space view (value=1), bit 2==solar contamination of Gain (value=2), bit 3==solar contamination of FOV (value=2)"})
 
-    uncertainties = xr.Dataset(dict(times=time_da,across_track=across_da,\
-                                    channels=channels_da,\
-                                    ir_channels=ir_channels_da,\
-                                    random=random_da,systematic=sys_da,\
+    uncertainties = xr.Dataset(dict(times=time_da,across_track=across_da,
+                                    channels=channels_da,
+                                    ir_channels=ir_channels_da,
+                                    random=random_da,systematic=sys_da,
                                     chan_covar_ratio=uratio_da,
                                     uncert_flags=uflags_da))
 
     if plot:
+        import matplotlib.pyplot as plt
         plt.figure(1)
         plt.subplot(231)
         im=plt.imshow(uncertainties['random'].values[:,:,0])

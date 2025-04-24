@@ -765,13 +765,13 @@ class KLMReader(Reader):
         space_counts[:, 2] = np.mean(self.scans["space_data"][:, 4::5], axis=1)
 
         # Make total arrays
-        total_space_counts = np.zeros((space_counts.shape[0],10,3),\
+        total_space_counts = np.zeros((space_counts.shape[0],10,3),
                                       dtype=space_counts.dtype)
         total_space_counts[:,:,0] = self.scans["space_data"][:, 2::5]
         total_space_counts[:,:,1] = self.scans["space_data"][:, 3::5]
         total_space_counts[:,:,2] = self.scans["space_data"][:, 4::5]
                 
-        total_ict_counts = np.zeros((ict_counts.shape[0],10,3),\
+        total_ict_counts = np.zeros((ict_counts.shape[0],10,3),
                                     dtype=space_counts.dtype)
         total_ict_counts[:,:,0] = self.scans["back_scan"][:, 0::3]
         total_ict_counts[:,:,1] = self.scans["back_scan"][:, 1::3]
@@ -797,7 +797,7 @@ class KLMReader(Reader):
         vis_space_counts[:, 2] = np.mean(self.scans["space_data"][:, 2::5], axis=1)
 
         # make total array
-        total_vis_space_counts = np.zeros((vis_space_counts.shape[0], 10, 3), \
+        total_vis_space_counts = np.zeros((vis_space_counts.shape[0], 10, 3),
                                           dtype=vis_space_counts.dtype)
         total_vis_space_counts[:, :, 0] = self.scans["space_data"][:, 0::5]
         total_vis_space_counts[:, :, 1] = self.scans["space_data"][:, 1::5]

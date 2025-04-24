@@ -596,8 +596,8 @@ class Reader(ABC):
         # calibration routines - Added by J.Mittaz / UoR
         #
         sat_azi, sat_zen, sun_azi, sun_zen, rel_azi = self.get_angles()
-        sun_zen = xr.DataArray(sun_zen, \
-                                 dims=["scan_line_index", "columns"],\
+        sun_zen = xr.DataArray(sun_zen,
+                                 dims=["scan_line_index", "columns"],
                                    coords=dict(scan_line_index=line_numbers,columns=columns))
         
         if self.interpolate_coords:
@@ -611,14 +611,14 @@ class Reader(ABC):
         #
         # Added vis_space and total_vis_space - N.Yagnam / NPL
         #
-        ds = xr.Dataset(dict(channels=channels, prt_counts=prt, \
-                             ict_counts=ict, space_counts=space,\
-                             total_ict_counts=total_ict,\
-                             total_space_counts=total_space,\
-                             vis_space_counts=vis_space,\
-                             total_vis_space_counts=total_vis_space,\
-                             longitude=longitudes, latitude=latitudes,\
-                             sun_zen=sun_zen),\
+        ds = xr.Dataset(dict(channels=channels, prt_counts=prt,
+                             ict_counts=ict, space_counts=space,
+                             total_ict_counts=total_ict,
+                             total_space_counts=total_space,
+                             vis_space_counts=vis_space,
+                             total_vis_space_counts=total_vis_space,
+                             longitude=longitudes, latitude=latitudes,
+                             sun_zen=sun_zen),
                              attrs=head)
 
         ds.attrs["spacecraft_name"] = self.spacecraft_name
@@ -661,11 +661,11 @@ class Reader(ABC):
         # New entries for calibration uncertainty work
         #
         pixel_index = np.arange(10,dtype=np.int8)
-        total_ict = xr.DataArray(total_ict, \
-                                 dims=["scan_line_index", "pixel_index", "ir_channel_name"],\
+        total_ict = xr.DataArray(total_ict,
+                                 dims=["scan_line_index", "pixel_index", "ir_channel_name"],
                                  coords=dict(ir_channel_name=ir_channel_names, scan_line_index=line_numbers))
-        total_space = xr.DataArray(total_space, \
-                                 dims=["scan_line_index", "pixel_index", "ir_channel_name"],\
+        total_space = xr.DataArray(total_space,
+                                   dims=["scan_line_index", "pixel_index", "ir_channel_name"],
                                    coords=dict(ir_channel_name=ir_channel_names, scan_line_index=line_numbers,pixel_index=pixel_index))
         
         return prt,ict,space,total_ict,total_space
@@ -677,8 +677,8 @@ class Reader(ABC):
         pixel_index = np.arange(10, dtype=np.int8)
         vis_space = xr.DataArray(vis_space, dims=["scan_line_index", "vis_channel_name"],
                              coords=dict(vis_channel_name=vis_channel_names, scan_line_index=line_numbers))
-        total_vis_space = xr.DataArray(total_vis_space, \
-                                   dims=["scan_line_index", "pixel_index", "vis_channel_name"], \
+        total_vis_space = xr.DataArray(total_vis_space,
+                                   dims=["scan_line_index", "pixel_index", "vis_channel_name"],
                                    coords=dict(vis_channel_name=vis_channel_names, scan_line_index=line_numbers,
                                                pixel_index=pixel_index))
 

@@ -601,9 +601,9 @@ class PODReader(Reader):
         ict_data_2 = decode_tele[:, 24:52:3]
 
         # Make output for all space/ICT counts
-        total_space_counts = np.zeros((len(sp_data_0),10,3),\
+        total_space_counts = np.zeros((len(sp_data_0),10,3),
                                       dtype=sp_data_0.dtype)
-        total_ict_counts = np.zeros((len(ict_data_0),10,3),\
+        total_ict_counts = np.zeros((len(ict_data_0),10,3),
                                     dtype=ict_data_0.dtype)
 
         total_space_counts[:,:,0] = sp_data_0[:,:]
@@ -642,7 +642,7 @@ class PODReader(Reader):
         vis_sp_data_1 = decode_tele[:, 53:99:5]
 
         # Make output for all space counts
-        total_vis_space_counts = np.zeros((len(vis_sp_data_0), 10, 3), \
+        total_vis_space_counts = np.zeros((len(vis_sp_data_0), 10, 3),
                                           dtype=vis_sp_data_0.dtype)
 
         total_vis_space_counts[:, :, 0] = vis_sp_data_0[:, :]

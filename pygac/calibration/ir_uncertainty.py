@@ -27,13 +27,54 @@ import numpy as np
 import xarray as xr
 from importlib.resources import files
 import argparse
-import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
 
 from pygac import get_reader_class
 from pygac.calibration.noaa import Calibrator
-from pygac.utils import allan_deviation
 from pygac.calibration.noaa import get_prt_nos
+
+def allan_deviation(space,bad_scan=None):
+    """Determine the Allan deviation (noise) from space view counts filtering
+    out bad space view lines. Written by J.Mittaz, University of Reading"""
+
+    if len(space.shape) != 2:
+        raise Exception("utils.allan_deviation input space view not 2-dimensional")
+    #
+    # Get good scanlines if filter present
+    #
+    if bad_scan is not None:
+        gd = (bad_scan == 0)
+        newsp = space[bad_scan,:]
+    else:
+        newsp = space
+
+    #
+    # Allan deviation is sqrt of allan variance which is
+    #
+    #        allan_variance = 0.5 <(y_n+1-y_n)**2>
+    #
+    allan = 0.
+    nline = newsp.shape[0]
+    nscan = newsp.shape[1]
+    #
+    # Sum of squared pixel differences
+    #
+    for i in range(nline):
+        allan += np.sum((newsp[i,1:]-newsp[i,0:-1])**2)
+        
+    #
+    # Mean of squared pixel to pixel difference (expectation)
+    #
+    allan /= (nline*(nscan-1))
+    #
+    # And 1/2 term
+    #
+    allan *= 0.5
+
+    #
+    # Return the Allan deviation in counts (sqrt Allan variance)
+    #
+    return np.sqrt(allan)
 
 class convBT(object):
     """Routine to covert temperature to radiance and visa-versa"""
@@ -324,15 +365,15 @@ def find_solar(ds,mask,convT=None,outgain=False):
         convT = convBT(cal,0)
     
     CS_1,CICT_1,CE_1,Tict,ict1,ict2,ict3,ict4,solZAin,time \
-        = get_vars(ds,0,convT,\
-                   window,\
-                   prt_threshold,\
-                   ict_threshold,\
-                   space_threshold,\
-                   gacdata,\
-                   cal,\
-                   mask,\
-                   out_prt=True,\
+        = get_vars(ds,0,convT,
+                   window,
+                   prt_threshold,
+                   ict_threshold,
+                   space_threshold,
+                   gacdata,
+                   cal,
+                   mask,
+                   out_prt=True,
                    out_solza=True)
 
     meanT = (ict1+ict2+ict3+ict4)/4.
@@ -461,8 +502,6 @@ def find_solar(ds,mask,convT=None,outgain=False):
             x = np.arange(len(y))
             p = np.polyfit(x,y,1)
             if p[0] >= 0.:
-                #plt.plot(x,y,'.')
-                #plt.show()
                 side1 = i
                 break
         #
@@ -636,7 +675,7 @@ def find_solar(ds,mask,convT=None,outgain=False):
         return time[side1],time[side2],time[peak_location],\
             solZAin[peak_location]
     
-def get_random(channel,noise,av_noise,ict_noise,ict_random,Lict,CS,CE,CICT,NS,\
+def get_random(channel,noise,av_noise,ict_noise,ict_random,Lict,CS,CE,CICT,NS,
                c1,c2):
     """Get the random parts of the IR calibration uncertainty. Done per 
     scanline"""
@@ -670,8 +709,7 @@ def get_random(channel,noise,av_noise,ict_noise,ict_random,Lict,CS,CE,CICT,NS,\
         
     return np.sqrt(uncert)
 
-def get_sys(channel,uICT,Tict,CS,CE,CICT,NS,\
-            c1,c2,convT):
+def get_sys(channel,uICT,Tict,CS,CE,CICT,NS,c1,c2,convT):
     """Get the systematic parts of the IR calibration uncertainty. Done per 
     scanline"""
     #
@@ -693,7 +731,7 @@ def get_sys(channel,uICT,Tict,CS,CE,CICT,NS,\
 
     return np.sqrt(uncert)
 
-def get_vars(ds,channel,convT,wlength,prt_threshold,ict_threshold,\
+def get_vars(ds,channel,convT,wlength,prt_threshold,ict_threshold,
              space_threshold,gac,cal,mask,out_prt=False,out_solza=False):
     """Get variables from xarray including smoothing and interpolation"""
 
@@ -706,7 +744,7 @@ def get_vars(ds,channel,convT,wlength,prt_threshold,ict_threshold,\
     
     if out_solza:
         solza = ds['sun_zen'].values[:,midpoint]
-        time = (ds['times'].values[:] - \
+        time = (ds['times'].values[:] - 
                 np.datetime64('1970-01-01T00:00:00Z'))/\
                 np.timedelta64(1,'s')
         
@@ -901,7 +939,7 @@ def get_vars(ds,channel,convT,wlength,prt_threshold,ict_threshold,\
         else:
             return space_convolved,ict_convolved,ce,tprt_convolved
 
-def get_gainval(time,avhrr,ict1,ict2,ict3,ict4,CS,CICT,CE,NS,bad_scan,convT,\
+def get_gainval(time,avhrr,ict1,ict2,ict3,ict4,CS,CICT,CE,NS,bad_scan,convT,
                 window,calculate=False):
     """Estimate gain value at smallest stdev point in orbit either from
     file or estimate it from data"""
@@ -1122,22 +1160,23 @@ def ir_uncertainty(ds,mask,plot=False):
     #
     noise1,noise2,noise3,av_noise1,av_noise2,av_noise3,\
         av_ict_noise1,av_ict_noise2,av_ict_noise3,bad_scan \
-               = get_noise(total_space,total_ict,window,twelve_micron)
+        = get_noise(total_space,total_ict,window,twelve_micron)
 
     #
     # Get variables used on the calibration
     #
     if plot:
+        import matplotlib.pyplot as plt
         plt.figure(1)
 
-    CS_1,CICT_1,CE_1,Tict,ict1,ict2,ict3,ict4 = get_vars(ds,0,convT1,\
-                                                         window,\
-                                                         prt_threshold,\
-                                                         ict_threshold,\
-                                                         space_threshold,\
-                                                         gacdata,\
-                                                         cal,\
-                                                         mask,\
+    CS_1,CICT_1,CE_1,Tict,ict1,ict2,ict3,ict4 = get_vars(ds,0,convT1,
+                                                         window,
+                                                         prt_threshold,
+                                                         ict_threshold,
+                                                         space_threshold,
+                                                         gacdata,
+                                                         cal,
+                                                         mask,
                                                          out_prt=True)
     if plot:
         plt.subplot(131)
@@ -1146,9 +1185,9 @@ def ir_uncertainty(ds,mask,plot=False):
         plt.ylabel('Space Cnts')
         plt.xlabel('Scanline')
 
-    CS_2,CICT_2,CE_2,Tict = get_vars(ds,1,convT2,window,prt_threshold,\
-                                     ict_threshold,\
-                                     space_threshold,\
+    CS_2,CICT_2,CE_2,Tict = get_vars(ds,1,convT2,window,prt_threshold,
+                                     ict_threshold,
+                                     space_threshold,
                                      gacdata,cal,mask)
     if plot:
         plt.subplot(132)
@@ -1158,10 +1197,10 @@ def ir_uncertainty(ds,mask,plot=False):
         plt.xlabel('Scanline')
         
     if twelve_micron:
-        CS_3,CICT_3,CE_3,Tict = get_vars(ds,2,convT3,window,\
-                                         prt_threshold,\
-                                         ict_threshold,\
-                                         space_threshold,\
+        CS_3,CICT_3,CE_3,Tict = get_vars(ds,2,convT3,window,
+                                         prt_threshold,
+                                         ict_threshold,
+                                         space_threshold,
                                          gacdata,cal,mask)
         if plot:
             plt.subplot(133)
@@ -1178,7 +1217,7 @@ def ir_uncertainty(ds,mask,plot=False):
         # See if solar contamination present
         # Only for GAC data
         #
-        min_solar_in, max_solar_in, peak_solar, solar_solza  = \
+        min_solar_in, max_solar_in, peak_solar, solar_solza = \
             find_solar(ds,mask,convT1)
         if min_solar_in is not None and max_solar_in is not None:
             min_solar = np.nonzero(time == min_solar_in)[0]
@@ -1205,9 +1244,9 @@ def ir_uncertainty(ds,mask,plot=False):
     #
     # Only redo calculation if gac data
     #
-    gain_37 = get_gainval(time,avhrr_name,ict1,ict2,ict3,ict4,CS_1,CICT_1,\
+    gain_37 = get_gainval(time,avhrr_name,ict1,ict2,ict3,ict4,CS_1,CICT_1,
                           CE_1,0.,bad_scan,convT1,window,calculate=gacdata)
-    uICT = get_uICT(gain_37,CS_1,CICT_1,Tict,0.,convT1,bad_scan,\
+    uICT = get_uICT(gain_37,CS_1,CICT_1,Tict,0.,convT1,bad_scan,
                     solar_flag,window)
 
     #
@@ -1252,40 +1291,37 @@ def ir_uncertainty(ds,mask,plot=False):
         # Get uncertainty in ICT temperature from PRT measurements
         #
         ict_random1, ict_sys1, Lict_1 = \
-            get_ict_uncert(Tict[i],prt_bias,prt_sys,\
-                           uICT[i],convT1)
+            get_ict_uncert(Tict[i],prt_bias,prt_sys,uICT[i],convT1)
         ict_random2, ict_sys2, Lict_2 = \
-            get_ict_uncert(Tict[i],prt_bias,prt_sys,\
-                           uICT[i],convT2)
+            get_ict_uncert(Tict[i],prt_bias,prt_sys,uICT[i],convT2)
         if twelve_micron:
             ict_random3, ict_sys3, Lict_3 = \
-                get_ict_uncert(Tict[i],prt_bias,prt_sys,\
-                               uICT[i],convT3)
+                get_ict_uncert(Tict[i],prt_bias,prt_sys,uICT[i],convT3)
 
         #
         # get pixel radiance
         #
-        rad_37 = get_pixel(Lict_1,CS_1[i],\
+        rad_37 = get_pixel(Lict_1,CS_1[i],
                            CE_1[i,:],CICT_1[i],0.,0.,0.,0.)
-        rad_11 = get_pixel(Lict_2,CS_2[i],\
+        rad_11 = get_pixel(Lict_2,CS_2[i],
                            CE_2[i,:],CICT_2[i],NS_2,c0_2,c1_2,c2_2)
         if twelve_micron:
-            rad_12 = get_pixel(Lict_3,CS_3[i],\
+            rad_12 = get_pixel(Lict_3,CS_3[i],
                                CE_3[i,:],CICT_3[i],NS_3,c0_3,c1_3,c2_3)
 
         #
         # Get noise in radiance space
         #
-        rad_noise_37 = get_random(1,noise1,av_noise1,av_ict_noise1,\
-                                  ict_random1,Lict_1,CS_1[i],\
+        rad_noise_37 = get_random(1,noise1,av_noise1,av_ict_noise1,
+                                  ict_random1,Lict_1,CS_1[i],
                                   CE_1[i,:],CICT_1[i],0.,0.,0.)
-        rad_noise_11 = get_random(2,noise2,av_noise2,av_ict_noise2,\
-                                  ict_random2,Lict_2,CS_2[i],\
+        rad_noise_11 = get_random(2,noise2,av_noise2,av_ict_noise2,
+                                  ict_random2,Lict_2,CS_2[i],
                                   CE_2[i,:],CICT_2[i],NS_2,c1_2,c2_2)
         if twelve_micron:
-            rad_noise_12 = get_random(3,noise3,av_noise3,\
-                                      av_ict_noise3,\
-                                      ict_random3,Lict_3,CS_3[i],\
+            rad_noise_12 = get_random(3,noise3,av_noise3,
+                                      av_ict_noise3,
+                                      ict_random3,Lict_3,CS_3[i],
                                       CE_3[i,:],CICT_3[i],NS_3,c1_3,c2_3)
 
         #
@@ -1300,14 +1336,14 @@ def ir_uncertainty(ds,mask,plot=False):
         # Get systematic uncertainty through the measurement equation
         # Note measurement equation uncertainty set to 0.5
         #
-        rad_sys_37 = get_sys(1,ict_sys1,Tict[i],CS_1[i],\
+        rad_sys_37 = get_sys(1,ict_sys1,Tict[i],CS_1[i],
                              CE_1[i,:],CICT_1[i],0.,0.,0.,convT1)
-        rad_sys_11 = get_sys(2,ict_sys2,Tict[i],CS_2[i],\
-                             CE_2[i,:],CICT_2[i],NS_2,c1_2,c2_2,\
+        rad_sys_11 = get_sys(2,ict_sys2,Tict[i],CS_2[i],
+                             CE_2[i,:],CICT_2[i],NS_2,c1_2,c2_2,
                              convT2)
         if twelve_micron:
-            rad_sys_12 = get_sys(3,ict_sys3,Tict[i],CS_3[i],\
-                                 CE_3[i,:],CICT_3[i],NS_3,c1_3,\
+            rad_sys_12 = get_sys(3,ict_sys3,Tict[i],CS_3[i],
+                                 CE_3[i,:],CICT_3[i],NS_3,c1_3,
                                  c2_3,convT3)
 
         T,bt_sys_37[i,:] = convT1.rad_to_t_uncert(rad_37,rad_sys_37)
@@ -1419,7 +1455,7 @@ def ir_uncertainty(ds,mask,plot=False):
     #
     random = np.zeros((bt_rand_11.shape[0],bt_rand_11.shape[1],3))
     systematic = np.zeros((bt_rand_11.shape[0],bt_rand_11.shape[1],3))
-    uratio = np.zeros((bt_rand_11.shape[0],bt_rand_11.shape[1],3),\
+    uratio = np.zeros((bt_rand_11.shape[0],bt_rand_11.shape[1],3),
                       dtype=np.uint8)
     uflags = np.zeros((bt_rand_11.shape[0]),dtype=np.uint8)
 
@@ -1455,24 +1491,24 @@ def ir_uncertainty(ds,mask,plot=False):
 
     time = (ds["times"].values - np.datetime64("1970-01-01 00:00:00"))/\
            np.timedelta64(1,'s')
-    time_da = xr.DataArray(time,dims=["times"],attrs={"long_name":"scanline time",\
+    time_da = xr.DataArray(time,dims=["times"],attrs={"long_name":"scanline time",
                                                      "units":"seconds since 1970-01-01"})
     across_da = xr.DataArray(np.arange(random.shape[1]),dims=["across_track"])
     ir_channels_da = xr.DataArray(np.array([3,4,5]),dims=["ir_channels"])
-    random_da = xr.DataArray(random,dims=["times","across_track","ir_channels"],\
+    random_da = xr.DataArray(random,dims=["times","across_track","ir_channels"],
                              attrs={"long_name":"Random uncertainties","units":"K"})
-    sys_da = xr.DataArray(systematic,dims=["times","across_track","ir_channels"],\
+    sys_da = xr.DataArray(systematic,dims=["times","across_track","ir_channels"],
                           attrs={"long_name":"Systematic uncertainties","units":"K"})
 
-    uratio_da = xr.DataArray(uratio,dims=["times","across_track","ir_channels"],\
+    uratio_da = xr.DataArray(uratio,dims=["times","across_track","ir_channels"],
                              attrs={"long_name":"Channel-to-channel covariance  ratio"})
 
-    uflags_da = xr.DataArray(uflags,dims=["times"],\
+    uflags_da = xr.DataArray(uflags,dims=["times"],
                              attrs={"long_name":"Uncertainty flags (bit 1==bad space view (value=1), bit 2==solar contamination (value=2)"})
 
-    uncertainties = xr.Dataset(dict(times=time_da,across_track=across_da,\
-                                    ir_channels=ir_channels_da,\
-                                    random=random_da,systematic=sys_da,\
+    uncertainties = xr.Dataset(dict(times=time_da,across_track=across_da,
+                                    ir_channels=ir_channels_da,
+                                    random=random_da,systematic=sys_da,
                                     chan_covar_ratio=uratio_da,
                                     uncert_flags=uflags_da))
 
@@ -1507,10 +1543,10 @@ if __name__ == "__main__":
             find_solar(ds,mask,convT=None,outgain=True)
         with open(args.oname,'a') as fp:
             if tmin is not None:
-                fp.write('{0:16.9e} {1:16.9e} {2:16.9e} {3:9.4f} {4:16.9e} {5:9.7e}\n'.\
+                fp.write('{0:16.9e} {1:16.9e} {2:16.9e} {3:9.4f} {4:16.9e} {5:9.7e}\n'.
                      format(tmin,tmax,tpeak,out_solza,gtime,min_gain))
             else:
-                fp.write('{0:16.9e} {1:16.9e} {2:16.9e} {3:9.4f} {4:16.9e} {5:9.7e}\n'.\
+                fp.write('{0:16.9e} {1:16.9e} {2:16.9e} {3:9.4f} {4:16.9e} {5:9.7e}\n'.
                      format(-1.,-1.,-1.,-1.,gtime,min_gain))
     else:
         uncert = ir_uncertainty(ds,mask,plot=args.plot)
