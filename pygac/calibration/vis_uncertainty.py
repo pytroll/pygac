@@ -158,6 +158,23 @@ def get_vars(ds,channel):
 
     return space, counts
 
+def get_gain(s0, s1, s2, t, cal, channel):
+    if np.isnan(cal.gain_switch).all():
+        glow = ghigh = np.ones(3)
+    else:
+        glow = np.array([0.5, 0.5, 0.25])
+        ghigh = np.array([1.5, 1.5, 1.75])
+
+    s0_l = s0 * glow[channel]
+    s0_h = s0 * ghigh[channel]
+
+    stl = s0_l*(100 + s1*t + s2*t**2)/100
+    sth = s0_h*(100 + s1*t + s2*t**2)/100
+
+    gain = (stl + sth)/2
+
+    return gain
+
 
 def vis_uncertainty(ds,mask,plot=False):
     """Create the uncertainty components for the vis channels. These include
@@ -307,35 +324,12 @@ def vis_uncertainty(ds,mask,plot=False):
         #
         # Get calibration slope
         #
-        # gain_1 = calibrate_solar(C_1[i, :], 0, year, jday, cal, corr=1)/(C_1[i, :]-D_1[i])
         l_date = Calibrator.date2float(cal.date_of_launch)
-        t = (year + jday/365.0) - l_date
-        if np.isnan(cal.gain_switch).all():
-            glow = ghigh = 1
-        else:
-            if chan_3a:
-                glow = 0.25
-                ghigh = 1.75
-            else:
-                glow = 0.5
-                ghigh = 1.5
-        s0_1_l = glow*s0_1
-        s0_1_h = ghigh*s0_1
-        stl_1 = (s0_1_l*(100.0 + s1_1*t + s2_1*t**2))/100
-        sth_1 = (s0_1_h*(100.0 + s1_1*t + s2_1*t**2))/100
-        gain_1 = (stl_1 + sth_1)/2
-
-        s0_2_l = glow*s0_2
-        s0_2_h = ghigh*s0_2
-        stl_2 = (s0_2_l*(100.0 + s1_2*t + s2_2*t**2))/100
-        sth_2 = (s0_2_h*(100.0 + s1_2*t + s2_2*t**2))/100
-        gain_2 = (stl_2 + sth_2)/2
+        t = (year + jday / 365.0) - l_date
+        gain_1 = get_gain(s0_1, s1_1, s2_1, t, cal, 0)
+        gain_2 = get_gain(s0_2, s1_2, s2_2, t, cal, 1)
         if chan_3a:
-            s0_3_l = glow * s0_3
-            s0_3_h = ghigh * s0_3
-            stl_3 = (s0_3_l * (100.0 + s1_3*t + s2_3 * t**2))/100
-            sth_3 = (s0_3_h * (100.0 + s1_3*t + s2_3 * t**2))/100
-            gain_3 = (stl_3 + sth_3)/2
+            gain_3 = get_gain(s0_3, s1_3, s2_3, t, cal, 2)
 
         #
         # Get noise in scaled radiance space
