@@ -727,8 +727,6 @@ class Reader(ABC):
         return calibrated_ds
 
     def _georeference_data(self, calibrated_ds):
-        if np.max(np.diff(self._times_as_np_datetime64)) > np.timedelta64(167, "ms"):
-            raise RuntimeError("Missing scanlines in swath, cannot georeference")
         from georeferencer.georeferencer import get_swath_displacement
         _, _, _, sun_zen, _ = self.get_angles()
         time_diff, roll, pitch, yaw = get_swath_displacement(calibrated_ds, sun_zen, self.reference_image)
