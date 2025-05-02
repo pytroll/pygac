@@ -697,11 +697,20 @@ class Reader(ABC):
     def get_calibrated_dataset(self):
         """Create and calibrate the dataset for the pass."""
         ds = self.create_counts_dataset()
+        #
+        # Make sure earth counts are kept for uncertainty calculation
+        #
+        counts = xr.DataArray(name="counts",
+                              data=np.copy(ds["channels"].data),
+                              dims=ds["channels"].dims,
+                              coords=ds["channels"].coords)
+        
         # calibration = {"1": "mitram", "2": "mitram", "4": {"method":"noaa", "coeff_file": "myfile.json"}}
 
         calibration_entrypoints = entry_points(group="pygac.calibration")
         calibration_function = calibration_entrypoints[self.calibration_method].load()
         calibrated_ds = calibration_function(ds, **self.calibration_parameters)
+        calibrated_ds["counts"] = counts
 
         # Mask out corrupt values
         mask = xr.DataArray(self.mask==False, dims=["scan_line_index"])  # noqa
