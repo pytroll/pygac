@@ -326,7 +326,227 @@ class fit_ict_pars(object):
 
         self.convT = convT
 
-def find_solar(ds,mask,convT=None,outgain=False):
+def find_solar_ind(position,new_gain2,new_cs,new_ct,new_ict,new_ict1,
+                   new_ict2,new_ict3,new_ict4,solZA,first=True,
+                   plot=False):
+    '''Find possible solar contamination on one side of the solar max
+    position'''
+    
+    pos = np.nonzero(solZA == solZA.max())[0][0]
+    #
+    # Look before or after max solZA location
+    #
+    if first:
+        posmin = np.nonzero(solZA[0:pos] == solZA[0:pos].min())[0][0]
+    else:
+        posmin = pos+np.nonzero(solZA[pos:] == solZA[pos:].min())[0][0]
+    if pos < posmin:
+        posn = position[pos:posmin]
+        newg = new_gain2[pos:posmin]
+        new_cs2 = new_cs[pos:posmin] 
+        new_ct2 = new_ct[pos:posmin] 
+        new_ict_2 = new_ict[pos:posmin] 
+        new_ict2_1 = new_ict1[pos:posmin] 
+        new_ict2_2 = new_ict2[pos:posmin]
+        new_ict2_3 = new_ict3[pos:posmin] 
+        new_ict2_4 = new_ict4[pos:posmin] 
+        sza = solZA[pos:posmin]
+    else:
+        posn = position[posmin:pos]
+        newg = new_gain2[posmin:pos]
+        new_cs2 = new_cs[posmin:pos] 
+        new_ct2 = new_ct[posmin:pos] 
+        new_ict_2 = new_ict[posmin:pos] 
+        new_ict2_1 = new_ict1[posmin:pos] 
+        new_ict2_2 = new_ict2[posmin:pos] 
+        new_ict2_3 = new_ict3[posmin:pos] 
+        new_ict2_4 = new_ict4[posmin:pos] 
+        sza = solZA[posmin:pos]
+
+    #
+    # Only look in range satellite ZA >= 100 and <= 125
+    #
+    gd = (sza >= 100)&(sza <= 125)&np.isfinite(newg)
+    if np.sum(gd) == 0:
+        print('ERROR: No data available to find solar contamination')
+        print('       MinSZA = {0:f} MaxSZA = {1:f}'.format(sza.min(),sza.max()))
+        return None,None,None
+    posn2 = posn[gd]
+    pos2 = np.nonzero(newg[gd] == newg[gd].min())[0][0]
+    newg = newg[gd]
+    peak_gain = newg[pos2]
+    #
+    # Track back to a defined limit when gradient is reversed or zero
+    #
+    peak_location = posn2[pos2]
+    ok1 = False
+    startpos = 0
+    endpos = len(newg)-1
+    window_size = 40
+    while not ok1:
+        side1 = 0
+        for i in range(pos2,0,-1):
+            if i > pos2-window_size:
+                continue
+            minx = max([0,i-window_size])
+            maxx = min([peak_location,i+window_size])
+            y = newg[minx:maxx+1]
+            x = np.arange(len(y))
+            p = np.polyfit(x,y,1)
+            if p[0] >= 0.:
+                side1 = i
+                break
+        #
+        # Check that we are not at an edge
+        #
+        if side1 == 0:
+            if plot:
+                plt.show()
+            print('Cannot find peak for solar contamination')
+            return None,None,None
+        
+        if pos2+window_size < len(newg):
+            ok1 = True
+        else:
+            #
+            # Find next peak < side1 position
+            #
+            pos2 = np.nonzero(newg[:side1] == newg[:side1].min())[0][0]
+            peak_location = posn2[pos2]
+
+    #
+    # Look at other side - shouldn't have same problem as side1 with possible
+    # erroneous peak
+    #
+    side2 = len(newg)-1
+    ok2 = False
+    for i in range(pos2,len(newg)):
+        if i < pos2+window_size:
+            continue
+        minx = max([0,i-window_size])
+        maxx = min([peak_location,i+window_size])
+        y = newg[minx:maxx+1]
+        x = np.arange(len(y))
+        p = np.polyfit(x,y,1)
+        if p[0] <= 0.:
+            ok2 = True
+            side2 = i
+            break
+
+    #
+    # Add Take larger difference case
+    #
+    diff1 = np.abs(side1-pos2)
+    diff2 = np.abs(side2-pos2)
+    if diff1 > diff2:
+        side1 = diff1
+        side2 = diff1
+    else:
+        side1 = diff2
+        side2 = diff2
+
+    #
+    # Check to see if we are already at a background value or have to go
+    # further (case where second peak on side of signal
+    #
+    newpos1 = max([0,pos2-side1])
+    newpos2 = min([len(newg)-1,pos2+side2])
+    maxdiff1 = np.abs(peak_gain-newg[newpos1])
+    maxdiff2 = np.abs(peak_gain-newg[newpos2])
+    maxdiff = max([maxdiff1,maxdiff2])
+    update_side1 = False
+    for i in range(side1+side1//2):
+        bloc = pos2-side1-i
+        if bloc <= 0:
+            break
+        test_ratio = maxdiff/np.abs(peak_gain-newg[bloc])
+        if test_ratio > 0.7 and test_ratio < 1.3:
+            update_side1 = True
+            side1 = bloc
+            break
+
+    update_side2 = False
+    for i in range(side2+side2//2):
+        bloc = pos2+side2+i
+        if bloc >= len(newg):
+            break
+        test_ratio = maxdiff/np.abs(peak_gain-newg[bloc])
+        if test_ratio > 0.7 and test_ratio < 1.3:
+            update_side2 = True
+            side2 = bloc
+            break
+
+    #
+    # Reset to full location
+    #
+    if not update_side1:
+        side1 = newpos1
+    if not update_side2:
+        side2 = newpos2
+    
+    #
+    # Can't get background so eject
+    #
+    if side1 == 0:
+        print('ERROR: Cannot get a background for solar contamination')
+        return None,None,None
+
+    #
+    # Background and sigma
+    #
+    maxx = side1
+    minx = max([0,maxx-300])
+    backdata1 = newg[minx:maxx]
+    pos_1 = (minx+maxx)/2.
+    gd = np.isfinite(backdata1)
+    if np.sum(gd) == 0:
+        print('ERROR: Cannot get background for solar contamination')
+        return None,None,None
+    backg1 = np.mean(backdata1[gd])
+    backg1_std = np.std(backdata1[gd])
+
+    maxx = side2
+    minx = min([len(newg)-1,maxx+300])
+    backdata2 = newg[maxx:minx]
+    gd = np.isfinite(backdata2)
+    if np.sum(gd) == 0:
+        pos_2 = -1
+    else:
+        backg2 = np.mean(backdata2[gd])
+        pos_2 = (minx+maxx)/2.
+        backg2_std = np.std(backdata2[gd])    
+        
+    #
+    # If pos_2 there, and OK interpolate
+    #
+    if pos_2 > -1:
+        #
+        # Make sure back2 is < 50% of peak
+        #
+        if (backg1-peak_gain)*0.25 > (backg2-peak_gain):
+            #
+            # Less than 25% from peak so dont continue
+            #
+            print('ERROR: back2 is too high (solar contamination)')
+            return None,None,None
+        slope = (backg2-backg1)/(pos_2-pos_1)
+        cnst = backg1 - slope*pos_1
+        backg = cnst + slope*pos2
+        backg_std = (backg1_std+backg2_std)/2.
+    else:
+        print('ERROR: No back2 value (solar contamination)')
+        return None,None,None
+
+    sigma = np.abs(peak_gain-backg)/backg_std
+    if sigma <= 7.5:
+        return None,None,None
+    
+    side1 = posn2[side1]
+    side2 = posn2[side2]
+
+    return side1,side2,peak_location
+        
+def find_solar(ds,mask,convT=None,outgain=False,plot=False):
     '''Find solar contamination/variable gain points for GAC and for ~full
     orbits'''
 
@@ -424,7 +644,7 @@ def find_solar(ds,mask,convT=None,outgain=False):
     # Get updated gain
     #
     new_gain = model.model(X,p[0],p[1],p[2],p[3])
-    
+
     #
     # Find peak gain within solZA 100-125 degrees
     #
@@ -443,238 +663,89 @@ def find_solar(ds,mask,convT=None,outgain=False):
     new_ict4 = ict4[gd]                    
     gain3_2 = gain3[gd]
     solZA = solZAin[gd]
-    pos = np.nonzero(solZA == solZA.max())[0][0]
-    posmin = np.nonzero(solZA == solZA.min())[0][0]
-    if pos < posmin:
-        posn = position[pos:posmin]
-        newg = new_gain2[pos:posmin]
-        new_cs2 = new_cs[pos:posmin] 
-        new_ct2 = new_ct[pos:posmin] 
-        new_ict_2 = new_ict[pos:posmin] 
-        new_ict2_1 = new_ict1[pos:posmin] 
-        new_ict2_2 = new_ict2[pos:posmin]
-        new_ict2_3 = new_ict3[pos:posmin] 
-        new_ict2_4 = new_ict4[pos:posmin] 
-        sza = solZA[pos:posmin]
-    else:
-        posn = position[posmin:pos]
-        newg = new_gain2[posmin:pos]
-        new_cs2 = new_cs[posmin:pos] 
-        new_ct2 = new_ct[posmin:pos] 
-        new_ict_2 = new_ict[posmin:pos] 
-        new_ict2_1 = new_ict1[posmin:pos] 
-        new_ict2_2 = new_ict2[posmin:pos] 
-        new_ict2_3 = new_ict3[posmin:pos] 
-        new_ict2_4 = new_ict4[posmin:pos] 
-        sza = solZA[posmin:pos]
 
     #
-    # Only look in range satellite ZA >= 100 and <= 125
+    # Now look before and after solZA max position
     #
-    gd = (sza >= 100)&(sza <= 125)&np.isfinite(newg)
-    if np.sum(gd) == 0:
-        print('ERROR: No data available to find solar contamination')
-        print('       MinSZA = {0:f} MaxSZA = {1:f}'.format(sza.min(),sza.max()))
-        if outgain:
-            return None,None,None,None,time[minstd_pos],gain3[minstd_pos]
-        else:
-            return None,None,None,None
-    posn2 = posn[gd]
-    pos2 = np.nonzero(newg[gd] == newg[gd].min())[0][0]
-    newg = newg[gd]
-    peak_gain = newg[pos2]
+    #                                                                          
+    # One side of solZA max
+    #                                                      
+    side1_1,side2_1,peak_location_1 = find_solar_ind(position,new_gain2,
+                                                     new_cs,new_ct,new_ict,
+                                                     new_ict1,new_ict2,
+                                                     new_ict3,new_ict4,
+                                                     solZA,first=True,
+                                                     plot=plot)
+    # 
+    # Other side of solZA max
     #
-    # Track back to a defined limit when gradient is reversed or zero
-    #
-    peak_location = posn2[pos2]
-    ok1 = False
-    startpos = 0
-    endpos = len(newg)-1
-    window_size = 40
-    while not ok1:
-        side1 = 0
-        for i in range(pos2,0,-1):
-            if i > pos2-window_size:
-                continue
-            minx = max([0,i-window_size])
-            maxx = min([peak_location,i+window_size])
-            y = newg[minx:maxx+1]
-            x = np.arange(len(y))
-            p = np.polyfit(x,y,1)
-            if p[0] >= 0.:
-                side1 = i
-                break
-        #
-        # Check that we are not at an edge
-        #
-        if side1 == 0:
-            print('Cannot find peak for solar contamination')
-            if outgain:
-                return None,None,None,None,time[minstd_pos],gain3[minstd_pos]
-            else:
-                return None,None,None,None
-        
-        if pos2+window_size < len(newg):
-            ok1 = True
-        else:
-            #
-            # Find next peak < side1 position
-            #
-            pos2 = np.nonzero(newg[:side1] == newg[:side1].min())[0][0]
-            peak_location = posn2[pos2]
-
-    #
-    # Look at other side - shouldn't have same problem as side1 with possible
-    # erroneous peak
-    #
-    side2 = len(newg)-1
-    ok2 = False
-    for i in range(pos2,len(newg)):
-        if i < pos2+window_size:
-            continue
-        minx = max([0,i-window_size])
-        maxx = min([peak_location,i+window_size])
-        y = newg[minx:maxx+1]
-        x = np.arange(len(y))
-        p = np.polyfit(x,y,1)
-        if p[0] <= 0.:
-            ok2 = True
-            side2 = i
-            break
-
-    #
-    # Add Take larger difference case
-    #
-    diff1 = np.abs(side1-pos2)
-    diff2 = np.abs(side2-pos2)
-    if diff1 > diff2:
-        side1 = diff1
-        side2 = diff1
-    else:
-        side1 = diff2
-        side2 = diff2
-
-    #
-    # Check to see if we are already at a background value or have to go
-    # further (case where second peak on side of signal
-    #
-    newpos1 = max([0,pos2-side1])
-    newpos2 = min([len(newg)-1,pos2+side2])
-    maxdiff1 = np.abs(peak_gain-newg[newpos1])
-    maxdiff2 = np.abs(peak_gain-newg[newpos2])
-    maxdiff = max([maxdiff1,maxdiff2])
-    update_side1 = False
-    for i in range(side1+side1//2):
-        bloc = pos2-side1-i
-        if bloc <= 0:
-            break
-        test_ratio = maxdiff/np.abs(peak_gain-newg[bloc])
-        if test_ratio > 0.7 and test_ratio < 1.3:
-            update_side1 = True
-            side1 = bloc
-            break
-
-    update_side2 = False
-    for i in range(side2+side2//2):
-        bloc = pos2+side2+i
-        if bloc >= len(newg):
-            break
-        test_ratio = maxdiff/np.abs(peak_gain-newg[bloc])
-        if test_ratio > 0.7 and test_ratio < 1.3:
-            update_side2 = True
-            side2 = bloc
-            break
-
-    #
-    # Reset to full location
-    #
-    if not update_side1:
-        side1 = newpos1
-    if not update_side2:
-        side2 = newpos2
+    side1_2,side2_2,peak_location_2 = find_solar_ind(position,new_gain2,
+                                                     new_cs,new_ct,new_ict,
+                                                     new_ict1,new_ict2,
+                                                     new_ict3,new_ict4,
+                                                     solZA,first=False,
+                                                     plot=plot)
     
     #
-    # Can't get background so eject
+    # Plot PRT variation and gain differences (before/after)
     #
-    if side1 == 0:
-        print('ERROR: Cannot get a background for solar contamination')
-        if outgain:
-            return None,None,None,None,time[minstd_pos],gain3[minstd_pos]
-        else:
-            return None,None,None,None
-
-    #
-    # Background and sigma
-    #
-    maxx = side1
-    minx = max([0,maxx-300])
-    backdata1 = newg[minx:maxx]
-    pos_1 = (minx+maxx)/2.
-    gd = np.isfinite(backdata1)
-    if np.sum(gd) == 0:
-        print('ERROR: Cannot get background for solar contamination')
-        if outgain:
-            return None,None,None,None,time[minstd_pos],gain3[minstd_pos]
-        else:
-            return None,None,None,None
-    backg1 = np.mean(backdata1[gd])
-    backg1_std = np.std(backdata1[gd])
-
-    maxx = side2
-    minx = min([len(newg)-1,maxx+300])
-    backdata2 = newg[maxx:minx]
-    gd = np.isfinite(backdata2)
-    if np.sum(gd) == 0:
-        pos_2 = -1
-    else:
-        backg2 = np.mean(backdata2[gd])
-        pos_2 = (minx+maxx)/2.
-        backg2_std = np.std(backdata2[gd])    
+    if plot:
+        plt.figure(1)
+        x = np.arange(len(prt_diff1))
+        plt.subplot(211)
+        plt.plot(x,prt_diff1,label='PRT1')
+        plt.plot(x,prt_diff2,label='PRT2')
+        plt.plot(x,prt_diff3,label='PRT3')
+        plt.plot(x,prt_diff4,label='PRT4')
+        plt.xlabel('Scanline')
+        plt.ylabel('Temp. Diff / K')
+        plt.legend()
+        plt.subplot(212)
+        plt.plot(x,gain3*1e3,label='Orig')
+        plt.plot(x,new_gain*1e3,label='New')
+        plt.xlabel('Scanline')
+        plt.ylabel('3.7$\mu$m Gain $\\times 10^{-3}$')
+        plt.legend()
+        if side1_1 is not None:
+            plt.axvline(x=side1_1,color='red')
+            plt.axvline(x=side2_1,color='red')
+        if side1_2 is not None:
+            plt.axvline(x=side1_2,color='red')
+            plt.axvline(x=side2_2,color='red')
+        plt.tight_layout()
+        plt.show()
         
-    #
-    # If pos_2 there, and OK interpolate
-    #
-    if pos_2 > -1:
-        #
-        # Make sure back2 is < 50% of peak
-        #
-        if (backg1-peak_gain)*0.25 > (backg2-peak_gain):
-            #
-            # Less than 25% from peak so dont continue
-            #
-            print('ERROR: back2 is too high (solar contamination)')
-            if outgain:
-                return None,None,None,None,time[minstd_pos],gain3[minstd_pos]
-            else:
-                return None,None,None,None
-        slope = (backg2-backg1)/(pos_2-pos_1)
-        cnst = backg1 - slope*pos_1
-        backg = cnst + slope*pos2
-        backg_std = (backg1_std+backg2_std)/2.
-    else:
-        print('ERROR: No back2 value (solar contamination)')
-        if outgain:
-            return None,None,None,None,time[minstd_pos],gain3[minstd_pos]
-        else:
-            return None,None,None,None
-
-    sigma = np.abs(peak_gain-backg)/backg_std
-    if sigma <= 7.5:
-        if outgain:
-            return None,None,None,None,time[minstd_pos],gain3[minstd_pos]
-        else:
-            return None,None,None,None
-    
-    side1 = posn2[side1]
-    side2 = posn2[side2]
-
     if outgain:
-        return time[side1],time[side2],time[peak_location],\
-            solZAin[peak_location],time[minstd_pos],gain3[minstd_pos]
+        if side1_1 is not None and side1_2 is not None:
+            return time[side1_1],time[side2_1],time[peak_location_1],\
+                solZAin[peak_location_1],time[side1_2],time[side2_2],\
+                time[peak_location_2],solZAin[peak_location_2],\
+                time[minstd_pos],gain3[minstd_pos]
+        elif side1_1 is not None and side1_2 is None:
+            return time[side1_1],time[side2_1],time[peak_location_1],\
+                solZAin[peak_location_1],None,None,None,None,\
+                time[minstd_pos],gain3[minstd_pos]
+        elif side1_1 is None and side1_2 is not None:
+            return None,None,None,None,time[side1_2],time[side2_2],\
+                time[peak_location_2],solZAin[peak_location_2],\
+                time[minstd_pos],gain3[minstd_pos]
+        else:
+            return None,None,None,None,None,None,None,None,\
+                time[minstd_pos],gain3[minstd_pos]
     else:
-        return time[side1],time[side2],time[peak_location],\
-            solZAin[peak_location]
-    
+        if side1_1 is not None and side1_2 is not None:
+            return time[side1_1],time[side2_1],time[peak_location_1],\
+                solZAin[peak_location_1],time[side1_2],time[side2_2],\
+                time[peak_location_2],solZAin[peak_location_2]
+        elif side1_1 is not None and side1_2 is None:
+            return time[side1_1],time[side2_1],time[peak_location_1],\
+                solZAin[peak_location_1],None,None,None,None
+        elif side1_1 is None and side1_2 is not None:
+            return None,None,None,None,time[side1_2],time[side2_2],\
+                time[peak_location_2],solZAin[peak_location_2]
+        else:
+            return None,None,None,None,None,None,None,None
+        
 def get_random(channel,noise,av_noise,ict_noise,ict_random,Lict,CS,CE,CICT,NS,
                c1,c2):
     """Get the random parts of the IR calibration uncertainty. Done per 
@@ -1216,25 +1287,36 @@ def ir_uncertainty(ds,mask,plot=False):
         #
         # See if solar contamination present
         # Only for GAC data
+        # Possible at 2 locations
         #
-        min_solar_in, max_solar_in, peak_solar, solar_solza = \
-            find_solar(ds,mask,convT1)
-        if min_solar_in is not None and max_solar_in is not None:
-            min_solar = np.nonzero(time == min_solar_in)[0]
-            max_solar = np.nonzero(time == max_solar_in)[0]
+        min_solar_in_1, max_solar_in_1, peak_solar_1, solar_solza_1,\
+        min_solar_in_2, max_solar_in_2, peak_solar_2, solar_solza_2 = \
+            find_solar(ds,mask,convT1,plot=plot)
+        if min_solar_in_1 is not None and max_solar_in_1 is not None:
+            min_solar_1 = np.nonzero(time == min_solar_in_1)[0]
+            max_solar_1 = np.nonzero(time == max_solar_in_1)[0]
         else:
-            min_solar = -1
-            max_solar = -1
+            min_solar_1 = -1
+            max_solar_1 = -1
+        if min_solar_in_2 is not None and max_solar_in_2 is not None:
+            min_solar_2 = np.nonzero(time == min_solar_in_2)[0]
+            max_solar_2 = np.nonzero(time == max_solar_in_2)[0]
+        else:
+            min_solar_2 = -1
+            max_solar_2 = -1
     else:
         #
         # Find if stored solar contamination is present
         #
-        min_solar, max_solar = get_solar_from_file(avhrr_name,ds)
+        min_solar_1, max_solar_1, min_solar_2, max_solar_2 = \
+            get_solar_from_file(avhrr_name,ds)
     #
     # Set solar flag
     #
-    if min_solar >= 0 and max_solar >= 0:
-        solar_flag[min_solar:max_solar+1] = 1
+    if min_solar_1 >= 0 and max_solar_1 >= 0:
+        solar_flag[min_solar_1:max_solar_1+1] = 1
+    if min_solar_2 >= 0 and max_solar_2 >= 0:
+        solar_flag[min_solar_2:max_solar_2+1] = 1
         
     #
     # Systematic components - uICT from gain variation in 3.7mu channel
@@ -1539,15 +1621,33 @@ if __name__ == "__main__":
     if args.solar_contam:
         if args.oname is None:
             raise Exception('ERROR: if solar data wanted must use --oname')
-        tmin,tmax,tpeak,out_solza,gtime,min_gain = \
-            find_solar(ds,mask,convT=None,outgain=True)
+        if args.plot:
+            import matplotlib.pyplot as plt
+        tmin_1,tmax_1,tpeak_1,out_solza_1,\
+        tmin_2,tmax_2,tpeak_2,out_solza_2,\
+        gtime,min_gain = \
+            find_solar(ds,mask,convT=None,outgain=True,plot=args.plot)
         with open(args.oname,'a') as fp:
-            if tmin is not None:
-                fp.write('{0:16.9e} {1:16.9e} {2:16.9e} {3:9.4f} {4:16.9e} {5:9.7e}\n'.
-                     format(tmin,tmax,tpeak,out_solza,gtime,min_gain))
-            else:
-                fp.write('{0:16.9e} {1:16.9e} {2:16.9e} {3:9.4f} {4:16.9e} {5:9.7e}\n'.
-                     format(-1.,-1.,-1.,-1.,gtime,min_gain))
+            if tmin_1 is not None and tmin_2 is not None:
+                fp.write('{0:16.9e} {1:16.9e} {2:16.9e} {3:9.4f} {4:16.9e} {5:16.9e} {6:16.9e} {7:9.4f} {8:16.9e} {9:9.7e}\n'.
+                     format(tmin_1,tmax_1,tpeak_1,out_solza_1,
+                            tmin_2,tmax_2,tpeak_2,out_solza_2,
+                            gtime,min_gain))
+            elif tmin_1 is not None and tmin_2 is None:
+                fp.write('{0:16.9e} {1:16.9e} {2:16.9e} {3:9.4f} {4:16.9e} {5:16.9e} {6:16.9e} {7:9.4f} {8:16.9e} {9:9.7e}\n'.
+                     format(tmin_1,tmax_1,tpeak_1,out_solza_1,
+                            -1.,-1.,-1.,-1.,
+                            gtime,min_gain))
+            elif tmin_1 is None and tmin_2 is not None:
+                fp.write('{0:16.9e} {1:16.9e} {2:16.9e} {3:9.4f} {4:16.9e} {5:16.9e} {6:16.9e} {7:9.4f} {8:16.9e} {9:9.7e}\n'.
+                     format(-1.,-1.,-1.,-1.,
+                            tmin_2,tmax_2,tpeak_2,out_solza_2,
+                            gtime,min_gain))
+            elif tmin_1 is None and tmin_2 is None:
+                fp.write('{0:16.9e} {1:16.9e} {2:16.9e} {3:9.4f} {4:16.9e} {5:16.9e} {6:16.9e} {7:9.4f} {8:16.9e} {9:9.7e}\n'.
+                     format(-1.,-1.,-1.,-1.,
+                            -1.,-1.,-1.,-1.,
+                            gtime,min_gain))
     else:
         uncert = ir_uncertainty(ds,mask,plot=args.plot)
         print(uncert)
