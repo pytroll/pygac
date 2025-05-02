@@ -51,14 +51,6 @@ def calibrate(ds, custom_coeffs=None, coeffs_file=None):
         calibration_file: path to json file containing default calibrations
     """
     #
-    # Make sure earth counts are kept for uncertainty calculation
-    #
-    counts = xr.DataArray(name="counts",
-                          data=np.copy(ds["channels"].data),
-                          dims=ds["channels"].dims,
-                          coords=ds["channels"].coords)
-
-    #
     # Map to other data
     #
     channels = ds["channels"].data
@@ -111,7 +103,6 @@ def calibrate(ds, custom_coeffs=None, coeffs_file=None):
 
     new_ds = ds.copy()
     new_ds["channels"].data = channels
-    new_ds["counts"] = counts
     
     new_ds.attrs["calib_coeffs_version"] = calibration_coeffs.version
 
@@ -453,7 +444,12 @@ def get_prt_nos(prt,prt_threshold,linenumbers,gac):
             if prt[gd[i]+j+1] < prt_threshold:
                 break
             # Add in index using line numbers data
-            iprt_orig[gd[i]+j+1] = linenumbers[gd[i]+j+1]-linenumbers[gd[i]]
+            # Note make sure line difference is in range 1-4 or skip
+            line_diff = linenumbers[gd[i]+j+1]-linenumbers[gd[i]]
+            if line_diff >= 1 and line_diff <= 4:
+                iprt_orig[gd[i]+j+1] = line_diff
+            else:
+                iprt_orig[gd[i]+j+1] = 0
     #
     # Note for GAC we have PRT nos 3 1 4 2 not 1 2 3 4
     #
