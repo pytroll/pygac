@@ -250,7 +250,8 @@ def smooth_data(y,length):
 
     return outy
 
-def get_uICT(gainval,CS,CICT,Tict,NS,convT,bad_scans,solar_scans,window):
+def get_uICT(gainval,CS,CICT,Tict,NS,convT,bad_scans,solar_scans,window,
+             plt=None,nfigure=None):
     """Get ICT temperature gradient uncertainty based on analysis of the
     gain variations in the 3.7 micron channel
     Estimate on "window" scanline length
@@ -259,7 +260,7 @@ def get_uICT(gainval,CS,CICT,Tict,NS,convT,bad_scans,solar_scans,window):
     #
     # Only use good data
     #
-    gd = (bad_scans == 0)|(solar_scans == 0)
+    gd = (bad_scans == 0)&(solar_scans == 0)
     Lict = convT.t_to_rad(Tict[gd])
 
     gain = (Lict-NS)/(CS[gd]-CICT[gd])
@@ -293,7 +294,24 @@ def get_uICT(gainval,CS,CICT,Tict,NS,convT,bad_scans,solar_scans,window):
                 uICT[i] = np.nan
         else:
             uICT[i] = np.nan
-    return uICT
+
+    if plt is not None:
+        nfigure = nfigure+1
+        plt.figure(nfigure)
+        plt.subplot(311)
+        plt.plot(np.arange(len(gain)),gain*1e3,'.')
+        plt.axhline(y=gainval*1e3,linestyle='--',color='red')
+        plt.ylabel('3.7$\mu$m Gain $\\times 10^{-3}$')
+        plt.subplot(312)
+        plt.plot(np.arange(len(dT)),dT,'.')
+        plt.ylabel('$\Delta$T / K')
+        plt.subplot(313)
+        plt.plot(np.arange(len(uICT)),uICT,'.')
+        plt.xlabel('Scanline')
+        plt.ylabel('uICT / K')
+        plt.tight_layout()
+        
+    return uICT,nfigure
 
 def get_ict_uncert(Tict,prt_random,prt_bias,uICT,convT):
     """Get uncertainty in radiance/temperature of ICT on the basis of 
@@ -697,6 +715,19 @@ def find_solar(ds,mask,convT=None,outgain=False,plot=False):
         plt.plot(x,prt_diff2,label='PRT2')
         plt.plot(x,prt_diff3,label='PRT3')
         plt.plot(x,prt_diff4,label='PRT4')
+        plt.ylabel('Temp. Diff / K')
+        plt.legend()
+        plt.subplot(212)
+        plt.plot(x,gain3)
+        plt.ylabel('3.7$\mu$m Gain $\\times 10^{-3}$')
+        plt.axhline(y=gain3[minstd_pos],linestyle='--',color='red')
+        plt.figure(2)
+        x = np.arange(len(prt_diff1))
+        plt.subplot(211)
+        plt.plot(x,prt_diff1,label='PRT1')
+        plt.plot(x,prt_diff2,label='PRT2')
+        plt.plot(x,prt_diff3,label='PRT3')
+        plt.plot(x,prt_diff4,label='PRT4')
         plt.xlabel('Scanline')
         plt.ylabel('Temp. Diff / K')
         plt.legend()
@@ -713,6 +744,16 @@ def find_solar(ds,mask,convT=None,outgain=False,plot=False):
             plt.axvline(x=side1_2,color='red')
             plt.axvline(x=side2_2,color='red')
         plt.tight_layout()
+        plt.figure(3)
+        plt.plot(x,gain3*1e3)
+        plt.xlabel('Scanline')
+        plt.ylabel('3.7$\mu$m Gain $\\times 10^{-3}$')
+        if side1_1 is not None:
+            plt.axvline(x=side1_1,color='red')
+            plt.axvline(x=side2_1,color='red')
+        if side1_2 is not None:
+            plt.axvline(x=side1_2,color='red')
+            plt.axvline(x=side2_2,color='red')
         plt.show()
         
     if outgain:
@@ -1150,9 +1191,18 @@ def get_solar_from_file(avhrr_name,ds):
     #
     # Return solar location if available
     #
-    return min_solar, max_solar
+    print('********************************************************')
+    print('********************************************************')
+    print('********************************************************')
+    print(' ')
+    print('         Need to fix solar file')
+    print(' ')    
+    print('********************************************************')
+    print('********************************************************')
+    print('********************************************************')
+    return min_solar, max_solar, -1, -1
 
-def ir_uncertainty(ds,mask,plot=False):
+def ir_uncertainty(ds,mask,plot=False,plotmax=None):
     """Create the uncertainty components for the IR channels. These include
     
     1) Random 
@@ -1238,7 +1288,10 @@ def ir_uncertainty(ds,mask,plot=False):
     #
     if plot:
         import matplotlib.pyplot as plt
-        plt.figure(1)
+        nfigure=1
+        plt.figure(nfigure)
+    else:
+        plt = None
 
     CS_1,CICT_1,CE_1,Tict,ict1,ict2,ict3,ict4 = get_vars(ds,0,convT1,
                                                          window,
@@ -1328,8 +1381,8 @@ def ir_uncertainty(ds,mask,plot=False):
     #
     gain_37 = get_gainval(time,avhrr_name,ict1,ict2,ict3,ict4,CS_1,CICT_1,
                           CE_1,0.,bad_scan,convT1,window,calculate=gacdata)
-    uICT = get_uICT(gain_37,CS_1,CICT_1,Tict,0.,convT1,bad_scan,
-                    solar_flag,window)
+    uICT,nfigure = get_uICT(gain_37,CS_1,CICT_1,Tict,0.,convT1,bad_scan,
+                            solar_flag,window,plt=plt,nfigure=nfigure)
 
     #
     # Loop round scanlines
@@ -1452,7 +1505,8 @@ def ir_uncertainty(ds,mask,plot=False):
 
     if plot:
         if twelve_micron:
-            plt.figure(2)
+            nfigure = nfigure+1
+            plt.figure(nfigure)
             plt.subplot(231)
             plt.hist(bt_rand_37.flatten(),bins=100)
             plt.title('3.7$\mu$m')
@@ -1479,39 +1533,93 @@ def ir_uncertainty(ds,mask,plot=False):
             plt.title('12$\mu$m')
             plt.tight_layout()
 
-            plt.figure(3)
+            nfigure = nfigure+1
+            plt.figure(nfigure)
             plt.subplot(231)
-            im=plt.imshow(bt_rand_37)
+            if plotmax is None:
+                im=plt.imshow(bt_rand_37)
+            else:
+                gd = (bt_rand_37 > plotmax[0])
+                image = np.copy(bt_rand_37)
+                image[gd] = np.nan
+                im=plt.imshow(image)
             plt.colorbar(im)
             plt.title('3.7$\mu$m')
 
             plt.subplot(232)
-            im=plt.imshow(bt_rand_11)
+            if plotmax is None:
+                im=plt.imshow(bt_rand_11)
+            else:
+                gd = (bt_rand_11 > plotmax[1])
+                image = np.copy(bt_rand_11)
+                image[gd] = np.nan
+                im=plt.imshow(image)
             plt.colorbar(im)
             plt.title('11$\mu$m (Random)')
 
             plt.subplot(233)
-            im=plt.imshow(bt_rand_12)
+            if plotmax is None:
+                im=plt.imshow(bt_rand_12)
+            else:
+                gd = (bt_rand_12 > plotmax[2])
+                image = np.copy(bt_rand_12)
+                image[gd] = np.nan
+                im=plt.imshow(image)
             plt.colorbar(im)
             plt.title('12$\mu$m')
 
             plt.subplot(234)
-            im=plt.imshow(bt_sys_37)
+            if plotmax is None:
+                im=plt.imshow(bt_sys_37)
+            else:
+                gd = (bt_sys_37 > plotmax[3])
+                image = np.copy(bt_sys_37)
+                image[gd] = np.nan
+                im=plt.imshow(image)
             plt.colorbar(im)
             plt.title('3.7$\mu$m')
 
             plt.subplot(235)
-            im=plt.imshow(bt_sys_11)
+            if plotmax is None:
+                im=plt.imshow(bt_sys_11)
+            else:
+                gd = (bt_sys_11 > plotmax[4])
+                image = np.copy(bt_sys_11)
+                image[gd] = np.nan
+                im=plt.imshow(image)
             plt.colorbar(im)
             plt.title('11$\mu$m (Systematic)')
 
             plt.subplot(236)
-            im=plt.imshow(bt_sys_12)
+            if plotmax is None:
+                im=plt.imshow(bt_sys_12)
+            else:
+                gd = (bt_sys_12 > plotmax[5])
+                image = np.copy(bt_sys_12)
+                image[gd] = np.nan
+                im=plt.imshow(image)
+            plt.colorbar(im)
+            plt.title('12$\mu$m')
+            plt.tight_layout()
+
+            nfigure = nfigure+1
+            plt.figure(nfigure)
+            plt.subplot(131)
+            im=plt.imshow(uratio_37)
+            plt.colorbar(im)
+            plt.title('3.7$\mu$m')
+            plt.subplot(132)
+            im=plt.imshow(uratio_11)
+            plt.colorbar(im)
+            plt.title('11$\mu$m')
+            plt.subplot(133)
+            im=plt.imshow(uratio_12)
             plt.colorbar(im)
             plt.title('12$\mu$m')
             plt.tight_layout()
         else:
-            plt.figure(2)
+            nfigure = nfigure+1
+            plt.figure(nfigure)
             plt.subplot(221)
             plt.hist(bt_rand_37.flatten(),bins=100)
             plt.title('3.7$\mu$m (Random)')
@@ -1601,6 +1709,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('filename')
     parser.add_argument('--plot',action='store_true')
+    parser.add_argument('--plotmax',type=float,nargs=6)
     parser.add_argument('--solar_contam',action='store_true')
     parser.add_argument('--oname')
 
@@ -1649,6 +1758,6 @@ if __name__ == "__main__":
                             -1.,-1.,-1.,-1.,
                             gtime,min_gain))
     else:
-        uncert = ir_uncertainty(ds,mask,plot=args.plot)
+        uncert = ir_uncertainty(ds,mask,plot=args.plot,plotmax=args.plotmax)
         print(uncert)
 
