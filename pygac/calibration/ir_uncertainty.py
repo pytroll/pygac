@@ -1286,9 +1286,9 @@ def ir_uncertainty(ds,mask,plot=False,plotmax=None):
     #
     # Get variables used on the calibration
     #
+    nfigure=1
     if plot:
         import matplotlib.pyplot as plt
-        nfigure=1
         plt.figure(nfigure)
     else:
         plt = None
@@ -1664,10 +1664,25 @@ def ir_uncertainty(ds,mask,plot=False,plotmax=None):
     #
     # Ratio for channel-to-channel covariance as ubyte
     #
-    uratio[:,:,0] = (uratio_37*255).astype(dtype=np.uint8)
-    uratio[:,:,1] = (uratio_11*255).astype(dtype=np.uint8)
+    gd = (uratio_37 < 0.)
+    uratio_37[gd] = 0.
+    gd = (uratio_37 > 1.)
+    uratio_37[gd] = 1.
+    gd = (uratio_11 < 0.)
+    uratio_11[gd] = 0.
+    gd = (uratio_11 > 1.)
+    uratio_11[gd] = 1.
+    gd = np.isfinite(uratio_37)
+    uratio[gd,0] = (uratio_37[gd]*255).astype(dtype=np.uint8)
+    gd = np.isfinite(uratio_11)
+    uratio[gd,1] = (uratio_11[gd]*255).astype(dtype=np.uint8)
     if twelve_micron:
-        uratio[:,:,2] = (uratio_12*255).astype(dtype=np.uint8)
+        gd = (uratio_12 < 0.)
+        uratio_12[gd] = 0.
+        gd = (uratio_12 > 1.)
+        uratio_12[gd] = 1.
+        gd = np.isfinite(uratio_12)
+        uratio[gd,2] = (uratio_12[gd]*255).astype(dtype=np.uint8)
     else:
         uratio[:,:,2] = 0
 
@@ -1691,7 +1706,8 @@ def ir_uncertainty(ds,mask,plot=False,plotmax=None):
                           attrs={"long_name":"Systematic uncertainties","units":"K"})
 
     uratio_da = xr.DataArray(uratio,dims=["times","across_track","ir_channels"],
-                             attrs={"long_name":"Channel-to-channel covariance  ratio"})
+                             attrs={"long_name":"Channel-to-channel covariance  ratio",
+                                    "_FillValue":0})
 
     uflags_da = xr.DataArray(uflags,dims=["times"],
                              attrs={"long_name":"Uncertainty flags (bit 1==bad space view (value=1), bit 2==solar contamination (value=2)"})

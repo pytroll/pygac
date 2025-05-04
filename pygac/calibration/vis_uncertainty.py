@@ -459,22 +459,22 @@ def vis_uncertainty(ds,mask,plot=False):
             plt.tight_layout()
 
             plt.figure(3)
-            plt.subplot(231)
+            plt.subplot(221)
             im = plt.imshow(rcal_rand_63)
             plt.colorbar(im)
             plt.title('0.63$\mu$m (Random)')
 
-            plt.subplot(232)
+            plt.subplot(222)
             im = plt.imshow(rcal_rand_86)
             plt.colorbar(im)
             plt.title('0.86$\mu$m (Random)')
 
-            plt.subplot(233)
+            plt.subplot(223)
             im = plt.imshow(rcal_sys_63)
             plt.colorbar(im)
             plt.title('0.63$\mu$m (Systematic)')
 
-            plt.subplot(234)
+            plt.subplot(224)
             im = plt.imshow(rcal_sys_86)
             plt.colorbar(im)
             plt.title('0.86$\mu$m (Systematic)')
@@ -592,7 +592,8 @@ if __name__ == "__main__":
     reader_cls = get_reader_class(args.filename)
     #"/gws/nopw/j04/npl_eo/users/nyaghnam/pygac/gapfilled_tles"
     #"/gws/nopw/j04/nceo_uor/users/jmittaz/NPL/AVHRR/TLE"
-    reader = reader_cls(tle_dir="C:/Users/ny2/projectdir/pygac/gapfilled_tles",
+    #"C:/Users/ny2/projectdir/pygac/gapfilled_tles"
+    reader = reader_cls(tle_dir="/gws/nopw/j04/nceo_uor/users/jmittaz/NPL/AVHRR/TLE",
                         tle_name="TLE_%(satname)s.txt",
                         calibration_method="noaa",
                         adjust_clock_drift=False)
