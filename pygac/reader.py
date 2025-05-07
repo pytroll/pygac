@@ -638,6 +638,7 @@ class Reader(ABC):
         )
 
         ds.attrs["spacecraft_name"] = self.spacecraft_name
+        ds.attrs["max_scan_angle"] = 55.25 if self.spacecraft_name == "noaa16" else 55.37
         self._update_meta_data_object(ds.attrs)
         return ds
 
