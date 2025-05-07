@@ -266,7 +266,7 @@ def get_uICT(gainval,CS,CICT,Tict,NS,convT,bad_scans,solar_scans,window,
     gain = (Lict-NS)/(CS[gd]-CICT[gd])
     sp_ict = CS[gd]-CICT[gd]
     Tcorr = convT.A+convT.B*Tict[gd]
-
+    
     dGain_dICT = (convT.B/sp_ict)*\
         convT.nBB_num*np.exp(convT.c2_nu_c/Tcorr)*\
         (convT.c2_nu_c/(Tcorr**2))/\
@@ -1165,42 +1165,43 @@ def get_solar_from_file(avhrr_name,ds):
     #
     coef_file = files("pygac") / "data/{0}_uncert.nc".format(avhrr_name)
     with xr.open_dataset(coef_file,decode_times=False) as d:
-        solar_start_time = d["gain_solar_start"].values[:]
-        solar_stop_time = d["gain_solar_stop"].values[:]
+        solar_start_time_1 = d["gain1_solar_start"].values[:]
+        solar_stop_time_1 = d["gain1_solar_stop"].values[:]
+        solar_start_time_2 = d["gain2_solar_start"].values[:]
+        solar_stop_time_2 = d["gain2_solar_stop"].values[:]
 
-    gd = np.isfinite(solar_start_time)&np.isfinite(solar_stop_time)
-    solar_start_time = solar_start_time[gd]
-    solar_stop_time = solar_stop_time[gd]
-    #
-    # Only use good data
-    #
-    gd = np.isfinite(solar_start_time)
+    gd = np.isfinite(solar_start_time_1)&np.isfinite(solar_stop_time_1)
+    solar_start_time_1 = solar_start_time_1[gd]
+    solar_stop_time_1 = solar_stop_time_1[gd]
+    gd = np.isfinite(solar_start_time_2)&np.isfinite(solar_stop_time_2)
+    solar_start_time_2 = solar_start_time_2[gd]
+    solar_stop_time_2 = solar_stop_time_2[gd]
     #
     # Match to times in file
     #
-    min_solar = -1
-    max_solar = -1
-    for i in range(len(solar_start_time)):
-        gd = (time >= solar_start_time[i])&(time <= solar_stop_time[i])
+    min_solar_1 = -1
+    max_solar_1 = -1
+    for i in range(len(solar_start_time_1)):
+        gd = (time >= solar_start_time_1[i])&(time <= solar_stop_time_1[i])
         if np.sum(gd) > 0:
             index = np.arange(len(time)).astype(dtype=np.int32)
             index = index[gd]
-            min_solar = index[0]
-            max_solar = index[-1]
+            min_solar_1 = index[0]
+            max_solar_1 = index[-1]
+    min_solar_2 = -1
+    max_solar_2 = -1
+    for i in range(len(solar_start_time_2)):
+        gd = (time >= solar_start_time_2[i])&(time <= solar_stop_time_2[i])
+        if np.sum(gd) > 0:
+            index = np.arange(len(time)).astype(dtype=np.int32)
+            index = index[gd]
+            min_solar_2 = index[0]
+            max_solar_2 = index[-1]
 
     #
     # Return solar location if available
     #
-    print('********************************************************')
-    print('********************************************************')
-    print('********************************************************')
-    print(' ')
-    print('         Need to fix solar file')
-    print(' ')    
-    print('********************************************************')
-    print('********************************************************')
-    print('********************************************************')
-    return min_solar, max_solar, -1, -1
+    return min_solar_1, max_solar_1, min_solar_2, max_solar_2
 
 def ir_uncertainty(ds,mask,plot=False,plotmax=None):
     """Create the uncertainty components for the IR channels. These include
@@ -1370,7 +1371,7 @@ def ir_uncertainty(ds,mask,plot=False,plotmax=None):
         solar_flag[min_solar_1:max_solar_1+1] = 1
     if min_solar_2 >= 0 and max_solar_2 >= 0:
         solar_flag[min_solar_2:max_solar_2+1] = 1
-        
+
     #
     # Systematic components - uICT from gain variation in 3.7mu channel
     #
@@ -1383,7 +1384,6 @@ def ir_uncertainty(ds,mask,plot=False,plotmax=None):
                           CE_1,0.,bad_scan,convT1,window,calculate=gacdata)
     uICT,nfigure = get_uICT(gain_37,CS_1,CICT_1,Tict,0.,convT1,bad_scan,
                             solar_flag,window,plt=plt,nfigure=nfigure)
-
     #
     # Loop round scanlines
     #
@@ -1469,7 +1469,7 @@ def ir_uncertainty(ds,mask,plot=False,plotmax=None):
 
         #
         # Get systematic uncertainty through the measurement equation
-        # Note measurement equation uncertainty set to 0.5
+        # Note measurement equation uncertainty set to 0.5K@300
         #
         rad_sys_37 = get_sys(1,ict_sys1,Tict[i],CS_1[i],
                              CE_1[i,:],CICT_1[i],0.,0.,0.,convT1)
@@ -1485,7 +1485,7 @@ def ir_uncertainty(ds,mask,plot=False,plotmax=None):
         T,bt_sys_11[i,:] = convT2.rad_to_t_uncert(rad_11,rad_sys_11)
         if twelve_micron:
             T,bt_sys_12[i,:] = convT3.rad_to_t_uncert(rad_12,rad_sys_12)
-
+            
         #
         # Add 0.5/sqrt(3.)K for measurement equation uncertainty
         # Also get ratio of ICT/total uncertainty
@@ -1506,7 +1506,7 @@ def ir_uncertainty(ds,mask,plot=False,plotmax=None):
         uratio_37[i,:] = bt_sys_37[i,:] / tot_sys_37 
         uratio_11[i,:] = bt_sys_11[i,:] / tot_sys_11 
         if twelve_micron:
-            uratio_12[i,:] = bt_sys_12[i,:] / tot_sys_12 
+            uratio_12[i,:] = bt_sys_12[i,:] / tot_sys_12
         bt_sys_37[i,:] = tot_sys_37
         bt_sys_11[i,:] = tot_sys_11
         if twelve_micron:
