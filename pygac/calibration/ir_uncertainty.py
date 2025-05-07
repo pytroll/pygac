@@ -1489,8 +1489,17 @@ def ir_uncertainty(ds,mask,plot=False,plotmax=None):
         #
         # Add 0.5/sqrt(3.)K for measurement equation uncertainty
         # Also get ratio of ICT/total uncertainty
+        # For 3.7mu channel add radiance due to Planck function
+        # 0.5K @ 300K
+        rad1 = convT1.t_to_rad(300.-0.5/np.sqrt(3.))
+        rad2 = convT1.t_to_rad(300.+0.5/np.sqrt(3.))
+        delta_rad = (rad2-rad1)/2.
+        T,new_37_uncert = convT1.rad_to_t_uncert(rad_37,delta_rad)
+        #tot_sys_37 = np.sqrt(bt_sys_37[i,:]**2+0.5**2/3.)
+        tot_sys_37 = np.sqrt(bt_sys_37[i,:]**2+new_37_uncert**2)
         #
-        tot_sys_37 = np.sqrt(bt_sys_37[i,:]**2+0.5**2/3.)
+        # Just add 0.5K (11/12)
+        #
         tot_sys_11 = np.sqrt(bt_sys_11[i,:]**2+0.5**2/3.)
         if twelve_micron:
             tot_sys_12 = np.sqrt(bt_sys_12[i,:]**2+0.5**2/3.)
