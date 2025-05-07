@@ -24,23 +24,14 @@
 
 Read and manage module configuration.
 """
+import configparser
 import logging
 import os
-import sys
-
-try:
-    import configparser
-except ImportError:
-    import ConfigParser as configparser
-
-if sys.version_info.major < 3:
-    class FileNotFoundError(OSError):
-        pass
 
 LOG = logging.getLogger(__name__)
 
 
-class Configuration(configparser.ConfigParser, object):
+class Configuration(configparser.ConfigParser):
     """Configuration container for pygac."""
 
     config_file = ""
@@ -60,27 +51,12 @@ class Configuration(configparser.ConfigParser, object):
             raise FileNotFoundError(
                 'Given config path "%s" is not a file!' % config_file)
         try:
-            super(Configuration, self).read(config_file)
+            super().read(config_file)
         except configparser.NoSectionError:
             LOG.error('Failed reading configuration file: "%s"'
                       % config_file)
             raise
         self.config_file = config_file
-
-    def get(self, *args, **kwargs):
-        """python 2 compatibility for fallback attribute"""
-        if sys.version_info.major < 3:
-            if "fallback" in kwargs:
-                fallback = kwargs.pop("fallback")
-            else:
-                fallback = None
-            try:
-                value = super(Configuration, self).get(*args, **kwargs)
-            except (configparser.NoSectionError, configparser.NoOptionError):
-                value = fallback
-        else:
-            value = super().get(*args, **kwargs)
-        return value
 
 
 _config = Configuration()
