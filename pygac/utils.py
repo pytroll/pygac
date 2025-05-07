@@ -25,6 +25,7 @@ import logging
 from contextlib import contextmanager, nullcontext
 
 import numpy as np
+import matplotlib.pyplot as plt
 
 LOG = logging.getLogger(__name__)
 
@@ -329,3 +330,4 @@ def plot_correct_scanline_numbers(res, filename=None):
         plt.savefig(filename, bbox_inches="tight")
     else:
         plt.show()
+
