@@ -28,6 +28,7 @@ import xarray as xr
 from importlib.resources import files
 import argparse
 from scipy.optimize import curve_fit
+import cftime
 
 from pygac import get_reader_class
 from pygac.calibration.noaa import Calibrator
@@ -564,7 +565,7 @@ def find_solar_ind(position,new_gain2,new_cs,new_ct,new_ict,new_ict1,
 
     return side1,side2,peak_location
         
-def find_solar(ds,mask,convT=None,outgain=False,plot=False):
+def find_solar(ds,mask,convT=None,outgain=False,plot=False,out_time=False):
     '''Find solar contamination/variable gain points for GAC and for ~full
     orbits'''
 
@@ -601,18 +602,33 @@ def find_solar(ds,mask,convT=None,outgain=False,plot=False):
 
     if convT is None:
         convT = convBT(cal,0)
-    
-    CS_1,CICT_1,CE_1,Tict,ict1,ict2,ict3,ict4,solZAin,time \
-        = get_vars(ds,0,convT,
-                   window,
-                   prt_threshold,
-                   ict_threshold,
-                   space_threshold,
-                   gacdata,
-                   cal,
-                   mask,
-                   out_prt=True,
-                   out_solza=True)
+
+    if out_time:
+        CS_1,CICT_1,CE_1,Tict,ict1,ict2,ict3,ict4,solZAin,time \
+            = get_vars(ds,0,convT,
+                       window,
+                       prt_threshold,
+                       ict_threshold,
+                       space_threshold,
+                       gacdata,
+                       cal,
+                       mask,
+                       out_prt=True,
+                       out_solza=True,
+                       out_time=True)
+    else:
+        CS_1,CICT_1,CE_1,Tict,ict1,ict2,ict3,ict4,solZAin \
+            = get_vars(ds,0,convT,
+                       window,
+                       prt_threshold,
+                       ict_threshold,
+                       space_threshold,
+                       gacdata,
+                       cal,
+                       mask,
+                       out_prt=True,
+                       out_solza=True,
+                       out_time=False)
 
     meanT = (ict1+ict2+ict3+ict4)/4.
     radBB = convT.t_to_rad(meanT)
@@ -758,33 +774,66 @@ def find_solar(ds,mask,convT=None,outgain=False,plot=False):
         
     if outgain:
         if side1_1 is not None and side1_2 is not None:
-            return time[side1_1],time[side2_1],time[peak_location_1],\
-                solZAin[peak_location_1],time[side1_2],time[side2_2],\
-                time[peak_location_2],solZAin[peak_location_2],\
-                time[minstd_pos],gain3[minstd_pos]
+            if out_time:
+                return time[side1_1],time[side2_1],time[peak_location_1],\
+                    solZAin[peak_location_1],time[side1_2],time[side2_2],\
+                    time[peak_location_2],solZAin[peak_location_2],\
+                    time[minstd_pos],gain3[minstd_pos]
+            else:
+                return side1_1,side2_1,peak_location_1,\
+                    solZAin[peak_location_1],side1_2,side2_2,\
+                    peak_location_2,solZAin[peak_location_2],\
+                    minstd_pos,gain3[minstd_pos]
         elif side1_1 is not None and side1_2 is None:
-            return time[side1_1],time[side2_1],time[peak_location_1],\
-                solZAin[peak_location_1],None,None,None,None,\
-                time[minstd_pos],gain3[minstd_pos]
+            if out_time:
+                return time[side1_1],time[side2_1],time[peak_location_1],\
+                    solZAin[peak_location_1],None,None,None,None,\
+                    time[minstd_pos],gain3[minstd_pos]
+            else:
+                return side1_1,side2_1,peak_location_1,\
+                    solZAin[peak_location_1],None,None,None,None,\
+                    minstd_pos,gain3[minstd_pos]
         elif side1_1 is None and side1_2 is not None:
-            return None,None,None,None,time[side1_2],time[side2_2],\
-                time[peak_location_2],solZAin[peak_location_2],\
-                time[minstd_pos],gain3[minstd_pos]
+            if out_time:
+                return None,None,None,None,time[side1_2],time[side2_2],\
+                    time[peak_location_2],solZAin[peak_location_2],\
+                    time[minstd_pos],gain3[minstd_pos]
+            else:
+                return None,None,None,None,side1_2,side2_2,\
+                    peak_location_2,solZAin[peak_location_2],\
+                    minstd_pos,gain3[minstd_pos]
         else:
-            return None,None,None,None,None,None,None,None,\
-                time[minstd_pos],gain3[minstd_pos]
+            if out_time:
+                return None,None,None,None,None,None,None,None,\
+                    time[minstd_pos],gain3[minstd_pos]
+            else:
+                return None,None,None,None,None,None,None,None,\
+                    minstd_pos,gain3[minstd_pos]
     else:
         if side1_1 is not None and side1_2 is not None:
-            return time[side1_1],time[side2_1],time[peak_location_1],\
-                solZAin[peak_location_1],time[side1_2],time[side2_2],\
-                time[peak_location_2],solZAin[peak_location_2]
+            if out_time:
+                return time[side1_1],time[side2_1],time[peak_location_1],\
+                    solZAin[peak_location_1],time[side1_2],time[side2_2],\
+                    time[peak_location_2],solZAin[peak_location_2]
+            else:
+                return side1_1,side2_1,peak_location_1,\
+                    solZAin[peak_location_1],side1_2,side2_2,\
+                    peak_location_2,solZAin[peak_location_2]
         elif side1_1 is not None and side1_2 is None:
-            return time[side1_1],time[side2_1],time[peak_location_1],\
-                solZAin[peak_location_1],None,None,None,None
+            if out_time:
+                return time[side1_1],time[side2_1],time[peak_location_1],\
+                    solZAin[peak_location_1],None,None,None,None
+            else:
+                return side1_1,side2_1,peak_location_1,\
+                    solZAin[peak_location_1],None,None,None,None
         elif side1_1 is None and side1_2 is not None:
-            return None,None,None,None,time[side1_2],time[side2_2],\
-                time[peak_location_2],solZAin[peak_location_2]
-        else:
+            if out_time:
+                return None,None,None,None,time[side1_2],time[side2_2],\
+                    time[peak_location_2],solZAin[peak_location_2]
+            else:
+                return None,None,None,None,side1_2,side2_2,\
+                    peak_location_2,solZAin[peak_location_2]
+        else:            
             return None,None,None,None,None,None,None,None
         
 def get_random(channel,noise,av_noise,ict_noise,ict_random,Lict,CS,CE,CICT,NS,
@@ -844,7 +893,8 @@ def get_sys(channel,uICT,Tict,CS,CE,CICT,NS,c1,c2,convT):
     return np.sqrt(uncert)
 
 def get_vars(ds,channel,convT,wlength,prt_threshold,ict_threshold,
-             space_threshold,gac,cal,mask,out_prt=False,out_solza=False):
+             space_threshold,gac,cal,mask,out_prt=False,out_solza=False,
+             out_time=False):
     """Get variables from xarray including smoothing and interpolation"""
 
     space = ds['space_counts'].values[:,channel]
@@ -856,6 +906,7 @@ def get_vars(ds,channel,convT,wlength,prt_threshold,ict_threshold,
     
     if out_solza:
         solza = ds['sun_zen'].values[:,midpoint]
+    if out_time:
         time = (ds['times'].values[:] - 
                 np.datetime64('1970-01-01T00:00:00Z'))/\
                 np.timedelta64(1,'s')
@@ -1037,17 +1088,25 @@ def get_vars(ds,channel,convT,wlength,prt_threshold,ict_threshold,
 
     if out_prt:
         if out_solza:
-            return space_convolved,ict_convolved,ce,tprt_convolved,\
-                tprt1_convolved,tprt2_convolved,tprt3_convolved,\
-                tprt4_convolved,solza,time
+            if out_time:
+                return space_convolved,ict_convolved,ce,tprt_convolved,\
+                    tprt1_convolved,tprt2_convolved,tprt3_convolved,\
+                    tprt4_convolved,solza,time
+            else:
+                return space_convolved,ict_convolved,ce,tprt_convolved,\
+                    tprt1_convolved,tprt2_convolved,tprt3_convolved,\
+                    tprt4_convolved,solza
         else:
             return space_convolved,ict_convolved,ce,tprt_convolved,\
                 tprt1_convolved,tprt2_convolved,tprt3_convolved,\
                 tprt4_convolved
     else:
         if out_solza:
+            if out_time:
                 return space_convolved,ict_convolved,ce,tprt_convolved,solza,\
                 time
+            else:
+                return space_convolved,ict_convolved,ce,tprt_convolved,solza
         else:
             return space_convolved,ict_convolved,ce,tprt_convolved
 
@@ -1343,19 +1402,13 @@ def ir_uncertainty(ds,mask,plot=False,plotmax=None):
         # Only for GAC data
         # Possible at 2 locations
         #
-        min_solar_in_1, max_solar_in_1, peak_solar_1, solar_solza_1,\
-        min_solar_in_2, max_solar_in_2, peak_solar_2, solar_solza_2 = \
-            find_solar(ds,mask,convT1,plot=plot)
-        if min_solar_in_1 is not None and max_solar_in_1 is not None:
-            min_solar_1 = np.nonzero(time == min_solar_in_1)[0]
-            max_solar_1 = np.nonzero(time == max_solar_in_1)[0]
-        else:
+        min_solar_1, max_solar_1, peak_solar_1, solar_solza_1,\
+        min_solar_2, max_solar_2, peak_solar_2, solar_solza_2 = \
+            find_solar(ds,mask,convT1,plot=plot,out_time=False)
+        if min_solar_1 is None and max_solar_1 is None:
             min_solar_1 = -1
             max_solar_1 = -1
-        if min_solar_in_2 is not None and max_solar_in_2 is not None:
-            min_solar_2 = np.nonzero(time == min_solar_in_2)[0]
-            max_solar_2 = np.nonzero(time == max_solar_in_2)[0]
-        else:
+        if min_solar_in_2 is None and max_solar_in_2 is None:
             min_solar_2 = -1
             max_solar_2 = -1
     else:
@@ -1737,7 +1790,8 @@ if __name__ == "__main__":
     parser.add_argument('--plotmax',type=float,nargs=6)
     parser.add_argument('--solar_contam',action='store_true')
     parser.add_argument('--oname')
-
+    parser.add_argument('--write_test',nargs=2)
+    
     args = parser.parse_args()
 
     #
@@ -1760,7 +1814,8 @@ if __name__ == "__main__":
         tmin_1,tmax_1,tpeak_1,out_solza_1,\
         tmin_2,tmax_2,tpeak_2,out_solza_2,\
         gtime,min_gain = \
-            find_solar(ds,mask,convT=None,outgain=True,plot=args.plot)
+            find_solar(ds,mask,convT=None,outgain=True,plot=args.plot,
+                       out_time=True)
         with open(args.oname,'a') as fp:
             if tmin_1 is not None and tmin_2 is not None:
                 fp.write('{0:16.9e} {1:16.9e} {2:16.9e} {3:9.4f} {4:16.9e} {5:16.9e} {6:16.9e} {7:9.4f} {8:16.9e} {9:9.7e}\n'.
@@ -1782,6 +1837,16 @@ if __name__ == "__main__":
                      format(-1.,-1.,-1.,-1.,
                             -1.,-1.,-1.,-1.,
                             gtime,min_gain))
+    elif args.write_test is not None:
+        #
+        # Write data for testing of uncertainty code
+        #
+        if ds.attrs['midnight_scanline'] is None:
+            ds.attrs['midnight_scanline'] = -1
+        ds.to_netcdf(args.write_test[0])
+        X = np.zeros((len(mask)),dtype=np.int8)
+        X[mask] = 1
+        np.savetxt(args.write_test[1],X,fmt="%d")
     else:
         uncert = ir_uncertainty(ds,mask,plot=args.plot,plotmax=args.plotmax)
         print(uncert)
