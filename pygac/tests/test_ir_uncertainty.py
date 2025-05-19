@@ -139,9 +139,7 @@ class TestGetUict(unittest.TestCase):
         #
         # Read in AVHRR data CSV file
         #
-        #csv_file = files("pygac") / "tests/test_solar_detection_data.csv"
-        #csv_file = "test_ir_uncertainty_avhrr_data.csv"
-        csv_file = "test.csv"
+        csv_file = files("pygac") / "tests/test_ir_uncertainty_avhrr_data.csv"
         
         ds,mask = read_csv(csv_file)
 
