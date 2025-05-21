@@ -35,7 +35,7 @@ from datetime import datetime
 from pygac.calibration.noaa import Calibrator
 from pygac.calibration.ir_uncertainty import find_solar,\
     get_uncert_parameter_thresholds, get_vars, convBT,\
-    get_gainval,get_uICT
+    get_gainval,get_uICT,get_noise
 
 #
 # Code to read csv AVHRR data used for tests
@@ -62,13 +62,6 @@ def read_csv(filename):
         csv_reader = csv.reader(fp,delimiter=',')
         header = next(csv_reader)
     units = header[6]
-    #time = cftime.num2date(d[:,6],units,
-    #                       only_use_cftime_datetimes=False,
-    #                       only_use_python_datetimes=True)
-    #dt64 = []
-    #for i in range(len(time)):
-    #    dt64.append(np.datetime64(time[i]))
-    #dt64 = np.array(dt64)
     
     #
     # Create xarray data in form expected
@@ -139,7 +132,7 @@ class TestGetUict(unittest.TestCase):
         #
         # Read in AVHRR data CSV file
         #
-        csv_file = files("pygac") / "tests/test_ir_uncertainty_avhrr_data.csv"
+        csv_file = files("pygac") / "tests/test_solar_detection_data.csv"
         
         ds,mask = read_csv(csv_file)
 
@@ -229,4 +222,100 @@ class TestGetUict(unittest.TestCase):
         #
         gd = np.isfinite(uICT)&np.isfinite(ds['uict'].values)
         np.testing.assert_allclose(uICT[gd],ds['uict'].values[gd],atol=0.0001)
+
+    #
+    # Test get_noise function
+    #
+    def test_get_noise(self):
+        #
+        # Get window size
+        #
+        window, prt_bias, prt_sys, prt_threshold, ict_threshold, \
+            space_threshold = get_uncert_parameter_thresholds()
+        #
+        # Setup random generator
+        #
+        rng = np.random.default_rng(seed=186471904117811999986590116230137773741)
+        #
+        # Noise values
+        #
+        noise37 = 4.2864
+        noise11 = 0.7071
+        noise12 = 0.6249
+        #
+        # Space counts for 50 scan lines + 10 per scan over 3 channels
+        #
+        space_cnts = np.zeros((200,10,3))
+        for i in range(10):
+            space_cnts[:,i,0] = 990.+noise37*rng.standard_normal(200)
+            space_cnts[:,i,1] = 990.+noise11*rng.standard_normal(200)
+            space_cnts[:,i,2] = 990.+noise12*rng.standard_normal(200)
+        #
+        # Add bad data - 5 scanlines
+        #
+        space_cnts[30:35,:,:] = 400.
+        #
+        # Add bad data - within 10 per scan data
+        #
+        space_cnts[10,7:10,:] = 970.
+        
+        #
+        # ICT counts for 200 scan lines + 10 per scan over 3 channels
+        #
+        ict_cnts = np.zeros((200,10,3))
+        #
+        # Sinusoid variation
+        #
+        bbval1 = 740.+80.*np.sin(2.*np.pi*np.arange(200)/10000.)
+        bbval2 = 388.+40.*np.sin(2.*np.pi*np.arange(200)/10000.)
+        bbval3 = 381.+40.*np.sin(2.*np.pi*np.arange(200)/10000.)
+        #
+        # Add noise
+        #
+        for i in range(10):
+            ict_cnts[:,i,0] = bbval1+noise37*rng.standard_normal(200)
+            ict_cnts[:,i,1] = bbval2+noise11*rng.standard_normal(200)
+            ict_cnts[:,i,2] = bbval3+noise12*rng.standard_normal(200)
+        #
+        # Add bad data - 5 scanlines
+        #
+        ict_cnts[30:35,:,:] = 900.
+
+        noise1,noise2,noise3,av_noise1,av_noise2,av_noise3,\
+            av_ict_noise1,av_ict_noise2,av_ict_noise3,bad_scans = \
+                get_noise(space_cnts,ict_cnts,window,True)
+        #
+        # Check noise values - note these will not be the same
+        # as the input noise due to random data over a shorter length plus
+        # addition of digitisation uncertainty
+        #
+        check_noise1 = 2.780065254251957
+        check_noise2 = 0.8275649945083337
+        check_noise3 = 0.7653190724944287
+        check_av_noise1 = 0.12310335859691714
+        check_av_noise2 = 0.036645193894424374
+        check_av_noise3 = 0.033888898139440266
+        check_av_ict_noise1 = 0.0985110913400698
+        check_av_ict_noise2 = 0.03933429319049386
+        check_av_ict_noise3 = 0.03574219512072888
+        
+        np.testing.assert_allclose(noise1,check_noise1)
+        np.testing.assert_allclose(noise2,check_noise2)
+        np.testing.assert_allclose(noise3,check_noise3)
+        np.testing.assert_allclose(av_noise1,check_av_noise1)
+        np.testing.assert_allclose(av_noise2,check_av_noise2)
+        np.testing.assert_allclose(av_noise3,check_av_noise3)
+        np.testing.assert_allclose(av_ict_noise1,check_av_ict_noise1)
+        np.testing.assert_allclose(av_ict_noise2,check_av_ict_noise2)
+        np.testing.assert_allclose(av_ict_noise3,check_av_ict_noise3)
+
+        #
+        # Check bad scanline values
+        #
+        np.testing.assert_allclose(bad_scans[10],1)
+        np.testing.assert_allclose(bad_scans[30:35],np.array([1,1,1,1,1]))
+        test_good = np.copy(bad_scans[0:10])
+        test_good = np.append(test_good,bad_scans[11:30])
+        test_good = np.append(test_good,bad_scans[35:])
+        np.testing.assert_allclose(test_good,np.zeros(len(test_good)))
         
