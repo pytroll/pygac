@@ -177,6 +177,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument('filename')
+    parser.add_argument('--plot',action='store_true')
 
     args = parser.parse_args()
 
@@ -193,6 +194,6 @@ if __name__ == "__main__":
     ds = reader.get_calibrated_dataset()
     mask = reader.mask
 
-    uncert = uncertainty(ds,mask,plot=True)
+    uncert = uncertainty(ds,mask,plot=args.plot)
     print(uncert)
     
