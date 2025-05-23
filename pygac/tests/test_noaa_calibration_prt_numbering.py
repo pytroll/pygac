@@ -40,18 +40,22 @@ class TestPrtNumbering(unittest.TestCase):
         #
         # Data taken from real problematic case
         #
-        line_number = [7386,7387,7388,7389,7390,7391,7392,7393,7394,7395,
-                       7396,7397,7400,7401,7402,7403,7404,7405,7406,7407,
-                       7408,7409]
-        prt_counts = [0.0,270.0,263.0,269.33,270.0,0.0,269.0,263.0,269.33,
-                      270.0,0.0,0.0,0.0,263.0,269.0,270.0,0.0,270.0,263.0,
-                      269.0,270.0,0.0]
+        line_number = np.array([7386,7387,7388,7389,7390,7391,
+                                7392,7393,7394,7395,
+                                7396,7397,7400,7401,7402,
+                                7403,7404,7405,7406,7407,
+                                7408,7409])
+        prt_counts = np.array([0.0,270.0,263.0,269.33,270.0,
+                               0.0,269.0,263.0,269.33,
+                               270.0,0.0,0.0,0.0,263.0,
+                               269.0,270.0,0.0,270.0,263.0,
+                               269.0,270.0,0.0])
         prt_threshold = 50
         gac = True
         
-        expected_iprt = [0,3,1,4,2,0,3,1,4,2,,0,0,0,3,1,4,0,3,1,4,2,0]
+        expected_iprt = [0,3,1,4,2,0,3,1,4,2,0,0,0,3,1,4,0,3,1,4,2,0]
 
         iprt = get_prt_nos(prt_counts,prt_threshold,line_number,gac)
 
-        np.testing.asset_allclose(expected_iprt,iprt)
+        np.testing.assert_allclose(expected_iprt,iprt)
         
