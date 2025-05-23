@@ -55,8 +55,6 @@ from pygac.reader import DecodingError, NoTLEData, Reader, ReaderError
 from pygac.slerp import slerp
 from pygac.utils import file_opener
 
-import matplotlib.pyplot as plt
-
 LOG = logging.getLogger(__name__)
 
 
