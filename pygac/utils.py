@@ -25,7 +25,6 @@ import logging
 from contextlib import contextmanager, nullcontext
 
 import numpy as np
-import matplotlib.pyplot as plt
 
 LOG = logging.getLogger(__name__)
 
