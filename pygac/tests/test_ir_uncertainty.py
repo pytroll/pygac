@@ -116,9 +116,23 @@ def read_csv(filename):
 #
 #
 # Test routine to get ICT uncertainty, check gain and solar detection as
-# well
+# well. Also check that the zenodo uncertainty files can be read
 #
 class TestGetUict(unittest.TestCase):
+
+    def test_zenodo_uncert_file(self):
+
+        avhrr = 'metopa'
+        coef_file = "https://zenodo.org/records/15482385/files/{0}_uncert.nc#mode=bytes".format(avhrr)
+        with xr.open_dataset(coef_file,decode_times=False) as d:
+            solar_start_time_1 = d["gain1_solar_start"].values[:]
+            solar_stop_time_1 = d["gain1_solar_stop"].values[:]
+            solar_start_time_2 = d["gain2_solar_start"].values[:]
+            solar_stop_time_2 = d["gain2_solar_stop"].values[:]
+        test_solar_start_time_2 = 1164115927.0
+        test_solar_stop_time_2 = 1164116239.0
+        np.testing.assert_allclose(solar_start_time_2[0],test_solar_start_time_2)
+        np.testing.assert_allclose(solar_stop_time_2[0],test_solar_stop_time_2)
     
     def test_get_Uict(self):
 

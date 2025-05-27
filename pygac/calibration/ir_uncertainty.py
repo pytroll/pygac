@@ -28,7 +28,6 @@ import xarray as xr
 from importlib.resources import files
 import argparse
 from scipy.optimize import curve_fit
-import cftime
 
 from pygac import get_reader_class
 from pygac.calibration.noaa import Calibrator
@@ -1117,7 +1116,10 @@ def get_gainval(time,avhrr,ict1,ict2,ict3,ict4,CS,CICT,CE,NS,bad_scan,convT,
     #
     # Open file containing 3.7mu gain value and interpolate over time
     #
-    coef_file = files("pygac") / "data/{0}_uncert.nc".format(avhrr)
+    # Now stored on zenodo
+    #
+    #coef_file = files("pygac") / "data/{0}_uncert.nc".format(avhrr)
+    coef_file = "https://zenodo.org/records/15482385/files/{0}_uncert.nc#mode=bytes".format(avhrr)
     with xr.open_dataset(coef_file) as d:
         intime = d["time_gain"].values[:]
         ingain = d["gain"].values[:]
@@ -1222,7 +1224,10 @@ def get_solar_from_file(avhrr_name,ds):
     #
     # Read file
     #
-    coef_file = files("pygac") / "data/{0}_uncert.nc".format(avhrr_name)
+    # Now stored on zenodo
+    #
+    # coef_file = files("pygac") / "data/{0}_uncert.nc".format(avhrr_name)
+    coef_file = "https://zenodo.org/records/15482385/files/{0}_uncert.nc#mode=bytes".format(avhrr)
     with xr.open_dataset(coef_file,decode_times=False) as d:
         solar_start_time_1 = d["gain1_solar_start"].values[:]
         solar_stop_time_1 = d["gain1_solar_stop"].values[:]
