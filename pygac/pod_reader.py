@@ -473,16 +473,8 @@ class PODReader(Reader):
     def _get_times_from_file(self):
         return self.decode_timestamps(self.scans["time_code"])
 
-    def _adjust_clock_drift(self):
-        """Adjust the geolocation to compensate for the clock error."""
-        tic = datetime.datetime.now()
-        self.get_times()
-        try:
-            error_utcs, clock_error = get_offsets(self.spacecraft_name)
-        except KeyError:
-            LOG.info("No clock drift info available for %s",
-                     self.spacecraft_name)
-            return
+    def compute_clock_offsets(self):
+        error_utcs, clock_error = get_offsets(self.spacecraft_name)
 
         error_utcs = np.array(error_utcs, dtype="datetime64[ms]")
         # interpolate to get the clock offsets at the scan line utcs
@@ -490,6 +482,19 @@ class PODReader(Reader):
         offsets = np.interp(self._times_as_np_datetime64.astype(np.uint64),
                             error_utcs.astype(np.uint64),
                             clock_error)
+        return offsets
+
+    def _adjust_clock_drift(self):
+        """Adjust the geolocation to compensate for the clock error."""
+        tic = datetime.datetime.now()
+        self.get_times()
+        try:
+            offsets = self.compute_clock_offsets()
+
+        except KeyError:
+            LOG.info("No clock drift info available for %s",
+                     self.spacecraft_name)
+            return
         LOG.info("Adjusting for clock drift of %s to %s seconds.",
                  str(min(offsets)),
                  str(max(offsets)))
@@ -515,7 +520,7 @@ class PODReader(Reader):
                        + self._times_as_np_datetime64[0])
         # calculate the missing geo locations
         try:
-            missed_lons, missed_lats = self._compute_missing_lonlat(missed_utcs)
+            missed_lons, missed_lats = self._compute_lonlat_from_tles(missed_utcs)
         except NoTLEData as err:
             LOG.warning("Cannot perform clock drift correction: %s", str(err))
             return
