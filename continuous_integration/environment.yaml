@@ -12,6 +12,7 @@ dependencies:
   - pytest
   - pytest-cov
   - xarray
+  - cftime
   - pip
   - pip:
     - docutils
