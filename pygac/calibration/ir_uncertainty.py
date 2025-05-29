@@ -1120,10 +1120,14 @@ def get_gainval(time,avhrr,ict1,ict2,ict3,ict4,CS,CICT,CE,NS,bad_scan,convT,
     #
     #coef_file = files("pygac") / "data/{0}_uncert.nc".format(avhrr)
     coef_file = "https://zenodo.org/records/15482385/files/{0}_uncert.nc#mode=bytes".format(avhrr)
-    with xr.open_dataset(coef_file) as d:
-        intime = d["time_gain"].values[:]
-        ingain = d["gain"].values[:]
-
+    try:
+        d = xr.open_dataset(coef_file)
+    except:
+        raise Exception("ERROR: Gain can mot be determined because zenodo not available")
+    intime = d["time_gain"].values[:]
+    ingain = d["gain"].values[:]
+    d.close()
+    
     if time > intime[-1] and not calculate:
         raise Exception('ERROR: file time > last time with max gain values (HRPR/LAC)')
         
@@ -1228,12 +1232,16 @@ def get_solar_from_file(avhrr_name,ds):
     #
     # coef_file = files("pygac") / "data/{0}_uncert.nc".format(avhrr_name)
     coef_file = "https://zenodo.org/records/15482385/files/{0}_uncert.nc#mode=bytes".format(avhrr)
-    with xr.open_dataset(coef_file,decode_times=False) as d:
-        solar_start_time_1 = d["gain1_solar_start"].values[:]
-        solar_stop_time_1 = d["gain1_solar_stop"].values[:]
-        solar_start_time_2 = d["gain2_solar_start"].values[:]
-        solar_stop_time_2 = d["gain2_solar_stop"].values[:]
-
+    try:
+        d = xr.open_dataset(coef_file,decode_times=False)
+    except:
+        raise Exception("ERROR: Solar data can mot be determined because zenodo not available")
+    solar_start_time_1 = d["gain1_solar_start"].values[:]
+    solar_stop_time_1 = d["gain1_solar_stop"].values[:]
+    solar_start_time_2 = d["gain2_solar_start"].values[:]
+    solar_stop_time_2 = d["gain2_solar_stop"].values[:]
+    d.close()
+    
     gd = np.isfinite(solar_start_time_1)&np.isfinite(solar_stop_time_1)
     solar_start_time_1 = solar_start_time_1[gd]
     solar_stop_time_1 = solar_stop_time_1[gd]
