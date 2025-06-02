@@ -33,7 +33,7 @@ import types
 import warnings
 from abc import ABC, abstractmethod
 from contextlib import suppress
-from functools import cache
+from functools import cached_property
 from importlib.metadata import entry_points
 
 import numpy as np
@@ -691,7 +691,7 @@ class Reader(ABC):
 
     def get_calibrated_channels(self):
         """Calibrate and return the channels."""
-        calibrated_ds = self.get_calibrated_dataset()
+        calibrated_ds = self.calibrated_dataset
 
         channels = calibrated_ds["channels"].data
         with suppress(KeyError):
@@ -699,7 +699,11 @@ class Reader(ABC):
 
         return channels
 
-    @cache
+    @cached_property
+    def calibrated_dataset(self):
+        """Return the calibrated dataset."""
+        return self.get_calibrated_dataset()
+
     def get_calibrated_dataset(self):
         """Create and calibrate the dataset for the pass."""
         ds = self.create_counts_dataset()
@@ -1381,16 +1385,16 @@ class Reader(ABC):
         pixels_pos = compute_pixels((tle1, tle2), sgeom, s_times, rpy)
         pos_time = get_lonlatalt(pixels_pos, s_times)
 
-        missed_lons, missed_lats = pos_time[:2]
+        lons, lats = pos_time[:2]
 
         pixels_per_line = len(self.lonlat_sample_points)
-        missed_lons = missed_lons.reshape(-1, pixels_per_line)
-        missed_lats = missed_lats.reshape(-1, pixels_per_line)
-
+        lons = lons.reshape(-1, pixels_per_line)
+        lats = lats.reshape(-1, pixels_per_line)
+        # todo: adjust time using build in lon lats
         toc = datetime.datetime.now()
         LOG.warning("Computation of geolocation: %s", str(toc - tic))
 
-        return missed_lons, missed_lats
+        return lons, lats
 
 
 def inherit_doc(cls):
