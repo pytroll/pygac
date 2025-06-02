@@ -831,7 +831,7 @@ def test_podlac_eosip(pod_file_with_tbm_header):
 def test_read_to_dataset_is_a_dataset_including_channels_and_telemetry(pod_file_with_tbm_header, pod_tle):
     """Test creating an xr.Dataset from a gac file."""
     import xarray as xr
-    reader = LACPODReader(interpolate_coords=False, tle_dir=pod_tle.parent, tle_name=os.path.basename(pod_tle))
+    reader = LACPODReader(interpolate_coords=False, tle_dir=pod_tle.parent, tle_name=pod_tle.name)
     dataset = reader.read_as_dataset(pod_file_with_tbm_header)
     assert isinstance(dataset, xr.Dataset)
     assert dataset["channels"].shape == (3, 2048, 5)
@@ -846,7 +846,7 @@ def test_read_to_dataset_is_a_dataset_including_channels_and_telemetry(pod_file_
 
 def test_read_to_dataset_without_interpolation(pod_file_with_tbm_header, pod_tle):
     """Test creating an xr.Dataset from a gac file."""
-    reader = LACPODReader(interpolate_coords=False, tle_dir=pod_tle.parent, tle_name=os.path.basename(pod_tle))
+    reader = LACPODReader(interpolate_coords=False, tle_dir=pod_tle.parent, tle_name=pod_tle.name)
     dataset = reader.read_as_dataset(pod_file_with_tbm_header)
 
     assert dataset["longitude"].shape == (3, 51)
@@ -855,7 +855,7 @@ def test_read_to_dataset_without_interpolation(pod_file_with_tbm_header, pod_tle
 
 def test_read_to_dataset_with_interpolation(pod_file_with_tbm_header, pod_tle):
     """Test creating an xr.Dataset from a gac file."""
-    reader = LACPODReader(interpolate_coords=True, tle_dir=pod_tle.parent, tle_name=os.path.basename(pod_tle))
+    reader = LACPODReader(interpolate_coords=True, tle_dir=pod_tle.parent, tle_name=pod_tle.name)
     dataset = reader.read_as_dataset(pod_file_with_tbm_header)
 
     assert dataset.coords["longitude"].shape == (3, 2048)
@@ -887,7 +887,7 @@ def test_passing_calibration_to_reader():
 
 def test_computing_lonlats(pod_file_with_tbm_header, pod_tle):
     """Test computing lons and lats from TLE data."""
-    reader = LACPODReader(tle_dir=pod_tle.parent, tle_name=os.path.basename(pod_tle), compute_lonlats_from_tles=True)
+    reader = LACPODReader(tle_dir=pod_tle.parent, tle_name=pod_tle.name, compute_lonlats_from_tles=True)
     dataset = reader.read_as_dataset(pod_file_with_tbm_header)
     lons = dataset["longitude"].values
     assert lons[0, 0] == pytest.approx(-4.756486)
@@ -896,7 +896,7 @@ def test_computing_lonlats(pod_file_with_tbm_header, pod_tle):
 
 def test_recomputing_lonlats_with_time_offset(pod_file_with_tbm_header, pod_tle):
     """Test computing lons and lats from TLE data with time offset."""
-    reader = LACPODReader(tle_dir=pod_tle.parent, tle_name=os.path.basename(pod_tle), compute_lonlats_from_tles=True)
+    reader = LACPODReader(tle_dir=pod_tle.parent, tle_name=pod_tle.name, compute_lonlats_from_tles=True)
     reader.read(pod_file_with_tbm_header)
     lons, lats = reader._compute_lonlats(time_offset=np.timedelta64(500, "ms"))
     assert lons[0, 0] == pytest.approx(-4.714710005688344)
@@ -915,7 +915,7 @@ def test_georeferencing(pod_file_with_tbm_header, pod_tle, monkeypatch):
         return 0.5, 0, 0, 0
     from georeferencer import georeferencer
     monkeypatch.setattr(georeferencer, "get_swath_displacement", mock_disp)
-    reader = LACPODReader(tle_dir=pod_tle.parent, tle_name=os.path.basename(pod_tle), compute_lonlats_from_tles=True,
+    reader = LACPODReader(tle_dir=pod_tle.parent, tle_name=pod_tle.name, compute_lonlats_from_tles=True,
                           reference_image="some_world_image.tif")
     reader.read(pod_file_with_tbm_header)
     dataset = reader.get_calibrated_dataset()
