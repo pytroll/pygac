@@ -339,12 +339,13 @@ class PODReader(Reader):
         Args:
             filename (str): Path to GAC/LAC file
             fileobj: An open file object to read from. (optional)
-            header_date: date to use to choose the header.
-                Defaults to "auto" to use the data to pick the header corresponding to the date of the file.
+            header_date: date to use to choose the header. Defaults to "auto"
+                to use the data to pick the header corresponding to the date of the file.
 
         Returns:
             archive_header (struct): archive header
             header (struct): file header
+
         """
         # choose the right header depending on the date
         with file_opener(fileobj or filename) as fd_:
