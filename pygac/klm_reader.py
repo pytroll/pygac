@@ -67,10 +67,10 @@ class KLM_QualityIndicator(IntFlag):
       post-January 25, 2006, all spacecraft).
 
     Notes:
-    - Table 8.3.1.3.3.1-1. and Table 8.3.1.4.3.1-1. define bit: 21 as
-      "frame sync word not valid"
-    - Table 8.3.1.3.3.2-1. and Table 8.3.1.4.3.2-1. define bit: 21 as
-      "flywheeling detected during this frame"
+      - Table 8.3.1.3.3.1-1. and Table 8.3.1.4.3.1-1. define bit: 21 as
+        "frame sync word not valid"
+      - Table 8.3.1.3.3.2-1. and Table 8.3.1.4.3.2-1. define bit: 21 as
+        "flywheeling detected during this frame"
 
     """
 
