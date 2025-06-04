@@ -310,50 +310,43 @@ class TestPOD_truncate(unittest.TestCase):
 
     def test__truncate_padding_record_even_correct(self):
         """Test that truncate_padding_record is correctly dropping end padding"""
-        # Even number of scans, correct file length
         reader = self.reader
-        reader.head = {'number_of_scans': 10}
-        buffer = reader._truncate_padding_record(bytes(10*3220))
-        self.assertEqual(len(buffer), 10*3220)
+        # Even number of scans, correct file length
+        reader.head = {"number_of_scans": 65534}
+        buffer = reader._truncate_padding_record(bytes(65534*3220))
+        self.assertEqual(len(buffer), 65534*3220)
 
 
     def test__truncate_padding_record_odd_correct(self):
         """Test that truncate_padding_record is correctly dropping end padding"""
-        # Even number of scans, correct file length
         reader = self.reader
         # Odd number of scans, correct file length (should truncate)
-        reader.head = {'number_of_scans': 9}
-        buffer = reader._truncate_padding_record(bytes(10*3220))
-        self.assertEqual(len(buffer), 9*3220)
+        reader.head = {"number_of_scans": 65533}
+        buffer = reader._truncate_padding_record(bytes(65534*3220))
+        self.assertEqual(len(buffer), 65533*3220)
 
 
     def test__truncate_padding_record_odd_nopadding(self):
         """Test that truncate_padding_record is correctly dropping end padding"""
-        # Even number of scans, correct file length
         reader = self.reader
-
         # Odd number of scans, padding record is missing
         with self.assertWarnsRegex(RuntimeWarning, "incomplete physical record"):
-            reader.head = {'number_of_scans': 9}
-            buffer = reader._truncate_padding_record(bytes(9*3220))
-            self.assertEqual(len(buffer), 9*3220)
+            reader.head = {"number_of_scans": 65533}
+            buffer = reader._truncate_padding_record(bytes(65533*3220))
+            self.assertEqual(len(buffer), 65533*3220)
 
     def test__truncate_padding_record_shortfile(self):
         """Test that truncate_padding_record is correctly dropping end padding"""
-        # Even number of scans, correct file length
         reader = self.reader
-
         # File is too short (should do nothing)
-        reader.head = {'number_of_scans': 9}
-        buffer = reader._truncate_padding_record(bytes(8*3220))
-        self.assertEqual(len(buffer), 8*3220)
+        reader.head = {"number_of_scans": 65533}
+        buffer = reader._truncate_padding_record(bytes(65532*3220))
+        self.assertEqual(len(buffer), 65532*3220)
 
     def test__truncate_padding_record_longfile(self):
         """Test that truncate_padding_record is correctly dropping end padding"""
-        # Even number of scans, correct file length
         reader = self.reader
-
         # File is too long (should do nothing)
-        reader.head = {'number_of_scans': 9}
-        buffer = reader._truncate_padding_record(bytes(12*3220))
-        self.assertEqual(len(buffer), 12*3220)
+        reader.head = {"number_of_scans": 65533}
+        buffer = reader._truncate_padding_record(bytes(65535*3220))
+        self.assertEqual(len(buffer), 65535*3220)
