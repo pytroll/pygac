@@ -124,6 +124,7 @@ class Reader(ABC):
         calibration_parameters=None,
         correct_scanlines=True,
         reference_image=None,
+        dem=None,
         compute_lonlats_from_tles: bool = False,
     ):
         """Init the reader.
@@ -169,6 +170,7 @@ class Reader(ABC):
         self._mask = None
         self._rpy = None
         self.reference_image = reference_image
+        self.dem = dem
         self.compute_lonlats_from_tles: bool = compute_lonlats_from_tles
 
         self.clock_drift_correction_applied = False
@@ -588,7 +590,7 @@ class Reader(ABC):
         return self.create_counts_dataset()
 
     def create_counts_dataset(self):
-        head = dict(zip(self.head.dtype.names, self.head.item()))
+        head = dict(zip(self.head.dtype.names, self.head.item(), strict=False))
         scans = self.scans
 
         counts = self.get_counts()
@@ -717,7 +719,6 @@ class Reader(ABC):
         mask = xr.DataArray(self.mask == False, dims=["scan_line_index"])  # noqa
         calibrated_ds = calibrated_ds.where(mask)
 
-
         # Apply KLM/POD specific postprocessing
         self.postproc(calibrated_ds)
 
@@ -732,14 +733,19 @@ class Reader(ABC):
         return calibrated_ds
 
     def _georeference_data(self, calibrated_ds):
-        from georeferencer.georeferencer import get_swath_displacement
-        _, _, _, sun_zen, _ = self.get_angles()
-        time_diff, roll, pitch, yaw = get_swath_displacement(calibrated_ds, sun_zen, self.reference_image)
+        from georeferencer.georeferencer import get_swath_displacement, orthocorrection
+
+        _, sat_zen, _, sun_zen, _ = self.get_angles()
+        time_diff, roll, pitch, yaw = get_swath_displacement(
+            calibrated_ds, sun_zen, sat_zen, self.reference_image, self.dem
+        )
         self._rpy = roll, pitch, yaw
         time_diff = np.timedelta64(int(time_diff * 1e9), "ns")
         lons, lats = self._compute_lonlats(time_offset=time_diff)
         calibrated_ds["longitude"].data = lons
         calibrated_ds["latitude"].data = lats
+        if self.dem:
+            calibrated_ds = orthocorrection(calibrated_ds, sat_zen, self.dem)
         calibrated_ds["times"].data = self._times_as_np_datetime64
 
     @abstractmethod
@@ -780,7 +786,6 @@ class Reader(ABC):
             else:
                 self.lons, self.lats = self._compute_lonlat_from_tles(self._times_as_np_datetime64)
         self.update_meta_data()
-
 
         # Interpolate from every eighth pixel to all pixels.
         if self.interpolate_coords:
@@ -1374,8 +1379,7 @@ class Reader(ABC):
     def _compute_lonlat_from_tles(self, utcs):
         """Compute lon lat values using pyorbital."""
         tic = datetime.datetime.now()
-        sgeom = self.geoloc_definition(utcs.astype(datetime.datetime),
-                                       self.lonlat_sample_points)
+        sgeom = self.geoloc_definition(utcs.astype(datetime.datetime), self.lonlat_sample_points)
         t0 = utcs[0].astype(datetime.datetime)
         s_times = sgeom.times(t0)
         tle1, tle2 = self.get_tle_lines()
