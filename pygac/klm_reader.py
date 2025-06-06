@@ -734,8 +734,8 @@ class KLMReader(Reader):
             raise ReaderError('Improper platform id "%s"!' % platform_id)
 
     def get_telemetry(self):
-        """Get the telemetry. Modified by J.Mittaz / University of Reading
-        to return complete (scanline x 10 views) space/ict views.
+        """Get the telemetry which also return complete (scanline x 10 views) 
+        space/ict views as well as averages.
 
         Returns:
             prt_counts: np.array
@@ -750,20 +750,6 @@ class KLMReader(Reader):
         #
         prt_counts = np.mean(self.scans["telemetry"]["PRT"], axis=1)
 
-        # getting ICT counts
-
-        ict_counts = np.zeros((len(self.scans), 3))
-        ict_counts[:, 0] = np.mean(self.scans["back_scan"][:, 0::3], axis=1)
-        ict_counts[:, 1] = np.mean(self.scans["back_scan"][:, 1::3], axis=1)
-        ict_counts[:, 2] = np.mean(self.scans["back_scan"][:, 2::3], axis=1)
-
-        # getting space counts
-
-        space_counts = np.zeros((len(self.scans), 3))
-        space_counts[:, 0] = np.mean(self.scans["space_data"][:, 2::5], axis=1)
-        space_counts[:, 1] = np.mean(self.scans["space_data"][:, 3::5], axis=1)
-        space_counts[:, 2] = np.mean(self.scans["space_data"][:, 4::5], axis=1)
-
         # Make total arrays
         total_space_counts = np.zeros((space_counts.shape[0],10,3),
                                       dtype=space_counts.dtype)
@@ -777,6 +763,20 @@ class KLMReader(Reader):
         total_ict_counts[:,:,1] = self.scans["back_scan"][:, 1::3]
         total_ict_counts[:,:,2] = self.scans["back_scan"][:, 2::3]
                 
+        # getting ICT counts
+
+        ict_counts = np.zeros((len(self.scans), 3))
+        ict_counts[:, 0] = np.mean(total_ict_counts[:,:,0],axis=1)
+        ict_counts[:, 1] = np.mean(total_ict_counts[:,:,1],axis=1)
+        ict_counts[:, 2] = np.mean(total_ict_counts[:,:,2],axis=1)
+
+        # getting space counts
+
+        space_counts = np.zeros((len(self.scans), 3))
+        space_counts[:, 0] = np.mean(total_space_counts[:,:,0], axis=1)
+        space_counts[:, 1] = np.mean(total_space_counts[:,:,1], axis=1)
+        space_counts[:, 2] = np.mean(total_space_counts[:,:,2], axis=1)
+
         return prt_counts, ict_counts, space_counts, total_space_counts,\
             total_ict_counts
     

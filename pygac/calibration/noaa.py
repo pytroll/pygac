@@ -421,7 +421,7 @@ def calibrate_solar(counts, chan, year, jday, cal, corr=1):
     return r_cal
 
 def get_prt_nos(prt,prt_threshold,linenumbers,gac):
-    '''Get PRT numbering based on zero PRT count values''' 
+    """Get PRT numbering based on zero PRT count values.""" 
     # Original PRT code - which can go wrong when zero PRT counts start missing
     # zero PRT number
     #      iprt = (line_numbers - line_numbers[0] + 5 - offset) % 5
