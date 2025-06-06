@@ -922,10 +922,11 @@ def test_georeferencing_with_first_guess(pod_file_with_tbm_header, pod_tle, monk
         return lons[:, self.lonlat_sample_points], lats[:, self.lonlat_sample_points]
     reader._get_lonlat_from_file = file_lonlats.__get__(reader)
     reader.read(pod_file_with_tbm_header)
-    dataset = reader.get_calibrated_dataset()
-    lons = dataset["longitude"].values
-    assert lons[0, 0] == pytest.approx(-4.69805446)
-    assert lons[0, -1] == pytest.approx(79.42196961)
+    start_time = reader.get_times()[0]
+    _ = reader.get_calibrated_dataset()
+    new_start_time = reader.get_times()[0]
+    tdiff = start_time - new_start_time + np.timedelta64(expected_time_offset, "s")
+    assert tdiff < np.timedelta64(2, "ms")
 
 
 def test_georeferencing_fails(pod_file_with_tbm_header, pod_tle, monkeypatch):
