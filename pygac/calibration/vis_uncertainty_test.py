@@ -1,5 +1,4 @@
 import numpy as np
-import matplotlib.pyplot as plt
 from datetime import datetime, timedelta
 from pygac import get_reader_class
 import argparse
@@ -118,6 +117,7 @@ def plot_gain(ds, mask, plot=False):
 
 
     if plot:
+        import matplotlib.pyplot as plt
         cols = ['blue', 'orange', 'red', 'green', 'magenta', 'pink']
         labels = ['patmos','pygac']
         time_arr = np.array(time_arr)
