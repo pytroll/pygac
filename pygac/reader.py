@@ -733,12 +733,43 @@ class Reader(ABC):
         return calibrated_ds
 
     def _georeference_data(self, calibrated_ds):
+        if not self.adjust_clock_drift:
+            thinned_lons, thinned_lats = self._get_lonlat_from_file()
+            gcps = np.array(((0, self.lonlat_sample_points[0]),
+                    (0, self.lonlat_sample_points[-1]),
+                    (len(self.scans) - 1, self.lonlat_sample_points[0]),
+                    (len(self.scans) - 1, self.lonlat_sample_points[-1])))
+            ref_lons = (thinned_lons[0, 0],
+                        thinned_lons[0, -1],
+                        thinned_lons[-1, 0],
+                        thinned_lons[-1, -1])
+            ref_lats = (thinned_lats[0, 0],
+                        thinned_lats[0, -1],
+                        thinned_lats[-1, 0],
+                        thinned_lats[-1, -1])
+            from pyorbital.geoloc_avhrr import estimate_time_offset
+            time_diff, _ = estimate_time_offset(gcps, ref_lons, ref_lats,
+                calibrated_ds["times"][0].values,
+                calibrated_ds.attrs["tle"],
+                calibrated_ds.attrs["max_scan_angle"])
+            time_diff = np.timedelta64(int(time_diff * 1e9), "ns")
+            lons, lats = self._compute_lonlats(time_offset=time_diff)
+            self._times_as_np_datetime64 += time_diff
+
+            calibrated_ds["longitude"].data = lons
+            calibrated_ds["latitude"].data = lats
+            calibrated_ds["times"].data = self._times_as_np_datetime64
+
         from georeferencer.georeferencer import get_swath_displacement
         _, _, _, sun_zen, _ = self.get_angles()
-        time_diff, roll, pitch, yaw = get_swath_displacement(calibrated_ds, sun_zen, self.reference_image)
+        time_diff, (roll, pitch, yaw), (odistances, mdistances) = get_swath_displacement(calibrated_ds, sun_zen,
+                                                                                         self.reference_image)
+        if np.median(mdistances) > 5000:
+            raise RuntimeError("Displacement minimization did not produce convincing improvements")
         self._rpy = roll, pitch, yaw
         time_diff = np.timedelta64(int(time_diff * 1e9), "ns")
         lons, lats = self._compute_lonlats(time_offset=time_diff)
+        self._times_as_np_datetime64 += time_diff
         calibrated_ds["longitude"].data = lons
         calibrated_ds["latitude"].data = lats
         calibrated_ds["times"].data = self._times_as_np_datetime64

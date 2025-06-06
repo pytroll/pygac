@@ -39,12 +39,7 @@ Format specification can be found in chapters 2 & 3 of the `POD user guide`_.
 import datetime
 import logging
 import warnings
-
-try:
-    from enum import IntFlag
-except ImportError:
-    # python version < 3.6, use a simple object without nice representation
-    IntFlag = object
+from enum import IntFlag
 
 import numpy as np
 
