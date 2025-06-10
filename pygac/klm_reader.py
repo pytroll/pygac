@@ -36,12 +36,7 @@ Format specification can be found in section 8 of the `KLM user guide`_.
 
 import datetime
 import logging
-
-try:
-    from enum import IntFlag
-except ImportError:
-    # python version < 3.6, use a simple object without nice representation
-    IntFlag = object
+from enum import IntFlag
 
 import numpy as np
 
