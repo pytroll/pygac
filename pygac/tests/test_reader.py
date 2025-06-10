@@ -119,6 +119,9 @@ class FakeGACReader(GACReader):
         """Get the tsm pixels."""
         pass
 
+    def get_tle_lines(self):
+        """Get tle lines."""
+        pass
 
 class FakeGACReaderWithWrongPRTs(FakeGACReader):
 
@@ -318,6 +321,7 @@ class TestGacReader(unittest.TestCase):
         # Interpolation disabled
         lonlat_interpolator.reset_mock()
         adjust_clockdrift.reset_mock()
+        self.reader.clock_drift_correction_applied = False
         self.reader.interpolate_coords = False
         self.reader.adjust_clock_drift = True
         self.reader.lons = self.reader.lats = None
@@ -827,7 +831,7 @@ def test_podlac_eosip(pod_file_with_tbm_header):
 def test_read_to_dataset_is_a_dataset_including_channels_and_telemetry(pod_file_with_tbm_header, pod_tle):
     """Test creating an xr.Dataset from a gac file."""
     import xarray as xr
-    reader = LACPODReader(interpolate_coords=False, tle_dir=pod_tle.parent, tle_name=os.path.basename(pod_tle))
+    reader = LACPODReader(interpolate_coords=False, tle_dir=pod_tle.parent, tle_name=pod_tle.name)
     dataset = reader.read_as_dataset(pod_file_with_tbm_header)
     assert isinstance(dataset, xr.Dataset)
     assert dataset["channels"].shape == (3, 2048, 5)
@@ -842,7 +846,7 @@ def test_read_to_dataset_is_a_dataset_including_channels_and_telemetry(pod_file_
 
 def test_read_to_dataset_without_interpolation(pod_file_with_tbm_header, pod_tle):
     """Test creating an xr.Dataset from a gac file."""
-    reader = LACPODReader(interpolate_coords=False, tle_dir=pod_tle.parent, tle_name=os.path.basename(pod_tle))
+    reader = LACPODReader(interpolate_coords=False, tle_dir=pod_tle.parent, tle_name=pod_tle.name)
     dataset = reader.read_as_dataset(pod_file_with_tbm_header)
 
     assert dataset["longitude"].shape == (3, 51)
@@ -851,7 +855,7 @@ def test_read_to_dataset_without_interpolation(pod_file_with_tbm_header, pod_tle
 
 def test_read_to_dataset_with_interpolation(pod_file_with_tbm_header, pod_tle):
     """Test creating an xr.Dataset from a gac file."""
-    reader = LACPODReader(interpolate_coords=True, tle_dir=pod_tle.parent, tle_name=os.path.basename(pod_tle))
+    reader = LACPODReader(interpolate_coords=True, tle_dir=pod_tle.parent, tle_name=pod_tle.name)
     dataset = reader.read_as_dataset(pod_file_with_tbm_header)
 
     assert dataset.coords["longitude"].shape == (3, 2048)
@@ -879,3 +883,88 @@ def test_passing_calibration_to_reader():
     np.testing.assert_allclose(res[:, 1, 0], 8.84714652)
     np.testing.assert_allclose(res[:, 2, 1], 10.23511303)
     assert reader.meta_data["calib_coeffs_version"] == "PATMOS-x, v2023"
+
+
+def test_computing_lonlats(pod_file_with_tbm_header, pod_tle):
+    """Test computing lons and lats from TLE data."""
+    reader = LACPODReader(tle_dir=pod_tle.parent, tle_name=pod_tle.name, compute_lonlats_from_tles=True)
+    dataset = reader.read_as_dataset(pod_file_with_tbm_header)
+    lons = dataset["longitude"].values
+    assert lons[0, 0] == pytest.approx(-4.756486)
+    assert lons[0, -1] == pytest.approx(79.505688)
+
+
+def test_recomputing_lonlats_with_time_offset(pod_file_with_tbm_header, pod_tle):
+    """Test computing lons and lats from TLE data with time offset."""
+    reader = LACPODReader(tle_dir=pod_tle.parent, tle_name=pod_tle.name, compute_lonlats_from_tles=True)
+    reader.read(pod_file_with_tbm_header)
+    lons, lats = reader._compute_lonlats(time_offset=np.timedelta64(500, "ms"))
+    assert lons[0, 0] == pytest.approx(-4.714710005688344)
+    assert lons[0, -1] == pytest.approx(79.44587709203307)
+
+
+def test_georeferencing_with_first_guess(pod_file_with_tbm_header, pod_tle, monkeypatch):
+    """Test getting a first guess for georeferencing from the file lon/lats."""
+    expected_time_offset = 2  # seconds
+    def mock_cal(counts, *args, **kwargs):
+        return counts * 1.0
+    import pygac.calibration.noaa
+    monkeypatch.setattr(pygac.calibration.noaa, "calibrate_thermal", mock_cal)
+
+    def mock_disp(*args):
+        return 0, (0, 0, 0), ([10000], [1000])
+    from georeferencer import georeferencer
+    monkeypatch.setattr(georeferencer, "get_swath_displacement", mock_disp)
+    reader = LACPODReader(tle_dir=pod_tle.parent, tle_name=pod_tle.name, compute_lonlats_from_tles=True,
+                          reference_image="some_world_image.tif", adjust_clock_drift=False)
+    def file_lonlats(self, *args, **kwargs):
+        lons, lats = self._compute_lonlats(time_offset=np.timedelta64(int(expected_time_offset * 1e9), "ns"))
+        return lons[:, self.lonlat_sample_points], lats[:, self.lonlat_sample_points]
+    reader._get_lonlat_from_file = file_lonlats.__get__(reader)
+    reader.read(pod_file_with_tbm_header)
+    start_time = reader.get_times()[0]
+    _ = reader.get_calibrated_dataset()
+    new_start_time = reader.get_times()[0]
+    tdiff = start_time - new_start_time + np.timedelta64(expected_time_offset, "s")
+    assert tdiff < np.timedelta64(2, "ms")
+
+
+def test_georeferencing_fails(pod_file_with_tbm_header, pod_tle, monkeypatch):
+    """Test georeferencing."""
+
+    def mock_cal(counts, *args, **kwargs):
+        return counts * 1.0
+    import pygac.calibration.noaa
+    monkeypatch.setattr(pygac.calibration.noaa, "calibrate_thermal", mock_cal)
+
+    def mock_disp(*args):
+        return 0, (0, 0, 0), ([10000], [10000])
+    from georeferencer import georeferencer
+    monkeypatch.setattr(georeferencer, "get_swath_displacement", mock_disp)
+    reader = LACPODReader(tle_dir=pod_tle.parent, tle_name=pod_tle.name, compute_lonlats_from_tles=True,
+                          reference_image="some_world_image.tif")
+    reader.read(pod_file_with_tbm_header)
+    with pytest.raises(RuntimeError):
+        _ = reader.get_calibrated_dataset()
+
+
+def test_georeferencing(pod_file_with_tbm_header, pod_tle, monkeypatch):
+    """Test georeferencing."""
+
+    def mock_cal(counts, *args, **kwargs):
+        return counts * 1.0
+    import pygac.calibration.noaa
+    monkeypatch.setattr(pygac.calibration.noaa, "calibrate_thermal", mock_cal)
+
+    def mock_disp(*args):
+        return 0.5, (0, 0, 0), ([10000], [1000])
+    from georeferencer import georeferencer
+    monkeypatch.setattr(georeferencer, "get_swath_displacement", mock_disp)
+    reader = LACPODReader(tle_dir=pod_tle.parent, tle_name=pod_tle.name, compute_lonlats_from_tles=True,
+                          reference_image="some_world_image.tif")
+    reader.read(pod_file_with_tbm_header)
+    dataset = reader.get_calibrated_dataset()
+    assert dataset.attrs["max_scan_angle"] == 55.37
+    lons = dataset["longitude"].values
+    assert lons[0, 0] == pytest.approx(-4.714710005688344)
+    assert lons[0, -1] == pytest.approx(79.44587709203307)

@@ -269,6 +269,8 @@ class TestPOD(unittest.TestCase):
         get_lonlatalt.return_value = [missed_lons, missed_lats]
 
         # adjust clock drift
+        reader.lonlat_sample_points = [0, 2]
+
         reader._adjust_clock_drift()
 
         # check output
