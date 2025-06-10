@@ -318,7 +318,7 @@ class PODReader(Reader):
             warnings.warn("Unexpected record length for POD file (incomplete physical record?)",
                           category=RuntimeWarning, stacklevel=2)
         # How many physical / logical records do we expect based on the file header?
-        expected_scanlines = self.head["number_of_scans"]
+        expected_scanlines = int(self.head["number_of_scans"])
         expected_physical = (expected_scanlines + scanlines_per_record - 1) // scanlines_per_record
         expected_logical = expected_physical * scanlines_per_record
         # Only trim the padding if the file is the expected size, so any unexpected
