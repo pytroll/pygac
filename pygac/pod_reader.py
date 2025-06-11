@@ -557,12 +557,15 @@ class PODReader(Reader):
         return lons, lats
 
     def get_telemetry(self):
-        """Get the telemetry.
+        """Get the telemetry. Modified by J.Mittaz / University of Reading
+        to return complete (scanline x 10 views) space/ict views.
 
         Returns:
             prt_counts: np.array
             ict_counts: np.array
             space_counts: np.array
+            total_ict_counts: np.array
+            total_space_counts: np.array
 
         """
         number_of_scans = self.scans["telemetry"].shape[0]
@@ -571,24 +574,87 @@ class PODReader(Reader):
         decode_tele[:, 1::3] = (self.scans["telemetry"] >> 10) & 1023
         decode_tele[:, 2::3] = self.scans["telemetry"] & 1023
 
+        #
+        # Get PRT counts
+        #
         prt_counts = np.mean(decode_tele[:, 17:20], axis=1)
 
         # getting ICT counts
-
         ict_counts = np.zeros((int(number_of_scans), 3))
         ict_counts[:, 0] = np.mean(decode_tele[:, 22:50:3], axis=1)
         ict_counts[:, 1] = np.mean(decode_tele[:, 23:51:3], axis=1)
         ict_counts[:, 2] = np.mean(decode_tele[:, 24:52:3], axis=1)
 
         # getting space counts
-
         space_counts = np.zeros((int(number_of_scans), 3))
         space_counts[:, 0] = np.mean(decode_tele[:, 54:100:5], axis=1)
         space_counts[:, 1] = np.mean(decode_tele[:, 55:101:5], axis=1)
         space_counts[:, 2] = np.mean(decode_tele[:, 56:102:5], axis=1)
 
-        return prt_counts, ict_counts, space_counts
+        #
+        # getting space counts
+        # Index 0 - 3.7mu
+        sp_data_0 = decode_tele[:, 54:100:5]
+        ict_data_0 = decode_tele[:, 22:50:3]
+        
+        # Index 1 - 11mu
+        sp_data_1 = decode_tele[:, 55:101:5]
+        ict_data_1 = decode_tele[:, 23:51:3]
+        
+        # Index 2 - 12mu
+        sp_data_2 = decode_tele[:, 56:102:5]
+        ict_data_2 = decode_tele[:, 24:52:3]
 
+        # Make output for all space/ICT counts
+        total_space_counts = np.zeros((len(sp_data_0),10,3),
+                                      dtype=sp_data_0.dtype)
+        total_ict_counts = np.zeros((len(ict_data_0),10,3),
+                                    dtype=ict_data_0.dtype)
+
+        total_space_counts[:,:,0] = sp_data_0[:,:]
+        total_space_counts[:,:,1] = sp_data_1[:,:]
+        total_space_counts[:,:,2] = sp_data_2[:,:]
+        
+        total_ict_counts[:,:,0] = ict_data_0[:,:]
+        total_ict_counts[:,:,1] = ict_data_1[:,:]
+        total_ict_counts[:,:,2] = ict_data_2[:,:]
+        
+        return prt_counts, ict_counts, space_counts, total_space_counts,\
+            total_ict_counts
+
+    def get_vis_telemetry(self):
+        """Get the telemetry for the visible channels. Added by N.Yaghnam / National Physical Laboratory
+        to return complete (scanline x 10 views) space views.
+
+        Returns:
+            vis_space_counts: np.array
+            total_vis_space_counts: np.array
+        """
+        number_of_scans = self.scans["telemetry"].shape[0]
+        decode_tele = np.zeros((int(number_of_scans), 105))
+        decode_tele[:, ::3] = (self.scans["telemetry"] >> 20) & 1023
+        decode_tele[:, 1::3] = (self.scans["telemetry"] >> 10) & 1023
+        decode_tele[:, 2::3] = self.scans["telemetry"] & 1023
+
+        # getting VIS space counts
+        vis_space_counts = np.zeros((int(number_of_scans), 3))
+        vis_space_counts[:, 0] = np.mean(decode_tele[:, 52:98:5], axis=1)
+        vis_space_counts[:, 1] = np.mean(decode_tele[:, 53:99:5], axis=1)
+
+        # Index 0 - 0.64mu
+        vis_sp_data_0 = decode_tele[:, 52:98:5]
+        # Index 1 - 0.86mu
+        vis_sp_data_1 = decode_tele[:, 53:99:5]
+
+        # Make output for all space counts
+        total_vis_space_counts = np.zeros((len(vis_sp_data_0), 10, 3),
+                                          dtype=vis_sp_data_0.dtype)
+
+        total_vis_space_counts[:, :, 0] = vis_sp_data_0[:, :]
+        total_vis_space_counts[:, :, 1] = vis_sp_data_1[:, :]
+
+        return vis_space_counts, total_vis_space_counts
+        
     @staticmethod
     def _get_ir_channels_to_calibrate():
         ir_channels_to_calibrate = [3, 4, 5]
