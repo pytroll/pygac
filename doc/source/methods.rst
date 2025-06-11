@@ -63,6 +63,9 @@ interpolation of nearby valid PRT readings.
 Geolocation
 -----------
 
+GAC
+****
+
 Each GAC row has total 409 pixels. But lat-lon values are provided for every
 eigth pixel starting from pixel 5 and ending at pixel 405. Using Numpy, Scipy
 and Pyresample packages, inter- and extrapolation is carried out to obtain
@@ -85,6 +88,33 @@ whenever possible.
 
 .. _PyOrbital:
     https://pyorbital.readthedocs.io
+
+LAC and FRAC
+************
+
+For LAC and FRAC data, the procedure for geolocation is similar to the GAC
+data, except that the full resolution navigation is used.
+
+Recomputation of Longitudes and Latitudes
+*****************************************
+
+The default method for producing navigation information for every pixel is to
+interpolate longitudes and latitudes provided in the level 1b file. However,
+PyGAC also has the possibility to recompute this information from the metadata
+(line numbers and scan times) and TLEs. This is activated when the keyword
+`compute_lonlats_from_tles` is set to True in the reader instantiation.
+
+Georeferencing from reference image
+***********************************
+
+If provided a reference image as a keyword in the reader instantiation (as a
+path to `reference_image`), the `Georeferencer` package will be used to compute
+displacement from dynamically computed ground control points (GCPs) and thus
+recompute a more accurate navigation for the swath. At the time of writing,
+this is only supported for LAC and FRAC data.
+
+.. Georeferencer
+   https://github.com/pytroll/georeferencer
 
 
 Computation of Angles

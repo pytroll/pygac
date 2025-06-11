@@ -21,3 +21,4 @@ dependencies:
     - trollimage
     - pyspectral
     - pyorbital
+    - georeferencer

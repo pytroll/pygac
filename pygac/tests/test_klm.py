@@ -170,6 +170,7 @@ class TestLACKLM:
         # PRT
         self.reader.scans["telemetry"]["PRT"] = 400
         self.reader.scans["telemetry"]["PRT"][0::5, :] = 0
+        self.reader.tle_lines = ("first line", "second line")
 
     def test_get_ch3_switch(self):
         """Test channel 3 identification."""
