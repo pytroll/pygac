@@ -29,6 +29,7 @@ Can't be used as is, has to be subclassed to add specific read functions.
 import logging
 import warnings
 
+import numpy as np
 try:
     from pyorbital.geoloc_instrument_definitions import avhrr_gac_from_times
 except ImportError:
@@ -40,8 +41,6 @@ except ImportError:
                   'Computation of missing longitude/latitudes may be incorrect.')
 
 
-import pygac.pygac_geotiepoints as gtp
-from pygac.pygac_geotiepoints import GAC_LONLAT_SAMPLE_POINTS
 from pygac.reader import Reader, ReaderError
 
 LOG = logging.getLogger(__name__)
@@ -54,13 +53,12 @@ class GACReader(Reader):
     scan_freq = 2.0 / 1000.0
     # Max scanlines
     max_scanlines = 15000
-    lonlat_sample_points = GAC_LONLAT_SAMPLE_POINTS
+    lonlat_sample_points = np.arange(4, 405, 8)
 
     def __init__(self, *args, **kwargs):
         """Init the GAC reader."""
         super().__init__(*args, **kwargs)
         self.scan_width = 409
-        self.lonlat_interpolator = gtp.gac_lat_lon_interpolator
         self.geoloc_definition = avhrr_gac_from_times
 
     @classmethod

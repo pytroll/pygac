@@ -39,12 +39,7 @@ Format specification can be found in chapters 2 & 3 of the `POD user guide`_.
 import datetime
 import logging
 import warnings
-
-try:
-    from enum import IntFlag
-except ImportError:
-    # python version < 3.6, use a simple object without nice representation
-    IntFlag = object
+from enum import IntFlag
 
 import numpy as np
 
@@ -323,7 +318,7 @@ class PODReader(Reader):
             warnings.warn("Unexpected record length for POD file (incomplete physical record?)",
                           category=RuntimeWarning, stacklevel=2)
         # How many physical / logical records do we expect based on the file header?
-        expected_scanlines = self.head["number_of_scans"]
+        expected_scanlines = int(self.head["number_of_scans"])
         expected_physical = (expected_scanlines + scanlines_per_record - 1) // scanlines_per_record
         expected_logical = expected_physical * scanlines_per_record
         # Only trim the padding if the file is the expected size, so any unexpected
@@ -339,12 +334,13 @@ class PODReader(Reader):
         Args:
             filename (str): Path to GAC/LAC file
             fileobj: An open file object to read from. (optional)
-            header_date: date to use to choose the header.
-                Defaults to "auto" to use the data to pick the header corresponding to the date of the file.
+            header_date: date to use to choose the header. Defaults to "auto"
+                to use the data to pick the header corresponding to the date of the file.
 
         Returns:
             archive_header (struct): archive header
             header (struct): file header
+
         """
         # choose the right header depending on the date
         with file_opener(fileobj or filename) as fd_:
