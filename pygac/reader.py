@@ -737,13 +737,13 @@ class Reader(ABC):
         if not self.adjust_clock_drift:
             self._correct_time_offset(calibrated_ds)
 
-        from georeferencer.georeferencer import get_swath_displacement, orthocorrection
+        from georeferencer.georeferencer import get_swath_displacement
 
         _, sat_zen, _, sun_zen, _ = self.get_angles()
         time_diff, (roll, pitch, yaw), (odistances, mdistances) = get_swath_displacement(
             calibrated_ds, sun_zen, sat_zen, self.reference_image, self.dem
         )
-        
+
         if np.median(mdistances) > 5000:
             raise RuntimeError("Displacement minimization did not produce convincing improvements")
 
@@ -753,35 +753,39 @@ class Reader(ABC):
         self._times_as_np_datetime64 += time_diff
         calibrated_ds["longitude"].data = lons
         calibrated_ds["latitude"].data = lats
+        if self.dem:
+            from georeferencer.georeferencer import orthocorrection
+            calibrated_ds = orthocorrection(calibrated_ds, sat_zen, self.dem)
         calibrated_ds["times"].data = self._times_as_np_datetime64
 
     def _correct_time_offset(self, calibrated_ds) -> None:
         thinned_lons, thinned_lats = self._get_lonlat_from_file()
-        gcps = np.array(((0, self.lonlat_sample_points[0]),
+        gcps = np.array(
+            (
+                (0, self.lonlat_sample_points[0]),
                 (0, self.lonlat_sample_points[-1]),
                 (len(self.scans) - 1, self.lonlat_sample_points[0]),
-                (len(self.scans) - 1, self.lonlat_sample_points[-1])))
-        ref_lons = (thinned_lons[0, 0],
-                    thinned_lons[0, -1],
-                    thinned_lons[-1, 0],
-                    thinned_lons[-1, -1])
-        ref_lats = (thinned_lats[0, 0],
-                    thinned_lats[0, -1],
-                    thinned_lats[-1, 0],
-                    thinned_lats[-1, -1])
+                (len(self.scans) - 1, self.lonlat_sample_points[-1]),
+            )
+        )
+        ref_lons = (thinned_lons[0, 0], thinned_lons[0, -1], thinned_lons[-1, 0], thinned_lons[-1, -1])
+        ref_lats = (thinned_lats[0, 0], thinned_lats[0, -1], thinned_lats[-1, 0], thinned_lats[-1, -1])
         from pyorbital.geoloc_avhrr import estimate_time_offset
-        time_diff, _ = estimate_time_offset(gcps, ref_lons, ref_lats,
+
+        time_diff, _ = estimate_time_offset(
+            gcps,
+            ref_lons,
+            ref_lats,
             calibrated_ds["times"][0].values,
             calibrated_ds.attrs["tle"],
-            calibrated_ds.attrs["max_scan_angle"])
+            calibrated_ds.attrs["max_scan_angle"],
+        )
         time_diff = np.timedelta64(int(time_diff * 1e9), "ns")
         lons, lats = self._compute_lonlats(time_offset=time_diff)
         self._times_as_np_datetime64 += time_diff
 
         calibrated_ds["longitude"].data = lons
         calibrated_ds["latitude"].data = lats
-        if self.dem:
-            calibrated_ds = orthocorrection(calibrated_ds, sat_zen, self.dem)
         calibrated_ds["times"].data = self._times_as_np_datetime64
 
     @abstractmethod
@@ -789,7 +793,7 @@ class Reader(ABC):
         """KLM/POD specific readout of telemetry."""
         raise NotImplementedError
 
-    def lonlat_interpolator(self, lons, lats):
+    def lonlat_interpolator(self, lons, lats, cols_subset=None, cols_full=None):
         """Interpolate from lat-lon tie-points to pixel locations
 
         Args:
@@ -799,18 +803,17 @@ class Reader(ABC):
         Returns:
             pixel_longitudes, pixel_latitudes
         """
-        cols_subset = self.lonlat_sample_points
-        cols_full = np.arange(self.scan_width)
+        if cols_subset is None and cols_full is None:
+            cols_subset = self.lonlat_sample_points
+            cols_full = np.arange(self.scan_width)
         rows = np.arange(len(lats))
 
         along_track_order = 1
         cross_track_order = 3
 
-        satint = gtp.SatelliteInterpolator((lons, lats),
-                                           (rows, cols_subset),
-                                           (rows, cols_full),
-                                           along_track_order,
-                                           cross_track_order)
+        satint = gtp.SatelliteInterpolator(
+            (lons, lats), (rows, cols_subset), (rows, cols_full), along_track_order, cross_track_order
+        )
 
         return satint.interpolate()
 

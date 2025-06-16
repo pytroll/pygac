@@ -978,7 +978,7 @@ def test_orthocorrection(pod_file_with_tbm_header, pod_tle, monkeypatch):
     monkeypatch.setattr(pygac.calibration.noaa, "calibrate_thermal", mock_cal)
 
     def mock_disp(*args):
-        return 0.5, 0, 0, 0
+        return 0.5, (0, 0, 0), ([10000], [1000])
     from georeferencer import georeferencer
     monkeypatch.setattr(georeferencer, "get_swath_displacement", mock_disp)
     reader = LACPODReader(tle_dir=pod_tle.parent, tle_name=pod_tle.name, compute_lonlats_from_tles=True,
