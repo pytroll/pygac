@@ -745,8 +745,9 @@ class Reader(ABC):
             calibrated_ds, sun_zen, sat_zen, self.reference_image, self.dem
         )
 
-        if np.median(mdistances) > 5000:
+        if mdist := np.median(mdistances) > 5000:
             raise RuntimeError("Displacement minimization did not produce convincing improvements")
+        calibrated_ds.attrs["median_gcp_distance"] = mdist
 
         self._rpy = roll, pitch, yaw
         time_diff = np.timedelta64(int(time_diff * 1e9), "ns")
