@@ -740,8 +740,10 @@ class Reader(ABC):
         _, _, _, sun_zen, _ = self.get_angles()
         time_diff, (roll, pitch, yaw), (odistances, mdistances) = get_swath_displacement(calibrated_ds, sun_zen,
                                                                                          self.reference_image)
-        if np.median(mdistances) > 5000:
+        if mdist := np.median(mdistances) > 5000:
             raise RuntimeError("Displacement minimization did not produce convincing improvements")
+        calibrated_ds.attrs["median_gcp_distance"] = mdist
+
         self._rpy = roll, pitch, yaw
         time_diff = np.timedelta64(int(time_diff * 1e9), "ns")
         lons, lats = self._compute_lonlats(time_offset=time_diff)
