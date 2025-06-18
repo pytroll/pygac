@@ -146,6 +146,7 @@ class Reader(ABC):
             header_date: the date to use for pod header choice. Defaults to "auto".
             correct_scanlines: Remove corrrupt scanline numbers. Defaults to True
             reference_image: the reference image to use for georeferencing
+            dem: the digital elevation model to use for orthocorrection
             compute_lonlats_from_tles: Do not use the longitudes and latitudes provided in the file, rather compute them
                                        from the TLE.
 
@@ -755,6 +756,7 @@ class Reader(ABC):
         calibrated_ds["latitude"].data = lats
         if self.dem:
             from georeferencer.georeferencer import orthocorrection
+
             calibrated_ds = orthocorrection(calibrated_ds, sat_zen, self.dem)
         calibrated_ds["times"].data = self._times_as_np_datetime64
 
