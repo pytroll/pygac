@@ -125,6 +125,7 @@ class Reader(ABC):
         calibration_parameters=None,
         correct_scanlines=True,
         reference_image=None,
+        dem=None,
         compute_lonlats_from_tles: bool = False,
     ):
         """Init the reader.
@@ -145,6 +146,7 @@ class Reader(ABC):
             header_date: the date to use for pod header choice. Defaults to "auto".
             correct_scanlines: Remove corrrupt scanline numbers. Defaults to True
             reference_image: the reference image to use for georeferencing
+            dem: the digital elevation model to use for orthocorrection
             compute_lonlats_from_tles: Do not use the longitudes and latitudes provided in the file, rather compute them
                                        from the TLE.
 
@@ -170,6 +172,7 @@ class Reader(ABC):
         self._mask = None
         self._rpy = None
         self.reference_image = reference_image
+        self.dem = dem
         self.compute_lonlats_from_tles: bool = compute_lonlats_from_tles
 
         self.clock_drift_correction_applied = False
@@ -589,7 +592,7 @@ class Reader(ABC):
         return self.create_counts_dataset()
 
     def create_counts_dataset(self):
-        head = dict(zip(self.head.dtype.names, self.head.item()))
+        head = dict(zip(self.head.dtype.names, self.head.item(), strict=False))
         scans = self.scans
 
         counts = self.get_counts()
@@ -718,7 +721,6 @@ class Reader(ABC):
         mask = xr.DataArray(self.mask == False, dims=["scan_line_index"])  # noqa
         calibrated_ds = calibrated_ds.where(mask)
 
-
         # Apply KLM/POD specific postprocessing
         self.postproc(calibrated_ds)
 
@@ -737,9 +739,12 @@ class Reader(ABC):
             self._correct_time_offset(calibrated_ds)
 
         from georeferencer.georeferencer import get_swath_displacement
-        _, _, _, sun_zen, _ = self.get_angles()
-        time_diff, (roll, pitch, yaw), (odistances, mdistances) = get_swath_displacement(calibrated_ds, sun_zen,
-                                                                                         self.reference_image)
+
+        _, sat_zen, _, sun_zen, _ = self.get_angles()
+        time_diff, (roll, pitch, yaw), (odistances, mdistances) = get_swath_displacement(
+            calibrated_ds, sun_zen, sat_zen, self.reference_image, self.dem
+        )
+
         if mdist := np.median(mdistances) > 5000:
             raise RuntimeError("Displacement minimization did not produce convincing improvements")
         calibrated_ds.attrs["median_gcp_distance"] = mdist
@@ -750,27 +755,34 @@ class Reader(ABC):
         self._times_as_np_datetime64 += time_diff
         calibrated_ds["longitude"].data = lons
         calibrated_ds["latitude"].data = lats
+        if self.dem:
+            from georeferencer.georeferencer import orthocorrection
+
+            calibrated_ds = orthocorrection(calibrated_ds, sat_zen, self.dem)
         calibrated_ds["times"].data = self._times_as_np_datetime64
 
     def _correct_time_offset(self, calibrated_ds) -> None:
         thinned_lons, thinned_lats = self._get_lonlat_from_file()
-        gcps = np.array(((0, self.lonlat_sample_points[0]),
+        gcps = np.array(
+            (
+                (0, self.lonlat_sample_points[0]),
                 (0, self.lonlat_sample_points[-1]),
                 (len(self.scans) - 1, self.lonlat_sample_points[0]),
-                (len(self.scans) - 1, self.lonlat_sample_points[-1])))
-        ref_lons = (thinned_lons[0, 0],
-                    thinned_lons[0, -1],
-                    thinned_lons[-1, 0],
-                    thinned_lons[-1, -1])
-        ref_lats = (thinned_lats[0, 0],
-                    thinned_lats[0, -1],
-                    thinned_lats[-1, 0],
-                    thinned_lats[-1, -1])
+                (len(self.scans) - 1, self.lonlat_sample_points[-1]),
+            )
+        )
+        ref_lons = (thinned_lons[0, 0], thinned_lons[0, -1], thinned_lons[-1, 0], thinned_lons[-1, -1])
+        ref_lats = (thinned_lats[0, 0], thinned_lats[0, -1], thinned_lats[-1, 0], thinned_lats[-1, -1])
         from pyorbital.geoloc_avhrr import estimate_time_offset
-        time_diff, _ = estimate_time_offset(gcps, ref_lons, ref_lats,
+
+        time_diff, _ = estimate_time_offset(
+            gcps,
+            ref_lons,
+            ref_lats,
             calibrated_ds["times"][0].values,
             calibrated_ds.attrs["tle"],
-            calibrated_ds.attrs["max_scan_angle"])
+            calibrated_ds.attrs["max_scan_angle"],
+        )
         time_diff = np.timedelta64(int(time_diff * 1e9), "ns")
         lons, lats = self._compute_lonlats(time_offset=time_diff)
         self._times_as_np_datetime64 += time_diff
@@ -784,7 +796,7 @@ class Reader(ABC):
         """KLM/POD specific readout of telemetry."""
         raise NotImplementedError
 
-    def lonlat_interpolator(self, lons, lats):
+    def lonlat_interpolator(self, lons, lats, cols_subset=None, cols_full=None):
         """Interpolate from lat-lon tie-points to pixel locations
 
         Args:
@@ -794,18 +806,17 @@ class Reader(ABC):
         Returns:
             pixel_longitudes, pixel_latitudes
         """
-        cols_subset = self.lonlat_sample_points
-        cols_full = np.arange(self.scan_width)
+        if cols_subset is None and cols_full is None:
+            cols_subset = self.lonlat_sample_points
+            cols_full = np.arange(self.scan_width)
         rows = np.arange(len(lats))
 
         along_track_order = 1
         cross_track_order = 3
 
-        satint = gtp.SatelliteInterpolator((lons, lats),
-                                           (rows, cols_subset),
-                                           (rows, cols_full),
-                                           along_track_order,
-                                           cross_track_order)
+        satint = gtp.SatelliteInterpolator(
+            (lons, lats), (rows, cols_subset), (rows, cols_full), along_track_order, cross_track_order
+        )
 
         return satint.interpolate()
 
@@ -842,7 +853,6 @@ class Reader(ABC):
             else:
                 self.lons, self.lats = self._compute_lonlat_from_tles(self._times_as_np_datetime64)
         self.update_meta_data()
-
 
         # Interpolate from every eighth pixel to all pixels.
         if self.interpolate_coords:
@@ -1436,8 +1446,7 @@ class Reader(ABC):
     def _compute_lonlat_from_tles(self, utcs):
         """Compute lon lat values using pyorbital."""
         tic = datetime.datetime.now()
-        sgeom = self.geoloc_definition(utcs.astype(datetime.datetime),
-                                       self.lonlat_sample_points)
+        sgeom = self.geoloc_definition(utcs.astype(datetime.datetime), self.lonlat_sample_points)
         t0 = utcs[0].astype(datetime.datetime)
         s_times = sgeom.times(t0)
         tle1, tle2 = self.get_tle_lines()
