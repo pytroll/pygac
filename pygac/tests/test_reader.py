@@ -968,3 +968,44 @@ def test_georeferencing(pod_file_with_tbm_header, pod_tle, monkeypatch):
     lons = dataset["longitude"].values
     assert lons[0, 0] == pytest.approx(-4.714710005688344)
     assert lons[0, -1] == pytest.approx(79.44587709203307)
+
+def test_orthocorrection(pod_file_with_tbm_header, pod_tle, monkeypatch):
+    """Test computing lons and lats from TLE data."""
+
+    def mock_cal(counts, *args, **kwargs):
+        return counts * 1.0
+    import pygac.calibration.noaa
+    monkeypatch.setattr(pygac.calibration.noaa, "calibrate_thermal", mock_cal)
+
+    def mock_disp(*args):
+        return 0.5, (0, 0, 0), ([10000], [1000])
+    from georeferencer import georeferencer
+    monkeypatch.setattr(georeferencer, "get_swath_displacement", mock_disp)
+    reader = LACPODReader(tle_dir=pod_tle.parent, tle_name=pod_tle.name, compute_lonlats_from_tles=True,
+                          reference_image="some_world_image.tif", dem="dem_file.tif")
+    reader.read(pod_file_with_tbm_header)
+
+
+    def mock_orthocorrection(calibrated_ds, *args):
+        calibrated_ds["tc_lons"] = calibrated_ds["longitude"] + 0.0001
+        calibrated_ds["tc_lats"] = calibrated_ds["latitude"] + 0.0001
+        return calibrated_ds
+
+    monkeypatch.setattr(georeferencer, "orthocorrection", mock_orthocorrection)
+    dataset = reader.get_calibrated_dataset()
+
+    original_lons = dataset["longitude"].copy()
+    original_lats = dataset["latitude"].copy()
+
+    dataset = georeferencer.orthocorrection(dataset)
+    assert np.array_equal(dataset["longitude"], original_lons)
+    assert np.array_equal(dataset["latitude"], original_lats)
+
+    assert "tc_lons" in dataset
+    assert "tc_lats" in dataset
+
+    assert dataset["tc_lons"].shape == dataset["longitude"].shape
+    assert dataset["tc_lats"].shape == dataset["latitude"].shape
+
+    assert not np.array_equal(dataset["tc_lons"], dataset["longitude"])
+    assert not np.array_equal(dataset["tc_lats"], dataset["latitude"])
