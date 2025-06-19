@@ -4,4 +4,3 @@ scipy>=0.8.0
 python-geotiepoints>=1.1.8
 packaging>=14.0
 xarray>=2024.1.0
-seaborn>=0.12.2
