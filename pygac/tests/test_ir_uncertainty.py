@@ -31,6 +31,7 @@ import xarray as xr
 import csv
 import cftime
 from datetime import datetime
+from importlib.resources import files
 
 from pygac.calibration.noaa import Calibrator
 from pygac.calibration.ir_uncertainty import find_solar,\
