@@ -44,7 +44,7 @@ def allan_deviation(space,bad_scan=None):
     #
     if bad_scan is not None:
         gd = (bad_scan == 0)
-        newsp = space[bad_scan,:]
+        newsp = space[gd,:]
     else:
         newsp = space
 
@@ -1348,7 +1348,6 @@ def ir_uncertainty(ds,mask,plot=False,plotmax=None):
     #
     total_space = ds['total_space_counts'].values[:,:,:]
     total_ict = ds['total_ict_counts'].values[:,:,:]
-    
     #
     # Noise elements
     #
@@ -1421,7 +1420,7 @@ def ir_uncertainty(ds,mask,plot=False,plotmax=None):
         if min_solar_1 is None and max_solar_1 is None:
             min_solar_1 = -1
             max_solar_1 = -1
-        if min_solar_in_2 is None and max_solar_in_2 is None:
+        if min_solar_2 is None and max_solar_2 is None:
             min_solar_2 = -1
             max_solar_2 = -1
     else:
