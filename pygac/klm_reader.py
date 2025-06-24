@@ -36,12 +36,7 @@ Format specification can be found in section 8 of the `KLM user guide`_.
 
 import datetime
 import logging
-
-try:
-    from enum import IntFlag
-except ImportError:
-    # python version < 3.6, use a simple object without nice representation
-    IntFlag = object
+from enum import IntFlag
 
 import numpy as np
 
@@ -67,10 +62,10 @@ class KLM_QualityIndicator(IntFlag):
       post-January 25, 2006, all spacecraft).
 
     Notes:
-    - Table 8.3.1.3.3.1-1. and Table 8.3.1.4.3.1-1. define bit: 21 as
-      "frame sync word not valid"
-    - Table 8.3.1.3.3.2-1. and Table 8.3.1.4.3.2-1. define bit: 21 as
-      "flywheeling detected during this frame"
+      - Table 8.3.1.3.3.1-1. and Table 8.3.1.4.3.1-1. define bit: 21 as
+        "frame sync word not valid"
+      - Table 8.3.1.3.3.2-1. and Table 8.3.1.4.3.2-1. define bit: 21 as
+        "flywheeling detected during this frame"
 
     """
 
@@ -685,7 +680,8 @@ class KLMReader(Reader):
             buffer = fd_.read()
             count = self.head["count_of_data_records"]
             self._read_scanlines(buffer, count)
-        self.correct_scan_line_numbers()
+        if self.correct_scanlines:
+            self.correct_scan_line_numbers()
         self.spacecraft_id = self.head["noaa_spacecraft_identification_code"]
         self.spacecraft_name = self.spacecraft_names[self.spacecraft_id]
 

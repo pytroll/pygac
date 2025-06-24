@@ -10,14 +10,14 @@ dependencies = [
     "docutils>=0.3",
     "h5py>=2.0.1",
     "numpy>=1.8.0",
-    "pyorbital>=0.3.2",
+    "pyorbital>=1.10.0",
     "python-geotiepoints>=1.1.8",
     "scipy>=0.8.0",
     "packaging",
     "xarray>=2024.1.0"
 ]
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.10"
 license = { text = "GPLv3" }
 classifiers = [
     "Programming Language :: Python :: 3",
@@ -40,6 +40,9 @@ Slack = "https://pytroll.slack.com/"
 
 [project.optional-dependencies]
 dev = ['pytest', 'pre-commit', 'ruff']
+georef = [
+    "georeferencer",
+]
 
 [project.scripts]
 pygac-convert-patmosx-coefficients = "pygac.patmosx_coeff_reader:main"

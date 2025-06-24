@@ -119,6 +119,9 @@ class FakeGACReader(GACReader):
         """Get the tsm pixels."""
         pass
 
+    def get_tle_lines(self):
+        """Get tle lines."""
+        pass
 
 class FakeGACReaderWithWrongPRTs(FakeGACReader):
 
@@ -136,10 +139,8 @@ class TestGacReader(unittest.TestCase):
 
     @mock.patch.multiple("pygac.gac_reader.GACReader",
                          __abstractmethods__=set())
-    @mock.patch("pygac.gac_reader.gtp.gac_lat_lon_interpolator")
-    def setUp(self, interpolator, *mocks):
+    def setUp(self, *mocks):
         """Set up the tests."""
-        self.interpolator = interpolator
         self.reader = GACReader()
 
     def test_filename(self):
@@ -294,14 +295,15 @@ class TestGacReader(unittest.TestCase):
     @mock.patch("pygac.gac_reader.GACReader._get_lonlat_from_file")
     @mock.patch("pygac.gac_reader.GACReader._get_corrupt_mask")
     @mock.patch("pygac.gac_reader.GACReader._adjust_clock_drift")
-    def test_get_lonlat(self, adjust_clockdrift,
+    @mock.patch("pygac.reader.Reader.lonlat_interpolator")
+    def test_get_lonlat(self, lonlat_interpolator, adjust_clockdrift,
                         get_corrupt_mask, get_lonlat,
                         update_meta_data):
         """Test common lon/lat computation."""
         lon_i = np.array([np.nan, 1, 2, 3, -180.1, 180.1])
         lat_i = np.array([1, 2, 3, np.nan, -90.1, 90.1])
         get_lonlat.return_value = lon_i, lat_i
-        self.interpolator.return_value = lon_i, lat_i
+        lonlat_interpolator.return_value = lon_i, lat_i
         get_corrupt_mask.return_value = np.array(
             [0, 0, 1, 0, 0, 0], dtype=bool)
 
@@ -317,19 +319,20 @@ class TestGacReader(unittest.TestCase):
         numpy.testing.assert_array_equal(lats, lats_exp)
 
         # Interpolation disabled
-        self.interpolator.reset_mock()
+        lonlat_interpolator.reset_mock()
         adjust_clockdrift.reset_mock()
+        self.reader.clock_drift_correction_applied = False
         self.reader.interpolate_coords = False
         self.reader.adjust_clock_drift = True
         self.reader.lons = self.reader.lats = None
         self.reader.get_lonlat()
         numpy.testing.assert_array_equal(lons, lons_exp)
         numpy.testing.assert_array_equal(lats, lats_exp)
-        self.interpolator.assert_not_called()
+        lonlat_interpolator.assert_not_called()
         adjust_clockdrift.assert_called()
 
         # Clock drift adjustment disabled
-        self.interpolator.reset_mock()
+        lonlat_interpolator.reset_mock()
         adjust_clockdrift.reset_mock()
         self.reader.interpolate_coords = True
         self.reader.adjust_clock_drift = False
@@ -337,11 +340,11 @@ class TestGacReader(unittest.TestCase):
         self.reader.get_lonlat()
         numpy.testing.assert_array_equal(lons, lons_exp)
         numpy.testing.assert_array_equal(lats, lats_exp)
-        self.interpolator.assert_called()
+        lonlat_interpolator.assert_called()
         adjust_clockdrift.assert_not_called()
 
         # Test caching
-        methods = [get_lonlat, self.interpolator,
+        methods = [get_lonlat, lonlat_interpolator,
                    adjust_clockdrift, get_corrupt_mask]
         for method in methods:
             method.reset_mock()
@@ -353,7 +356,8 @@ class TestGacReader(unittest.TestCase):
     @mock.patch("pygac.gac_reader.GACReader._get_corrupt_mask")
     @mock.patch("pygac.gac_reader.GACReader._adjust_clock_drift")
     @mock.patch("pygac.gac_reader.GACReader._get_lonlat_from_file")
-    def test_interpolate(self, _get_lonlat, _adjust_clock_drift,
+    @mock.patch("pygac.reader.Reader.lonlat_interpolator")
+    def test_interpolate(self, lonlat_interpolator, _get_lonlat, _adjust_clock_drift,
                          _get_corrupt_mask, update_meta_data):
         """Test interpolate method in get_lonlat."""
         self.lons = None
@@ -362,13 +366,13 @@ class TestGacReader(unittest.TestCase):
         lr_lons = 90 * rng.random((17, 51))
         lr_lats = 90 * rng.random((17, 51))
         _get_lonlat.return_value = lr_lons, lr_lats
-        self.interpolate_coors = True
-        self.interpolator.reset_mock()
-        self.interpolator.return_value = (90 * rng.random((17, 409)),
+        self.interpolate_coords = True
+        lonlat_interpolator.reset_mock()
+        lonlat_interpolator.return_value = (90 * rng.random((17, 409)),
                                           90 * rng.random((17, 409)))
         lons, lats = self.reader.get_lonlat()
         self.assertEqual(lons.shape[1], 409)
-        self.interpolator.assert_called_once_with(lr_lons, lr_lats)
+        lonlat_interpolator.assert_called_once_with(lr_lons, lr_lats)
 
     @mock.patch("pygac.gac_reader.GACReader._get_corrupt_mask")
     def test_get_corrupt_mask(self, get_corrupt_mask):
@@ -827,7 +831,7 @@ def test_podlac_eosip(pod_file_with_tbm_header):
 def test_read_to_dataset_is_a_dataset_including_channels_and_telemetry(pod_file_with_tbm_header, pod_tle):
     """Test creating an xr.Dataset from a gac file."""
     import xarray as xr
-    reader = LACPODReader(interpolate_coords=False, tle_dir=pod_tle.parent, tle_name=os.path.basename(pod_tle))
+    reader = LACPODReader(interpolate_coords=False, tle_dir=pod_tle.parent, tle_name=pod_tle.name)
     dataset = reader.read_as_dataset(pod_file_with_tbm_header)
     assert isinstance(dataset, xr.Dataset)
     assert dataset["channels"].shape == (3, 2048, 5)
@@ -842,7 +846,7 @@ def test_read_to_dataset_is_a_dataset_including_channels_and_telemetry(pod_file_
 
 def test_read_to_dataset_without_interpolation(pod_file_with_tbm_header, pod_tle):
     """Test creating an xr.Dataset from a gac file."""
-    reader = LACPODReader(interpolate_coords=False, tle_dir=pod_tle.parent, tle_name=os.path.basename(pod_tle))
+    reader = LACPODReader(interpolate_coords=False, tle_dir=pod_tle.parent, tle_name=pod_tle.name)
     dataset = reader.read_as_dataset(pod_file_with_tbm_header)
 
     assert dataset["longitude"].shape == (3, 51)
@@ -851,7 +855,7 @@ def test_read_to_dataset_without_interpolation(pod_file_with_tbm_header, pod_tle
 
 def test_read_to_dataset_with_interpolation(pod_file_with_tbm_header, pod_tle):
     """Test creating an xr.Dataset from a gac file."""
-    reader = LACPODReader(interpolate_coords=True, tle_dir=pod_tle.parent, tle_name=os.path.basename(pod_tle))
+    reader = LACPODReader(interpolate_coords=True, tle_dir=pod_tle.parent, tle_name=pod_tle.name)
     dataset = reader.read_as_dataset(pod_file_with_tbm_header)
 
     assert dataset.coords["longitude"].shape == (3, 2048)
@@ -879,3 +883,129 @@ def test_passing_calibration_to_reader():
     np.testing.assert_allclose(res[:, 1, 0], 8.84714652)
     np.testing.assert_allclose(res[:, 2, 1], 10.23511303)
     assert reader.meta_data["calib_coeffs_version"] == "PATMOS-x, v2023"
+
+
+def test_computing_lonlats(pod_file_with_tbm_header, pod_tle):
+    """Test computing lons and lats from TLE data."""
+    reader = LACPODReader(tle_dir=pod_tle.parent, tle_name=pod_tle.name, compute_lonlats_from_tles=True)
+    dataset = reader.read_as_dataset(pod_file_with_tbm_header)
+    lons = dataset["longitude"].values
+    assert lons[0, 0] == pytest.approx(-4.756486)
+    assert lons[0, -1] == pytest.approx(79.505688)
+
+
+def test_recomputing_lonlats_with_time_offset(pod_file_with_tbm_header, pod_tle):
+    """Test computing lons and lats from TLE data with time offset."""
+    reader = LACPODReader(tle_dir=pod_tle.parent, tle_name=pod_tle.name, compute_lonlats_from_tles=True)
+    reader.read(pod_file_with_tbm_header)
+    lons, lats = reader._compute_lonlats(time_offset=np.timedelta64(500, "ms"))
+    assert lons[0, 0] == pytest.approx(-4.714710005688344)
+    assert lons[0, -1] == pytest.approx(79.44587709203307)
+
+
+def test_georeferencing_with_first_guess(pod_file_with_tbm_header, pod_tle, monkeypatch):
+    """Test getting a first guess for georeferencing from the file lon/lats."""
+    expected_time_offset = 2  # seconds
+    def mock_cal(counts, *args, **kwargs):
+        return counts * 1.0
+    import pygac.calibration.noaa
+    monkeypatch.setattr(pygac.calibration.noaa, "calibrate_thermal", mock_cal)
+
+    def mock_disp(*args):
+        return 0, (0, 0, 0), ([10000], [1000])
+    from georeferencer import georeferencer
+    monkeypatch.setattr(georeferencer, "get_swath_displacement", mock_disp)
+    reader = LACPODReader(tle_dir=pod_tle.parent, tle_name=pod_tle.name, compute_lonlats_from_tles=True,
+                          reference_image="some_world_image.tif", adjust_clock_drift=False)
+    def file_lonlats(self, *args, **kwargs):
+        lons, lats = self._compute_lonlats(time_offset=np.timedelta64(int(expected_time_offset * 1e9), "ns"))
+        return lons[:, self.lonlat_sample_points], lats[:, self.lonlat_sample_points]
+    reader._get_lonlat_from_file = file_lonlats.__get__(reader)
+    reader.read(pod_file_with_tbm_header)
+    start_time = reader.get_times()[0]
+    _ = reader.get_calibrated_dataset()
+    new_start_time = reader.get_times()[0]
+    tdiff = start_time - new_start_time + np.timedelta64(expected_time_offset, "s")
+    assert tdiff < np.timedelta64(2, "ms")
+
+
+def test_georeferencing_fails(pod_file_with_tbm_header, pod_tle, monkeypatch):
+    """Test georeferencing."""
+
+    def mock_cal(counts, *args, **kwargs):
+        return counts * 1.0
+    import pygac.calibration.noaa
+    monkeypatch.setattr(pygac.calibration.noaa, "calibrate_thermal", mock_cal)
+
+    def mock_disp(*args):
+        return 0, (0, 0, 0), ([10000], [10000])
+    from georeferencer import georeferencer
+    monkeypatch.setattr(georeferencer, "get_swath_displacement", mock_disp)
+    reader = LACPODReader(tle_dir=pod_tle.parent, tle_name=pod_tle.name, compute_lonlats_from_tles=True,
+                          reference_image="some_world_image.tif")
+    reader.read(pod_file_with_tbm_header)
+    with pytest.raises(RuntimeError):
+        _ = reader.get_calibrated_dataset()
+
+
+def test_georeferencing(pod_file_with_tbm_header, pod_tle, monkeypatch):
+    """Test georeferencing."""
+
+    def mock_cal(counts, *args, **kwargs):
+        return counts * 1.0
+    import pygac.calibration.noaa
+    monkeypatch.setattr(pygac.calibration.noaa, "calibrate_thermal", mock_cal)
+
+    def mock_disp(*args):
+        return 0.5, (0, 0, 0), ([10000], [1000])
+    from georeferencer import georeferencer
+    monkeypatch.setattr(georeferencer, "get_swath_displacement", mock_disp)
+    reader = LACPODReader(tle_dir=pod_tle.parent, tle_name=pod_tle.name, compute_lonlats_from_tles=True,
+                          reference_image="some_world_image.tif")
+    reader.read(pod_file_with_tbm_header)
+    dataset = reader.get_calibrated_dataset()
+    assert dataset.attrs["max_scan_angle"] == 55.37
+    lons = dataset["longitude"].values
+    assert lons[0, 0] == pytest.approx(-4.714710005688344)
+    assert lons[0, -1] == pytest.approx(79.44587709203307)
+
+def test_orthocorrection(pod_file_with_tbm_header, pod_tle, monkeypatch):
+    """Test computing lons and lats from TLE data."""
+
+    def mock_cal(counts, *args, **kwargs):
+        return counts * 1.0
+    import pygac.calibration.noaa
+    monkeypatch.setattr(pygac.calibration.noaa, "calibrate_thermal", mock_cal)
+
+    def mock_disp(*args):
+        return 0.5, (0, 0, 0), ([10000], [1000])
+    from georeferencer import georeferencer
+    monkeypatch.setattr(georeferencer, "get_swath_displacement", mock_disp)
+    reader = LACPODReader(tle_dir=pod_tle.parent, tle_name=pod_tle.name, compute_lonlats_from_tles=True,
+                          reference_image="some_world_image.tif", dem="dem_file.tif")
+    reader.read(pod_file_with_tbm_header)
+
+
+    def mock_orthocorrection(calibrated_ds, *args):
+        calibrated_ds["tc_lons"] = calibrated_ds["longitude"] + 0.0001
+        calibrated_ds["tc_lats"] = calibrated_ds["latitude"] + 0.0001
+        return calibrated_ds
+
+    monkeypatch.setattr(georeferencer, "orthocorrection", mock_orthocorrection)
+    dataset = reader.get_calibrated_dataset()
+
+    original_lons = dataset["longitude"].copy()
+    original_lats = dataset["latitude"].copy()
+
+    dataset = georeferencer.orthocorrection(dataset)
+    assert np.array_equal(dataset["longitude"], original_lons)
+    assert np.array_equal(dataset["latitude"], original_lats)
+
+    assert "tc_lons" in dataset
+    assert "tc_lats" in dataset
+
+    assert dataset["tc_lons"].shape == dataset["longitude"].shape
+    assert dataset["tc_lats"].shape == dataset["latitude"].shape
+
+    assert not np.array_equal(dataset["tc_lons"], dataset["longitude"])
+    assert not np.array_equal(dataset["tc_lats"], dataset["latitude"])
