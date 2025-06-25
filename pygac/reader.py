@@ -826,11 +826,11 @@ class Reader(ABC):
         TODO: Switch to faster interpolator?
         """
         if self.lons is None or self.lats is None:
-            return self._compute_lonlats()
+            return self._compute_lonlats(mask_scanlines=not self.reference_image)
 
         return self.lons, self.lats
 
-    def _compute_lonlats(self, time_offset=None):
+    def _compute_lonlats(self, time_offset=None, mask_scanlines=True):
         if not self.compute_lonlats_from_tles:
             self.lons, self.lats = self._get_lonlat_from_file()
             # Adjust clock drift
@@ -859,8 +859,9 @@ class Reader(ABC):
             self.lons, self.lats = self.lonlat_interpolator(self.lons, self.lats)
 
         # Mask out corrupt scanlines
-        self.lons[self.mask] = np.nan
-        self.lats[self.mask] = np.nan
+        if mask_scanlines:
+            self.lons[self.mask] = np.nan
+            self.lats[self.mask] = np.nan
 
         # Mask values outside the valid range
         self.lats[np.fabs(self.lats) > 90.0] = np.nan
