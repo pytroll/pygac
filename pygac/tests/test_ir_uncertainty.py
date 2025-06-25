@@ -240,7 +240,9 @@ class TestGetUict(unittest.TestCase):
         np.testing.assert_allclose(pos2_1,check_pos2_1,atol=2)
         np.testing.assert_allclose(pos2_2,check_pos2_2,atol=2)
         
-        time = ds['times'].values[:]
+        times = ds['times'].values[:]
+        gd = np.isfinite(times)
+        time = times[gd][0]
 
         #
         # Get gain at min PRT stddev point
