@@ -968,7 +968,7 @@ class Reader(ABC):
     def read_tle_file(self, tle_filename):
         """Read TLE file."""
         with open(tle_filename, "r") as fp_:
-            return fp_.readlines()
+            return [line for line in fp_.readlines() if line.strip()]
 
     def get_tle_lines(self):
         """Find closest two line elements (TLEs) for the current orbit.
