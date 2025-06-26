@@ -747,14 +747,14 @@ class KLMReader(Reader):
         prt_counts = np.mean(self.scans["telemetry"]["PRT"], axis=1)
 
         # Make total arrays
-        total_space_counts = np.zeros((space_counts.shape[0],10,3),
-                                      dtype=space_counts.dtype)
+        total_space_counts = np.zeros((self.scans["space_data"].shape[0],10,3),
+                                      dtype=self.scans["space_data"].dtype)
         total_space_counts[:,:,0] = self.scans["space_data"][:, 2::5]
         total_space_counts[:,:,1] = self.scans["space_data"][:, 3::5]
         total_space_counts[:,:,2] = self.scans["space_data"][:, 4::5]
                 
-        total_ict_counts = np.zeros((ict_counts.shape[0],10,3),
-                                    dtype=space_counts.dtype)
+        total_ict_counts = np.zeros((self.scans["back_scan"].shape[0],10,3),
+                                    dtype=self.scans["back_scan"].dtype)
         total_ict_counts[:,:,0] = self.scans["back_scan"][:, 0::3]
         total_ict_counts[:,:,1] = self.scans["back_scan"][:, 1::3]
         total_ict_counts[:,:,2] = self.scans["back_scan"][:, 2::3]
