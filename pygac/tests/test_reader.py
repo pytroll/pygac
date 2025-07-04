@@ -90,7 +90,15 @@ class FakeGACReader(GACReader):
         prt[::5] = 0
         ict = 101 * np.ones((self.along_track, 3))  # ict threshold is 100
         space = 101 * np.ones((self.along_track, 3))  # space threshold is 100
-        return prt, ict, space
+        total_space = 101 * np.ones((self.along_track, 10, 3))  # space threshold is 100
+        total_ict = 101 * np.ones((self.along_track, 10, 3))  # space threshold is 100
+        return prt, ict, space, total_space, total_ict
+
+    def get_vis_telemetry(self):
+        """Get the telemetry."""
+        space = 40 * np.ones((self.along_track, 3))  # space threshold is 100
+        total_space = 40 * np.ones((self.along_track, 10, 3))  # space threshold is 100
+        return space, total_space
 
     def _adjust_clock_drift(self):
         pass
