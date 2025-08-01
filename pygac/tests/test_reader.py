@@ -1017,3 +1017,28 @@ def test_orthocorrection(pod_file_with_tbm_header, pod_tle, monkeypatch):
 
     assert not np.array_equal(dataset["tc_lons"], dataset["longitude"])
     assert not np.array_equal(dataset["tc_lats"], dataset["latitude"])
+
+def test_read_tle_file(pod_tle, tmp_path):
+    tle_content = """1 33591U 09005A   24076.18425395  .00000218  00000+0  14176-3 0  9993
+2 33591  99.0596 130.9575 0013809 190.5723 169.5160 14.12946284778493
+1 33591U 09005A   24077.17564174  .00000205  00000+0  13478-3 0  9992
+2 33591  99.0594 131.9606 0013864 187.8089 172.2868 14.12946798778634
+
+"""
+    tle_file = tmp_path / "test.tle"
+    tle_file.write_text(tle_content)
+
+    reader = LACPODReader(
+        tle_dir=pod_tle.parent,
+        tle_name=pod_tle.name,
+        compute_lonlats_from_tles=True,
+    )
+    result = reader.read_tle_file(tle_file)
+
+    expected = [
+        "1 33591U 09005A   24076.18425395  .00000218  00000+0  14176-3 0  9993\n",
+        "2 33591  99.0596 130.9575 0013809 190.5723 169.5160 14.12946284778493\n",
+        "1 33591U 09005A   24077.17564174  .00000205  00000+0  13478-3 0  9992\n",
+        "2 33591  99.0594 131.9606 0013864 187.8089 172.2868 14.12946798778634\n",
+    ]
+    assert result == expected
