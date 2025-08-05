@@ -1077,9 +1077,9 @@ class Reader(ABC):
             )
 
         if delta_days > 3:
-            LOG.warning("Found TLE data for %s that is %f days appart", sdate, delta_days)
+            LOG.warning("Found TLE data for %s that is %f days apart", sdate, delta_days)
         else:
-            LOG.debug("Found TLE data for %s that is %f days appart", sdate, delta_days)
+            LOG.debug("Found TLE data for %s that is %f days apart", sdate, delta_days)
 
         # Select TLE data
         tle1 = tle_data[iindex * 2]

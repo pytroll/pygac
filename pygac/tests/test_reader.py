@@ -576,7 +576,7 @@ class TestGacReader(unittest.TestCase):
         self.reader.tle_name = "tle_%(satname)s.txt"
         self.reader.spacecraft_name = "ISS"
         tle_file = self.reader.get_tle_file()
-        self.assertEqual(tle_file, "/tle/dir/tle_ISS.txt")
+        self.assertEqual(tle_file, "/tle/dir\\tle_ISS.txt")
 
     @mock.patch("pygac.gac_reader.GACReader.get_tsm_pixels")
     def test_mask_tsm_pixels(self, get_tsm_pixels):
