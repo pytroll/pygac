@@ -506,7 +506,6 @@ class Reader(ABC):
         if self._times_as_np_datetime64 is None:
             # Read timestamps
             year, jday, msec = self._get_times_from_file()
-
             # Correct invalid values
             year, jday, msec = self.correct_times_median(year=year, jday=jday, msec=msec)
             self._times_as_np_datetime64 = self.to_datetime64(year=year, jday=jday, msec=msec)
@@ -648,7 +647,6 @@ class Reader(ABC):
         #
         vis_space, total_vis_space \
             = self._get_vis_telemetry_dataarrays(line_numbers, vis_channel_names)
-        longitudes, latitudes = self._get_lonlat_dataarrays(line_numbers, columns)
         #
         # Get angles - need sun_zen for solar contamination in
         # calibration routines - Added by J.Mittaz / UoR
