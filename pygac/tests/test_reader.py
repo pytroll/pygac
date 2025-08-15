@@ -1080,7 +1080,6 @@ def test_passing_calibration_to_reader(pod_file_with_tbm_header,pod_tle):
     """Test passing calibration info to `get_calibrated_channels`."""
     method = "InvalidMethod"
     with pytest.raises(ValueError, match=method):
-        breakpoint()
         reader = FakeGACReader_withtimes(
                                calibration_method=method,
                                tle_dir=pod_tle.parent,
