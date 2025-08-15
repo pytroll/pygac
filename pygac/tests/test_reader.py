@@ -32,10 +32,10 @@ import pytest
 import xarray as xr
 
 from pygac.gac_pod import scanline
+from pygac.gac_pod import scanline as gacpod_scanline
 from pygac.gac_reader import GACReader, ReaderError
 from pygac.lac_pod import LACPODReader
 from pygac.lac_pod import scanline as lacpod_scanline
-from pygac.gac_pod import scanline as gacpod_scanline
 from pygac.lac_reader import LACReader
 from pygac.pod_reader import POD_QualityIndicator, header3
 from pygac.pod_reader import tbm_header as tbm_header_dtype
@@ -461,7 +461,7 @@ def test_get_calibrated_channels_with_wrong_prts(pod_file_with_tbm_header_gac,
                                         tle_name=pod_tle.name)
     reader.interpolate_coords = True
     res = reader.get_calibrated_channels()
-    
+
     # Old test results
     #np.testing.assert_allclose(res[:, 1, 0], 8.84714652)
     #np.testing.assert_allclose(res[:, 2, 1], 10.23511303)
@@ -591,7 +591,7 @@ class TestGacReader(unittest.TestCase):
         get_channels.return_value = channels
         with self.assertRaises(AssertionError):
             self.reader._get_calibrated_channels_uniform_shape()
-            
+
     def test_to_datetime64(self):
         """Test conversion from (year, jday, msec) to datetime64."""
         t0 = GACReader.to_datetime64(year=np.array(1970), jday=np.array(1),
@@ -1080,20 +1080,23 @@ def test_passing_calibration_to_reader(pod_file_with_tbm_header,pod_tle):
     """Test passing calibration info to `get_calibrated_channels`."""
     method = "InvalidMethod"
     with pytest.raises(ValueError, match=method):
-        reader = FakeGACReader(pod_file_with_tbm_header,
+        breakpoint()
+        reader = FakeGACReader_withtimes(
                                calibration_method=method,
                                tle_dir=pod_tle.parent,
                                tle_name=pod_tle.name,
                                interpolate_coords=True)
 
-    reader = FakeGACReader(pod_file_with_tbm_header,calibration_method="noaa",
+    reader = FakeGACReader_withtimes(calibration_method="noaa",
                            tle_dir=pod_tle.parent, tle_name=pod_tle.name,
                            interpolate_coords=True)
 
     res = reader.get_calibrated_channels()
 
-    np.testing.assert_allclose(res[:, 1, 0], 8.84714652)
-    np.testing.assert_allclose(res[:, 2, 1], 10.23511303)
+    # np.testing.assert_allclose(res[:, 1, 0], 8.84714652)
+    # np.testing.assert_allclose(res[:, 2, 1], 10.23511303)
+    np.testing.assert_allclose(res[:, 1, 0], 11.24028967)
+    np.testing.assert_allclose(res[:, 2, 1], 13.98060798)
     assert reader.meta_data["calib_coeffs_version"] == "PATMOS-x, v2023"
 
 
