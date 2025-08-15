@@ -1123,7 +1123,7 @@ def get_gainval(time,avhrr,ict1,ict2,ict3,ict4,CS,CICT,CE,NS,bad_scan,convT,
     try:
         d = xr.open_dataset(coef_file)
     except FileNotFoundError:
-        raise Exception("ERROR: Gain can mot be determined because zenodo not available")
+        raise Exception("ERROR: Gain can not be determined because zenodo not available")
     intime = d["time_gain"].values[:]
     ingain = d["gain"].values[:]
     d.close()
@@ -1231,7 +1231,7 @@ def get_solar_from_file(avhrr_name,ds):
     # Now stored on zenodo
     #
     # coef_file = files("pygac") / "data/{0}_uncert.nc".format(avhrr_name)
-    coef_file = "https://zenodo.org/records/15482385/files/{0}_uncert.nc#mode=bytes".format(avhrr)
+    coef_file = "https://zenodo.org/records/15482385/files/{0}_uncert.nc#mode=bytes".format(avhrr_name)
     try:
         d = xr.open_dataset(coef_file,decode_times=False)
     except FileNotFoundError:
