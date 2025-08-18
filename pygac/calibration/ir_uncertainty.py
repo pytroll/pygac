@@ -23,15 +23,17 @@
 """
 from __future__ import division
 
+import argparse
+from contextlib import contextmanager
+from tempfile import gettempdir
+
 import numpy as np
 import xarray as xr
-from importlib.resources import files
-import argparse
 from scipy.optimize import curve_fit
 
 from pygac import get_reader_class
-from pygac.calibration.noaa import Calibrator
-from pygac.calibration.noaa import get_prt_nos
+from pygac.calibration.noaa import Calibrator, get_prt_nos
+
 
 def allan_deviation(space,bad_scan=None):
     """Determine the Allan deviation (noise) from space view counts filtering
@@ -61,7 +63,7 @@ def allan_deviation(space,bad_scan=None):
     #
     for i in range(nline):
         allan += np.sum((newsp[i,1:]-newsp[i,0:-1])**2)
-        
+
     #
     # Mean of squared pixel to pixel difference (expectation)
     #
@@ -82,7 +84,7 @@ class convBT(object):
 
         tsBB = self.A + self.B*tprt
         return self.nBB_num / (np.exp(self.c2_nu_c / tsBB) - 1.0)
-        
+
     def rad_to_t(self,rad):
 
         corrT = self.c2_nu_c/np.log((self.nBB_num/rad)+1.)
@@ -120,7 +122,7 @@ def get_bad_space_counts(sp_data,ict_data=None):
     """Find bad space count data (space count data is voltage clamped so
     should have very close to the same value close to 950 - 960
     Written by J.Mittaz / University of Reading 6 Oct 2024"""
-    
+
     #
     # Use robust estimators to get thresholds for space counts
     # Use 4 sigma threshold from median
@@ -173,7 +175,7 @@ def get_noise(total_space,total_ict,window,twelve_micron):
                 bad_scans[i] = 1
 
     #
-    # Estimate noise using the Allan deviation plus the digitisation 
+    # Estimate noise using the Allan deviation plus the digitisation
     # uncertainty
     #
     # 3.7 micron space counts
@@ -240,7 +242,7 @@ def get_noise(total_space,total_ict,window,twelve_micron):
 
 def smooth_data(y,length):
     """Smooth data over given length"""
-    
+
     outy = np.zeros(len(y),dtype=y.dtype)
     leny = len(y)-1
     for i in range(leny+1):
@@ -266,12 +268,12 @@ def get_uICT(gainval,CS,CICT,Tict,NS,convT,bad_scans,solar_scans,window,
     gain = (Lict-NS)/(CS[gd]-CICT[gd])
     sp_ict = CS[gd]-CICT[gd]
     Tcorr = convT.A+convT.B*Tict[gd]
-    
+
     dGain_dICT = (convT.B/sp_ict)*\
         convT.nBB_num*np.exp(convT.c2_nu_c/Tcorr)*\
         (convT.c2_nu_c/(Tcorr**2))/\
         (np.exp(convT.c2_nu_c/Tcorr)-1.)**2
-    
+
     dgain = (gain-gainval)
 
     dT = np.zeros(len(CS))
@@ -281,7 +283,7 @@ def get_uICT(gainval,CS,CICT,Tict,NS,convT,bad_scans,solar_scans,window,
     #
     dT[gd] = dgain/dGain_dICT
 
-    uICT = np.zeros(len(CS))    
+    uICT = np.zeros(len(CS))
     for i in range(len(dT)):
         if np.isfinite(dT[i]):
             minx = max([0,i-window//2])
@@ -299,22 +301,22 @@ def get_uICT(gainval,CS,CICT,Tict,NS,convT,bad_scans,solar_scans,window,
         nfigure = nfigure+1
         plt.figure(nfigure)
         plt.subplot(311)
-        plt.plot(np.arange(len(gain)),gain*1e3,'.')
-        plt.axhline(y=gainval*1e3,linestyle='--',color='red')
-        plt.ylabel('3.7$\mu$m Gain $\\times 10^{-3}$')
+        plt.plot(np.arange(len(gain)),gain*1e3,".")
+        plt.axhline(y=gainval*1e3,linestyle="--",color="red")
+        plt.ylabel("3.7$\\mu$m Gain $\\times 10^{-3}$")
         plt.subplot(312)
-        plt.plot(np.arange(len(dT)),dT,'.')
-        plt.ylabel('$\Delta$T / K')
+        plt.plot(np.arange(len(dT)),dT,".")
+        plt.ylabel(r"$\Delta$T / K")
         plt.subplot(313)
-        plt.plot(np.arange(len(uICT)),uICT,'.')
-        plt.xlabel('Scanline')
-        plt.ylabel('uICT / K')
+        plt.plot(np.arange(len(uICT)),uICT,".")
+        plt.xlabel("Scanline")
+        plt.ylabel("uICT / K")
         plt.tight_layout()
-        
+
     return uICT,nfigure
 
 def get_ict_uncert(Tict,prt_random,prt_bias,uICT,convT):
-    """Get uncertainty in radiance/temperature of ICT on the basis of 
+    """Get uncertainty in radiance/temperature of ICT on the basis of
     ICT uncertainties"""
 
     #
@@ -331,15 +333,15 @@ def get_ict_uncert(Tict,prt_random,prt_bias,uICT,convT):
     return urand,prt_sys,rad
 
 class fit_ict_pars(object):
-    '''Model for ICT gradients'''
-    
+    """Model for ICT gradients"""
+
     def model(self,X,a0,a1,a2,a3):
-        
+
         ICT = X[:,0] + a0*X[:,1] + a1*X[:,2] + a2*X[:,3] + a3*X[:,4]
         rad_ict = self.convT.t_to_rad(ICT)
 
         return (rad_ict - X[:,7])/(X[:,5] - X[:,6])
-    
+
     def __init__(self,convT):
 
         self.convT = convT
@@ -347,9 +349,9 @@ class fit_ict_pars(object):
 def find_solar_ind(position,new_gain2,new_cs,new_ct,new_ict,new_ict1,
                    new_ict2,new_ict3,new_ict4,solZA,first=True,
                    plot=False):
-    '''Find possible solar contamination on one side of the solar max
-    position'''
-    
+    """Find possible solar contamination on one side of the solar max
+    position"""
+
     pos = np.nonzero(solZA == solZA.max())[0][0]
     #
     # Look before or after max solZA location
@@ -361,24 +363,10 @@ def find_solar_ind(position,new_gain2,new_cs,new_ct,new_ict,new_ict1,
     if pos < posmin:
         posn = position[pos:posmin]
         newg = new_gain2[pos:posmin]
-        new_cs2 = new_cs[pos:posmin] 
-        new_ct2 = new_ct[pos:posmin] 
-        new_ict_2 = new_ict[pos:posmin] 
-        new_ict2_1 = new_ict1[pos:posmin] 
-        new_ict2_2 = new_ict2[pos:posmin]
-        new_ict2_3 = new_ict3[pos:posmin] 
-        new_ict2_4 = new_ict4[pos:posmin] 
         sza = solZA[pos:posmin]
     else:
         posn = position[posmin:pos]
         newg = new_gain2[posmin:pos]
-        new_cs2 = new_cs[posmin:pos] 
-        new_ct2 = new_ct[posmin:pos] 
-        new_ict_2 = new_ict[posmin:pos] 
-        new_ict2_1 = new_ict1[posmin:pos] 
-        new_ict2_2 = new_ict2[posmin:pos] 
-        new_ict2_3 = new_ict3[posmin:pos] 
-        new_ict2_4 = new_ict4[posmin:pos] 
         sza = solZA[posmin:pos]
 
     #
@@ -386,8 +374,8 @@ def find_solar_ind(position,new_gain2,new_cs,new_ct,new_ict,new_ict1,
     #
     gd = (sza >= 100)&(sza <= 125)&np.isfinite(newg)
     if np.sum(gd) == 0:
-        print('ERROR: No data available to find solar contamination')
-        print('       MinSZA = {0:f} MaxSZA = {1:f}'.format(sza.min(),sza.max()))
+        print("ERROR: No data available to find solar contamination")
+        print("       MinSZA = {0:f} MaxSZA = {1:f}".format(sza.min(),sza.max()))
         return None,None,None
     posn2 = posn[gd]
     pos2 = np.nonzero(newg[gd] == newg[gd].min())[0][0]
@@ -398,8 +386,7 @@ def find_solar_ind(position,new_gain2,new_cs,new_ct,new_ict,new_ict1,
     #
     peak_location = posn2[pos2]
     ok1 = False
-    startpos = 0
-    endpos = len(newg)-1
+
     window_size = 40
     while not ok1:
         side1 = 0
@@ -420,9 +407,9 @@ def find_solar_ind(position,new_gain2,new_cs,new_ct,new_ict,new_ict1,
         if side1 == 0:
             if plot:
                 plt.show()
-            print('Cannot find peak for solar contamination')
+            print("Cannot find peak for solar contamination")
             return None,None,None
-        
+
         if pos2+window_size < len(newg):
             ok1 = True
         else:
@@ -437,7 +424,6 @@ def find_solar_ind(position,new_gain2,new_cs,new_ct,new_ict,new_ict1,
     # erroneous peak
     #
     side2 = len(newg)-1
-    ok2 = False
     for i in range(pos2,len(newg)):
         if i < pos2+window_size:
             continue
@@ -447,7 +433,6 @@ def find_solar_ind(position,new_gain2,new_cs,new_ct,new_ict,new_ict1,
         x = np.arange(len(y))
         p = np.polyfit(x,y,1)
         if p[0] <= 0.:
-            ok2 = True
             side2 = i
             break
 
@@ -501,12 +486,12 @@ def find_solar_ind(position,new_gain2,new_cs,new_ct,new_ict,new_ict1,
         side1 = newpos1
     if not update_side2:
         side2 = newpos2
-    
+
     #
     # Can't get background so eject
     #
     if side1 == 0:
-        print('ERROR: Cannot get a background for solar contamination')
+        print("ERROR: Cannot get a background for solar contamination")
         return None,None,None
 
     #
@@ -518,7 +503,7 @@ def find_solar_ind(position,new_gain2,new_cs,new_ct,new_ict,new_ict1,
     pos_1 = (minx+maxx)/2.
     gd = np.isfinite(backdata1)
     if np.sum(gd) == 0:
-        print('ERROR: Cannot get background for solar contamination')
+        print("ERROR: Cannot get background for solar contamination")
         return None,None,None
     backg1 = np.mean(backdata1[gd])
     backg1_std = np.std(backdata1[gd])
@@ -532,8 +517,8 @@ def find_solar_ind(position,new_gain2,new_cs,new_ct,new_ict,new_ict1,
     else:
         backg2 = np.mean(backdata2[gd])
         pos_2 = (minx+maxx)/2.
-        backg2_std = np.std(backdata2[gd])    
-        
+        backg2_std = np.std(backdata2[gd])
+
     #
     # If pos_2 there, and OK interpolate
     #
@@ -545,59 +530,53 @@ def find_solar_ind(position,new_gain2,new_cs,new_ct,new_ict,new_ict1,
             #
             # Less than 25% from peak so dont continue
             #
-            print('ERROR: back2 is too high (solar contamination)')
+            print("ERROR: back2 is too high (solar contamination)")
             return None,None,None
         slope = (backg2-backg1)/(pos_2-pos_1)
         cnst = backg1 - slope*pos_1
         backg = cnst + slope*pos2
         backg_std = (backg1_std+backg2_std)/2.
     else:
-        print('ERROR: No back2 value (solar contamination)')
+        print("ERROR: No back2 value (solar contamination)")
         return None,None,None
 
     sigma = np.abs(peak_gain-backg)/backg_std
     if sigma <= 7.5:
         return None,None,None
-    
+
     side1 = posn2[side1]
     side2 = posn2[side2]
 
     return side1,side2,peak_location
-        
+
 def find_solar(ds,mask,convT=None,outgain=False,plot=False,out_time=False):
-    '''Find solar contamination/variable gain points for GAC and for ~full
-    orbits'''
+    """Find solar contamination/variable gain points for GAC and for ~full
+    orbits"""
 
     #
     # Get parameters for kernals/uncertainties
     #
     window, prt_bias, prt_sys, prt_threshold, ict_threshold, \
         space_threshold = get_uncert_parameter_thresholds()
-    if ds['channels'].values.shape[1] == 409:
+    if ds["channels"].values.shape[1] == 409:
         gacdata = True
-        scale = 1
     else:
         gacdata = False
-        scale = 3
         #
         # Code only works for GAC
         #
-        print('ERROR: Solar contamination detection only works for GAC data')
+        print("ERROR: Solar contamination detection only works for GAC data")
         if outgain:
             return None,None,None,None,None,None
         else:
             return None,None,None,None
-        
-    avhrr_name = ds.attrs["spacecraft_name"]
+
     #
     # Get calibration coefficients for 3.7 micron channel
     #
     cal = Calibrator(
         ds.attrs["spacecraft_name"])
     NS_1 = cal.space_radiance[0]
-    c0_1 = cal.b[0,0]
-    c1_1 = cal.b[0,1]
-    c2_1 = cal.b[0,2]
 
     if convT is None:
         convT = convBT(cal,0)
@@ -644,7 +623,7 @@ def find_solar(ds,mask,convT=None,outgain=False,plot=False,out_time=False):
     stdev = np.std(X,axis=1)
     try:
         minstd_pos = np.nonzero(stdev == stdev.min())[0][0]
-    except:
+    except IndexError:
         minstd_pos = np.nonzero(stdev == stdev.min())[0]
 
     #
@@ -672,7 +651,7 @@ def find_solar(ds,mask,convT=None,outgain=False,plot=False,out_time=False):
 
     model = fit_ict_pars(convT)
     p,covar = curve_fit(model.model,X,Y,p0=[0.,0.,0.,0.])
-    
+
     #
     # Get updated gain
     #
@@ -693,23 +672,22 @@ def find_solar(ds,mask,convT=None,outgain=False,plot=False,out_time=False):
     new_ict1 = ict1[gd]
     new_ict2 = ict2[gd]
     new_ict3 = ict3[gd]
-    new_ict4 = ict4[gd]                    
-    gain3_2 = gain3[gd]
+    new_ict4 = ict4[gd]
     solZA = solZAin[gd]
 
     #
     # Now look before and after solZA max position
     #
-    #                                                                          
+    #
     # One side of solZA max
-    #                                                      
+    #
     side1_1,side2_1,peak_location_1 = find_solar_ind(position,new_gain2,
                                                      new_cs,new_ct,new_ict,
                                                      new_ict1,new_ict2,
                                                      new_ict3,new_ict4,
                                                      solZA,first=True,
                                                      plot=plot)
-    # 
+    #
     # Other side of solZA max
     #
     side1_2,side2_2,peak_location_2 = find_solar_ind(position,new_gain2,
@@ -718,7 +696,7 @@ def find_solar(ds,mask,convT=None,outgain=False,plot=False,out_time=False):
                                                      new_ict3,new_ict4,
                                                      solZA,first=False,
                                                      plot=plot)
-    
+
     #
     # Plot PRT variation and gain differences (before/after)
     #
@@ -726,51 +704,51 @@ def find_solar(ds,mask,convT=None,outgain=False,plot=False,out_time=False):
         plt.figure(1)
         x = np.arange(len(prt_diff1))
         plt.subplot(211)
-        plt.plot(x,prt_diff1,label='PRT1')
-        plt.plot(x,prt_diff2,label='PRT2')
-        plt.plot(x,prt_diff3,label='PRT3')
-        plt.plot(x,prt_diff4,label='PRT4')
-        plt.ylabel('Temp. Diff / K')
+        plt.plot(x,prt_diff1,label="PRT1")
+        plt.plot(x,prt_diff2,label="PRT2")
+        plt.plot(x,prt_diff3,label="PRT3")
+        plt.plot(x,prt_diff4,label="PRT4")
+        plt.ylabel("Temp. Diff / K")
         plt.legend()
         plt.subplot(212)
         plt.plot(x,gain3)
-        plt.ylabel('3.7$\mu$m Gain $\\times 10^{-3}$')
-        plt.axhline(y=gain3[minstd_pos],linestyle='--',color='red')
+        plt.ylabel("3.7$\\mu$m Gain $\\times 10^{-3}$")
+        plt.axhline(y=gain3[minstd_pos],linestyle="--",color="red")
         plt.figure(2)
         x = np.arange(len(prt_diff1))
         plt.subplot(211)
-        plt.plot(x,prt_diff1,label='PRT1')
-        plt.plot(x,prt_diff2,label='PRT2')
-        plt.plot(x,prt_diff3,label='PRT3')
-        plt.plot(x,prt_diff4,label='PRT4')
-        plt.xlabel('Scanline')
-        plt.ylabel('Temp. Diff / K')
+        plt.plot(x,prt_diff1,label="PRT1")
+        plt.plot(x,prt_diff2,label="PRT2")
+        plt.plot(x,prt_diff3,label="PRT3")
+        plt.plot(x,prt_diff4,label="PRT4")
+        plt.xlabel("Scanline")
+        plt.ylabel("Temp. Diff / K")
         plt.legend()
         plt.subplot(212)
-        plt.plot(x,gain3*1e3,label='Orig')
-        plt.plot(x,new_gain*1e3,label='New')
-        plt.xlabel('Scanline')
-        plt.ylabel('3.7$\mu$m Gain $\\times 10^{-3}$')
+        plt.plot(x,gain3*1e3,label="Orig")
+        plt.plot(x,new_gain*1e3,label="New")
+        plt.xlabel("Scanline")
+        plt.ylabel("3.7$\\mu$m Gain $\\times 10^{-3}$")
         plt.legend()
         if side1_1 is not None:
-            plt.axvline(x=side1_1,color='red')
-            plt.axvline(x=side2_1,color='red')
+            plt.axvline(x=side1_1,color="red")
+            plt.axvline(x=side2_1,color="red")
         if side1_2 is not None:
-            plt.axvline(x=side1_2,color='red')
-            plt.axvline(x=side2_2,color='red')
+            plt.axvline(x=side1_2,color="red")
+            plt.axvline(x=side2_2,color="red")
         plt.tight_layout()
         plt.figure(3)
         plt.plot(x,gain3*1e3)
-        plt.xlabel('Scanline')
-        plt.ylabel('3.7$\mu$m Gain $\\times 10^{-3}$')
+        plt.xlabel("Scanline")
+        plt.ylabel("3.7$\\mu$m Gain $\\times 10^{-3}$")
         if side1_1 is not None:
-            plt.axvline(x=side1_1,color='red')
-            plt.axvline(x=side2_1,color='red')
+            plt.axvline(x=side1_1,color="red")
+            plt.axvline(x=side2_1,color="red")
         if side1_2 is not None:
-            plt.axvline(x=side1_2,color='red')
-            plt.axvline(x=side2_2,color='red')
+            plt.axvline(x=side1_2,color="red")
+            plt.axvline(x=side2_2,color="red")
         plt.show()
-        
+
     if outgain:
         if side1_1 is not None and side1_2 is not None:
             if out_time:
@@ -832,18 +810,18 @@ def find_solar(ds,mask,convT=None,outgain=False,plot=False,out_time=False):
             else:
                 return None,None,None,None,side1_2,side2_2,\
                     peak_location_2,solZAin[peak_location_2]
-        else:            
+        else:
             return None,None,None,None,None,None,None,None
-        
+
 def get_random(channel,noise,av_noise,ict_noise,ict_random,Lict,CS,CE,CICT,NS,
                c1,c2):
-    """Get the random parts of the IR calibration uncertainty. Done per 
+    """Get the random parts of the IR calibration uncertainty. Done per
     scanline"""
     #
     # Gain part for all noise sources
     #
     dLlin_dCS = (Lict-NS)*(CS-CE)/(CS-CICT)**2 + (Lict-NS)/(CS-CICT)
-    dLlin_dCICT = -(Lict-NS)*(CS-CE)/(CS-CICT)**2 
+    dLlin_dCICT = -(Lict-NS)*(CS-CE)/(CS-CICT)**2
     dLlin_dCE = -(Lict-NS)/(CS-CICT)
     dLlin_dLict = (CS-CE)/(CS-CICT)
 
@@ -866,11 +844,11 @@ def get_random(channel,noise,av_noise,ict_noise,ict_random,Lict,CS,CE,CICT,NS,
                  (dLE_dCICT**2)*(ict_noise**2) + \
                  (dLE_dCE**2)*(noise**2) + \
                  (dLE_dLict**2)*(ict_random**2)
-        
+
     return np.sqrt(uncert)
 
 def get_sys(channel,uICT,Tict,CS,CE,CICT,NS,c1,c2,convT):
-    """Get the systematic parts of the IR calibration uncertainty. Done per 
+    """Get the systematic parts of the IR calibration uncertainty. Done per
     scanline"""
     #
     # Gain part for all noise sources
@@ -896,20 +874,20 @@ def get_vars(ds,channel,convT,wlength,prt_threshold,ict_threshold,
              out_time=False):
     """Get variables from xarray including smoothing and interpolation"""
 
-    space = ds['space_counts'].values[:,channel]
+    space = ds["space_counts"].values[:,channel]
     prt = ds["prt_counts"].values[:]
-    ict = ds['ict_counts'].values[:,channel]
-    ce = ds['counts'].values[:,:,channel-3]
-    midpoint = ds['sun_zen'].shape[1]//2
+    ict = ds["ict_counts"].values[:,channel]
+    ce = ds["counts"].values[:,:,channel-3]
+    midpoint = ds["sun_zen"].shape[1]//2
     line_numbers = ds["scan_line_index"].data
-    
+
     if out_solza:
-        solza = ds['sun_zen'].values[:,midpoint]
+        solza = ds["sun_zen"].values[:,midpoint]
     if out_time:
-        time = (ds['times'].values[:] - 
-                np.datetime64('1970-01-01T00:00:00Z'))/\
-                np.timedelta64(1,'s')
-        
+        time = (ds["times"].values[:] -
+                np.datetime64("1970-01-01T00:00:00Z"))/\
+                np.timedelta64(1,"s")
+
     #
     # Set nan's to value to be caught by interpolation routines
     #
@@ -943,10 +921,10 @@ def get_vars(ds,channel,convT,wlength,prt_threshold,ict_threshold,
     # This can give wrong ICT temperatures
     #
     #iprt = (line_numbers - line_numbers[0] + 5 - offset) % 5
-    
+
     # Get PRT mapping using new technique
     iprt = get_prt_nos(prt,prt_threshold,line_numbers,gac)
-    
+
     #
     # Interpolate over bad prt values - from pygac calibrate_thermal
     #
@@ -958,7 +936,7 @@ def get_vars(ds,channel,convT,wlength,prt_threshold,ict_threshold,
         if len(inofix[0]):
             prt[ifix] = np.interp(ifix[0], inofix[0], prt[inofix])
         else:
-            raise IndexError('No good prt1 data')
+            raise IndexError("No good prt1 data")
 
     ifix = np.where(np.logical_and(iprt == 2, prt <= prt_threshold))
     if len(ifix[0]):
@@ -966,7 +944,7 @@ def get_vars(ds,channel,convT,wlength,prt_threshold,ict_threshold,
         if len(inofix[0]):
             prt[ifix] = np.interp(ifix[0], inofix[0], prt[inofix])
         else:
-            raise IndexError('No good prt2 data')
+            raise IndexError("No good prt2 data")
 
     ifix = np.where(np.logical_and(iprt == 3, prt <= prt_threshold))
     if len(ifix[0]):
@@ -974,15 +952,15 @@ def get_vars(ds,channel,convT,wlength,prt_threshold,ict_threshold,
         if len(inofix[0]):
             prt[ifix] = np.interp(ifix[0], inofix[0], prt[inofix])
         else:
-            raise IndexError('No good prt3 data')
+            raise IndexError("No good prt3 data")
 
     ifix = np.where(np.logical_and(iprt == 4, prt <= prt_threshold))
     if len(ifix[0]):
         inofix = np.where(np.logical_and(iprt == 4, prt > prt_threshold))
         if len(inofix[0]):
-            prt[ifix] = np.interp(ifix[0], inofix[0], prt[inofix])    
+            prt[ifix] = np.interp(ifix[0], inofix[0], prt[inofix])
         else:
-            raise IndexError('No good prt4 data')
+            raise IndexError("No good prt4 data")
 
     #
     # Convert to temperature
@@ -1037,7 +1015,7 @@ def get_vars(ds,channel,convT,wlength,prt_threshold,ict_threshold,
     tprt4_interp[zeros] = np.interp((zeros).nonzero()[0],
                             (nonzeros).nonzero()[0],
                             tprt[nonzeros])
-    
+
     # Thresholds to flag missing/wrong data for interpolation
     # Remove masked data
     ict[mask] = 0
@@ -1049,14 +1027,14 @@ def get_vars(ds,channel,convT,wlength,prt_threshold,ict_threshold,
                                (nonzeros).nonzero()[0],
                                ict[nonzeros])
     except ValueError: # 3b has no valid data
-        raise IndexError('Channel 3b has no valid data')
+        raise IndexError("Channel 3b has no valid data")
     zeros = space < space_threshold
     nonzeros = np.logical_not(zeros)
 
     space[zeros] = np.interp((zeros).nonzero()[0],
                              (nonzeros).nonzero()[0],
                              space[nonzeros])
-    
+
     #
     # Make averages and do using pygacs method at this point
     #
@@ -1109,6 +1087,15 @@ def get_vars(ds,channel,convT,wlength,prt_threshold,ict_threshold,
         else:
             return space_convolved,ict_convolved,ce,tprt_convolved
 
+@contextmanager
+def open_zenodo_uncert_file(platform, decode_times=True):
+    import fsspec
+    coef_file = fsspec.open_local(f"simplecache::https://zenodo.org/records/15482385/files/{platform}_uncert.nc#mode=bytes",
+                                  simplecache=dict(cache_storage=gettempdir(), same_names=True))
+    with xr.open_dataset(coef_file, decode_times=decode_times) as d:
+        yield d
+
+
 def get_gainval(time,avhrr,ict1,ict2,ict3,ict4,CS,CICT,CE,NS,bad_scan,convT,
                 window,calculate=False):
     """Estimate gain value at smallest stdev point in orbit either from
@@ -1116,22 +1103,17 @@ def get_gainval(time,avhrr,ict1,ict2,ict3,ict4,CS,CICT,CE,NS,bad_scan,convT,
     #
     # Open file containing 3.7mu gain value and interpolate over time
     #
-    # Now stored on zenodo
-    #
-    #coef_file = files("pygac") / "data/{0}_uncert.nc".format(avhrr)
-    coef_file = "https://zenodo.org/records/15482385/files/{0}_uncert.nc#mode=bytes".format(avhrr)
     try:
-        d = xr.open_dataset(coef_file)
+        with open_zenodo_uncert_file(avhrr) as d:
+            intime = d["time_gain"].values[:]
+            ingain = d["gain"].values[:]
     except FileNotFoundError:
         raise Exception("ERROR: Gain can not be determined because zenodo not available")
-    intime = d["time_gain"].values[:]
-    ingain = d["gain"].values[:]
-    d.close()
-    
+
     if time > intime[-1] and not calculate:
-        raise Exception('ERROR: file time > last time with max gain values (HRPR/LAC)')
-        
-    timediff = (intime-time)/np.timedelta64(1,'s')
+        raise Exception("ERROR: file time > last time with max gain values (HRPR/LAC)")
+
+    timediff = (intime-time)/np.timedelta64(1,"s")
     timediff = np.abs(timediff)
     timediff_min = timediff.min()
     #
@@ -1140,30 +1122,30 @@ def get_gainval(time,avhrr,ict1,ict2,ict3,ict4,CS,CICT,CE,NS,bad_scan,convT,
     #
     # Check Earth counts in window for 3.7 micron as if nan then in S3/3B
     #
-    
+
     if not calculate:
         #
         # HRPT/LAC
         #
         pos = np.nonzero(timediff == timediff_min)[0][0]
-        return ingain[pos]        
+        return ingain[pos]
     elif timediff_min < 86400.:
         #
         # Take precalc value from file
         #
         pos = np.nonzero(timediff == timediff_min)[0][0]
-        return ingain[pos]        
+        return ingain[pos]
     else:
         #
         # No nearby gain estimate or force calculate so calculate
         # from data using min std of prts
         #
         gd = (bad_scan == 0)
-        prt1 = prt1[gd]
-        prt2 = prt2[gd]
-        prt3 = prt3[gd]
-        prt4 = prt4[gd]
-        Lict = Lict[gd]
+        prt1 = prt1[gd]  # noqa
+        prt2 = prt2[gd]  # noqa
+        prt3 = prt3[gd]  # noqa
+        prt4 = prt4[gd]  # noqa
+        Lict = Lict[gd]  # noqa
         CS = CS[gd]
         CICT = CICT[gd]
         #
@@ -1213,7 +1195,7 @@ def get_uncert_parameter_thresholds(vischans=False):
         return window, prt_bias, prt_sys, prt_threshold, ict_threshold, \
             space_threshold
 
-def get_solar_from_file(avhrr_name,ds):
+def get_solar_from_file(platform, ds):
     """Read in possible solar contamination times from uncertainty files.
     Only used for LAC/HRPT data where there is not enough data to detect
     possible solar contamination so GAC estimates are used"""
@@ -1221,27 +1203,22 @@ def get_solar_from_file(avhrr_name,ds):
     #
     # Get times in seconds from
     #
-    time = (ds['times'].values[:] - \
-            np.datetime64('1970-01-01T00:00:00Z'))/\
-            np.timedelta64(1,'s')
-    
+    time = (ds["times"].values[:] - \
+            np.datetime64("1970-01-01T00:00:00Z"))/\
+            np.timedelta64(1,"s")
+
     #
     # Read file
     #
-    # Now stored on zenodo
-    #
-    # coef_file = files("pygac") / "data/{0}_uncert.nc".format(avhrr_name)
-    coef_file = "https://zenodo.org/records/15482385/files/{0}_uncert.nc#mode=bytes".format(avhrr_name)
     try:
-        d = xr.open_dataset(coef_file,decode_times=False)
+        with open_zenodo_uncert_file(platform, decode_times=False) as d:
+            solar_start_time_1 = d["gain1_solar_start"].values[:]
+            solar_stop_time_1 = d["gain1_solar_stop"].values[:]
+            solar_start_time_2 = d["gain2_solar_start"].values[:]
+            solar_stop_time_2 = d["gain2_solar_stop"].values[:]
     except FileNotFoundError:
         raise Exception("ERROR: Solar data can mot be determined because zenodo not available")
-    solar_start_time_1 = d["gain1_solar_start"].values[:]
-    solar_stop_time_1 = d["gain1_solar_stop"].values[:]
-    solar_start_time_2 = d["gain2_solar_start"].values[:]
-    solar_stop_time_2 = d["gain2_solar_stop"].values[:]
-    d.close()
-    
+
     gd = np.isfinite(solar_start_time_1)&np.isfinite(solar_stop_time_1)
     solar_start_time_1 = solar_start_time_1[gd]
     solar_stop_time_1 = solar_stop_time_1[gd]
@@ -1277,8 +1254,8 @@ def get_solar_from_file(avhrr_name,ds):
 
 def ir_uncertainty(ds,mask,plot=False,plotmax=None):
     """Create the uncertainty components for the IR channels. These include
-    
-    1) Random 
+
+    1) Random
           a) Noise
           b) Digitisation
           c) ICT PRT Noise
@@ -1286,7 +1263,7 @@ def ir_uncertainty(ds,mask,plot=False,plotmax=None):
           a) ICT Temperature uncertainty
           b) PRT Bias
           c) Calibration coefs/measurement equation uncertainty
-    
+
     Inputs:
           ds : Input xarray dataset containing data for calibration
         mask : pygac mask from reader
@@ -1300,13 +1277,11 @@ def ir_uncertainty(ds,mask,plot=False,plotmax=None):
     #
     window, prt_bias, prt_sys, prt_threshold, ict_threshold, \
         space_threshold = get_uncert_parameter_thresholds()
-    
-    if ds['channels'].values.shape[1] == 409:
+
+    if ds["channels"].values.shape[1] == 409:
         gacdata = True
-        scale = 1
     else:
         gacdata = False
-        scale = 3
 
     avhrr_name = ds.attrs["spacecraft_name"]
 
@@ -1315,12 +1290,8 @@ def ir_uncertainty(ds,mask,plot=False,plotmax=None):
     #
     cal = Calibrator(
         ds.attrs["spacecraft_name"])
-    NS_1 = cal.space_radiance[0]
     NS_2 = cal.space_radiance[1]
     NS_3 = cal.space_radiance[2]
-    c0_1 = cal.b[0,0]
-    c1_1 = cal.b[0,1]
-    c2_1 = cal.b[0,2]
     c0_2 = cal.b[1,0]
     c1_2 = cal.b[1,1]
     c2_2 = cal.b[1,2]
@@ -1346,8 +1317,8 @@ def ir_uncertainty(ds,mask,plot=False,plotmax=None):
     #
     # Get variables for 10 sampled case
     #
-    total_space = ds['total_space_counts'].values[:,:,:]
-    total_ict = ds['total_ict_counts'].values[:,:,:]
+    total_space = ds["total_space_counts"].values[:,:,:]
+    total_ict = ds["total_ict_counts"].values[:,:,:]
     #
     # Noise elements
     #
@@ -1376,10 +1347,10 @@ def ir_uncertainty(ds,mask,plot=False,plotmax=None):
                                                          out_prt=True)
     if plot:
         plt.subplot(131)
-        plt.plot(np.arange(len(CS_1)),CS_1,',')
-        plt.title('3.7$\mu$m')
-        plt.ylabel('Space Cnts')
-        plt.xlabel('Scanline')
+        plt.plot(np.arange(len(CS_1)),CS_1,",")
+        plt.title(r"3.7$\mu$m")
+        plt.ylabel("Space Cnts")
+        plt.xlabel("Scanline")
 
     CS_2,CICT_2,CE_2,Tict = get_vars(ds,1,convT2,window,prt_threshold,
                                      ict_threshold,
@@ -1387,11 +1358,11 @@ def ir_uncertainty(ds,mask,plot=False,plotmax=None):
                                      gacdata,cal,mask)
     if plot:
         plt.subplot(132)
-        plt.plot(np.arange(len(CS_2)),CS_2,',')
-        plt.title('11$\mu$m')
-        plt.ylabel('Space Cnts')
-        plt.xlabel('Scanline')
-        
+        plt.plot(np.arange(len(CS_2)),CS_2,",")
+        plt.title(r"11$\mu$m")
+        plt.ylabel("Space Cnts")
+        plt.xlabel("Scanline")
+
     if twelve_micron:
         CS_3,CICT_3,CE_3,Tict = get_vars(ds,2,convT3,window,
                                          prt_threshold,
@@ -1400,10 +1371,10 @@ def ir_uncertainty(ds,mask,plot=False,plotmax=None):
                                          gacdata,cal,mask)
         if plot:
             plt.subplot(133)
-            plt.plot(np.arange(len(CS_3)),CS_3,',')
-            plt.title('12$\mu$m')
-            plt.ylabel('Space Cnts')
-            plt.xlabel('Scanline')
+            plt.plot(np.arange(len(CS_3)),CS_3,",")
+            plt.title(r"12$\mu$m")
+            plt.ylabel("Space Cnts")
+            plt.xlabel("Scanline")
     if plot:
         plt.tight_layout()
 
@@ -1440,8 +1411,8 @@ def ir_uncertainty(ds,mask,plot=False,plotmax=None):
     #
     # Systematic components - uICT from gain variation in 3.7mu channel
     #
-    gd = np.isfinite(ds['times'].values)
-    time = ds['times'].values[gd][0]
+    gd = np.isfinite(ds["times"].values)
+    time = ds["times"].values[gd][0]
     #
     # Only redo calculation if gac data
     #
@@ -1462,8 +1433,6 @@ def ir_uncertainty(ds,mask,plot=False,plotmax=None):
     bt_sys_12 = np.zeros(CE_2.shape,dtype=CE_2.dtype)
     if not twelve_micron:
         bt_sys_12[:,:] = np.nan
-    urand_37 = np.zeros(CE_2.shape,dtype=CE_2.dtype)
-    urand_11 = np.zeros(CE_2.shape,dtype=CE_2.dtype)
     urand_12 = np.zeros(CE_2.shape,dtype=CE_2.dtype)
     if not twelve_micron:
         urand_12[:,:] = np.nan
@@ -1550,7 +1519,7 @@ def ir_uncertainty(ds,mask,plot=False,plotmax=None):
         T,bt_sys_11[i,:] = convT2.rad_to_t_uncert(rad_11,rad_sys_11)
         if twelve_micron:
             T,bt_sys_12[i,:] = convT3.rad_to_t_uncert(rad_12,rad_sys_12)
-            
+
         #
         # Add 0.5/sqrt(3.)K for measurement equation uncertainty
         # Also get ratio of ICT/total uncertainty
@@ -1568,8 +1537,8 @@ def ir_uncertainty(ds,mask,plot=False,plotmax=None):
         tot_sys_11 = np.sqrt(bt_sys_11[i,:]**2+0.5**2/3.)
         if twelve_micron:
             tot_sys_12 = np.sqrt(bt_sys_12[i,:]**2+0.5**2/3.)
-        uratio_37[i,:] = bt_sys_37[i,:] / tot_sys_37 
-        uratio_11[i,:] = bt_sys_11[i,:] / tot_sys_11 
+        uratio_37[i,:] = bt_sys_37[i,:] / tot_sys_37
+        uratio_11[i,:] = bt_sys_11[i,:] / tot_sys_11
         if twelve_micron:
             uratio_12[i,:] = bt_sys_12[i,:] / tot_sys_12
         bt_sys_37[i,:] = tot_sys_37
@@ -1583,28 +1552,28 @@ def ir_uncertainty(ds,mask,plot=False,plotmax=None):
             plt.figure(nfigure)
             plt.subplot(231)
             plt.hist(bt_rand_37.flatten(),bins=100)
-            plt.title('3.7$\mu$m')
-            
+            plt.title(r"3.7$\mu$m")
+
             plt.subplot(232)
             plt.hist(bt_rand_11.flatten(),bins=100)
-            plt.title('11$\mu$m (Random)')
+            plt.title(r"11$\mu$m (Random)")
 
             plt.subplot(233)
             plt.hist(bt_rand_12.flatten(),bins=100)
-            plt.title('12$\mu$m')
-            
+            plt.title(r"12$\mu$m")
+
             plt.subplot(234)
             plt.hist(bt_sys_37.flatten(),bins=100)
-            plt.title('3.7$\mu$m')
-            
+            plt.title(r"3.7$\mu$m")
+
             plt.subplot(235)
             plt.hist(bt_sys_11.flatten(),bins=100)
-            plt.title('11$\mu$m (Systematic)')
-            plt.xlabel('Uncertainty / K')
+            plt.title(r"11$\mu$m (Systematic)")
+            plt.xlabel("Uncertainty / K")
 
             plt.subplot(236)
             plt.hist(bt_sys_12.flatten(),bins=100)
-            plt.title('12$\mu$m')
+            plt.title(r"12$\mu$m")
             plt.tight_layout()
 
             nfigure = nfigure+1
@@ -1618,7 +1587,7 @@ def ir_uncertainty(ds,mask,plot=False,plotmax=None):
                 image[gd] = np.nan
                 im=plt.imshow(image)
             plt.colorbar(im)
-            plt.title('3.7$\mu$m')
+            plt.title(r"3.7$\mu$m")
 
             plt.subplot(232)
             if plotmax is None:
@@ -1629,7 +1598,7 @@ def ir_uncertainty(ds,mask,plot=False,plotmax=None):
                 image[gd] = np.nan
                 im=plt.imshow(image)
             plt.colorbar(im)
-            plt.title('11$\mu$m (Random)')
+            plt.title(r"11$\mu$m (Random)")
 
             plt.subplot(233)
             if plotmax is None:
@@ -1640,7 +1609,7 @@ def ir_uncertainty(ds,mask,plot=False,plotmax=None):
                 image[gd] = np.nan
                 im=plt.imshow(image)
             plt.colorbar(im)
-            plt.title('12$\mu$m')
+            plt.title(r"12$\mu$m")
 
             plt.subplot(234)
             if plotmax is None:
@@ -1651,7 +1620,7 @@ def ir_uncertainty(ds,mask,plot=False,plotmax=None):
                 image[gd] = np.nan
                 im=plt.imshow(image)
             plt.colorbar(im)
-            plt.title('3.7$\mu$m')
+            plt.title(r"3.7$\mu$m")
 
             plt.subplot(235)
             if plotmax is None:
@@ -1662,7 +1631,7 @@ def ir_uncertainty(ds,mask,plot=False,plotmax=None):
                 image[gd] = np.nan
                 im=plt.imshow(image)
             plt.colorbar(im)
-            plt.title('11$\mu$m (Systematic)')
+            plt.title(r"11$\mu$m (Systematic)")
 
             plt.subplot(236)
             if plotmax is None:
@@ -1673,7 +1642,7 @@ def ir_uncertainty(ds,mask,plot=False,plotmax=None):
                 image[gd] = np.nan
                 im=plt.imshow(image)
             plt.colorbar(im)
-            plt.title('12$\mu$m')
+            plt.title(r"12$\mu$m")
             plt.tight_layout()
 
             nfigure = nfigure+1
@@ -1681,36 +1650,36 @@ def ir_uncertainty(ds,mask,plot=False,plotmax=None):
             plt.subplot(131)
             im=plt.imshow(uratio_37)
             plt.colorbar(im)
-            plt.title('3.7$\mu$m')
+            plt.title(r"3.7$\mu$m")
             plt.subplot(132)
             im=plt.imshow(uratio_11)
             plt.colorbar(im)
-            plt.title('11$\mu$m')
+            plt.title(r"11$\mu$m")
             plt.subplot(133)
             im=plt.imshow(uratio_12)
             plt.colorbar(im)
-            plt.title('12$\mu$m')
+            plt.title(r"12$\mu$m")
             plt.tight_layout()
         else:
             nfigure = nfigure+1
             plt.figure(nfigure)
             plt.subplot(221)
             plt.hist(bt_rand_37.flatten(),bins=100)
-            plt.title('3.7$\mu$m (Random)')
-            
+            plt.title(r"3.7$\mu$m (Random)")
+
             plt.subplot(222)
             plt.hist(bt_rand_11.flatten(),bins=100)
-            plt.title('11$\mu$m (Random)')
+            plt.title(r"11$\mu$m (Random)")
 
             plt.subplot(223)
             plt.hist(bt_sys_37.flatten(),bins=100)
-            plt.title('3.7$\mu$m (Systematic)')
-            plt.xlabel('Uncertainty / K')
-            
+            plt.title(r"3.7$\mu$m (Systematic)")
+            plt.xlabel("Uncertainty / K")
+
             plt.subplot(224)
             plt.hist(bt_sys_11.flatten(),bins=100)
-            plt.title('11$\mu$m (Systematic)')
-            plt.xlabel('Uncertainty / K')
+            plt.title(r"11$\mu$m (Systematic)")
+            plt.xlabel("Uncertainty / K")
 
             plt.tight_layout()
         plt.show()
@@ -1769,7 +1738,7 @@ def ir_uncertainty(ds,mask,plot=False,plotmax=None):
     uflags[gd] = (uflags[gd]|2)
 
     time = (ds["times"].values - np.datetime64("1970-01-01 00:00:00"))/\
-           np.timedelta64(1,'s')
+           np.timedelta64(1,"s")
     time_da = xr.DataArray(time,dims=["times"],attrs={"long_name":"scanline time",
                                                      "units":"seconds since 1970-01-01"})
     across_da = xr.DataArray(np.arange(random.shape[1]),dims=["across_track"])
@@ -1784,7 +1753,8 @@ def ir_uncertainty(ds,mask,plot=False,plotmax=None):
                                     "_FillValue":0})
 
     uflags_da = xr.DataArray(uflags,dims=["times"],
-                             attrs={"long_name":"Uncertainty flags (bit 1==bad space view (value=1), bit 2==solar contamination (value=2)"})
+                             attrs={"long_name":"Uncertainty flags (bit 1==bad space view (value=1), "
+                                                "bit 2==solar contamination (value=2)"})
 
     uncertainties = xr.Dataset(dict(times=time_da,across_track=across_da,
                                     ir_channels=ir_channels_da,
@@ -1797,13 +1767,13 @@ def ir_uncertainty(ds,mask,plot=False,plotmax=None):
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('filename')
-    parser.add_argument('--plot',action='store_true')
-    parser.add_argument('--plotmax',type=float,nargs=6)
-    parser.add_argument('--solar_contam',action='store_true')
-    parser.add_argument('--oname')
-    parser.add_argument('--write_test',nargs=2)
-    
+    parser.add_argument("filename")
+    parser.add_argument("--plot",action="store_true")
+    parser.add_argument("--plotmax",type=float,nargs=6)
+    parser.add_argument("--solar_contam",action="store_true")
+    parser.add_argument("--oname")
+    parser.add_argument("--write_test",nargs=2)
+
     args = parser.parse_args()
 
     #
@@ -1820,7 +1790,7 @@ if __name__ == "__main__":
     mask = reader.mask
     if args.solar_contam:
         if args.oname is None:
-            raise Exception('ERROR: if solar data wanted must use --oname')
+            raise Exception("ERROR: if solar data wanted must use --oname")
         if args.plot:
             import matplotlib.pyplot as plt
         tmin_1,tmax_1,tpeak_1,out_solza_1,\
@@ -1828,24 +1798,28 @@ if __name__ == "__main__":
         gtime,min_gain = \
             find_solar(ds,mask,convT=None,outgain=True,plot=args.plot,
                        out_time=True)
-        with open(args.oname,'a') as fp:
+        with open(args.oname,"a") as fp:
             if tmin_1 is not None and tmin_2 is not None:
-                fp.write('{0:16.9e} {1:16.9e} {2:16.9e} {3:9.4f} {4:16.9e} {5:16.9e} {6:16.9e} {7:9.4f} {8:16.9e} {9:9.7e}\n'.
+                fp.write(("{0:16.9e} {1:16.9e} {2:16.9e} {3:9.4f} {4:16.9e} {5:16.9e}"
+                          " {6:16.9e} {7:9.4f} {8:16.9e} {9:9.7e}\n").
                      format(tmin_1,tmax_1,tpeak_1,out_solza_1,
                             tmin_2,tmax_2,tpeak_2,out_solza_2,
                             gtime,min_gain))
             elif tmin_1 is not None and tmin_2 is None:
-                fp.write('{0:16.9e} {1:16.9e} {2:16.9e} {3:9.4f} {4:16.9e} {5:16.9e} {6:16.9e} {7:9.4f} {8:16.9e} {9:9.7e}\n'.
+                fp.write(("{0:16.9e} {1:16.9e} {2:16.9e} {3:9.4f} {4:16.9e} {5:16.9e}"
+                          " {6:16.9e} {7:9.4f} {8:16.9e} {9:9.7e}\n").
                      format(tmin_1,tmax_1,tpeak_1,out_solza_1,
                             -1.,-1.,-1.,-1.,
                             gtime,min_gain))
             elif tmin_1 is None and tmin_2 is not None:
-                fp.write('{0:16.9e} {1:16.9e} {2:16.9e} {3:9.4f} {4:16.9e} {5:16.9e} {6:16.9e} {7:9.4f} {8:16.9e} {9:9.7e}\n'.
+                fp.write(("{0:16.9e} {1:16.9e} {2:16.9e} {3:9.4f} {4:16.9e} {5:16.9e}"
+                          " {6:16.9e} {7:9.4f} {8:16.9e} {9:9.7e}\n").
                      format(-1.,-1.,-1.,-1.,
                             tmin_2,tmax_2,tpeak_2,out_solza_2,
                             gtime,min_gain))
             elif tmin_1 is None and tmin_2 is None:
-                fp.write('{0:16.9e} {1:16.9e} {2:16.9e} {3:9.4f} {4:16.9e} {5:16.9e} {6:16.9e} {7:9.4f} {8:16.9e} {9:9.7e}\n'.
+                fp.write(("{0:16.9e} {1:16.9e} {2:16.9e} {3:9.4f} {4:16.9e} {5:16.9e}"
+                          " {6:16.9e} {7:9.4f} {8:16.9e} {9:9.7e}\n").
                      format(-1.,-1.,-1.,-1.,
                             -1.,-1.,-1.,-1.,
                             gtime,min_gain))
@@ -1853,8 +1827,8 @@ if __name__ == "__main__":
         #
         # Write data for testing of uncertainty code
         #
-        if ds.attrs['midnight_scanline'] is None:
-            ds.attrs['midnight_scanline'] = -1
+        if ds.attrs["midnight_scanline"] is None:
+            ds.attrs["midnight_scanline"] = -1
         ds.to_netcdf(args.write_test[0])
         X = np.zeros((len(mask)),dtype=np.int8)
         X[mask] = 1
@@ -1862,4 +1836,3 @@ if __name__ == "__main__":
     else:
         uncert = ir_uncertainty(ds,mask,plot=args.plot,plotmax=args.plotmax)
         print(uncert)
-
