@@ -22,7 +22,7 @@ dependencies = [
     "fsspec>=2025.7.0",
 ]
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.11"
 license = { text = "GPLv3" }
 classifiers = [
     "Programming Language :: Python :: 3",
