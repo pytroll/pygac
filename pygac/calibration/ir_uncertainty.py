@@ -55,31 +55,14 @@ def allan_deviation(space,bad_scan=None):
     #
     #        allan_variance = 0.5 <(y_n+1-y_n)**2>
     #
-    allan = 0.
-    nline = newsp.shape[0]
-    nscan = newsp.shape[1]
-    #
-    # Sum of squared pixel differences
-    #
-    for i in range(nline):
-        allan += np.sum((newsp[i,1:]-newsp[i,0:-1])**2)
-
-    #
-    # Mean of squared pixel to pixel difference (expectation)
-    #
-    allan /= (nline*(nscan-1))
-    #
-    # And 1/2 term
-    #
-    allan *= 0.5
-
+    allan_variance = 0.5 * np.mean((newsp[:,1:] - newsp[:,0:-1]) ** 2)
     #
     # Return the Allan deviation in counts (sqrt Allan variance)
     #
-    return np.sqrt(allan)
+    return np.sqrt(allan_variance)
 
 class convBT(object):
-    """Routine to covert temperature to radiance and visa-versa"""
+    """Routine to covert temperature to radiance and vice-versa."""
     def t_to_rad(self,tprt):
 
         tsBB = self.A + self.B*tprt
