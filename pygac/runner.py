@@ -43,7 +43,7 @@ LOG = logging.getLogger(__name__)
 _reader_classes = [GACKLMReader, LACKLMReader, GACPODReader, LACPODReader]
 
 
-def  get_reader_class(filename, fileobj=None):
+def get_reader_class(filename, fileobj=None):
     """Return the reader class that can read the GAC/LAC KLM/POD file.
 
         Args:
