@@ -51,10 +51,15 @@ def read_csv(filename):
     #
     # Mask
     #
-    mask = np.zeros((d.shape[0]),dtype=bool)
-    mask[:] = False
+    mask = np.zeros((d.shape[0]),dtype=np.int8)
+    mask[:] = 0
     gd = (d[:,5] == 1)
-    mask[gd] = True
+    mask[gd] = 1
+
+    bad_data = np.zeros((d.shape[0]),dtype=np.int8)
+    bad_data[:] = 0
+    gd = (d[:,6] == 1)
+    bad_data[gd] = 1
 
     #
     # Get time units from csv header
@@ -62,13 +67,13 @@ def read_csv(filename):
     with open(filename,'r') as fp:
         csv_reader = csv.reader(fp,delimiter=',')
         header = next(csv_reader)
-    units = header[6]
+    units = header[7]
     
     #
     # Get time to search stored values if needed
     # Convert to np.datetime64
     #
-    times = cftime.num2date(d[:,6],units,
+    times = cftime.num2date(d[:,7],units,
                             only_use_cftime_datetimes=False,
                             only_use_python_datetimes=True)
     outtime = []
@@ -92,15 +97,15 @@ def read_csv(filename):
                        data=d[:,1],attrs={"_FillValue":np.nan})
     data1 = np.zeros((d.shape[0],3))
     data1[:,0] = d[:,2]
-    data1[:,1] = d[:,8]
-    data1[:,2] = d[:,9]
+    data1[:,1] = d[:,9]
+    data1[:,2] = d[:,10]
     da3 = xr.DataArray(name="ict_counts",dims=["scan_line_index",
                                                "ir_channel_name"],
                        attrs={"_FillValue":np.nan},data=data1)
     data2 = np.zeros((d.shape[0],3))
     data2[:,0] = d[:,3]
-    data2[:,1] = d[:,10]
-    data2[:,2] = d[:,11]
+    data2[:,1] = d[:,11]
+    data2[:,2] = d[:,12]
     da4 = xr.DataArray(name="space_counts",dims=["scan_line_index",
                                                  "ir_channel_name"],
                        attrs={"_FillValue":np.nan},data=data2)
@@ -126,18 +131,18 @@ def read_csv(filename):
     da8 = xr.DataArray(name="times",dims=["scan_line_index"],
                        data=outtime)
     da9 = xr.DataArray(name="uICT",dims=["scan_line_index"],
-                       attrs={"_FillValue":np.nan},data=d[:,7])
+                       attrs={"_FillValue":np.nan},data=d[:,8])
     total_space = np.zeros((d.shape[0],10,6))
-    total_space[:,:,0] = d[:,12:22]
-    total_space[:,:,1] = d[:,22:32]
-    total_space[:,:,2] = d[:,32:42]
+    total_space[:,:,0] = d[:,13:23]
+    total_space[:,:,1] = d[:,23:33]
+    total_space[:,:,2] = d[:,33:43]
     da10 = xr.DataArray(name="total_space_counts",
                         dims=["scan_line_index","ten_spots","channel_name"],
                         attrs={"_FillValue":np.nan},data=total_space)
     total_ict = np.zeros((d.shape[0],10,6))
-    total_ict[:,:,0] = d[:,42:52]
-    total_ict[:,:,1] = d[:,52:62]
-    total_ict[:,:,2] = d[:,62:72]
+    total_ict[:,:,0] = d[:,43:53]
+    total_ict[:,:,1] = d[:,53:63]
+    total_ict[:,:,2] = d[:,63:73]
     da11 = xr.DataArray(name="total_ict_counts",
                         dims=["scan_line_index","ten_spots","channel_name"],
                         attrs={"_FillValue":np.nan},data=total_ict)
@@ -149,7 +154,7 @@ def read_csv(filename):
                                    total_ict_counts=da11),
                     attrs={"spacecraft_name":"noaa16"})
     
-    return ds,mask
+    return ds,mask,bad_data
 
 #
 # Input data from real GAC orbit with two solar peaks detected.
@@ -188,7 +193,7 @@ class TestGetUict(unittest.TestCase):
         # Read in AVHRR data CSV file
         #
         csv_file = files("pygac") / "tests/test_ir_uncertainty_avhrr_data.csv"
-        ds,mask = read_csv(csv_file)
+        ds,mask,bad_data = read_csv(csv_file)
 
         #
         # Setup Radiance to Temperature etc.
@@ -216,9 +221,9 @@ class TestGetUict(unittest.TestCase):
         pos2_1,pos2_2,pos2,solza2 = \
             find_solar(ds,mask,out_time=False,outgain=False)
         #
-        # Make solar flag
+        # Make solar flag plus bad data
         #
-        solar_flag = np.zeros(CE_1.shape[0],dtype=np.uint8)
+        solar_flag = bad_data[:]
         if pos1_1 >= 0 and pos1_2 >= 0:
             solar_flag[pos1_1:pos1_2+1] = 1
         if pos2_1 >= 0 and pos2_2 >= 0:
@@ -252,12 +257,12 @@ class TestGetUict(unittest.TestCase):
         #
         # Check gain
         #
-        check_gain = 0.0027243531
+        check_gain = 0.002730006
         np.testing.assert_allclose(gain_37,check_gain,atol=0.00001)
         #
         # Get ICT uncertainty
         #
-        uICT,nfigure = get_uICT(gain_37,CS_1,CICT_1,Tict,0.,convT1,mask,
+        uICT,nfigure = get_uICT(gain_37,CS_1,CICT_1,Tict,0.,convT1,bad_data,
                                 solar_flag,window,plt=None,nfigure=1)
         #
         # Check uICT
@@ -273,7 +278,7 @@ class TestGetUict(unittest.TestCase):
         # Read in orbits worth of calibration  data
         #
         csv_file = files("pygac") / "tests/test_ir_uncertainty_avhrr_data.csv"
-        ds,mask = read_csv(csv_file)
+        ds,mask,bad_data = read_csv(csv_file)
 
         time = ds['times'].values[:]        
         #
@@ -494,4 +499,6 @@ class TestGetUict(unittest.TestCase):
         # Flags
         #
         np.testing.assert_allclose(irdata['uncert_flags'].values[:],flags[:])
-        
+
+        for i in range(len(flags)):
+            print(i,flags[i],irdata['uncert_flags'].values[:])

@@ -280,7 +280,7 @@ def get_uICT(gainval,CS,CICT,Tict,NS,convT,bad_scans,solar_scans,window,
     # Calculate delta ICT for 'good' cases
     #
     dT[gd] = dgain/dGain_dICT
-
+    
     uICT = np.zeros(len(CS))    
     for i in range(len(dT)):
         if np.isfinite(dT[i]):
@@ -1109,7 +1109,7 @@ def get_vars(ds,channel,convT,wlength,prt_threshold,ict_threshold,
         else:
             return space_convolved,ict_convolved,ce,tprt_convolved
 
-def get_gainval(time,avhrr,ict1,ict2,ict3,ict4,CS,CICT,CE,NS,bad_scan,convT,
+def get_gainval(time,avhrr,prt1,prt2,prt3,prt4,CS,CICT,CE,NS,bad_scan,convT,
                 window,calculate=False):
     """Estimate gain value at smallest stdev point in orbit either from
     file or estimate it from data"""
@@ -1147,7 +1147,7 @@ def get_gainval(time,avhrr,ict1,ict2,ict3,ict4,CS,CICT,CE,NS,bad_scan,convT,
         #
         pos = np.nonzero(timediff == timediff_min)[0][0]
         return ingain[pos]        
-    elif timediff_min < 86400.:
+    elif not calculate and timediff_min < 86400.:
         #
         # Take precalc value from file
         #
@@ -1163,7 +1163,6 @@ def get_gainval(time,avhrr,ict1,ict2,ict3,ict4,CS,CICT,CE,NS,bad_scan,convT,
         prt2 = prt2[gd]
         prt3 = prt3[gd]
         prt4 = prt4[gd]
-        Lict = Lict[gd]
         CS = CS[gd]
         CICT = CICT[gd]
         #
@@ -1275,7 +1274,7 @@ def get_solar_from_file(avhrr_name,ds):
     #
     return min_solar_1, max_solar_1, min_solar_2, max_solar_2
 
-def ir_uncertainty(ds,mask,plot=False,plotmax=None):
+def ir_uncertainty(ds,mask,plot=False,plotmax=None,out_uict=False):
     """Create the uncertainty components for the IR channels. These include
     
     1) Random 
@@ -1288,8 +1287,9 @@ def ir_uncertainty(ds,mask,plot=False,plotmax=None):
           c) Calibration coefs/measurement equation uncertainty
     
     Inputs:
-          ds : Input xarray dataset containing data for calibration
-        mask : pygac mask from reader
+            ds : Input xarray dataset containing data for calibration
+          mask : pygac mask from reader
+      out_uict : output txt files to create part of test harness test data
     Outputs:
       uncert : xarray dataset containing random and systematic uncertainty
                components
@@ -1449,6 +1449,15 @@ def ir_uncertainty(ds,mask,plot=False,plotmax=None):
                           CE_1,0.,bad_scan,convT1,window,calculate=gacdata)
     uICT,nfigure = get_uICT(gain_37,CS_1,CICT_1,Tict,0.,convT1,bad_scan,
                             solar_flag,window,plt=plt,nfigure=nfigure)
+    #
+    # Output uICT,mask data
+    #
+    if out_uict:
+        X = np.zeros((len(uICT),2))
+        X[:,0] = uICT
+        X[:,1] = bad_scan
+        np.savetxt('uict.txt',X,fmt='%10.8f %d')
+        return
     #
     # Loop round scanlines
     #
@@ -1802,6 +1811,7 @@ if __name__ == "__main__":
     parser.add_argument('--plotmax',type=float,nargs=6)
     parser.add_argument('--solar_contam',action='store_true')
     parser.add_argument('--oname')
+    parser.add_argument('--write_uict',action='store_true')
     parser.add_argument('--write_test',nargs=2)
     
     args = parser.parse_args()
@@ -1859,6 +1869,8 @@ if __name__ == "__main__":
         X = np.zeros((len(mask)),dtype=np.int8)
         X[mask] = 1
         np.savetxt(args.write_test[1],X,fmt="%d")
+    elif args.write_uict:
+        uncert = ir_uncertainty(ds,mask,out_uict=True)
     else:
         uncert = ir_uncertainty(ds,mask,plot=args.plot,plotmax=args.plotmax)
         print(uncert)
