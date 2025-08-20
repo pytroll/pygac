@@ -28,7 +28,6 @@ import argparse
 import numpy as np
 import xarray as xr
 
-from pygac import get_reader_class
 from pygac.calibration.ir_uncertainty import allan_deviation, get_bad_space_counts, get_uncert_parameter_thresholds
 from pygac.calibration.noaa import Calibrator
 from pygac.klm_reader import KLMReader
@@ -578,7 +577,7 @@ def vis_uncertainty(ds,mask,plot=False):
     return uncertainties
 
 if __name__ == "__main__":
-
+    from pygac import get_reader_class
     parser = argparse.ArgumentParser()
     parser.add_argument("filename")
     parser.add_argument("--plot",action="store_true")
