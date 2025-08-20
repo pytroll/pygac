@@ -14,10 +14,15 @@ dependencies = [
     "python-geotiepoints>=1.1.8",
     "scipy>=0.8.0",
     "packaging",
-    "xarray>=2024.1.0"
+    "xarray>=2024.1.0",
+    "cftime>=1.6.4.post1",
+    "netcdf4>=1.7.2",
+    "aiohttp>=3.12.15",
+    "requests>=2.32.4",
+    "fsspec>=2025.7.0",
 ]
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 license = { text = "GPLv3" }
 classifiers = [
     "Programming Language :: Python :: 3",
@@ -41,7 +46,7 @@ Slack = "https://pytroll.slack.com/"
 [project.optional-dependencies]
 dev = ['pytest', 'pre-commit', 'ruff']
 georef = [
-    "georeferencer",
+    "georeferencer>=0.3.3",
 ]
 
 [project.scripts]
