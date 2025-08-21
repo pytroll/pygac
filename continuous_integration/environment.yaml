@@ -16,6 +16,7 @@ dependencies:
   - cftime
   - aiohttp
   - requests
+  - truststore
   - pip
   - pip:
     - docutils

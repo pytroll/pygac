@@ -127,6 +127,7 @@ class Reader(ABC):
         reference_image=None,
         dem=None,
         compute_lonlats_from_tles: bool = False,
+        compute_uncertainties: bool = False,
     ):
         """Init the reader.
 
@@ -149,6 +150,7 @@ class Reader(ABC):
             dem: the digital elevation model to use for orthocorrection
             compute_lonlats_from_tles: Do not use the longitudes and latitudes provided in the file, rather compute them
                                        from the TLE.
+            compute_uncertainties: Whether to add uncertainty estimates in the calibrated_dataset.
 
         """
         self.meta_data = {}
@@ -174,6 +176,7 @@ class Reader(ABC):
         self.reference_image = reference_image
         self.dem = dem
         self.compute_lonlats_from_tles: bool = compute_lonlats_from_tles
+        self.compute_uncertainties: bool = compute_uncertainties
 
         self.clock_drift_correction_applied = False
 
@@ -592,7 +595,7 @@ class Reader(ABC):
 
     def create_counts_dataset(self):
         """Create output xarray dataset containing counts and information relevant to calibration.
-        
+
         Contents of the dataset:
             channels: Earth scene counts
             prt_counts: Counts from PRTs on ICT
@@ -655,7 +658,7 @@ class Reader(ABC):
         sun_zen = xr.DataArray(sun_zen,
                                  dims=["scan_line_index", "columns"],
                                    coords=dict(scan_line_index=line_numbers,columns=columns))
-        
+
 
         if self.interpolate_coords:
             channels = channels.assign_coords(
@@ -733,8 +736,9 @@ class Reader(ABC):
                                  coords=dict(ir_channel_name=ir_channel_names, scan_line_index=line_numbers))
         total_space = xr.DataArray(total_space,
                                    dims=["scan_line_index", "pixel_index", "ir_channel_name"],
-                                   coords=dict(ir_channel_name=ir_channel_names, scan_line_index=line_numbers,pixel_index=pixel_index))
-        
+                                   coords=dict(ir_channel_name=ir_channel_names, scan_line_index=line_numbers,
+                                               pixel_index=pixel_index))
+
         return prt, ict, space, total_ict, total_space
 
     def _get_vis_telemetry_dataarrays(self, line_numbers, vis_channel_names):
@@ -776,7 +780,7 @@ class Reader(ABC):
                               data=np.copy(ds["channels"].data),
                               dims=ds["channels"].dims,
                               coords=ds["channels"].coords)
-        
+
         # calibration = {"1": "mitram", "2": "mitram", "4": {"method":"noaa", "coeff_file": "myfile.json"}}
 
         calibration_entrypoints = entry_points(group="pygac.calibration")
@@ -799,6 +803,14 @@ class Reader(ABC):
             self.mask_tsm_pixels(calibrated_ds)
         if self.reference_image:
             self._georeference_data(calibrated_ds)
+        if self.compute_uncertainties:
+            from pygac.calibration.uncertainty import uncertainty
+            ucs = uncertainty(calibrated_ds, self.mask)
+
+            calibrated_ds["random_uncertainty"] = ucs["random"]
+            calibrated_ds["systematic_uncertainty"] = ucs["systematic"]
+            calibrated_ds["channel_covariance_ratio"] = ucs["chan_covar_ratio"]
+            calibrated_ds["uncertainty_flags"] = ucs["uncert_flags"]
         return calibrated_ds
 
     def _georeference_data(self, calibrated_ds):
@@ -812,7 +824,7 @@ class Reader(ABC):
             calibrated_ds, sun_zen, sat_zen, self.reference_image, self.dem
         )
 
-        if mdist := np.median(mdistances) > 5000:
+        if (mdist := np.median(mdistances)) > 5000:
             raise RuntimeError("Displacement minimization did not produce convincing improvements")
         calibrated_ds.attrs["median_gcp_distance"] = mdist
 

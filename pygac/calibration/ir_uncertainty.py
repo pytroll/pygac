@@ -31,7 +31,6 @@ import numpy as np
 import xarray as xr
 from scipy.optimize import curve_fit
 
-from pygac import get_reader_class
 from pygac.calibration.noaa import Calibrator, get_prt_nos
 
 
@@ -61,8 +60,8 @@ def allan_deviation(space,bad_scan=None):
     #
     return np.sqrt(allan_variance)
 
-class convBT(object):
-    """Routine to covert temperature to radiance and vice-versa."""
+class convBT:
+    """Routine to convert temperature to radiance and vice-versa."""
     def t_to_rad(self,tprt):
 
         tsBB = self.A + self.B*tprt
@@ -1072,9 +1071,14 @@ def get_vars(ds,channel,convT,wlength,prt_threshold,ict_threshold,
 
 @contextmanager
 def open_zenodo_uncert_file(platform, decode_times=True):
+    import ssl
+
     import fsspec
+    import truststore
+    ctx = truststore.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
     coef_file = fsspec.open_local(f"simplecache::https://zenodo.org/records/15482385/files/{platform}_uncert.nc#mode=bytes",
-                                  simplecache=dict(cache_storage=gettempdir(), same_names=True))
+                                  simplecache=dict(cache_storage=gettempdir(), same_names=True),
+                                  https=dict(ssl=ctx))
     with xr.open_dataset(coef_file, decode_times=decode_times) as d:
         yield d
 
@@ -1765,7 +1769,7 @@ def ir_uncertainty(ds,mask,plot=False,plotmax=None,out_uict=False,
     return uncertainties
 
 if __name__ == "__main__":
-
+    from pygac import get_reader_class
     parser = argparse.ArgumentParser()
     parser.add_argument('filename')
     parser.add_argument('--plot',action='store_true')
