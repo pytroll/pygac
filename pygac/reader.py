@@ -824,7 +824,7 @@ class Reader(ABC):
             calibrated_ds, sun_zen, sat_zen, self.reference_image, self.dem
         )
 
-        if mdist := np.median(mdistances) > 5000:
+        if (mdist := np.median(mdistances)) > 5000:
             raise RuntimeError("Displacement minimization did not produce convincing improvements")
         calibrated_ds.attrs["median_gcp_distance"] = mdist
 
