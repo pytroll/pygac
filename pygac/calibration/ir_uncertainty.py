@@ -868,7 +868,7 @@ def get_vars(ds,channel,convT,wlength,prt_threshold,ict_threshold,
         solza = ds["sun_zen"].values[:,midpoint]
     if out_time:
         time = (ds["times"].values[:] -
-                np.datetime64("1970-01-01T00:00:00Z"))/\
+                np.datetime64("1970-01-01T00:00:00"))/\
                 np.timedelta64(1,"s")
 
     #
@@ -1079,41 +1079,42 @@ def open_zenodo_uncert_file(platform, decode_times=True):
         yield d
 
 
-def get_gainval(time,avhrr,prt1,prt2,prt3,prt4,CS,CICT,CE,NS,bad_scan,convT,
-                window,calculate=False):
+def get_gainval(time,intimes,avhrr,prt1,prt2,prt3,prt4,CS,CICT,CE,NS,
+                bad_scan,convT,window,calculate=False):
     """Estimate gain value at smallest stdev point in orbit either from
     file or estimate it from data"""
-    #
-    # Open file containing 3.7mu gain value and interpolate over time
-    #
-    try:
-        with open_zenodo_uncert_file(avhrr) as d:
-            intime = d["time_gain"].values[:]
-            ingain = d["gain"].values[:]
-    except FileNotFoundError:
-        raise Exception("ERROR: Gain can not be determined because zenodo not available")
-
-    if time > intime[-1] and not calculate:
-        raise Exception("ERROR: file time > last time with max gain values (HRPR/LAC)")
-
-    timediff = (intime-time)/np.timedelta64(1,"s")
-    timediff = np.abs(timediff)
-    timediff_min = timediff.min()
     #
     # Use nearest in time if HRPT (not calculate)
     #
     if not calculate:
         #
+        # Open file containing 3.7mu gain value and interpolate over time
+        #
+        try:
+            with open_zenodo_uncert_file(avhrr) as d:
+                intime = d["time_gain"].values[:]
+                ingain = d["gain"].values[:]
+        except FileNotFoundError:
+            raise Exception("ERROR: Gain can not be determined because zenodo not available")
+
+        if time > intime[-1]:
+            raise Exception("ERROR: file time > last time with max gain values (HRPR/LAC)")
+
+        timediff = (intime-time)/np.timedelta64(1,"s")
+        timediff = np.abs(timediff)
+        timediff_min = timediff.min()
+        #
         # HRPT/LAC
         #
         pos = np.nonzero(timediff == timediff_min)[0][0]
-        return ingain[pos]
+        return ingain[pos],intime[pos]
     else:
         #
         # No nearby gain estimate or force calculate so calculate
         # from data using min std of prts
         #
         gd = (bad_scan == 0)
+        times = intimes[gd]
         prt1 = prt1[gd]
         prt2 = prt2[gd]
         prt3 = prt3[gd]
@@ -1132,7 +1133,7 @@ def get_gainval(time,avhrr,prt1,prt2,prt3,prt4,CS,CICT,CE,NS,bad_scan,convT,
         pos = np.nonzero(stdev == stdev.min())[0][0]
         Lict = convT.t_to_rad(np.mean(X,axis=1))
         gain = (Lict-NS)/(CS-CICT)
-        return gain[pos]
+        return gain[pos],times[pos]
 
 def get_pixel(Lict,CS,CE,CICT,NS,c0,c1,c2):
     """Get radiance of pixel using calibration"""
@@ -1176,7 +1177,7 @@ def get_solar_from_file(platform, ds):
     # Get times in seconds from
     #
     time = (ds["times"].values[:] - \
-            np.datetime64("1970-01-01T00:00:00Z"))/\
+            np.datetime64("1970-01-01T00:00:00"))/\
             np.timedelta64(1,"s")
 
     #
@@ -1224,7 +1225,8 @@ def get_solar_from_file(platform, ds):
     #
     return min_solar_1, max_solar_1, min_solar_2, max_solar_2
 
-def ir_uncertainty(ds,mask,plot=False,plotmax=None,out_uict=False):
+def ir_uncertainty(ds,mask,plot=False,plotmax=None,out_uict=False,
+                   out_solar_gain=False):
     """Create the uncertainty components for the IR channels. These include
 
     1) Random
@@ -1352,7 +1354,7 @@ def ir_uncertainty(ds,mask,plot=False,plotmax=None,out_uict=False):
         plt.tight_layout()
 
     solar_flag = np.zeros(CE_2.shape[0],dtype=np.uint8)
-    if gacdata:
+    if gacdata or out_solar_gain:
         #
         # See if solar contamination present
         # Only for GAC data
@@ -1386,11 +1388,15 @@ def ir_uncertainty(ds,mask,plot=False,plotmax=None,out_uict=False):
     #
     gd = np.isfinite(ds["times"].values)
     time = ds["times"].values[gd][0]
+    intimes = ds["times"].values[:]
     #
     # Only redo calculation if gac data
     #
-    gain_37 = get_gainval(time,avhrr_name,ict1,ict2,ict3,ict4,CS_1,CICT_1,
-                          CE_1,0.,bad_scan,convT1,window,calculate=gacdata)
+    calculate_gain = gacdata or out_solar_gain
+    gain_37,gain_time = get_gainval(time,intimes,avhrr_name,ict1,ict2,
+                                    ict3,ict4,CS_1,CICT_1,CE_1,0.,
+                                    bad_scan,convT1,window,
+                                    calculate=calculate_gain)
     uICT,nfigure = get_uICT(gain_37,CS_1,CICT_1,Tict,0.,convT1,bad_scan,
                             solar_flag,window,plt=plt,nfigure=nfigure)
     #
@@ -1402,6 +1408,18 @@ def ir_uncertainty(ds,mask,plot=False,plotmax=None,out_uict=False):
         X[:,1] = bad_scan
         np.savetxt('uict.txt',X,fmt='%10.8f %d')
         return
+    #
+    # Output values to be stored as auxillary data on zenodo
+    #
+    if out_solar_gain:
+        #
+        # Get solar locations in time space for output zenodo files
+        #
+        tmin_solar_1, tmax_solar_1, tpeak_solar_1, tsolar_solza_1,\
+            tmin_solar_2, tmax_solar_2, tpeak_solar_2, tsolar_solza_2 = \
+                find_solar(ds,mask,convT1,plot=plot,out_time=True)
+        return gain_time,gain_37,tmin_solar_1,tmax_solar_1,tmin_solar_2,\
+            tmax_solar_2
     #
     # Loop round scanlines
     #
@@ -1756,6 +1774,7 @@ if __name__ == "__main__":
     parser.add_argument('--oname')
     parser.add_argument('--write_uict',action='store_true')
     parser.add_argument('--write_test',nargs=2)
+    parser.add_argument('--out_solar_gain')
     
     args = parser.parse_args()
 
@@ -1818,6 +1837,46 @@ if __name__ == "__main__":
         np.savetxt(args.write_test[1],X,fmt="%d")
     elif args.write_uict:
         uncert = ir_uncertainty(ds,mask,out_uict=True)
+    elif args.out_solar_gain is not None:
+        timegain,gain_37,tmin_solar_1,tmax_solar_1,tmin_solar_2,\
+            tmax_solar_2 = ir_uncertainty(ds,mask,out_solar_gain=True)
+        time_gain = (timegain -
+                     np.datetime64("1970-01-01T00:00:00"))/\
+                     np.timedelta64(1,"s")
+        with open(args.out_solar_gain,'a') as fp:
+            if tmin_solar_1 is not None and \
+               tmax_solar_1 is not None and \
+               tmin_solar_2 is not None and \
+               tmax_solar_2 is not None:
+                fp.write('{0:15.12e} {1:e} {2:15.12e} {3:15.12e} {4:15.12e} {5:15.12e}\n'.\
+                         format(time_gain,gain_37,tmin_solar_1,
+                                tmax_solar_1,tmin_solar_2,tmax_solar_2))
+            elif tmin_solar_1 is not None and \
+               tmax_solar_1 is not None and \
+               tmin_solar_2 is None and \
+               tmax_solar_2 is None:
+                tmin_solar_2 = -1.
+                tmax_solar_2 = -1.
+                fp.write('{0:15.12e} {1:e} {2:15.12e} {3:15.12e} {4:15.12e} {5:15.12e}\n'.\
+                         format(time_gain,gain_37,tmin_solar_1,
+                                tmax_solar_1,tmin_solar_2,tmax_solar_2))
+            elif tmin_solar_1 is None and \
+               tmax_solar_1 is None and \
+               tmin_solar_2 is not None and \
+               tmax_solar_2 is not None:
+                tmin_solar_1 = -1.
+                tmax_solar_1 = -1.
+                fp.write('{0:15.12e} {1:e} {2:15.12e} {3:15.12e} {4:15.12e} {5:15.12e}\n'.\
+                         format(time_gain,gain_37,tmin_solar_1,
+                                tmax_solar_1,tmin_solar_2,tmax_solar_2))
+            else:
+                tmin_solar_1 = -1.
+                tmax_solar_1 = -1.
+                tmin_solar_2 = -1.
+                tmax_solar_2 = -1.
+                fp.write('{0:15.12e} {1:e} {2:15.12e} {3:15.12e} {4:15.12e} {5:15.12e}\n'.\
+                         format(time_gain,gain_37,tmin_solar_1,
+                                tmax_solar_1,tmin_solar_2,tmax_solar_2))
     else:
         uncert = ir_uncertainty(ds,mask,plot=args.plot,plotmax=args.plotmax)
         print(uncert)

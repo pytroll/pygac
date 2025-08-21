@@ -246,8 +246,9 @@ class TestGetUict(unittest.TestCase):
         #
         # Get gain at min PRT stddev point
         #
-        gain_37 = get_gainval(time,avhrr_name,ict1,ict2,ict3,ict4,CS_1,CICT_1,
-                              CE_1,0.,mask,convT1,window,calculate=True)
+        gain_37,gain_time = get_gainval(time,times,avhrr_name,ict1,ict2,ict3,
+                                        ict4,CS_1,CICT_1,CE_1,0.,mask,
+                                        convT1,window,calculate=True)
         #
         # Check gain
         #
