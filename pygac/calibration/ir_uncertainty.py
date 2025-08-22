@@ -1076,7 +1076,7 @@ def open_zenodo_uncert_file(platform, decode_times=True):
     import fsspec
     import truststore
     ctx = truststore.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
-    coef_file = fsspec.open_local(f"simplecache::https://zenodo.org/records/15482385/files/{platform}_uncert.nc#mode=bytes",
+    coef_file = fsspec.open_local(f"simplecache::https://zenodo.org/records/16926055/files/{platform}_uncert.nc#mode=bytes",
                                   simplecache=dict(cache_storage=gettempdir(), same_names=True),
                                   https=dict(ssl=ctx))
     with xr.open_dataset(coef_file, decode_times=decode_times) as d:
