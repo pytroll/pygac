@@ -1596,7 +1596,7 @@ def ir_uncertainty(ds,mask,plot=False,plotmax=None,out_uict=False,
         #
         if sys_11_there:
             tot_sys_11 = np.sqrt(bt_sys_11[i,:]**2+0.5**2/3.)
-            uratio_11[i,:] = bt_sys_37[i,:] / tot_sys_37
+            uratio_11[i,:] = bt_sys_11[i,:] / tot_sys_11
         else:
             tot_sys_11 = np.nan
             uratio_11[i,:] = np.nan
@@ -1773,6 +1773,7 @@ def ir_uncertainty(ds,mask,plot=False,plotmax=None,out_uict=False,
     #
     # Ratio for channel-to-channel covariance as ubyte
     #
+    uratio[:,:,:] = 0.
     gd = np.isfinite(uratio_37)&(uratio_37 < 0.)
     uratio_37[gd] = 0.
     gd = np.isfinite(uratio_37)&(uratio_37 > 1.)
