@@ -105,14 +105,12 @@ def uncertainty(ds,mask,plot=False):
     for i in range(uflags.shape[0]):
         # IR flags are per scanline
         uflags[i,:] = irdata["uncert_flags"].values[i]
-        # Vis flags are at pixel level - set 3rd bit for solar contamination
+        # Vis flags are at pixel level - set 4th bit for solar contamination
         gd = (visdata["solar_fov_contam"].values[i,:] == 1)
-        uflags[i,gd] = (uflags[i,gd]|4)
+        uflags[i,gd] = (uflags[i,gd]|8)
 
     uflags_da = xr.DataArray(uflags,dims=["scan_line_index","columns"],
-                             attrs={"long_name": "Uncertainty flags (bit 1==bad space view (value=1), "
-                                                 "bit 2==solar contamination of Gain (value=2), "
-                                                 "bit 3==solar contamination of FOV (value=2)"})
+                             attrs={"long_name": "Uncertainty flags (bit 1==bad space view (value=1), bit 2==solar contamination of Gain (value=2), bit 3==No IR systematic uncertainty, bit 4==solar contamination of FOV (value=2)"})
 
     uncertainties = xr.Dataset(dict(random=random_da,systematic=sys_da,
                                     chan_covar_ratio=uratio_da,

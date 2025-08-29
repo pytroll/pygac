@@ -208,14 +208,15 @@ def vis_uncertainty(ds,mask,plot=False):
     # Test for channel 3a
     # Testing for the 3a/3b toggle needs to be added at the scanline level
     #
-    if KLMReader._get_vis_channels_to_calibrate == [0,1,2]:
-        if np.all(ds["channels"].value[:,:,2] == np.nan):
+    #if KLMReader._get_vis_channels_to_calibrate == [0,1,2]:
+    if ds["channels"].values.shape[2] == 6:
+        if np.all(ds["channels"].values[:,:,2] == np.nan):
             chan_3a = False
         else:
             chan_3a = True
     else:
         chan_3a = False
-
+        
     #
     # Get calibration coefficients
     #

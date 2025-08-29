@@ -310,7 +310,10 @@ def get_ict_uncert(Tict,prt_random,prt_bias,uICT,convT):
     #
     # Systematic doesn't average down
     #
-    prt_sys = np.sqrt(prt_bias**2 + uICT**2)
+    if np.isfinite(uICT):
+        prt_sys = np.sqrt(prt_bias**2 + uICT**2)
+    else:
+        prt_sys = np.nan
 
     return urand,prt_sys,rad
 
@@ -832,6 +835,11 @@ def get_random(channel,noise,av_noise,ict_noise,ict_random,Lict,CS,CE,CICT,NS,
 def get_sys(channel,uICT,Tict,CS,CE,CICT,NS,c1,c2,convT):
     """Get the systematic parts of the IR calibration uncertainty. Done per
     scanline"""
+
+    if np.sum(np.isfinite(uICT)) == 0:
+        uncert = np.zeros(CE.shape)
+        uncert[:] = np.nan
+        return uncert,False
     #
     # Gain part for all noise sources
     #
@@ -849,7 +857,7 @@ def get_sys(channel,uICT,Tict,CS,CE,CICT,NS,c1,c2,convT):
 
         uncert = (dLE_dLict**2)*(uradTict**2)
 
-    return np.sqrt(uncert)
+    return np.sqrt(uncert),True
 
 def get_vars(ds,channel,convT,wlength,prt_threshold,ict_threshold,
              space_threshold,gac,cal,mask,out_prt=False,out_solza=False,
@@ -1004,18 +1012,23 @@ def get_vars(ds,channel,convT,wlength,prt_threshold,ict_threshold,
     space[mask] = 0
     zeros = ict < ict_threshold
     nonzeros = np.logical_not(zeros)
+    no37 = False
     try:
         ict[zeros] = np.interp((zeros).nonzero()[0],
                                (nonzeros).nonzero()[0],
                                ict[nonzeros])
     except ValueError: # 3b has no valid data
-        raise IndexError("Channel 3b has no valid data")
-    zeros = space < space_threshold
-    nonzeros = np.logical_not(zeros)
+        no37 = True
+    if not no37:
+        zeros = space < space_threshold
+        nonzeros = np.logical_not(zeros)
 
-    space[zeros] = np.interp((zeros).nonzero()[0],
-                             (nonzeros).nonzero()[0],
-                             space[nonzeros])
+        space[zeros] = np.interp((zeros).nonzero()[0],
+                                 (nonzeros).nonzero()[0],
+                                 space[nonzeros])
+    else:
+        space[:] = np.nan
+        ict[:] = np.nan
 
     #
     # Make averages and do using pygacs method at this point
@@ -1075,6 +1088,19 @@ def open_zenodo_uncert_file(platform, decode_times=True):
 
     import fsspec
     import truststore
+
+    #
+    # Force the right naming conventions
+    #
+    if platform == "noaa6":
+        platform = "noaa06"
+    elif platform == "noaa7":
+        platform = "noaa07"
+    elif platform == "noaa8":
+        platform = "noaa08"
+    elif platform == "noaa9":
+        platform = "noaa09"
+    
     ctx = truststore.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
     coef_file = fsspec.open_local(f"simplecache::https://zenodo.org/records/16926055/files/{platform}_uncert.nc#mode=bytes",
                                   simplecache=dict(cache_storage=gettempdir(), same_names=True),
@@ -1087,6 +1113,13 @@ def get_gainval(time,intimes,avhrr,prt1,prt2,prt3,prt4,CS,CICT,CE,NS,
                 bad_scan,convT,window,calculate=False):
     """Estimate gain value at smallest stdev point in orbit either from
     file or estimate it from data"""
+    #
+    # If no 3.7 micron data present then don't do anything
+    #
+    if np.sum(np.isfinite(CS)) == 0:
+        print('ERROR: No 3.7 micron data for gain calc. so no ICT uncertainty')
+        return None,None
+
     #
     # Use nearest in time if HRPT (not calculate)
     #
@@ -1102,7 +1135,8 @@ def get_gainval(time,intimes,avhrr,prt1,prt2,prt3,prt4,CS,CICT,CE,NS,
             raise Exception("ERROR: Gain can not be determined because zenodo not available")
 
         if time > intime[-1]:
-            raise Exception("ERROR: file time > last time with max gain values (HRPR/LAC)")
+            print("ERROR: file time > last time with max gain values (HRPR/LAC)")
+            return None,None
 
         timediff = (intime-time)/np.timedelta64(1,"s")
         timediff = np.abs(timediff)
@@ -1401,12 +1435,22 @@ def ir_uncertainty(ds,mask,plot=False,plotmax=None,out_uict=False,
                                     ict3,ict4,CS_1,CICT_1,CE_1,0.,
                                     bad_scan,convT1,window,
                                     calculate=calculate_gain)
-    uICT,nfigure = get_uICT(gain_37,CS_1,CICT_1,Tict,0.,convT1,bad_scan,
-                            solar_flag,window,plt=plt,nfigure=nfigure)
+    if gain_37 is not None and gain_time is not None:
+        uICT,nfigure = get_uICT(gain_37,CS_1,CICT_1,Tict,0.,convT1,bad_scan,
+                                solar_flag,window,plt=plt,nfigure=nfigure)
+    else:
+        #
+        # Time of file out of gain time limits for HRPT data
+        # Set uICT to NaNs
+        #
+        uICT = np.zeros(len(CS_1))
+        uICT[:] = np.nan
     #
     # Output uICT,mask data
     #
     if out_uict:
+        if np.sum(np.isfinite(uICT)) == 0:
+            return
         X = np.zeros((len(uICT),2))
         X[:,0] = uICT
         X[:,1] = bad_scan
@@ -1509,21 +1553,28 @@ def ir_uncertainty(ds,mask,plot=False,plotmax=None,out_uict=False,
         # Get systematic uncertainty through the measurement equation
         # Note measurement equation uncertainty set to 0.5K@300
         #
-        rad_sys_37 = get_sys(1,ict_sys1,Tict[i],CS_1[i],
-                             CE_1[i,:],CICT_1[i],0.,0.,0.,convT1)
-        rad_sys_11 = get_sys(2,ict_sys2,Tict[i],CS_2[i],
-                             CE_2[i,:],CICT_2[i],NS_2,c1_2,c2_2,
-                             convT2)
+        rad_sys_37,sys_37_there = get_sys(1,ict_sys1,Tict[i],CS_1[i],
+                                          CE_1[i,:],CICT_1[i],0.,0.,0.,convT1)
+        rad_sys_11,sys_11_there = get_sys(2,ict_sys2,Tict[i],CS_2[i],
+                                          CE_2[i,:],CICT_2[i],NS_2,c1_2,c2_2,
+                                          convT2)
         if twelve_micron:
-            rad_sys_12 = get_sys(3,ict_sys3,Tict[i],CS_3[i],
-                                 CE_3[i,:],CICT_3[i],NS_3,c1_3,
-                                 c2_3,convT3)
-
-        T,bt_sys_37[i,:] = convT1.rad_to_t_uncert(rad_37,rad_sys_37)
-        T,bt_sys_11[i,:] = convT2.rad_to_t_uncert(rad_11,rad_sys_11)
+            rad_sys_12,sys_12_there = get_sys(3,ict_sys3,Tict[i],CS_3[i],
+                                              CE_3[i,:],CICT_3[i],NS_3,c1_3,
+                                              c2_3,convT3)
+        if sys_37_there:
+            T,bt_sys_37[i,:] = convT1.rad_to_t_uncert(rad_37,rad_sys_37)
+        else:
+            bt_sys_37[i,:] = np.nan
+        if sys_11_there:
+            T,bt_sys_11[i,:] = convT2.rad_to_t_uncert(rad_11,rad_sys_11)
+        else:
+            bt_sys_11[i,:] = np.nan
         if twelve_micron:
-            T,bt_sys_12[i,:] = convT3.rad_to_t_uncert(rad_12,rad_sys_12)
-
+            if sys_12_there:
+                T,bt_sys_12[i,:] = convT3.rad_to_t_uncert(rad_12,rad_sys_12)
+            else:
+                bt_sys_12[i,:] = np.nan
         #
         # Add 0.5/sqrt(3.)K for measurement equation uncertainty
         # Also get ratio of ICT/total uncertainty
@@ -1534,17 +1585,28 @@ def ir_uncertainty(ds,mask,plot=False,plotmax=None,out_uict=False,
         delta_rad = (rad2-rad1)/2.
         T,new_37_uncert = convT1.rad_to_t_uncert(rad_37,delta_rad)
         #tot_sys_37 = np.sqrt(bt_sys_37[i,:]**2+0.5**2/3.)
-        tot_sys_37 = np.sqrt(bt_sys_37[i,:]**2+new_37_uncert**2)
+        if sys_37_there:
+            tot_sys_37 = np.sqrt(bt_sys_37[i,:]**2+new_37_uncert**2)
+            uratio_37[i,:] = bt_sys_37[i,:] / tot_sys_37
+        else:
+            uratio_37[i,:] = np.nan
+            tot_sys_37 = np.nan
         #
         # Just add 0.5K (11/12)
         #
-        tot_sys_11 = np.sqrt(bt_sys_11[i,:]**2+0.5**2/3.)
+        if sys_11_there:
+            tot_sys_11 = np.sqrt(bt_sys_11[i,:]**2+0.5**2/3.)
+            uratio_11[i,:] = bt_sys_37[i,:] / tot_sys_37
+        else:
+            tot_sys_11 = np.nan
+            uratio_11[i,:] = np.nan
         if twelve_micron:
-            tot_sys_12 = np.sqrt(bt_sys_12[i,:]**2+0.5**2/3.)
-        uratio_37[i,:] = bt_sys_37[i,:] / tot_sys_37
-        uratio_11[i,:] = bt_sys_11[i,:] / tot_sys_11
-        if twelve_micron:
-            uratio_12[i,:] = bt_sys_12[i,:] / tot_sys_12
+            if sys_12_there:
+                tot_sys_12 = np.sqrt(bt_sys_12[i,:]**2+0.5**2/3.)
+                uratio_12[i,:] = bt_sys_12[i,:] / tot_sys_12
+            else:
+                uratio_12[i,:] = np.nan
+                tot_sys_12 = np.nan
         bt_sys_37[i,:] = tot_sys_37
         bt_sys_11[i,:] = tot_sys_11
         if twelve_micron:
@@ -1711,22 +1773,22 @@ def ir_uncertainty(ds,mask,plot=False,plotmax=None,out_uict=False,
     #
     # Ratio for channel-to-channel covariance as ubyte
     #
-    gd = (uratio_37 < 0.)
+    gd = np.isfinite(uratio_37)&(uratio_37 < 0.)
     uratio_37[gd] = 0.
-    gd = (uratio_37 > 1.)
+    gd = np.isfinite(uratio_37)&(uratio_37 > 1.)
     uratio_37[gd] = 1.
-    gd = (uratio_11 < 0.)
+    gd = np.isfinite(uratio_11)&(uratio_11 < 0.)
     uratio_11[gd] = 0.
-    gd = (uratio_11 > 1.)
+    gd = np.isfinite(uratio_11)&(uratio_11 > 1.)
     uratio_11[gd] = 1.
     gd = np.isfinite(uratio_37)
     uratio[gd,0] = (uratio_37[gd]*255).astype(dtype=np.uint8)
     gd = np.isfinite(uratio_11)
     uratio[gd,1] = (uratio_11[gd]*255).astype(dtype=np.uint8)
     if twelve_micron:
-        gd = (uratio_12 < 0.)
+        gd = np.isfinite(uratio_12)&(uratio_12 < 0.)
         uratio_12[gd] = 0.
-        gd = (uratio_12 > 1.)
+        gd = np.isfinite(uratio_12)&(uratio_12 > 1.)
         uratio_12[gd] = 1.
         gd = np.isfinite(uratio_12)
         uratio[gd,2] = (uratio_12[gd]*255).astype(dtype=np.uint8)
@@ -1740,7 +1802,9 @@ def ir_uncertainty(ds,mask,plot=False,plotmax=None,out_uict=False,
     uflags[gd] = 1
     gd = (solar_flag == 1)
     uflags[gd] = (uflags[gd]|2)
-
+    if np.sum(np.isfinite(systematic[:,:,1])) == 0: 
+        uflags = (uflags|4)
+    
     time = (ds["times"].values - np.datetime64("1970-01-01 00:00:00"))/\
            np.timedelta64(1,"s")
     time_da = xr.DataArray(time,dims=["times"],attrs={"long_name":"scanline time",
@@ -1757,8 +1821,7 @@ def ir_uncertainty(ds,mask,plot=False,plotmax=None,out_uict=False,
                                     "_FillValue":0})
 
     uflags_da = xr.DataArray(uflags,dims=["times"],
-                             attrs={"long_name":"Uncertainty flags (bit 1==bad space view (value=1), "
-                                                "bit 2==solar contamination (value=2)"})
+                             attrs={"long_name":"Uncertainty flags (bit 1==bad space view (value=1),bit 2==solar contamination (value=2),bit 3==no IR systematic uncertainty (value=4)"})
 
     uncertainties = xr.Dataset(dict(times=time_da,across_track=across_da,
                                     ir_channels=ir_channels_da,
