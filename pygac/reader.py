@@ -802,15 +802,26 @@ class Reader(ABC):
             LOG.info("Correcting for temporary scan motor issue")
             self.mask_tsm_pixels(calibrated_ds)
         if self.reference_image:
-            self._georeference_data(calibrated_ds)
+            try:
+                self._georeference_data(calibrated_ds)
+                calibrated_ds.attrs["georeferenced"] = True
+            except:  # noqa
+                LOG.exception("Could not georeference!")
+                calibrated_ds.attrs["georeferenced"] = False
         if self.compute_uncertainties:
-            from pygac.calibration.uncertainty import uncertainty
-            ucs = uncertainty(calibrated_ds, self.mask)
+            try:
+                from pygac.calibration.uncertainty import uncertainty
+                ucs = uncertainty(calibrated_ds, self.mask)
 
-            calibrated_ds["random_uncertainty"] = ucs["random"]
-            calibrated_ds["systematic_uncertainty"] = ucs["systematic"]
-            calibrated_ds["channel_covariance_ratio"] = ucs["chan_covar_ratio"]
-            calibrated_ds["uncertainty_flags"] = ucs["uncert_flags"]
+                calibrated_ds["random_uncertainty"] = ucs["random"]
+                calibrated_ds["systematic_uncertainty"] = ucs["systematic"]
+                calibrated_ds["channel_covariance_ratio"] = ucs["chan_covar_ratio"]
+                calibrated_ds["uncertainty_flags"] = ucs["uncert_flags"]
+
+                calibrated_ds.attrs["uncertainties_computed"] = True
+            except:  # noqa
+                LOG.exception("Could not compute uncertainties!")
+                calibrated_ds.attrs["uncertainties_computed"] = False
         return calibrated_ds
 
     def _georeference_data(self, calibrated_ds):
