@@ -874,7 +874,8 @@ class Reader(ABC):
             calibrated_ds.attrs["max_scan_angle"],
         )
         time_diff = np.timedelta64(int(time_diff * 1e9), "ns")
-        lons, lats = self._compute_lonlats(time_offset=time_diff)
+        lons, lats = self._compute_lonlats(time_offset=time_diff,
+                                           mask_scanlines=not self.reference_image)
         self._times_as_np_datetime64 += time_diff
 
         calibrated_ds["longitude"].data = lons
