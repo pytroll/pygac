@@ -330,10 +330,22 @@ def vis_uncertainty(ds,mask,plot=False):
         #
         # Get noise in scaled radiance space
         #
-        rad_noise_63, Rcal_1 = get_random(noise1,av_noise1,gain_1,cal,year,jday, C_1[i,:], D_1[i])
-        rad_noise_86, Rcal_2 = get_random(noise2,av_noise2,gain_2,cal,year,jday, C_2[i,:], D_2[i])
+
+        rad_noise_63, Rcal_1 = get_random(
+            noise1[i], av_noise1[i], gain_1, cal, year, jday, C_1[i, :], D_1[i]
+        )
+        rad_noise_86, Rcal_2 = get_random(
+            noise2[i], av_noise2[i], gain_2, cal, year, jday, C_2[i,:], D_2[i]
+        )
         if chan_3a:
-            rad_noise_12, Rcal_3 = get_random(noise3,av_noise3,gain_3,cal,year,jday, C_3[i,:], D_3[i])
+            rad_noise_12, Rcal_3 = get_random(
+                noise3[i], av_noise3[i], gain_3, cal, year, jday, C_3[i, :], D_3[i]
+            )
+
+        # rad_noise_63, Rcal_1 = get_random(noise1,av_noise1,gain_1,cal,year,jday, C_1[i,:], D_1[i])
+        # rad_noise_86, Rcal_2 = get_random(noise2,av_noise2,gain_2,cal,year,jday, C_2[i,:], D_2[i])
+        # if chan_3a:
+        #     rad_noise_12, Rcal_3 = get_random(noise3,av_noise3,gain_3,cal,year,jday, C_3[i,:], D_3[i])
 
 
         rcal_rand_63[i,:] = rad_noise_63
@@ -591,8 +603,7 @@ if __name__ == "__main__":
     reader_cls = get_reader_class(args.filename)
     #"/gws/nopw/j04/npl_eo/users/nyaghnam/pygac/gapfilled_tles"
     #"/gws/nopw/j04/nceo_uor/users/jmittaz/NPL/AVHRR/TLE"
-    #"C:/Users/ny2/projectdir/pygac/gapfilled_tles"
-    reader = reader_cls(tle_dir="/gws/nopw/j04/nceo_uor/users/jmittaz/NPL/AVHRR/TLE",
+    reader = reader_cls(tle_dir="/gws/nopw/j04/npl_eo/users/nyaghnam/pygac/gapfilled_tles",
                         tle_name="TLE_%(satname)s.txt",
                         calibration_method="noaa",
                         adjust_clock_drift=False)
