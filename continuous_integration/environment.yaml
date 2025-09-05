@@ -8,10 +8,15 @@ dependencies:
   - python-dateutil
   - hdf5
   - h5py
+  - netCDF4
   - packaging
   - pytest
   - pytest-cov
   - xarray
+  - cftime
+  - aiohttp
+  - requests
+  - truststore
   - pip
   - pip:
     - docutils

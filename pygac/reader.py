@@ -127,6 +127,7 @@ class Reader(ABC):
         reference_image=None,
         dem=None,
         compute_lonlats_from_tles: bool = False,
+        compute_uncertainties: bool = False,
     ):
         """Init the reader.
 
@@ -149,6 +150,7 @@ class Reader(ABC):
             dem: the digital elevation model to use for orthocorrection
             compute_lonlats_from_tles: Do not use the longitudes and latitudes provided in the file, rather compute them
                                        from the TLE.
+            compute_uncertainties: Whether to add uncertainty estimates in the calibrated_dataset.
 
         """
         self.meta_data = {}
@@ -174,6 +176,7 @@ class Reader(ABC):
         self.reference_image = reference_image
         self.dem = dem
         self.compute_lonlats_from_tles: bool = compute_lonlats_from_tles
+        self.compute_uncertainties: bool = compute_uncertainties
 
         self.clock_drift_correction_applied = False
 
@@ -506,7 +509,6 @@ class Reader(ABC):
         if self._times_as_np_datetime64 is None:
             # Read timestamps
             year, jday, msec = self._get_times_from_file()
-
             # Correct invalid values
             year, jday, msec = self.correct_times_median(year=year, jday=jday, msec=msec)
             self._times_as_np_datetime64 = self.to_datetime64(year=year, jday=jday, msec=msec)
@@ -592,6 +594,18 @@ class Reader(ABC):
         return self.create_counts_dataset()
 
     def create_counts_dataset(self):
+        """Create output xarray dataset containing counts and information relevant to calibration.
+
+        Contents of the dataset:
+            channels: Earth scene counts
+            prt_counts: Counts from PRTs on ICT
+            ict_counts: Counts from observed ICT
+            space_counts: Counts from space observation
+            bad_space_scans: Scanlines with suspect space view information
+            noise: Noise estimates in counts
+            ict_noise: ICT noise estimates in counts
+            Longitude/latitude: pixel position
+        """
         head = dict(zip(self.head.dtype.names, self.head.item(), strict=False))
         scans = self.scans
 
@@ -606,9 +620,11 @@ class Reader(ABC):
         if counts.shape[-1] == 5:
             channel_names = ["1", "2", "3", "4", "5"]
             ir_channel_names = ["3", "4", "5"]
+            vis_channel_names = ["1", "2","3"]         # added
         else:
             channel_names = ["1", "2", "3a", "3b", "4", "5"]
             ir_channel_names = ["3b", "4", "5"]
+            vis_channel_names = ["1", "2", "3a"]
 
         channels = xr.DataArray(
             counts,
@@ -621,7 +637,28 @@ class Reader(ABC):
             ),
         )
 
-        prt, ict, space = self._get_telemetry_dataarrays(line_numbers, ir_channel_names)
+        #
+        # Added total (10 per scan line) arrays
+        # J.Mittaz University of Reading
+        #
+        prt, ict, space, total_ict, total_space \
+            = self._get_telemetry_dataarrays(line_numbers, ir_channel_names)
+
+        #
+        # Added vis_space and total_vis_space to outputs
+        # N.Yaghnam, NPL
+        #
+        vis_space, total_vis_space \
+            = self._get_vis_telemetry_dataarrays(line_numbers, vis_channel_names)
+        #
+        # Get angles - need sun_zen for solar contamination in
+        # calibration routines - Added by J.Mittaz / UoR
+        #
+        sat_azi, sat_zen, sun_azi, sun_zen, rel_azi = self.get_angles()
+        sun_zen = xr.DataArray(sun_zen,
+                                 dims=["scan_line_index", "columns"],
+                                   coords=dict(scan_line_index=line_numbers,columns=columns))
+
 
         if self.interpolate_coords:
             channels = channels.assign_coords(
@@ -629,17 +666,21 @@ class Reader(ABC):
                 latitude=(("scan_line_index", "columns"), latitudes.reindex_like(channels).data),
             )
 
-        ds = xr.Dataset(
-            dict(
-                channels=channels,
-                prt_counts=prt,
-                ict_counts=ict,
-                space_counts=space,
-                longitude=longitudes,
-                latitude=latitudes,
-            ),
-            attrs=head,
-        )
+        #
+        # Added space_views and noise entries
+        #
+        # Added vis_space and total_vis_space - N.Yagnam / NPL
+        #
+        ds = xr.Dataset(dict(channels=channels, prt_counts=prt,
+                             ict_counts=ict, space_counts=space,
+                             total_ict_counts=total_ict,
+                             total_space_counts=total_space,
+                             vis_space_counts=vis_space,
+                             total_vis_space_counts=total_vis_space,
+                             longitude=longitudes, latitude=latitudes,
+                             sun_zen=sun_zen),
+                             attrs=head)
+
 
         ds.attrs["spacecraft_name"] = self.spacecraft_name
         ds.attrs["max_scan_angle"] = 55.25 if self.spacecraft_name == "noaa16" else 55.37
@@ -677,21 +718,42 @@ class Reader(ABC):
         return longitudes, latitudes
 
     def _get_telemetry_dataarrays(self, line_numbers, ir_channel_names):
-        prt, ict, space = self.get_telemetry()
+        """Get data from lower telemetry including bad_scans and noise added
+        by J.Mittaz UoR"""
+        prt, ict, space, total_space, total_ict = self.get_telemetry()
 
         prt = xr.DataArray(prt, dims=["scan_line_index"], coords=dict(scan_line_index=line_numbers))
-        ict = xr.DataArray(
-            ict,
-            dims=["scan_line_index", "ir_channel_name"],
-            coords=dict(ir_channel_name=ir_channel_names, scan_line_index=line_numbers),
-        )
-        space = xr.DataArray(
-            space,
-            dims=["scan_line_index", "ir_channel_name"],
-            coords=dict(ir_channel_name=ir_channel_names, scan_line_index=line_numbers),
-        )
+        ict = xr.DataArray(ict, dims=["scan_line_index", "ir_channel_name"],
+                           coords=dict(ir_channel_name=ir_channel_names, scan_line_index=line_numbers))
+        space = xr.DataArray(space, dims=["scan_line_index", "ir_channel_name"],
+                             coords=dict(ir_channel_name=ir_channel_names, scan_line_index=line_numbers))
+        #
+        # New entries for calibration uncertainty work
+        #
+        pixel_index = np.arange(10,dtype=np.int8)
+        total_ict = xr.DataArray(total_ict,
+                                 dims=["scan_line_index", "pixel_index", "ir_channel_name"],
+                                 coords=dict(ir_channel_name=ir_channel_names, scan_line_index=line_numbers))
+        total_space = xr.DataArray(total_space,
+                                   dims=["scan_line_index", "pixel_index", "ir_channel_name"],
+                                   coords=dict(ir_channel_name=ir_channel_names, scan_line_index=line_numbers,
+                                               pixel_index=pixel_index))
 
-        return prt, ict, space
+        return prt, ict, space, total_ict, total_space
+
+    def _get_vis_telemetry_dataarrays(self, line_numbers, vis_channel_names):
+        """Get data from lower telemetry for the visible channels. Added by N.Yaghnam, NPL"""
+        vis_space, total_vis_space = self.get_vis_telemetry()
+
+        pixel_index = np.arange(10, dtype=np.int8)
+        vis_space = xr.DataArray(vis_space, dims=["scan_line_index", "vis_channel_name"],
+                             coords=dict(vis_channel_name=vis_channel_names, scan_line_index=line_numbers))
+        total_vis_space = xr.DataArray(total_vis_space,
+                                   dims=["scan_line_index", "pixel_index", "vis_channel_name"],
+                                   coords=dict(vis_channel_name=vis_channel_names, scan_line_index=line_numbers,
+                                               pixel_index=pixel_index))
+
+        return vis_space, total_vis_space
 
     def get_calibrated_channels(self):
         """Calibrate and return the channels."""
@@ -711,11 +773,20 @@ class Reader(ABC):
     def get_calibrated_dataset(self):
         """Create and calibrate the dataset for the pass."""
         ds = self.create_counts_dataset()
+        #
+        # Make sure earth counts are kept for uncertainty calculation
+        #
+        counts = xr.DataArray(name="counts",
+                              data=np.copy(ds["channels"].data),
+                              dims=ds["channels"].dims,
+                              coords=ds["channels"].coords)
+
         # calibration = {"1": "mitram", "2": "mitram", "4": {"method":"noaa", "coeff_file": "myfile.json"}}
 
         calibration_entrypoints = entry_points(group="pygac.calibration")
         calibration_function = calibration_entrypoints[self.calibration_method].load()
         calibrated_ds = calibration_function(ds, **self.calibration_parameters)
+        calibrated_ds["counts"] = counts
 
         # Mask out corrupt values
         mask = xr.DataArray(self.mask == False, dims=["scan_line_index"])  # noqa
@@ -731,7 +802,26 @@ class Reader(ABC):
             LOG.info("Correcting for temporary scan motor issue")
             self.mask_tsm_pixels(calibrated_ds)
         if self.reference_image:
-            self._georeference_data(calibrated_ds)
+            try:
+                self._georeference_data(calibrated_ds)
+                calibrated_ds.attrs["georeferenced"] = True
+            except:  # noqa
+                LOG.exception("Could not georeference!")
+                calibrated_ds.attrs["georeferenced"] = False
+        if self.compute_uncertainties:
+            try:
+                from pygac.calibration.uncertainty import uncertainty
+                ucs = uncertainty(calibrated_ds, self.mask)
+
+                calibrated_ds["random_uncertainty"] = ucs["random"]
+                calibrated_ds["systematic_uncertainty"] = ucs["systematic"]
+                calibrated_ds["channel_covariance_ratio"] = ucs["chan_covar_ratio"]
+                calibrated_ds["uncertainty_flags"] = ucs["uncert_flags"]
+
+                calibrated_ds.attrs["uncertainties_computed"] = True
+            except:  # noqa
+                LOG.exception("Could not compute uncertainties!")
+                calibrated_ds.attrs["uncertainties_computed"] = False
         return calibrated_ds
 
     def _georeference_data(self, calibrated_ds):
@@ -745,7 +835,7 @@ class Reader(ABC):
             calibrated_ds, sun_zen, sat_zen, self.reference_image, self.dem
         )
 
-        if mdist := np.median(mdistances) > 5000:
+        if (mdist := np.median(mdistances)) > 5000:
             raise RuntimeError("Displacement minimization did not produce convincing improvements")
         calibrated_ds.attrs["median_gcp_distance"] = mdist
 
@@ -784,7 +874,8 @@ class Reader(ABC):
             calibrated_ds.attrs["max_scan_angle"],
         )
         time_diff = np.timedelta64(int(time_diff * 1e9), "ns")
-        lons, lats = self._compute_lonlats(time_offset=time_diff)
+        lons, lats = self._compute_lonlats(time_offset=time_diff,
+                                           mask_scanlines=not self.reference_image)
         self._times_as_np_datetime64 += time_diff
 
         calibrated_ds["longitude"].data = lons
@@ -1008,9 +1099,9 @@ class Reader(ABC):
             )
 
         if delta_days > 3:
-            LOG.warning("Found TLE data for %s that is %f days appart", sdate, delta_days)
+            LOG.warning("Found TLE data for %s that is %f days apart", sdate, delta_days)
         else:
-            LOG.debug("Found TLE data for %s that is %f days appart", sdate, delta_days)
+            LOG.debug("Found TLE data for %s that is %f days apart", sdate, delta_days)
 
         # Select TLE data
         tle1 = tle_data[iindex * 2]
