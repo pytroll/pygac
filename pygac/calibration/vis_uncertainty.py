@@ -331,16 +331,38 @@ def vis_uncertainty(ds,mask,plot=False):
         # Get noise in scaled radiance space
         #
 
-        rad_noise_63, Rcal_1 = get_random(
-            noise1[i], av_noise1[i], gain_1, cal, year, jday, C_1[i, :], D_1[i]
-        )
-        rad_noise_86, Rcal_2 = get_random(
-            noise2[i], av_noise2[i], gain_2, cal, year, jday, C_2[i,:], D_2[i]
-        )
+        n_scanlines = C_1.shape[0]
+        Rcal_1 = np.zeros((n_scanlines, C_1.shape[1]))
+        rad_noise_63 = np.zeros(n_scanlines)
+        Rcal_2 = np.zeros((n_scanlines, C_1.shape[1]))
+        rad_noise_86 = np.zeros(n_scanlines)
         if chan_3a:
-            rad_noise_12, Rcal_3 = get_random(
-                noise3[i], av_noise3[i], gain_3, cal, year, jday, C_3[i, :], D_3[i]
+            Rcal_3 = np.zeros((n_scanlines, C_1.shape[1]))
+            rad_noise_12 = np.zeros(n_scanlines)
+
+
+        for i in range(n_scanlines):
+            rad_noise_63[i], Rcal_1[i, :] = get_random(
+                noise1, av_noise1, gain_1, cal, year, jday, C_1[i, :], D_1[i]
             )
+            rad_noise_86[i], Rcal_2[i, :] = get_random(
+                noise2, av_noise2, gain_2, cal, year, jday, C_2[i, :], D_2[i]
+            )
+            if chan_3a:
+                rad_noise_12[i], Rcal_3[i, :] = get_random(
+                    noise3, av_noise3, gain_3, cal, year, jday, C_3[i, :], D_3[i]
+                )
+
+        # rad_noise_63, Rcal_1 = get_random(
+        #     noise1[i], av_noise1[i], gain_1, cal, year, jday, C_1[i, :], D_1[i]
+        # )
+        # rad_noise_86, Rcal_2 = get_random(
+        #     noise2[i], av_noise2[i], gain_2, cal, year, jday, C_2[i,:], D_2[i]
+        # )
+        # if chan_3a:
+        #     rad_noise_12, Rcal_3 = get_random(
+        #         noise3[i], av_noise3[i], gain_3, cal, year, jday, C_3[i, :], D_3[i]
+        #     )
 
         # rad_noise_63, Rcal_1 = get_random(noise1,av_noise1,gain_1,cal,year,jday, C_1[i,:], D_1[i])
         # rad_noise_86, Rcal_2 = get_random(noise2,av_noise2,gain_2,cal,year,jday, C_2[i,:], D_2[i])
@@ -348,10 +370,10 @@ def vis_uncertainty(ds,mask,plot=False):
         #     rad_noise_12, Rcal_3 = get_random(noise3,av_noise3,gain_3,cal,year,jday, C_3[i,:], D_3[i])
 
 
-        rcal_rand_63[i,:] = rad_noise_63
-        rcal_rand_86[i,:] = rad_noise_86
+        rcal_rand_63[i,:] = rad_noise_63[i]
+        rcal_rand_86[i,:] = rad_noise_86[i]
         if chan_3a:
-            rcal_rand_12[i,:] = rad_noise_12
+            rcal_rand_12[i,:] = rad_noise_12[i]
 
         #
         # Get systematic uncertainty through the measurement equation
@@ -606,9 +628,12 @@ if __name__ == "__main__":
     reader = reader_cls(tle_dir="/gws/nopw/j04/npl_eo/users/nyaghnam/pygac/gapfilled_tles",
                         tle_name="TLE_%(satname)s.txt",
                         calibration_method="noaa",
-                        adjust_clock_drift=False)
+                        adjust_clock_drift=False,
+                        compute_uncertainties=True)
     reader.read(args.filename)
+    print("Compute uncertainties flag:", reader.compute_uncertainties)
     ds = reader.get_calibrated_dataset()
     mask = reader.mask
     uncert = vis_uncertainty(ds,mask,plot=args.plot)
     print(uncert)
+    print("test")
