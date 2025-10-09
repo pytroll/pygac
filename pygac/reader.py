@@ -801,8 +801,9 @@ class Reader(ABC):
             try:
                 self._georeference_data(calibrated_ds)
                 calibrated_ds.attrs["georeferenced"] = True
-            except:  # noqa
+            except Exception as err:  # noqa
                 LOG.exception("Could not georeference!")
+                warnings.warn(f"Could not georeference: {str(err)}", category=RuntimeWarning)
                 calibrated_ds.attrs["georeferenced"] = False
         if self.compute_uncertainties:
             try:
@@ -815,8 +816,9 @@ class Reader(ABC):
                 calibrated_ds["uncertainty_flags"] = ucs["uncert_flags"]
 
                 calibrated_ds.attrs["uncertainties_computed"] = True
-            except:  # noqa
+            except Exception as err:  # noqa
                 LOG.exception("Could not compute uncertainties!")
+                warnings.warn(f"Could not compute uncertainties: {str(err)}", category=RuntimeWarning)
                 calibrated_ds.attrs["uncertainties_computed"] = False
         return calibrated_ds
 

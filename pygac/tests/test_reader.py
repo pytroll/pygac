@@ -1049,7 +1049,7 @@ def test_read_to_dataset_is_a_dataset_including_channels_and_telemetry(pod_file_
     assert "flag_meanings" in dataset["quality_flags"].attrs
     assert "flag_masks" in dataset["quality_flags"].attrs
 #
-# Code seems to require interpolation to with with the new addition
+# Code seems to require interpolation to with the new addition
 # of get_angles in getting the counts, so this test doesn't work
 # Comment by J.Mittaz, UoR
 #
@@ -1162,7 +1162,7 @@ def test_georeferencing_fails(pod_file_with_tbm_header, pod_tle, monkeypatch):
     reader = LACPODReader(tle_dir=pod_tle.parent, tle_name=pod_tle.name, compute_lonlats_from_tles=True,
                           reference_image="some_world_image.tif")
     reader.read(pod_file_with_tbm_header)
-    with pytest.raises(RuntimeError):
+    with pytest.warns(RuntimeWarning):
         _ = reader.get_calibrated_dataset()
 
 
