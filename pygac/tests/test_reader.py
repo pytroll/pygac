@@ -1045,6 +1045,9 @@ def test_read_to_dataset_is_a_dataset_including_channels_and_telemetry(pod_file_
     assert dataset["prt_counts"].shape == (3,)
     assert dataset["ict_counts"].shape == (3, 3)
     assert dataset["space_counts"].shape == (3, 3)
+    assert dataset["quality_flags"].shape == (3, )
+    assert "flag_meanings" in dataset["quality_flags"].attrs
+    assert "flag_masks" in dataset["quality_flags"].attrs
 #
 # Code seems to require interpolation to with with the new addition
 # of get_angles in getting the counts, so this test doesn't work

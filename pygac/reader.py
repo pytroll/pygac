@@ -666,17 +666,13 @@ class Reader(ABC):
                 latitude=(("scan_line_index", "columns"), latitudes.reindex_like(channels).data),
             )
 
-        #
-        # Added space_views and noise entries
-        #
-        # Added vis_space and total_vis_space - N.Yagnam / NPL
-        #
         ds = xr.Dataset(dict(channels=channels, prt_counts=prt,
                              ict_counts=ict, space_counts=space,
                              total_ict_counts=total_ict,
                              total_space_counts=total_space,
                              vis_space_counts=vis_space,
                              total_vis_space_counts=total_vis_space,
+                             quality_flags=self.get_qual_flags_as_cf_flags(),
                              longitude=longitudes, latitude=latitudes,
                              sun_zen=sun_zen),
                              attrs=head)
@@ -1011,6 +1007,20 @@ class Reader(ABC):
         qual_flags[:, 5] = self._get_corrupt_mask(flags=self.QFlag.CH_4_CONTAMINATION)
         qual_flags[:, 6] = self._get_corrupt_mask(flags=self.QFlag.CH_5_CONTAMINATION)
         return qual_flags
+
+    def get_qual_flags_as_cf_flags(self):
+        qual_masks = np.sum(self.get_qual_flags()[:, 1:] * [1, 2, 4, 8, 16, 32], axis=1).astype(np.uint8)
+
+        return xr.DataArray(qual_masks,
+                            dims=["scan_line_index"],
+                            attrs=dict(long_name="Scan-wise quality flags",
+                                       flag_masks="1b, 2b, 4b, 8b, 16b, 32b",
+                                       flag_meanings=("fatal_error"
+                                                      "insufficient_data_for_calibration"
+                                                       "earth_location_data_not_available"
+                                                       "channel_3_blackbody_contamination"
+                                                       "channel_4_blackbody_contamination"
+                                                       "channel_5_blackbody_contamination")))
 
     @abstractmethod
     def postproc(self, ds):  # pragma: no cover
