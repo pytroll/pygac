@@ -109,8 +109,13 @@ def uncertainty(ds,mask,plot=False):
         gd = (visdata["solar_fov_contam"].values[i,:] == 1)
         uflags[i,gd] = (uflags[i,gd]|8)
 
-    uflags_da = xr.DataArray(uflags,dims=["scan_line_index","columns"],
-                             attrs={"long_name": "Uncertainty flags (bit 1==bad space view (value=1), bit 2==solar contamination of Gain (value=2), bit 3==No IR systematic uncertainty (value=4), bit 4==solar contamination of FOV (value=8)"})
+    uflags_da = xr.DataArray(uflags, dims=["scan_line_index","columns"],
+                             attrs={"long_name": "Uncertainty flags",
+                                    "flag_masks": "1b, 2b, 4b, 8b",
+                                    "flag_meanings": ("bad_space_view "
+                                                      "solar_contamination_of_gain "
+                                                      "no_IR_systematic_uncertainty "
+                                                      "solar_contamination_of_FOV")})
 
     uncertainties = xr.Dataset(dict(random=random_da,systematic=sys_da,
                                     chan_covar_ratio=uratio_da,
