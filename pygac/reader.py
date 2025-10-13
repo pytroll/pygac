@@ -1017,11 +1017,11 @@ class Reader(ABC):
                             dims=["scan_line_index"],
                             attrs=dict(long_name="Scan-wise quality flags",
                                        flag_masks="1b, 2b, 4b, 8b, 16b, 32b",
-                                       flag_meanings=("fatal_error"
-                                                      "insufficient_data_for_calibration"
-                                                       "earth_location_data_not_available"
-                                                       "channel_3_blackbody_contamination"
-                                                       "channel_4_blackbody_contamination"
+                                       flag_meanings=("fatal_error "
+                                                      "insufficient_data_for_calibration "
+                                                       "earth_location_data_not_available "
+                                                       "channel_3_blackbody_contamination "
+                                                       "channel_4_blackbody_contamination "
                                                        "channel_5_blackbody_contamination")))
 
     @abstractmethod
