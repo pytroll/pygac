@@ -26,7 +26,9 @@ from __future__ import division
 import argparse
 
 import numpy as np
+np.set_printoptions(threshold=np.inf)
 import xarray as xr
+import matplotlib.pyplot as plt
 
 from pygac.calibration.ir_uncertainty import allan_deviation, get_bad_space_counts, get_uncert_parameter_thresholds
 from pygac.calibration.noaa import Calibrator
@@ -66,7 +68,6 @@ def get_noise(total_space,window,chan_3a):
     #
     noise2 = allan_deviation(total_space[:, :, 1], bad_scan=bad_scans)
     noise2 = np.sqrt(noise2 * noise2 + 1. / 3)
-
     #
     # 1.2 micron space counts
     #
@@ -216,7 +217,11 @@ def vis_uncertainty(ds,mask,plot=False):
             chan_3a = True
     else:
         chan_3a = False
-        
+
+    print("DATA CHECK")
+    print(ds["vis_space_counts"])
+    print(ds["counts"])
+    print(ds["total_vis_space_counts"])
     #
     # Get calibration coefficients
     #
@@ -255,7 +260,6 @@ def vis_uncertainty(ds,mask,plot=False):
     # Get variables used on the calibration
     #
     if plot:
-        import matplotlib.pyplot as plt
         plt.figure(1)
 
     D_1,C_1= get_vars(ds,0)
@@ -289,6 +293,16 @@ def vis_uncertainty(ds,mask,plot=False):
     # Systematic components
 
     #
+    # Get calibration slope
+    #
+    l_date = Calibrator.date2float(cal.date_of_launch)
+    t = (year + jday / 365.0) - l_date
+    gain_1 = get_gain(s0_1, s1_1, s2_1, t, cal, 0)
+    gain_2 = get_gain(s0_2, s1_2, s2_2, t, cal, 1)
+    if chan_3a:
+        gain_3 = get_gain(s0_3, s1_3, s2_3, t, cal, 2)
+
+    #
     # Loop round scanlines
     #
     rcal_rand_63 = np.zeros(C_2.shape,dtype=C_2.dtype)
@@ -301,6 +315,8 @@ def vis_uncertainty(ds,mask,plot=False):
     rcal_sys_12 = np.zeros(C_2.shape,dtype=C_2.dtype)
     if not chan_3a:
         rcal_sys_12[:,:] = np.nan
+
+
     for i in range(len(D_2)):
         #
         # Check for bad scanlines and add flag
@@ -317,15 +333,15 @@ def vis_uncertainty(ds,mask,plot=False):
                 rcal_sys_12[i,:] = np.nan
             continue
 
-        #
-        # Get calibration slope
-        #
-        l_date = Calibrator.date2float(cal.date_of_launch)
-        t = (year + jday / 365.0) - l_date
-        gain_1 = get_gain(s0_1, s1_1, s2_1, t, cal, 0)
-        gain_2 = get_gain(s0_2, s1_2, s2_2, t, cal, 1)
-        if chan_3a:
-            gain_3 = get_gain(s0_3, s1_3, s2_3, t, cal, 2)
+        # #
+        # # Get calibration slope
+        # #
+        # l_date = Calibrator.date2float(cal.date_of_launch)
+        # t = (year + jday / 365.0) - l_date
+        # gain_1 = get_gain(s0_1, s1_1, s2_1, t, cal, 0)
+        # gain_2 = get_gain(s0_2, s1_2, s2_2, t, cal, 1)
+        # if chan_3a:
+        #     gain_3 = get_gain(s0_3, s1_3, s2_3, t, cal, 2)
 
         #
         # Get noise in scaled radiance space
@@ -341,33 +357,18 @@ def vis_uncertainty(ds,mask,plot=False):
             rad_noise_12 = np.zeros(n_scanlines)
 
 
-        for i in range(n_scanlines):
-            rad_noise_63[i], Rcal_1[i, :] = get_random(
-                noise1, av_noise1, gain_1, cal, year, jday, C_1[i, :], D_1[i]
-            )
-            rad_noise_86[i], Rcal_2[i, :] = get_random(
-                noise2, av_noise2, gain_2, cal, year, jday, C_2[i, :], D_2[i]
-            )
-            if chan_3a:
-                rad_noise_12[i], Rcal_3[i, :] = get_random(
-                    noise3, av_noise3, gain_3, cal, year, jday, C_3[i, :], D_3[i]
-                )
 
-        # rad_noise_63, Rcal_1 = get_random(
-        #     noise1[i], av_noise1[i], gain_1, cal, year, jday, C_1[i, :], D_1[i]
-        # )
-        # rad_noise_86, Rcal_2 = get_random(
-        #     noise2[i], av_noise2[i], gain_2, cal, year, jday, C_2[i,:], D_2[i]
-        # )
-        # if chan_3a:
-        #     rad_noise_12, Rcal_3 = get_random(
-        #         noise3[i], av_noise3[i], gain_3, cal, year, jday, C_3[i, :], D_3[i]
-        #     )
+        rad_noise_63[i], Rcal_1[i, :] = get_random(
+            noise1, av_noise1, gain_1, cal, year, jday, C_1[i, :], D_1[i]
+        )
+        rad_noise_86[i], Rcal_2[i, :] = get_random(
+            noise2, av_noise2, gain_2, cal, year, jday, C_2[i, :], D_2[i]
+        )
+        if chan_3a:
+            rad_noise_12[i], Rcal_3[i, :] = get_random(
+                noise3, av_noise3, gain_3, cal, year, jday, C_3[i, :], D_3[i]
+            )
 
-        # rad_noise_63, Rcal_1 = get_random(noise1,av_noise1,gain_1,cal,year,jday, C_1[i,:], D_1[i])
-        # rad_noise_86, Rcal_2 = get_random(noise2,av_noise2,gain_2,cal,year,jday, C_2[i,:], D_2[i])
-        # if chan_3a:
-        #     rad_noise_12, Rcal_3 = get_random(noise3,av_noise3,gain_3,cal,year,jday, C_3[i,:], D_3[i])
 
 
         rcal_rand_63[i,:] = rad_noise_63[i]
@@ -389,14 +390,10 @@ def vis_uncertainty(ds,mask,plot=False):
     #
     # Solar zenith angle already computed
     #
-    #lons, lats = KLMReader()._get_lonlat_from_file()
-    #times = ds["times"].values
-    #sza = astronomy.sun_zenith_angle(times[:, np.newaxis],
-    #                                            lons, lats)
     sza = ds["sun_zen"].values
 
     refl_1 = get_reflectance(Rcal_1, d_se, sza)
-    # refl_2 = get_reflectance(Rcal_2, d_se, sza)
+    refl_2 = get_reflectance(Rcal_2, d_se, sza)
     # if chan_3a:
     #     refl_3 = get_reflectance(Rcal_3, d_se, sza)
 
@@ -543,35 +540,6 @@ def vis_uncertainty(ds,mask,plot=False):
 
         plt.show()
 
-        if chan_3a:
-            cov_chan_rand = np.array([rcal_rand_63[0, :], rcal_rand_86[0, :]], rcal_rand_12[0, :])
-            cov = np.cov(cov_chan_rand, bias=True)
-            labels = [r"0.63$\mu$m", r"0.86$\mu$m", r"1.2$\mu$m"]
-            sns.heatmap(cov, annot=True, fmt="g", xticklabels=labels, yticklabels=labels)
-
-
-        else:
-            cov_chan_rand = np.array([rcal_rand_63[0, :], rcal_rand_86[0, :]])
-            cov = np.cov(cov_chan_rand, bias=True)
-            labels = [r"0.63$\mu$m", r"0.86$\mu$m"]
-            sns.heatmap(cov, annot=True, fmt="g", xticklabels=labels, yticklabels=labels)
-        plt.title("Covariance Matrix (Random)")
-        plt.show()
-
-        if chan_3a:
-            cov_chan_sys = np.array([rcal_sys_63[0, :], rcal_sys_86[0, :]], rcal_sys_12[0, :])
-            cov = np.cov(cov_chan_sys, bias=True)
-            labels = [r"0.63$\mu$m", r"0.86$\mu$m", r"1.2$\mu$m"]
-            sns.heatmap(cov, annot=True, fmt="g", xticklabels=labels, yticklabels=labels)
-
-        else:
-            cov_chan_sys = np.array([rcal_sys_63[0, :], rcal_sys_86[0, :]])
-            cov = np.cov(cov_chan_sys, bias=True)
-            labels = [r"0.63$\mu$m", r"0.86$\mu$m"]
-            sns.heatmap(cov, annot=True, fmt="g", xticklabels=labels, yticklabels=labels, cmap="YlGnBu")
-        plt.title("Covariance Matrix (Systematic")
-        plt.show()
-
     #
     # Output uncertainties
     #
@@ -625,15 +593,17 @@ if __name__ == "__main__":
     reader_cls = get_reader_class(args.filename)
     #"/gws/nopw/j04/npl_eo/users/nyaghnam/pygac/gapfilled_tles"
     #"/gws/nopw/j04/nceo_uor/users/jmittaz/NPL/AVHRR/TLE"
-    reader = reader_cls(tle_dir="/gws/nopw/j04/npl_eo/users/nyaghnam/pygac/gapfilled_tles",
+    reader = reader_cls(tle_dir=r"C:\Users\ny2\Desktop\projectdir\pygac\gapfilled_tles",
                         tle_name="TLE_%(satname)s.txt",
                         calibration_method="noaa",
-                        adjust_clock_drift=False,
-                        compute_uncertainties=True)
+                        adjust_clock_drift=False)
     reader.read(args.filename)
-    print("Compute uncertainties flag:", reader.compute_uncertainties)
     ds = reader.get_calibrated_dataset()
     mask = reader.mask
     uncert = vis_uncertainty(ds,mask,plot=args.plot)
     print(uncert)
-    print("test")
+    uncert.to_netcdf("uncertainty_output.nc")
+    print("Uncertainty saved to 'uncertainty_output.nc'")
+
+
+
