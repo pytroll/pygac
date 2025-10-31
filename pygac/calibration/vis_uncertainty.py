@@ -316,6 +316,18 @@ def vis_uncertainty(ds,mask,plot=False):
     if not chan_3a:
         rcal_sys_12[:,:] = np.nan
 
+    #
+    # Get noise in scaled radiance space
+    #
+
+    n_scanlines = C_1.shape[0]
+    Rcal_1 = np.zeros((n_scanlines, C_1.shape[1]))
+    rad_noise_63 = np.zeros(n_scanlines)
+    Rcal_2 = np.zeros((n_scanlines, C_1.shape[1]))
+    rad_noise_86 = np.zeros(n_scanlines)
+    if chan_3a:
+        Rcal_3 = np.zeros((n_scanlines, C_1.shape[1]))
+        rad_noise_12 = np.zeros(n_scanlines)
 
     for i in range(len(D_2)):
         #
@@ -333,28 +345,19 @@ def vis_uncertainty(ds,mask,plot=False):
                 rcal_sys_12[i,:] = np.nan
             continue
 
+
         # #
-        # # Get calibration slope
+        # # Get noise in scaled radiance space
         # #
-        # l_date = Calibrator.date2float(cal.date_of_launch)
-        # t = (year + jday / 365.0) - l_date
-        # gain_1 = get_gain(s0_1, s1_1, s2_1, t, cal, 0)
-        # gain_2 = get_gain(s0_2, s1_2, s2_2, t, cal, 1)
+        #
+        # n_scanlines = C_1.shape[0]
+        # Rcal_1 = np.zeros((n_scanlines, C_1.shape[1]))
+        # rad_noise_63 = np.zeros(n_scanlines)
+        # Rcal_2 = np.zeros((n_scanlines, C_1.shape[1]))
+        # rad_noise_86 = np.zeros(n_scanlines)
         # if chan_3a:
-        #     gain_3 = get_gain(s0_3, s1_3, s2_3, t, cal, 2)
-
-        #
-        # Get noise in scaled radiance space
-        #
-
-        n_scanlines = C_1.shape[0]
-        Rcal_1 = np.zeros((n_scanlines, C_1.shape[1]))
-        rad_noise_63 = np.zeros(n_scanlines)
-        Rcal_2 = np.zeros((n_scanlines, C_1.shape[1]))
-        rad_noise_86 = np.zeros(n_scanlines)
-        if chan_3a:
-            Rcal_3 = np.zeros((n_scanlines, C_1.shape[1]))
-            rad_noise_12 = np.zeros(n_scanlines)
+        #     Rcal_3 = np.zeros((n_scanlines, C_1.shape[1]))
+        #     rad_noise_12 = np.zeros(n_scanlines)
 
 
 
