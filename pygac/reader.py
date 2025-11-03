@@ -823,13 +823,14 @@ class Reader(ABC):
         return calibrated_ds
 
     def _georeference_data(self, calibrated_ds):
+        preliminary_time_diff_s = 0
         if not self.adjust_clock_drift:
-            self._correct_time_offset(calibrated_ds)
+            preliminary_time_diff_s = self._correct_time_offset(calibrated_ds)
 
         from georeferencer.georeferencer import get_swath_displacement
 
         _, sat_zen, _, sun_zen, _ = self.get_angles()
-        time_diff, (roll, pitch, yaw), (odistances, mdistances) = get_swath_displacement(
+        time_diff_s, (roll, pitch, yaw), (odistances, mdistances) = get_swath_displacement(
             calibrated_ds, sun_zen, sat_zen, self.reference_image, self.dem
         )
 
@@ -838,11 +839,14 @@ class Reader(ABC):
         calibrated_ds.attrs["median_gcp_distance"] = mdist
 
         self._rpy = roll, pitch, yaw
-        time_diff = np.timedelta64(int(time_diff * 1e9), "ns")
+        time_diff = np.timedelta64(int(time_diff_s * 1e9), "ns")
         lons, lats = self._compute_lonlats(time_offset=time_diff)
         self._times_as_np_datetime64 += time_diff
         calibrated_ds["longitude"].data = lons
         calibrated_ds["latitude"].data = lats
+        calibrated_ds.attrs["estimated_attitude_in_degrees"] = roll, pitch, yaw
+        calibrated_ds.attrs["estimated_time_offset_in_seconds"] = time_diff_s + preliminary_time_diff_s
+
         if self.dem:
             from georeferencer.georeferencer import orthocorrection
 
@@ -863,7 +867,7 @@ class Reader(ABC):
         ref_lats = (thinned_lats[0, 0], thinned_lats[0, -1], thinned_lats[-1, 0], thinned_lats[-1, -1])
         from pyorbital.geoloc_avhrr import estimate_time_offset
 
-        time_diff, _ = estimate_time_offset(
+        time_diff_s, _ = estimate_time_offset(
             gcps,
             ref_lons,
             ref_lats,
@@ -871,7 +875,7 @@ class Reader(ABC):
             calibrated_ds.attrs["tle"],
             calibrated_ds.attrs["max_scan_angle"],
         )
-        time_diff = np.timedelta64(int(time_diff * 1e9), "ns")
+        time_diff = np.timedelta64(int(time_diff_s * 1e9), "ns")
         lons, lats = self._compute_lonlats(time_offset=time_diff,
                                            mask_scanlines=not self.reference_image)
         self._times_as_np_datetime64 += time_diff
@@ -879,6 +883,7 @@ class Reader(ABC):
         calibrated_ds["longitude"].data = lons
         calibrated_ds["latitude"].data = lats
         calibrated_ds["times"].data = self._times_as_np_datetime64
+        return time_diff_s
 
     @abstractmethod
     def get_telemetry(self):  # pragma: no cover
