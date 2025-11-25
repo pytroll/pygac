@@ -30,6 +30,7 @@ import logging
 import warnings
 
 import numpy as np
+
 try:
     from pyorbital.geoloc_instrument_definitions import avhrr_gac_from_times
 except ImportError:
@@ -37,8 +38,8 @@ except ImportError:
     from pyorbital.geoloc_instrument_definitions import avhrr_gac
     def avhrr_gac_from_times(times, points):
         return avhrr_gac(times, points*5+3.5)
-    warnings.warn('pyorbital version does not support avhrr_gac_from_times. ' +
-                  'Computation of missing longitude/latitudes may be incorrect.')
+    warnings.warn("pyorbital version does not support avhrr_gac_from_times. " +
+                  "Computation of missing longitude/latitudes may be incorrect.")
 
 
 from pygac.reader import Reader, ReaderError

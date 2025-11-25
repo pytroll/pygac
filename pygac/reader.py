@@ -33,7 +33,7 @@ import types
 import warnings
 from abc import ABC, abstractmethod
 from contextlib import suppress
-from functools import cached_property
+from functools import cache, cached_property
 from importlib.metadata import entry_points
 
 import geotiepoints as gtp
@@ -145,7 +145,7 @@ class Reader(ABC):
                                 calibration coefficients
             calibration_file: path to json file containing default calibrations
             header_date: the date to use for pod header choice. Defaults to "auto".
-            correct_scanlines: Remove corrrupt scanline numbers. Defaults to True
+            correct_scanlines: Remove corrupt scanline numbers. Defaults to True
             reference_image: the reference image to use for georeferencing
             dem: the digital elevation model to use for orthocorrection
             compute_lonlats_from_tles: Do not use the longitudes and latitudes provided in the file, rather compute them
@@ -352,19 +352,21 @@ class Reader(ABC):
             filename (str): Path to GAC/LAC file
             fileobj: An open file object to read from. (optional)
 
-        Retruns:
+        Returns:
             result (bool): True if the reader can read the input
         """
         if fileobj:
             pos = fileobj.tell()
+        else:
+            pos = None
         try:
-            archive_header, header = cls.read_header(filename, fileobj=fileobj)
+            _, _ = cls.read_header(filename, fileobj=fileobj)
             result = True
         except (ReaderError, ValueError) as exception:
             LOG.debug("%s failed to read the file! %s" % (cls.__name__, repr(exception)))
             result = False
         finally:
-            if fileobj:
+            if fileobj and pos:
                 fileobj.seek(pos)
         return result
 
@@ -499,6 +501,7 @@ class Reader(ABC):
         """
         raise NotImplementedError
 
+    @cache
     def get_times(self):
         """Read scanline timestamps and try to correct invalid values.
 
@@ -506,18 +509,17 @@ class Reader(ABC):
             UTC timestamps
 
         """
-        if self._times_as_np_datetime64 is None:
-            # Read timestamps
-            year, jday, msec = self._get_times_from_file()
-            # Correct invalid values
-            year, jday, msec = self.correct_times_median(year=year, jday=jday, msec=msec)
-            self._times_as_np_datetime64 = self.to_datetime64(year=year, jday=jday, msec=msec)
-            try:
-                self._times_as_np_datetime64 = self.correct_times_thresh()
-            except TimestampMismatch as err:
-                LOG.error(str(err))
-
+        # Read timestamp
+        year, jday, msec = self._get_times_from_file()
+        # Correct invalid values
+        year, jday, msec = self.correct_times_median(year=year, jday=jday, msec=msec)
+        self._times_as_np_datetime64 = self.to_datetime64(year=year, jday=jday, msec=msec)
+        try:
+            self._times_as_np_datetime64 = self.correct_times_thresh()
+        except TimestampMismatch as err:
+            LOG.error(str(err))
         return self._times_as_np_datetime64
+
 
     @staticmethod
     def to_datetime64(year, jday, msec):
@@ -619,12 +621,8 @@ class Reader(ABC):
 
         if counts.shape[-1] == 5:
             channel_names = ["1", "2", "3", "4", "5"]
-            ir_channel_names = ["3", "4", "5"]
-            vis_channel_names = ["1", "2","3"]         # added
         else:
             channel_names = ["1", "2", "3a", "3b", "4", "5"]
-            ir_channel_names = ["3b", "4", "5"]
-            vis_channel_names = ["1", "2", "3a"]
 
         channels = xr.DataArray(
             counts,
@@ -637,27 +635,14 @@ class Reader(ABC):
             ),
         )
 
-        #
-        # Added total (10 per scan line) arrays
-        # J.Mittaz University of Reading
-        #
-        prt, ict, space, total_ict, total_space \
-            = self._get_telemetry_dataarrays(line_numbers, ir_channel_names)
+        mean_prt, full_ict, full_space \
+            = self._get_telemetry_dataarrays(line_numbers, channel_names)
 
-        #
-        # Added vis_space and total_vis_space to outputs
-        # N.Yaghnam, NPL
-        #
-        vis_space, total_vis_space \
-            = self._get_vis_telemetry_dataarrays(line_numbers, vis_channel_names)
-        #
-        # Get angles - need sun_zen for solar contamination in
-        # calibration routines - Added by J.Mittaz / UoR
-        #
         sat_azi, sat_zen, sun_azi, sun_zen, rel_azi = self.get_angles()
         sun_zen = xr.DataArray(sun_zen,
-                                 dims=["scan_line_index", "columns"],
-                                   coords=dict(scan_line_index=line_numbers,columns=columns))
+                               dims=["scan_line_index", "columns"],
+                               coords=dict(scan_line_index=line_numbers,
+                                           columns=columns))
 
 
         if self.interpolate_coords:
@@ -666,12 +651,10 @@ class Reader(ABC):
                 latitude=(("scan_line_index", "columns"), latitudes.reindex_like(channels).data),
             )
 
-        ds = xr.Dataset(dict(channels=channels, prt_counts=prt,
-                             ict_counts=ict, space_counts=space,
-                             total_ict_counts=total_ict,
-                             total_space_counts=total_space,
-                             vis_space_counts=vis_space,
-                             total_vis_space_counts=total_vis_space,
+        ds = xr.Dataset(dict(channels=channels,
+                             mean_prt_counts=mean_prt,
+                             full_ict_counts=full_ict,
+                             full_space_counts=full_space,
                              quality_flags=self.get_qual_flags_as_cf_flags(),
                              longitude=longitudes, latitude=latitudes,
                              sun_zen=sun_zen),
@@ -713,29 +696,22 @@ class Reader(ABC):
 
         return longitudes, latitudes
 
-    def _get_telemetry_dataarrays(self, line_numbers, ir_channel_names):
-        """Get data from lower telemetry including bad_scans and noise added
-        by J.Mittaz UoR"""
-        prt, ict, space, total_space, total_ict = self.get_telemetry()
+    def _get_telemetry_dataarrays(self, line_numbers, channel_names):
+        """Get data from lower telemetry including bad_scans and noise."""
+        mean_prt, full_space, full_ict = self.get_telemetry()
 
-        prt = xr.DataArray(prt, dims=["scan_line_index"], coords=dict(scan_line_index=line_numbers))
-        ict = xr.DataArray(ict, dims=["scan_line_index", "ir_channel_name"],
-                           coords=dict(ir_channel_name=ir_channel_names, scan_line_index=line_numbers))
-        space = xr.DataArray(space, dims=["scan_line_index", "ir_channel_name"],
-                             coords=dict(ir_channel_name=ir_channel_names, scan_line_index=line_numbers))
-        #
-        # New entries for calibration uncertainty work
-        #
-        pixel_index = np.arange(10,dtype=np.int8)
-        total_ict = xr.DataArray(total_ict,
+        prt = xr.DataArray(mean_prt, dims=["scan_line_index"], coords=dict(scan_line_index=line_numbers))
+
+        pixel_index = np.arange(10, dtype=np.int8)
+        total_ict = xr.DataArray(full_ict,
                                  dims=["scan_line_index", "pixel_index", "ir_channel_name"],
-                                 coords=dict(ir_channel_name=ir_channel_names, scan_line_index=line_numbers))
-        total_space = xr.DataArray(total_space,
-                                   dims=["scan_line_index", "pixel_index", "ir_channel_name"],
-                                   coords=dict(ir_channel_name=ir_channel_names, scan_line_index=line_numbers,
+                                 coords=dict(ir_channel_name=channel_names[-3:], scan_line_index=line_numbers))
+        total_space = xr.DataArray(full_space,
+                                   dims=["scan_line_index", "pixel_index", "channel_name"],
+                                   coords=dict(channel_name=channel_names, scan_line_index=line_numbers,
                                                pixel_index=pixel_index))
 
-        return prt, ict, space, total_ict, total_space
+        return prt, total_ict, total_space
 
     def _get_vis_telemetry_dataarrays(self, line_numbers, vis_channel_names):
         """Get data from lower telemetry for the visible channels. Added by N.Yaghnam, NPL"""

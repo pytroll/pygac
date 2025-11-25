@@ -23,13 +23,14 @@
 """
 
 import unittest
+
 import numpy as np
-import xarray as xr
 import pandas as pd
-from pygac.calibration.ir_uncertainty import allan_deviation, get_bad_space_counts, get_uncert_parameter_thresholds
+import xarray as xr
+
+from pygac.calibration.ir_uncertainty import allan_deviation, get_bad_space_counts
 from pygac.calibration.noaa import Calibrator
-from pygac.calibration.vis_uncertainty import get_vars, \
-                                                get_gain, get_random, get_sys, get_noise, vis_uncertainty
+from pygac.calibration.vis_uncertainty import get_gain, get_sys, get_vars
 
 n_scan_lines = 100
 n_columns = 1
@@ -41,20 +42,22 @@ n_pixels = 10
 # Coordinate values
 scan_line_index = np.arange(1, n_scan_lines + 1, dtype=np.int16)
 columns = np.arange(n_columns, dtype=np.int32)
-channel_name = np.array(['1', '2', '3', '4', '5'], dtype='<U1')
-ir_channel_name = np.array(['3', '4', '5'], dtype='<U1')
-vis_channel_name = np.array(['1', '2', '3'], dtype='<U1')
+channel_name = np.array(["1", "2", "3", "4", "5"], dtype="<U1")
+ir_channel_name = np.array(["3", "4", "5"], dtype="<U1")
+vis_channel_name = np.array(["1", "2", "3"], dtype="<U1")
 pixel_index = np.arange(n_pixels, dtype=np.int8)
 times = pd.date_range("1987-02-02", periods=n_scan_lines, freq="S")
 
 # Sample data
-longitude = np.random.uniform(-180, 180, (n_scan_lines, n_columns)).astype(np.float32)
-latitude = np.random.uniform(-90, 90, (n_scan_lines, n_columns)).astype(np.float32)
-channels = np.random.rand(n_scan_lines, n_columns, n_channels)
-counts = np.random.rand(n_scan_lines, n_pixels, n_vis_channels)
-vis_space_counts = np.random.rand(n_scan_lines, n_vis_channels)
-total_vis_space_counts = np.random.rand(n_scan_lines, n_pixels, n_vis_channels)
-sun_zen = np.random.uniform(0, 180, (n_scan_lines, n_columns)).astype(np.float32)
+rng = np.random.default_rng()
+
+longitude = rng.uniform(-180, 180, (n_scan_lines, n_columns)).astype(np.float32)
+latitude = rng.uniform(-90, 90, (n_scan_lines, n_columns)).astype(np.float32)
+channels = rng.random((n_scan_lines, n_columns, n_channels))
+counts = rng.random((n_scan_lines, n_pixels, n_vis_channels))
+vis_space_counts = rng.random((n_scan_lines, n_vis_channels))
+total_vis_space_counts = rng.random((n_scan_lines, n_pixels, n_vis_channels))
+sun_zen = rng.uniform(0, 180, (n_scan_lines, n_columns)).astype(np.float32)
 
 
 # Construct the Dataset
@@ -92,16 +95,6 @@ class TestVisibleUncertainty(unittest.TestCase):
         exp_measurement = 0.79930525
 
         self.assertAlmostEqual(measurement, exp_measurement)
-
-    # def test_FOV_solar_contam(self):
-    #     refl = np.array([0.025, 0.055, 0.07, 0.03, 0.067])
-    #     sza = np.array([101, 106, 99, 104, 105])
-    #
-    #     window, solar_contam_threshold, sza_threshold = \
-    #         get_uncert_parameter_thresholds(vischans=True)
-    #
-    #     fov_meas = get_FOV_solar_contam(refl, sza, 0.05, 102.)
-    #     self.assertEqual(np.count_nonzero(fov_meas), 2)
 
     def test_bad_space_counts(self):
         sp_data = np.array([[37., 37., 36., 37., 42., 37., 37., 36., 28., 37.],

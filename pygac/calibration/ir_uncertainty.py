@@ -54,7 +54,7 @@ def allan_deviation(space,bad_scan=None):
     #
     #        allan_variance = 0.5 <(y_n+1-y_n)**2>
     #
-    allan_variance = 0.5 * np.mean((newsp[:,1:] - newsp[:,0:-1]) ** 2)
+    allan_variance = 0.5 * np.mean(np.diff(newsp, axis=1) ** 2)
     #
     # Return the Allan deviation in counts (sqrt Allan variance)
     #
@@ -100,10 +100,11 @@ class convBT:
         self.nBB_num = self.c1 * (self.nu_c**3)
         self.c2_nu_c = self.c2 * self.nu_c
 
-def get_bad_space_counts(sp_data,ict_data=None):
-    """Find bad space count data (space count data is voltage clamped so
-    should have very close to the same value close to 950 - 960
-    Written by J.Mittaz / University of Reading 6 Oct 2024"""
+def get_bad_space_counts(sp_data, ict_data=None):
+    """Find bad space count data.
+
+    Space count data is voltage clamped so should have very close to the same value close to 950 - 960.
+    """
 
     #
     # Use robust estimators to get thresholds for space counts
@@ -131,6 +132,7 @@ def get_bad_space_counts(sp_data,ict_data=None):
                              std < 5.))
 
     return sp_bad_data
+
 
 def get_noise(total_space,total_ict,window,twelve_micron):
     """Get noise estimates from the counts"""
@@ -162,7 +164,7 @@ def get_noise(total_space,total_ict,window,twelve_micron):
     #
     # 3.7 micron space counts
     #
-    noise1 = allan_deviation(total_space[:,:,0],bad_scan=bad_scans)
+    noise1 = allan_deviation(total_space[:, :, 0],bad_scan=bad_scans)
     noise1 = np.sqrt(noise1*noise1 + 1./3)
 
     #
@@ -863,11 +865,10 @@ def get_vars(ds,channel,convT,wlength,prt_threshold,ict_threshold,
              space_threshold,gac,cal,mask,out_prt=False,out_solza=False,
              out_time=False):
     """Get variables from xarray including smoothing and interpolation"""
-
-    space = ds["space_counts"].values[:,channel]
-    prt = ds["prt_counts"].values[:]
-    ict = ds["ict_counts"].values[:,channel]
-    ce = ds["counts"].values[:,:,channel-3]
+    space = ds["full_space_counts"].isel(channel_name=(channel - 3)).mean(axis=1).values
+    prt = ds["mean_prt_counts"].values[:]
+    ict = ds["full_ict_counts"].isel(ir_channel_name=channel).mean(axis=1).values
+    ce = ds["counts"].values[:,:,channel - 3]
     midpoint = ds["sun_zen"].shape[1]//2
     line_numbers = ds["scan_line_index"].data
 
@@ -1100,7 +1101,7 @@ def open_zenodo_uncert_file(platform, decode_times=True):
         platform = "noaa08"
     elif platform == "noaa9":
         platform = "noaa09"
-    
+
     ctx = truststore.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
     coef_file = fsspec.open_local(f"simplecache::https://zenodo.org/records/16926055/files/{platform}_uncert.nc#mode=bytes",
                                   simplecache=dict(cache_storage=gettempdir(), same_names=True),
@@ -1117,7 +1118,7 @@ def get_gainval(time,intimes,avhrr,prt1,prt2,prt3,prt4,CS,CICT,CE,NS,
     # If no 3.7 micron data present then don't do anything
     #
     if np.sum(np.isfinite(CS)) == 0:
-        print('ERROR: No 3.7 micron data for gain calc. so no ICT uncertainty')
+        print("ERROR: No 3.7 micron data for gain calc. so no ICT uncertainty")
         return None,None
 
     #
@@ -1208,8 +1209,10 @@ def get_uncert_parameter_thresholds(vischans=False):
 
 def get_solar_from_file(platform, ds):
     """Read in possible solar contamination times from uncertainty files.
+
     Only used for LAC/HRPT data where there is not enough data to detect
-    possible solar contamination so GAC estimates are used"""
+    possible solar contamination so GAC estimates are used.
+    """
 
     #
     # Get times in seconds from
@@ -1286,7 +1289,7 @@ def ir_uncertainty(ds,mask,plot=False,plotmax=None,out_uict=False,
     """
 
     #
-    # Get parameters for kernals/uncertainties
+    # Get parameters for kernels/uncertainties
     #
     window, prt_bias, prt_sys, prt_threshold, ict_threshold, \
         space_threshold = get_uncert_parameter_thresholds()
@@ -1330,8 +1333,8 @@ def ir_uncertainty(ds,mask,plot=False,plotmax=None,out_uict=False,
     #
     # Get variables for 10 sampled case
     #
-    total_space = ds["total_space_counts"].values[:,:,:]
-    total_ict = ds["total_ict_counts"].values[:,:,:]
+    total_space = ds["full_space_counts"].values[:,:,:]
+    total_ict = ds["full_ict_counts"].values[:,:,:]
     #
     # Noise elements
     #
@@ -1454,7 +1457,7 @@ def ir_uncertainty(ds,mask,plot=False,plotmax=None,out_uict=False,
         X = np.zeros((len(uICT),2))
         X[:,0] = uICT
         X[:,1] = bad_scan
-        np.savetxt('uict.txt',X,fmt='%10.8f %d')
+        np.savetxt("uict.txt",X,fmt="%10.8f %d")
         return
     #
     # Output values to be stored as auxillary data on zenodo
@@ -1803,26 +1806,34 @@ def ir_uncertainty(ds,mask,plot=False,plotmax=None,out_uict=False,
     uflags[gd] = 1
     gd = (solar_flag == 1)
     uflags[gd] = (uflags[gd]|2)
-    if np.sum(np.isfinite(systematic[:,:,1])) == 0: 
+    if np.sum(np.isfinite(systematic[:,:,1])) == 0:
         uflags = (uflags|4)
-    
+
     time = (ds["times"].values - np.datetime64("1970-01-01 00:00:00"))/\
            np.timedelta64(1,"s")
     time_da = xr.DataArray(time,dims=["times"],attrs={"long_name":"scanline time",
                                                      "units":"seconds since 1970-01-01"})
     across_da = xr.DataArray(np.arange(random.shape[1]),dims=["across_track"])
     ir_channels_da = xr.DataArray(np.array([3,4,5]),dims=["ir_channels"])
-    random_da = xr.DataArray(random,dims=["times","across_track","ir_channels"],
+    random_da = xr.DataArray(random,
+                             dims=["times","across_track","ir_channels"],
                              attrs={"long_name":"Random uncertainties","units":"K"})
-    sys_da = xr.DataArray(systematic,dims=["times","across_track","ir_channels"],
+    sys_da = xr.DataArray(systematic,
+                          dims=["times","across_track","ir_channels"],
                           attrs={"long_name":"Systematic uncertainties","units":"K"})
 
-    uratio_da = xr.DataArray(uratio,dims=["times","across_track","ir_channels"],
+    uratio_da = xr.DataArray(uratio,
+                             dims=["times","across_track","ir_channels"],
                              attrs={"long_name":"Channel-to-channel covariance  ratio",
                                     "_FillValue":0})
 
-    uflags_da = xr.DataArray(uflags,dims=["times"],
-                             attrs={"long_name":"Uncertainty flags (bit 1==bad space view (value=1),bit 2==solar contamination (value=2),bit 3==no IR systematic uncertainty (value=4)"})
+    uflags_da = xr.DataArray(uflags,
+                             dims=["times"],
+                             attrs={"long_name":"Uncertainty flags",
+                                    "flag_masks": "1b, 2b, 4b",
+                                    "flag_meanings": ("bad_space_view "
+                                                      "solar_contamination_of_gain "
+                                                      "no_IR_systematic_uncertainty ")})
 
     uncertainties = xr.Dataset(dict(times=time_da,across_track=across_da,
                                     ir_channels=ir_channels_da,
@@ -1835,15 +1846,15 @@ def ir_uncertainty(ds,mask,plot=False,plotmax=None,out_uict=False,
 if __name__ == "__main__":
     from pygac import get_reader_class
     parser = argparse.ArgumentParser()
-    parser.add_argument('filename')
-    parser.add_argument('--plot',action='store_true')
-    parser.add_argument('--plotmax',type=float,nargs=6)
-    parser.add_argument('--solar_contam',action='store_true')
-    parser.add_argument('--oname')
-    parser.add_argument('--write_uict',action='store_true')
-    parser.add_argument('--write_test',nargs=2)
-    parser.add_argument('--out_solar_gain')
-    
+    parser.add_argument("filename")
+    parser.add_argument("--plot",action="store_true")
+    parser.add_argument("--plotmax",type=float,nargs=6)
+    parser.add_argument("--solar_contam",action="store_true")
+    parser.add_argument("--oname")
+    parser.add_argument("--write_uict",action="store_true")
+    parser.add_argument("--write_test",nargs=2)
+    parser.add_argument("--out_solar_gain")
+
     args = parser.parse_args()
 
     #
@@ -1911,12 +1922,12 @@ if __name__ == "__main__":
         time_gain = (timegain -
                      np.datetime64("1970-01-01T00:00:00"))/\
                      np.timedelta64(1,"s")
-        with open(args.out_solar_gain,'a') as fp:
+        with open(args.out_solar_gain,"a") as fp:
             if tmin_solar_1 is not None and \
                tmax_solar_1 is not None and \
                tmin_solar_2 is not None and \
                tmax_solar_2 is not None:
-                fp.write('{0:15.12e} {1:e} {2:15.12e} {3:15.12e} {4:15.12e} {5:15.12e}\n'.\
+                fp.write("{0:15.12e} {1:e} {2:15.12e} {3:15.12e} {4:15.12e} {5:15.12e}\n".\
                          format(time_gain,gain_37,tmin_solar_1,
                                 tmax_solar_1,tmin_solar_2,tmax_solar_2))
             elif tmin_solar_1 is not None and \
@@ -1925,7 +1936,7 @@ if __name__ == "__main__":
                tmax_solar_2 is None:
                 tmin_solar_2 = -1.
                 tmax_solar_2 = -1.
-                fp.write('{0:15.12e} {1:e} {2:15.12e} {3:15.12e} {4:15.12e} {5:15.12e}\n'.\
+                fp.write("{0:15.12e} {1:e} {2:15.12e} {3:15.12e} {4:15.12e} {5:15.12e}\n".\
                          format(time_gain,gain_37,tmin_solar_1,
                                 tmax_solar_1,tmin_solar_2,tmax_solar_2))
             elif tmin_solar_1 is None and \
@@ -1934,7 +1945,7 @@ if __name__ == "__main__":
                tmax_solar_2 is not None:
                 tmin_solar_1 = -1.
                 tmax_solar_1 = -1.
-                fp.write('{0:15.12e} {1:e} {2:15.12e} {3:15.12e} {4:15.12e} {5:15.12e}\n'.\
+                fp.write("{0:15.12e} {1:e} {2:15.12e} {3:15.12e} {4:15.12e} {5:15.12e}\n".\
                          format(time_gain,gain_37,tmin_solar_1,
                                 tmax_solar_1,tmin_solar_2,tmax_solar_2))
             else:
@@ -1942,7 +1953,7 @@ if __name__ == "__main__":
                 tmax_solar_1 = -1.
                 tmin_solar_2 = -1.
                 tmax_solar_2 = -1.
-                fp.write('{0:15.12e} {1:e} {2:15.12e} {3:15.12e} {4:15.12e} {5:15.12e}\n'.\
+                fp.write("{0:15.12e} {1:e} {2:15.12e} {3:15.12e} {4:15.12e} {5:15.12e}\n".\
                          format(time_gain,gain_37,tmin_solar_1,
                                 tmax_solar_1,tmin_solar_2,tmax_solar_2))
     else:

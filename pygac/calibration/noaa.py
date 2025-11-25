@@ -36,7 +36,6 @@ from enum import Enum
 from importlib.resources import files
 
 import numpy as np
-import xarray as xr
 
 LOG = logging.getLogger(__name__)
 
@@ -84,18 +83,18 @@ def calibrate(ds, custom_coeffs=None, coeffs_file=None):
     )
 
     # Ensure data isn't overwritten
-    prt = np.copy(ds["prt_counts"].data)
-    ict = np.copy(ds["ict_counts"].data)
-    space = np.copy(ds["space_counts"].data)
-    
+    prt = np.copy(ds["mean_prt_counts"].data)
+    mean_ict = ds["full_ict_counts"].mean(axis=1).data
+    mean_ir_space = ds["full_space_counts"].mean(axis=1).data[:, -3:]
+
     ir_channels_to_calibrate = [3, 4, 5]
 
     for chan in ir_channels_to_calibrate:
         channels[:, :, chan - 6] = calibrate_thermal(
             channels[:, :, chan - 6],
             prt,
-            ict[:, chan - 3],
-            space[:, chan - 3],
+            mean_ict[:, chan - 3],
+            mean_ir_space[:, chan - 3],
             scan_line_numbers,
             chan,
             calibration_coeffs
@@ -103,7 +102,7 @@ def calibrate(ds, custom_coeffs=None, coeffs_file=None):
 
     new_ds = ds.copy()
     new_ds["channels"].data = channels
-    
+
     new_ds.attrs["calib_coeffs_version"] = calibration_coeffs.version
 
     return new_ds
@@ -421,7 +420,7 @@ def calibrate_solar(counts, chan, year, jday, cal, corr=1):
     return r_cal
 
 def get_prt_nos(prt,prt_threshold,linenumbers,gac):
-    """Get PRT numbering based on zero PRT count values.""" 
+    """Get PRT numbering based on zero PRT count values."""
     # Original PRT code - which can go wrong when zero PRT counts start missing
     # zero PRT number
     #      iprt = (line_numbers - line_numbers[0] + 5 - offset) % 5
@@ -503,7 +502,7 @@ def calibrate_thermal(counts, prt, ict, space, line_numbers, channel, cal):
     # Note that the prt values are the average value of the three readings from one of the four
     # PRTs. See reader.get_telemetry implementations.
     prt_threshold = 50  # empirically found and set by Abhay Devasthale
-    
+
     # Following section removed by J.Mittaz University of Reading 17 Feb 2025
     #    for offset in range(5):
     #        # According to the KLM Guide the fill value between PRT measurments is 0, but we search
@@ -523,7 +522,7 @@ def calibrate_thermal(counts, prt, ict, space, line_numbers, channel, cal):
     else:
         gacdata = False
     iprt = get_prt_nos(prt,prt_threshold,line_numbers,gacdata)
-    
+
     # fill measured values below threshold by interpolation
     ifix = np.where(np.logical_and(iprt == 1, prt < prt_threshold))
     if len(ifix[0]):

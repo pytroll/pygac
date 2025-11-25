@@ -324,6 +324,7 @@ def pod_file_with_tbm_header(tmp_path):
         fd_.write(scanlines.tobytes())
     return pod_filename
 
+
 @pytest.fixture
 def pod_file_with_tbm_header_gac(tmp_path):
     """Create a pod file (GAC) with a tbm header, and header, and some scanlines."""
@@ -427,6 +428,7 @@ def pod_file_with_tbm_header_gac(tmp_path):
         fd_.write(scanlines.tobytes())
     return pod_filename
 
+
 @pytest.fixture()
 def pod_tle(tmp_path):
     lines = ("1 23455U 94089A   00322.04713399  .00000318  00000-0  19705-3 0  5298\n"
@@ -437,6 +439,7 @@ def pod_tle(tmp_path):
     with tle_filename.open("w") as fd:
         fd.write(lines)
     return tle_filename
+
 
 def test_get_calibrated_channels(pod_file_with_tbm_header_gac,pod_tle):
     """Test getting calibrated channels."""
@@ -453,6 +456,7 @@ def test_get_calibrated_channels(pod_file_with_tbm_header_gac,pod_tle):
     np.testing.assert_allclose(res[:, 2, 1], 13.98060798)
     assert reader.meta_data["calib_coeffs_version"] == "PATMOS-x, v2023"
 
+
 def test_get_calibrated_channels_with_wrong_prts(pod_file_with_tbm_header_gac,
                                                  pod_tle):
     """Test getting calibrated channels."""
@@ -468,6 +472,7 @@ def test_get_calibrated_channels_with_wrong_prts(pod_file_with_tbm_header_gac,
     np.testing.assert_allclose(res[:, 1, 0], 11.24028967)
     np.testing.assert_allclose(res[:, 2, 1], 13.98060798)
     assert reader.meta_data["calib_coeffs_version"] == "PATMOS-x, v2023"
+
 
 class TestGacReader(unittest.TestCase):
     """Test the common GAC Reader."""
@@ -1045,6 +1050,7 @@ def test_read_to_dataset_is_a_dataset_including_channels_and_telemetry(pod_file_
     assert dataset["prt_counts"].shape == (3,)
     assert dataset["ict_counts"].shape == (3, 3)
     assert dataset["space_counts"].shape == (3, 3)
+    breakpoint()
     assert dataset["quality_flags"].shape == (3, )
     assert "flag_meanings" in dataset["quality_flags"].attrs
     assert "flag_masks" in dataset["quality_flags"].attrs
