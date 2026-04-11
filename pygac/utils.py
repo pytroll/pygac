@@ -329,3 +329,4 @@ def plot_correct_scanline_numbers(res, filename=None):
         plt.savefig(filename, bbox_inches="tight")
     else:
         plt.show()
+

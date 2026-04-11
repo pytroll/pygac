@@ -33,7 +33,7 @@ import types
 import warnings
 from abc import ABC, abstractmethod
 from contextlib import suppress
-from functools import cached_property
+from functools import cache, cached_property
 from importlib.metadata import entry_points
 
 import geotiepoints as gtp
@@ -127,6 +127,7 @@ class Reader(ABC):
         reference_image=None,
         dem=None,
         compute_lonlats_from_tles: bool = False,
+        compute_uncertainties: bool = False,
     ):
         """Init the reader.
 
@@ -144,11 +145,12 @@ class Reader(ABC):
                                 calibration coefficients
             calibration_file: path to json file containing default calibrations
             header_date: the date to use for pod header choice. Defaults to "auto".
-            correct_scanlines: Remove corrrupt scanline numbers. Defaults to True
+            correct_scanlines: Remove corrupt scanline numbers. Defaults to True
             reference_image: the reference image to use for georeferencing
             dem: the digital elevation model to use for orthocorrection
             compute_lonlats_from_tles: Do not use the longitudes and latitudes provided in the file, rather compute them
                                        from the TLE.
+            compute_uncertainties: Whether to add uncertainty estimates in the calibrated_dataset.
 
         """
         self.meta_data = {}
@@ -174,6 +176,7 @@ class Reader(ABC):
         self.reference_image = reference_image
         self.dem = dem
         self.compute_lonlats_from_tles: bool = compute_lonlats_from_tles
+        self.compute_uncertainties: bool = compute_uncertainties
 
         self.clock_drift_correction_applied = False
 
@@ -349,19 +352,21 @@ class Reader(ABC):
             filename (str): Path to GAC/LAC file
             fileobj: An open file object to read from. (optional)
 
-        Retruns:
+        Returns:
             result (bool): True if the reader can read the input
         """
         if fileobj:
             pos = fileobj.tell()
+        else:
+            pos = None
         try:
-            archive_header, header = cls.read_header(filename, fileobj=fileobj)
+            _, _ = cls.read_header(filename, fileobj=fileobj)
             result = True
         except (ReaderError, ValueError) as exception:
             LOG.debug("%s failed to read the file! %s" % (cls.__name__, repr(exception)))
             result = False
         finally:
-            if fileobj:
+            if fileobj and pos:
                 fileobj.seek(pos)
         return result
 
@@ -496,6 +501,7 @@ class Reader(ABC):
         """
         raise NotImplementedError
 
+    @cache
     def get_times(self):
         """Read scanline timestamps and try to correct invalid values.
 
@@ -503,19 +509,17 @@ class Reader(ABC):
             UTC timestamps
 
         """
-        if self._times_as_np_datetime64 is None:
-            # Read timestamps
-            year, jday, msec = self._get_times_from_file()
-
-            # Correct invalid values
-            year, jday, msec = self.correct_times_median(year=year, jday=jday, msec=msec)
-            self._times_as_np_datetime64 = self.to_datetime64(year=year, jday=jday, msec=msec)
-            try:
-                self._times_as_np_datetime64 = self.correct_times_thresh()
-            except TimestampMismatch as err:
-                LOG.error(str(err))
-
+        # Read timestamp
+        year, jday, msec = self._get_times_from_file()
+        # Correct invalid values
+        year, jday, msec = self.correct_times_median(year=year, jday=jday, msec=msec)
+        self._times_as_np_datetime64 = self.to_datetime64(year=year, jday=jday, msec=msec)
+        try:
+            self._times_as_np_datetime64 = self.correct_times_thresh()
+        except TimestampMismatch as err:
+            LOG.error(str(err))
         return self._times_as_np_datetime64
+
 
     @staticmethod
     def to_datetime64(year, jday, msec):
@@ -592,6 +596,18 @@ class Reader(ABC):
         return self.create_counts_dataset()
 
     def create_counts_dataset(self):
+        """Create output xarray dataset containing counts and information relevant to calibration.
+
+        Contents of the dataset:
+            channels: Earth scene counts
+            prt_counts: Counts from PRTs on ICT
+            ict_counts: Counts from observed ICT
+            space_counts: Counts from space observation
+            bad_space_scans: Scanlines with suspect space view information
+            noise: Noise estimates in counts
+            ict_noise: ICT noise estimates in counts
+            Longitude/latitude: pixel position
+        """
         head = dict(zip(self.head.dtype.names, self.head.item(), strict=False))
         scans = self.scans
 
@@ -605,10 +621,8 @@ class Reader(ABC):
 
         if counts.shape[-1] == 5:
             channel_names = ["1", "2", "3", "4", "5"]
-            ir_channel_names = ["3", "4", "5"]
         else:
             channel_names = ["1", "2", "3a", "3b", "4", "5"]
-            ir_channel_names = ["3b", "4", "5"]
 
         channels = xr.DataArray(
             counts,
@@ -621,7 +635,15 @@ class Reader(ABC):
             ),
         )
 
-        prt, ict, space = self._get_telemetry_dataarrays(line_numbers, ir_channel_names)
+        mean_prt, full_ict, full_space \
+            = self._get_telemetry_dataarrays(line_numbers, channel_names)
+
+        sat_azi, sat_zen, sun_azi, sun_zen, rel_azi = self.get_angles()
+        sun_zen = xr.DataArray(sun_zen,
+                               dims=["scan_line_index", "columns"],
+                               coords=dict(scan_line_index=line_numbers,
+                                           columns=columns))
+
 
         if self.interpolate_coords:
             channels = channels.assign_coords(
@@ -629,17 +651,15 @@ class Reader(ABC):
                 latitude=(("scan_line_index", "columns"), latitudes.reindex_like(channels).data),
             )
 
-        ds = xr.Dataset(
-            dict(
-                channels=channels,
-                prt_counts=prt,
-                ict_counts=ict,
-                space_counts=space,
-                longitude=longitudes,
-                latitude=latitudes,
-            ),
-            attrs=head,
-        )
+        ds = xr.Dataset(dict(channels=channels,
+                             mean_prt_counts=mean_prt,
+                             full_ict_counts=full_ict,
+                             full_space_counts=full_space,
+                             quality_flags=self.get_qual_flags_as_cf_flags(),
+                             longitude=longitudes, latitude=latitudes,
+                             sun_zen=sun_zen),
+                             attrs=head)
+
 
         ds.attrs["spacecraft_name"] = self.spacecraft_name
         ds.attrs["max_scan_angle"] = 55.25 if self.spacecraft_name == "noaa16" else 55.37
@@ -676,22 +696,36 @@ class Reader(ABC):
 
         return longitudes, latitudes
 
-    def _get_telemetry_dataarrays(self, line_numbers, ir_channel_names):
-        prt, ict, space = self.get_telemetry()
+    def _get_telemetry_dataarrays(self, line_numbers, channel_names):
+        """Get data from lower telemetry including bad_scans and noise."""
+        mean_prt, full_space, full_ict = self.get_telemetry()
 
-        prt = xr.DataArray(prt, dims=["scan_line_index"], coords=dict(scan_line_index=line_numbers))
-        ict = xr.DataArray(
-            ict,
-            dims=["scan_line_index", "ir_channel_name"],
-            coords=dict(ir_channel_name=ir_channel_names, scan_line_index=line_numbers),
-        )
-        space = xr.DataArray(
-            space,
-            dims=["scan_line_index", "ir_channel_name"],
-            coords=dict(ir_channel_name=ir_channel_names, scan_line_index=line_numbers),
-        )
+        prt = xr.DataArray(mean_prt, dims=["scan_line_index"], coords=dict(scan_line_index=line_numbers))
 
-        return prt, ict, space
+        pixel_index = np.arange(10, dtype=np.int8)
+        total_ict = xr.DataArray(full_ict,
+                                 dims=["scan_line_index", "pixel_index", "ir_channel_name"],
+                                 coords=dict(ir_channel_name=channel_names[-3:], scan_line_index=line_numbers))
+        total_space = xr.DataArray(full_space,
+                                   dims=["scan_line_index", "pixel_index", "channel_name"],
+                                   coords=dict(channel_name=channel_names, scan_line_index=line_numbers,
+                                               pixel_index=pixel_index))
+
+        return prt, total_ict, total_space
+
+    def _get_vis_telemetry_dataarrays(self, line_numbers, vis_channel_names):
+        """Get data from lower telemetry for the visible channels. Added by N.Yaghnam, NPL"""
+        vis_space, total_vis_space = self.get_vis_telemetry()
+
+        pixel_index = np.arange(10, dtype=np.int8)
+        vis_space = xr.DataArray(vis_space, dims=["scan_line_index", "vis_channel_name"],
+                             coords=dict(vis_channel_name=vis_channel_names, scan_line_index=line_numbers))
+        total_vis_space = xr.DataArray(total_vis_space,
+                                   dims=["scan_line_index", "pixel_index", "vis_channel_name"],
+                                   coords=dict(vis_channel_name=vis_channel_names, scan_line_index=line_numbers,
+                                               pixel_index=pixel_index))
+
+        return vis_space, total_vis_space
 
     def get_calibrated_channels(self):
         """Calibrate and return the channels."""
@@ -711,11 +745,20 @@ class Reader(ABC):
     def get_calibrated_dataset(self):
         """Create and calibrate the dataset for the pass."""
         ds = self.create_counts_dataset()
+        #
+        # Make sure earth counts are kept for uncertainty calculation
+        #
+        counts = xr.DataArray(name="counts",
+                              data=np.copy(ds["channels"].data),
+                              dims=ds["channels"].dims,
+                              coords=ds["channels"].coords)
+
         # calibration = {"1": "mitram", "2": "mitram", "4": {"method":"noaa", "coeff_file": "myfile.json"}}
 
         calibration_entrypoints = entry_points(group="pygac.calibration")
         calibration_function = calibration_entrypoints[self.calibration_method].load()
         calibrated_ds = calibration_function(ds, **self.calibration_parameters)
+        calibrated_ds["counts"] = counts
 
         # Mask out corrupt values
         mask = xr.DataArray(self.mask == False, dims=["scan_line_index"])  # noqa
@@ -731,30 +774,55 @@ class Reader(ABC):
             LOG.info("Correcting for temporary scan motor issue")
             self.mask_tsm_pixels(calibrated_ds)
         if self.reference_image:
-            self._georeference_data(calibrated_ds)
+            try:
+                self._georeference_data(calibrated_ds)
+                calibrated_ds.attrs["georeferenced"] = True
+            except Exception as err:  # noqa
+                LOG.exception("Could not georeference!")
+                warnings.warn(f"Could not georeference: {str(err)}", category=RuntimeWarning)
+                calibrated_ds.attrs["georeferenced"] = False
+        if self.compute_uncertainties:
+            try:
+                from pygac.calibration.uncertainty import uncertainty
+                ucs = uncertainty(calibrated_ds, self.mask)
+
+                calibrated_ds["random_uncertainty"] = ucs["random"]
+                calibrated_ds["systematic_uncertainty"] = ucs["systematic"]
+                calibrated_ds["channel_covariance_ratio"] = ucs["chan_covar_ratio"]
+                calibrated_ds["uncertainty_flags"] = ucs["uncert_flags"]
+
+                calibrated_ds.attrs["uncertainties_computed"] = True
+            except Exception as err:  # noqa
+                LOG.exception("Could not compute uncertainties!")
+                warnings.warn(f"Could not compute uncertainties: {str(err)}", category=RuntimeWarning)
+                calibrated_ds.attrs["uncertainties_computed"] = False
         return calibrated_ds
 
     def _georeference_data(self, calibrated_ds):
+        preliminary_time_diff_s = 0
         if not self.adjust_clock_drift:
-            self._correct_time_offset(calibrated_ds)
+            preliminary_time_diff_s = self._correct_time_offset(calibrated_ds)
 
         from georeferencer.georeferencer import get_swath_displacement
 
         _, sat_zen, _, sun_zen, _ = self.get_angles()
-        time_diff, (roll, pitch, yaw), (odistances, mdistances) = get_swath_displacement(
+        time_diff_s, (roll, pitch, yaw), (odistances, mdistances) = get_swath_displacement(
             calibrated_ds, sun_zen, sat_zen, self.reference_image, self.dem
         )
 
-        if mdist := np.median(mdistances) > 5000:
+        if (mdist := np.median(mdistances)) > 5000:
             raise RuntimeError("Displacement minimization did not produce convincing improvements")
         calibrated_ds.attrs["median_gcp_distance"] = mdist
 
         self._rpy = roll, pitch, yaw
-        time_diff = np.timedelta64(int(time_diff * 1e9), "ns")
+        time_diff = np.timedelta64(int(time_diff_s * 1e9), "ns")
         lons, lats = self._compute_lonlats(time_offset=time_diff)
         self._times_as_np_datetime64 += time_diff
         calibrated_ds["longitude"].data = lons
         calibrated_ds["latitude"].data = lats
+        calibrated_ds.attrs["estimated_attitude_in_degrees"] = roll, pitch, yaw
+        calibrated_ds.attrs["estimated_time_offset_in_seconds"] = time_diff_s + preliminary_time_diff_s
+
         if self.dem:
             from georeferencer.georeferencer import orthocorrection
 
@@ -775,7 +843,7 @@ class Reader(ABC):
         ref_lats = (thinned_lats[0, 0], thinned_lats[0, -1], thinned_lats[-1, 0], thinned_lats[-1, -1])
         from pyorbital.geoloc_avhrr import estimate_time_offset
 
-        time_diff, _ = estimate_time_offset(
+        time_diff_s, _ = estimate_time_offset(
             gcps,
             ref_lons,
             ref_lats,
@@ -783,13 +851,15 @@ class Reader(ABC):
             calibrated_ds.attrs["tle"],
             calibrated_ds.attrs["max_scan_angle"],
         )
-        time_diff = np.timedelta64(int(time_diff * 1e9), "ns")
-        lons, lats = self._compute_lonlats(time_offset=time_diff)
+        time_diff = np.timedelta64(int(time_diff_s * 1e9), "ns")
+        lons, lats = self._compute_lonlats(time_offset=time_diff,
+                                           mask_scanlines=not self.reference_image)
         self._times_as_np_datetime64 += time_diff
 
         calibrated_ds["longitude"].data = lons
         calibrated_ds["latitude"].data = lats
         calibrated_ds["times"].data = self._times_as_np_datetime64
+        return time_diff_s
 
     @abstractmethod
     def get_telemetry(self):  # pragma: no cover
@@ -921,6 +991,20 @@ class Reader(ABC):
         qual_flags[:, 6] = self._get_corrupt_mask(flags=self.QFlag.CH_5_CONTAMINATION)
         return qual_flags
 
+    def get_qual_flags_as_cf_flags(self):
+        qual_masks = np.sum(self.get_qual_flags()[:, 1:] * [1, 2, 4, 8, 16, 32], axis=1).astype(np.uint8)
+
+        return xr.DataArray(qual_masks,
+                            dims=["scan_line_index"],
+                            attrs=dict(long_name="Scan-wise quality flags",
+                                       flag_masks="1b, 2b, 4b, 8b, 16b, 32b",
+                                       flag_meanings=("fatal_error "
+                                                      "insufficient_data_for_calibration "
+                                                       "earth_location_data_not_available "
+                                                       "channel_3_blackbody_contamination "
+                                                       "channel_4_blackbody_contamination "
+                                                       "channel_5_blackbody_contamination")))
+
     @abstractmethod
     def postproc(self, ds):  # pragma: no cover
         """Apply KLM/POD specific postprocessing."""
@@ -1008,9 +1092,9 @@ class Reader(ABC):
             )
 
         if delta_days > 3:
-            LOG.warning("Found TLE data for %s that is %f days appart", sdate, delta_days)
+            LOG.warning("Found TLE data for %s that is %f days apart", sdate, delta_days)
         else:
-            LOG.debug("Found TLE data for %s that is %f days appart", sdate, delta_days)
+            LOG.debug("Found TLE data for %s that is %f days apart", sdate, delta_days)
 
         # Select TLE data
         tle1 = tle_data[iindex * 2]

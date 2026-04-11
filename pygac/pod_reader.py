@@ -40,6 +40,7 @@ import datetime
 import logging
 import warnings
 from enum import IntFlag
+from functools import cache
 
 import numpy as np
 
@@ -557,37 +558,52 @@ class PODReader(Reader):
         return lons, lats
 
     def get_telemetry(self):
-        """Get the telemetry.
+        """Get the telemetry. Modified by J.Mittaz / University of Reading
+        to return complete (scanline x 10 views) space/ict views.
 
         Returns:
             prt_counts: np.array
             ict_counts: np.array
             space_counts: np.array
+            total_ict_counts: np.array
+            total_space_counts: np.array
 
         """
+        full_prt, full_ict_counts, full_space_counts = self._decode_telemetry()
+
+        mean_prt_counts = np.mean(full_prt, axis=1)
+
+
+        return mean_prt_counts, full_space_counts, full_ict_counts
+
+    @cache
+    def _decode_telemetry(self):
         number_of_scans = self.scans["telemetry"].shape[0]
         decode_tele = np.zeros((int(number_of_scans), 105))
         decode_tele[:, ::3] = (self.scans["telemetry"] >> 20) & 1023
         decode_tele[:, 1::3] = (self.scans["telemetry"] >> 10) & 1023
         decode_tele[:, 2::3] = self.scans["telemetry"] & 1023
 
-        prt_counts = np.mean(decode_tele[:, 17:20], axis=1)
+        prt_counts = decode_tele[:, 17:20]
+        full_ict_counts = decode_tele[:, 22:52].reshape((number_of_scans, -1, 3))
+        full_space_counts = decode_tele[:, 52:102].reshape((number_of_scans, -1, 5))
+        return prt_counts, full_ict_counts, full_space_counts
 
-        # getting ICT counts
 
-        ict_counts = np.zeros((int(number_of_scans), 3))
-        ict_counts[:, 0] = np.mean(decode_tele[:, 22:50:3], axis=1)
-        ict_counts[:, 1] = np.mean(decode_tele[:, 23:51:3], axis=1)
-        ict_counts[:, 2] = np.mean(decode_tele[:, 24:52:3], axis=1)
+    def get_vis_telemetry(self):
+        """Get the telemetry for the visible channels. Added by N.Yaghnam / National Physical Laboratory
+        to return complete (scanline x 10 views) space views.
 
-        # getting space counts
+        Returns:
+            vis_space_counts: np.array
+            total_vis_space_counts: np.array
+        """
+        _, _, full_space_counts = self._decode_telemetry()
 
-        space_counts = np.zeros((int(number_of_scans), 3))
-        space_counts[:, 0] = np.mean(decode_tele[:, 54:100:5], axis=1)
-        space_counts[:, 1] = np.mean(decode_tele[:, 55:101:5], axis=1)
-        space_counts[:, 2] = np.mean(decode_tele[:, 56:102:5], axis=1)
+        total_vis_space_counts = full_space_counts[:, :, :2]
+        vis_space_counts = total_vis_space_counts.mean(axis=1)
 
-        return prt_counts, ict_counts, space_counts
+        return vis_space_counts, total_vis_space_counts
 
     @staticmethod
     def _get_ir_channels_to_calibrate():

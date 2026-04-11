@@ -730,31 +730,42 @@ class KLMReader(Reader):
             raise ReaderError('Improper platform id "%s"!' % platform_id)
 
     def get_telemetry(self):
-        """Get the telemetry.
+        """Get the telemetry which also return complete (scanline x 10 views)
+        space/ict views as well as averages.
 
         Returns:
             prt_counts: np.array
             ict_counts: np.array
             space_counts: np.array
+            total_ict_counts: np.array
+            total_space_counts: np.array
 
         """
-        prt_counts = np.mean(self.scans["telemetry"]["PRT"], axis=1)
+        number_of_scans = len(self.scans["telemetry"])
+        mean_prt_counts = np.mean(self.scans["telemetry"]["PRT"], axis=1)
 
-        # getting ICT counts
 
-        ict_counts = np.zeros((len(self.scans), 3))
-        ict_counts[:, 0] = np.mean(self.scans["back_scan"][:, 0::3], axis=1)
-        ict_counts[:, 1] = np.mean(self.scans["back_scan"][:, 1::3], axis=1)
-        ict_counts[:, 2] = np.mean(self.scans["back_scan"][:, 2::3], axis=1)
+        full_space_counts = self.scans["space_data"].reshape((number_of_scans, -1, 5))
+        full_space_counts = np.repeat(full_space_counts, [1, 1, 2, 1, 1], axis=2)
 
-        # getting space counts
+        full_ict_counts = self.scans["back_scan"].reshape((number_of_scans, -1, 3))
 
-        space_counts = np.zeros((len(self.scans), 3))
-        space_counts[:, 0] = np.mean(self.scans["space_data"][:, 2::5], axis=1)
-        space_counts[:, 1] = np.mean(self.scans["space_data"][:, 3::5], axis=1)
-        space_counts[:, 2] = np.mean(self.scans["space_data"][:, 4::5], axis=1)
+        return mean_prt_counts, full_space_counts, full_ict_counts
 
-        return prt_counts, ict_counts, space_counts
+    def get_vis_telemetry(self):
+        """Get the telemetry for the visible channels. Added by N.Yaghnam / National Physical Laboratory
+        to return complete (scanline x 10 views) space views.
+
+        Returns:
+            vis_space_counts: np.array
+            total_vis_space_counts: np.array
+        """
+        number_of_scans = len(self.scans["telemetry"])
+        full_space_counts = self.scans["space_data"].reshape((number_of_scans, -1, 5))
+        total_vis_space_counts = full_space_counts[:, :, :3]
+        mean_space_counts = total_vis_space_counts.mean(axis=1)
+
+        return mean_space_counts, total_vis_space_counts
 
     def _get_lonlat_from_file(self):
         """Get the longitudes and latitudes."""
@@ -802,6 +813,13 @@ class KLMReader(Reader):
         if np.all(self.get_ch3_switch() != 0):
             ir_channels_to_calibrate = [4, 5]
         return ir_channels_to_calibrate
+
+    def _get_vis_channels_to_calibrate(self):
+        """Added by N.Yaghnam, NPL"""
+        vis_channels_to_calibrate = [0, 1, 2]
+        if np.all(self.get_ch3_switch() != 1):
+            vis_channels_to_calibrate = [0, 1]
+        return vis_channels_to_calibrate
 
     def postproc(self, ds):
         """Apply KLM specific postprocessing.
