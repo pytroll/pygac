@@ -1,26 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-
-# Copyright (c) 2014, 2015 Martin Raspaud
-
-# Author(s):
-
-#   Martin Raspaud <martin.raspaud@smhi.se>
-#   Carlos Horn <carlos.horn@external.eumetsat.int>
-
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
 """Generic reader for GAC data.
 
 Can't be used as is, has to be subclassed to add specific read functions.
@@ -30,6 +7,7 @@ import logging
 import warnings
 
 import numpy as np
+
 try:
     from pyorbital.geoloc_instrument_definitions import avhrr_gac_from_times
 except ImportError:
@@ -37,8 +15,8 @@ except ImportError:
     from pyorbital.geoloc_instrument_definitions import avhrr_gac
     def avhrr_gac_from_times(times, points):
         return avhrr_gac(times, points*5+3.5)
-    warnings.warn('pyorbital version does not support avhrr_gac_from_times. ' +
-                  'Computation of missing longitude/latitudes may be incorrect.')
+    warnings.warn("pyorbital version does not support avhrr_gac_from_times. " +
+                  "Computation of missing longitude/latitudes may be incorrect.")
 
 
 from pygac.reader import Reader, ReaderError
