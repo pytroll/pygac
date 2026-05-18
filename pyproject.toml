@@ -18,13 +18,13 @@ dependencies = [
 ]
 readme = "README.md"
 requires-python = ">=3.10"
-license = { text = "GPLv3" }
+license = "Apache-2.0"
+license-files = ["LICENSE.txt"]
 classifiers = [
     "Programming Language :: Python :: 3",
     "Operating System :: OS Independent",
     "Development Status :: 4 - Beta",
     "Intended Audience :: Science/Research",
-    "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
     "Operating System :: OS Independent",
     "Topic :: Scientific/Engineering"
 ]

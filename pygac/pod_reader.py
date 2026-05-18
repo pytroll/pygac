@@ -1,32 +1,3 @@
-#!/usr/bin/python
-# Copyright (c) 2014-2019 Pygac developers
-#
-
-# Author(s):
-
-#   Abhay Devasthale <abhay.devasthale@smhi.se>
-#   Adam Dybbroe <adam.dybbroe@smhi.se>
-#   Sajid Pareeth <sajid.pareeth@fmach.it>
-#   Martin Raspaud <martin.raspaud@smhi.se>
-#   Carlos Horn <carlos.horn@external.eumetsat.int>
-
-# This work was done in the framework of ESA-CCI-Clouds phase I
-
-
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-
 """POD file reading.
 
 Reads L1b GAC/LAC data from POD series of satellites (NOAA-14 and earlier).
