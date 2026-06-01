@@ -3,7 +3,7 @@
 Quick tier
 ----------
 
-Re-runs :func:`pygac.calibration.uncertainty.uncertainty` against the small
+Re-runs :func:`pygac.uncertainty.uncertainty` against the small
 committed fixtures under ``pygac/tests/data/uncertainty_regression/`` and
 asserts the output is *exactly* equal to the captured baseline.
 
@@ -64,7 +64,7 @@ def _discover_fixtures() -> list[str]:
 @pytest.mark.parametrize("fixture_name", _discover_fixtures())
 def test_quick_uncertainty_regression(fixture_name: str) -> None:
     """Run uncertainty() against a committed input slice and compare with the saved expected output."""
-    from pygac.calibration.uncertainty import uncertainty
+    from pygac.uncertainty import uncertainty
 
     input_path = FIXTURES_DIR / f"{fixture_name}.input.nc"
     expected_path = FIXTURES_DIR / f"{fixture_name}.expected.nc"

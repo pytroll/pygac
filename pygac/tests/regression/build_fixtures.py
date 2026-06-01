@@ -70,7 +70,7 @@ def build_fixture(
     fixtures_dir: Path = FIXTURES_DIR,
 ) -> tuple[Path, Path]:
     """Write the (input, expected) fixture pair for ``name``."""
-    from pygac.calibration.uncertainty import uncertainty
+    from pygac.uncertainty import uncertainty
 
     fixtures_dir.mkdir(parents=True, exist_ok=True)
 

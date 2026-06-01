@@ -28,9 +28,9 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 
-from pygac.calibration.ir_uncertainty import allan_deviation, get_bad_space_counts
 from pygac.calibration.noaa import Calibrator
-from pygac.calibration.vis_uncertainty import get_gain, get_sys, get_vars
+from pygac.uncertainty.ir import allan_deviation, get_bad_space_counts
+from pygac.uncertainty.vis import get_gain, get_sys, get_vars
 
 n_scan_lines = 100
 n_columns = 1

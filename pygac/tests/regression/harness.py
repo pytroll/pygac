@@ -1,6 +1,6 @@
 """Helpers to drive the current uncertainty pipeline and persist baselines.
 
-These helpers deliberately call into ``pygac.calibration.uncertainty`` -- the
+These helpers deliberately call into ``pygac.uncertainty`` -- the
 same code path used by ``pygac.reader.Reader`` when
 ``compute_uncertainties=True`` -- so that the regression artefacts produced
 here are bit-comparable with what ``pygac-fdr-run --with-uncertainties``
@@ -59,7 +59,7 @@ def compute_calibrated_dataset(
     """Read ``filename`` and return ``(calibrated_ds, mask, reader_class_name)``.
 
     Uncertainties are *not* added to the returned dataset; the caller is
-    expected to invoke :func:`pygac.calibration.uncertainty.uncertainty`
+    expected to invoke :func:`pygac.uncertainty.uncertainty`
     explicitly so that any failure surfaces (the ``Reader`` swallows
     uncertainty exceptions).
     """
@@ -87,7 +87,7 @@ def compute_uncertainty_dataset(
     Raises ``RuntimeError`` if any step fails -- we never want a silent
     fallback in the baseline.
     """
-    from pygac.calibration.uncertainty import uncertainty
+    from pygac.uncertainty import uncertainty
 
     calibrated_ds, mask, reader_class_name = compute_calibrated_dataset(
         filename, tle_dir=tle_dir, tle_name=tle_name

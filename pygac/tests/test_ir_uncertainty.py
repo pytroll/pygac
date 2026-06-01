@@ -30,7 +30,8 @@ import cftime
 import numpy as np
 import xarray as xr
 
-from pygac.calibration.ir_uncertainty import (
+from pygac.calibration.noaa import Calibrator
+from pygac.uncertainty.ir import (
     convBT,
     find_solar,
     get_gainval,
@@ -40,7 +41,6 @@ from pygac.calibration.ir_uncertainty import (
     ir_uncertainty,
     open_zenodo_uncert_file,
 )
-from pygac.calibration.noaa import Calibrator
 
 
 #
@@ -150,7 +150,7 @@ def read_csv(filename):
                                    uict=da9,total_space_counts=da10,
                                    total_ict_counts=da11),
                     attrs={"spacecraft_name":"noaa16"})
-    
+
     return ds,mask,bad_data
 
 #

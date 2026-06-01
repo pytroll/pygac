@@ -783,7 +783,7 @@ class Reader(ABC):
                 calibrated_ds.attrs["georeferenced"] = False
         if self.compute_uncertainties:
             try:
-                from pygac.calibration.uncertainty import uncertainty
+                from pygac.uncertainty import uncertainty
                 ucs = uncertainty(calibrated_ds, self.mask)
 
                 calibrated_ds["random_uncertainty"] = ucs["random"]
