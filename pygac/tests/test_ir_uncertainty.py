@@ -653,3 +653,172 @@ class TestIRChannelSpec:
         assert dataclasses.is_dataclass(spec)
         with pytest.raises((dataclasses.FrozenInstanceError, AttributeError, TypeError)):
             spec.label = "mutated"
+
+
+class TestIRChannelData:
+    """Characterize IRChannelData and build_ir_channel_data() before wiring in."""
+
+    FIXTURES_DIR = pytest.importorskip  # guard — no import needed; fixtures are files
+
+    @pytest.fixture(scope="class")
+    def fixture_ds(self):
+        from pathlib import Path
+
+        import xarray as xr
+        p = Path(__file__).parent / "data" / "uncertainty_regression" / "noaa14_pod_d00322.input.nc"
+        if not p.exists():
+            pytest.skip("quick-tier fixture not found")
+        with xr.open_dataset(p) as ds:
+            return ds.load()
+
+    @pytest.fixture(scope="class")
+    def channel_build(self, fixture_ds):
+        from pygac.calibration.noaa import Calibrator
+        from pygac.uncertainty.ir import (
+            build_ir_channel_data,
+            get_uncert_parameter_thresholds,
+            ir_channel_specs,
+        )
+
+        ds = fixture_ds
+        mask = ds["scan_line_mask"].values.astype(bool)
+        cal = Calibrator(ds.attrs["spacecraft_name"])
+        specs = ir_channel_specs(cal, ds.attrs["spacecraft_name"])
+        window, prt_bias, prt_sys, prt_threshold, ict_threshold, space_threshold = get_uncert_parameter_thresholds()
+        gacdata = ds["channels"].values.shape[1] == 409
+
+        total_space = ds["full_space_counts"].values[:, :, :]
+        total_ict = ds["full_ict_counts"].values[:, :, :]
+
+        return build_ir_channel_data(
+            ds, specs, total_space, total_ict,
+            window, prt_threshold, ict_threshold, space_threshold,
+            gacdata, cal, mask,
+        )
+
+    @pytest.fixture(scope="class")
+    def channels(self, channel_build):
+        channels, bad_scan, Tict, ict1, ict2, ict3, ict4 = channel_build
+        return channels
+
+    @pytest.fixture(scope="class")
+    def shared(self, channel_build):
+        channels, bad_scan, Tict, ict1, ict2, ict3, ict4 = channel_build
+        return bad_scan, Tict, ict1, ict2, ict3, ict4
+
+    # --- type / count ---
+
+    def test_returns_three_channels_for_noaa14(self, channels):
+        from pygac.uncertainty.ir import IRChannelData
+        assert len(channels) == 3
+        for ch in channels:
+            assert isinstance(ch, IRChannelData)
+
+    def test_channel_labels_in_order(self, channels):
+        assert [ch.spec.label for ch in channels] == ["3.7", "11", "12"]
+
+    # --- shapes ---
+
+    def test_cs_is_1d(self, channels):
+        for ch in channels:
+            assert ch.cs.ndim == 1
+
+    def test_cict_is_1d(self, channels):
+        for ch in channels:
+            assert ch.cict.ndim == 1
+
+    def test_ce_is_2d(self, channels):
+        for ch in channels:
+            assert ch.ce.ndim == 2
+
+    def test_noise_is_1d(self, channels):
+        for ch in channels:
+            assert np.ndim(ch.noise) == 0
+
+    def test_av_noise_is_1d(self, channels):
+        for ch in channels:
+            assert np.ndim(ch.av_noise) == 0
+
+    def test_av_ict_noise_is_1d(self, channels):
+        for ch in channels:
+            assert np.ndim(ch.av_ict_noise) == 0
+
+    def test_scanline_dimensions_consistent(self, channels):
+        n = channels[0].cs.shape[0]
+        for ch in channels:
+            assert ch.cs.shape[0] == n
+            assert ch.cict.shape[0] == n
+            assert ch.ce.shape[0] == n
+            # noise/av_noise/av_ict_noise are 0-D scalars (single Allan deviation
+            # computed over the whole orbit), not per-scanline arrays.
+            assert np.ndim(ch.noise) == 0
+            assert np.ndim(ch.av_noise) == 0
+            assert np.ndim(ch.av_ict_noise) == 0
+
+    # --- shared outputs ---
+
+    def test_bad_scan_is_1d(self, shared):
+        bad_scan, Tict, *_ = shared
+        assert bad_scan.ndim == 1
+
+    def test_tict_is_1d(self, shared):
+        bad_scan, Tict, *_ = shared
+        assert Tict.ndim == 1
+
+    def test_tict_shape_matches_cs(self, shared, channels):
+        bad_scan, Tict, *_ = shared
+        assert Tict.shape == channels[0].cs.shape
+
+    # --- bit-exact agreement with legacy hand-unrolled calls ---
+
+    def test_cs_matches_legacy_get_vars(self, fixture_ds):
+        """build_ir_channel_data must produce the same CS arrays as the old hand-unrolled code."""
+        from pygac.calibration.noaa import Calibrator
+        from pygac.uncertainty.ir import (
+            build_ir_channel_data,
+            convBT,
+            get_uncert_parameter_thresholds,
+            get_vars,
+            ir_channel_specs,
+        )
+
+        ds = fixture_ds
+        mask = ds["scan_line_mask"].values.astype(bool)
+        cal = Calibrator(ds.attrs["spacecraft_name"])
+        window, _, _, prt_threshold, ict_threshold, space_threshold = get_uncert_parameter_thresholds()
+        gacdata = ds["channels"].values.shape[1] == 409
+
+        # Legacy calls
+        convT1 = convBT(cal, 0)
+        convT2 = convBT(cal, 1)
+        convT3 = convBT(cal, 2)
+        cs1_legacy, cict1_legacy, ce1_legacy, tict_legacy, *_ = get_vars(
+            ds, 0, convT1, window, prt_threshold, ict_threshold, space_threshold,
+            gacdata, cal, mask, out_prt=True,
+        )
+        cs2_legacy, cict2_legacy, ce2_legacy, _ = get_vars(
+            ds, 1, convT2, window, prt_threshold, ict_threshold, space_threshold,
+            gacdata, cal, mask,
+        )
+        cs3_legacy, cict3_legacy, ce3_legacy, _ = get_vars(
+            ds, 2, convT3, window, prt_threshold, ict_threshold, space_threshold,
+            gacdata, cal, mask,
+        )
+
+        # New builder
+        specs = ir_channel_specs(cal, ds.attrs["spacecraft_name"])
+        total_space = ds["full_space_counts"].values[:, :, :]
+        total_ict = ds["full_ict_counts"].values[:, :, :]
+        channels, bad_scan, Tict, ict1, ict2, ict3, ict4 = build_ir_channel_data(
+            ds, specs, total_space, total_ict,
+            window, prt_threshold, ict_threshold, space_threshold,
+            gacdata, cal, mask,
+        )
+
+        np.testing.assert_array_equal(channels[0].cs, cs1_legacy)
+        np.testing.assert_array_equal(channels[1].cs, cs2_legacy)
+        np.testing.assert_array_equal(channels[2].cs, cs3_legacy)
+        np.testing.assert_array_equal(channels[0].cict, cict1_legacy)
+        np.testing.assert_array_equal(channels[1].cict, cict2_legacy)
+        np.testing.assert_array_equal(channels[2].cict, cict3_legacy)
+        np.testing.assert_array_equal(Tict, tict_legacy)

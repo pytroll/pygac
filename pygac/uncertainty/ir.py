@@ -112,7 +112,123 @@ def ir_channel_specs(cal, platform):
         )
     return specs
 
-def allan_deviation(space,bad_scan=None):
+
+@dataclass
+class IRChannelData:
+    """Per-channel arrays produced by the IR calibration pre-processing step.
+
+    All arrays are indexed by scanline (1-D) except ``ce`` which is
+    (scanlines × pixels) 2-D. These are mutable: the per-scanline loop in
+    the orchestrator reads from them in place.
+    """
+
+    spec: IRChannelSpec
+    noise: np.ndarray
+    av_noise: np.ndarray
+    av_ict_noise: np.ndarray
+    cs: np.ndarray
+    cict: np.ndarray
+    ce: np.ndarray
+
+
+def build_ir_channel_data(
+    ds,
+    specs,
+    total_space,
+    total_ict,
+    window,
+    prt_threshold,
+    ict_threshold,
+    space_threshold,
+    gacdata,
+    cal,
+    mask,
+):
+    """Build one :class:`IRChannelData` per channel spec and return shared telemetry.
+
+    Parameters
+    ----------
+    ds : xr.Dataset
+        Calibrated input dataset.
+    specs : list[IRChannelSpec]
+        Channel specs from :func:`ir_channel_specs`.
+    total_space, total_ict : np.ndarray
+        Raw space/ICT count arrays ``(scanlines, samples_per_line, channels)``.
+    window, prt_threshold, ict_threshold, space_threshold : float
+        Uncertainty parameter thresholds from :func:`get_uncert_parameter_thresholds`.
+    gacdata : bool
+        True for GAC (409-pixel) data.
+    cal : Calibrator
+        Calibrator instance for the platform.
+    mask : np.ndarray
+        Boolean scanline mask.
+
+    Returns
+    -------
+    channels : list[IRChannelData]
+        One entry per spec, in spec order.
+    bad_scan : np.ndarray
+        1-D bool-like array flagging bad scanlines (from :func:`get_noise`).
+    Tict : np.ndarray
+        Smoothed ICT temperature (shared across channels; same PRT pipeline).
+    ict1, ict2, ict3, ict4 : np.ndarray
+        Per-PRT smoothed temperatures (needed by :func:`get_gainval`).
+    """
+    twelve_micron = len(specs) == 3
+
+    noise_all, bad_scan = _compute_noise_arrays(total_space, total_ict, window, twelve_micron)
+
+    channels = []
+    Tict = ict1 = ict2 = ict3 = ict4 = None
+
+    for i, spec in enumerate(specs):
+        out_prt = i == 0
+        vars_result = get_vars(
+            ds, spec.cal_index, spec.conv,
+            window, prt_threshold, ict_threshold, space_threshold,
+            gacdata, cal, mask, out_prt=out_prt,
+        )
+        if out_prt:
+            cs, cict, ce, Tict, ict1, ict2, ict3, ict4 = vars_result
+        else:
+            cs, cict, ce, Tict = vars_result
+
+        noise, av_noise, av_ict_noise = noise_all[spec.cal_index]
+
+        channels.append(IRChannelData(
+            spec=spec,
+            noise=noise,
+            av_noise=av_noise,
+            av_ict_noise=av_ict_noise,
+            cs=cs,
+            cict=cict,
+            ce=ce,
+        ))
+
+    return channels, bad_scan, Tict, ict1, ict2, ict3, ict4
+
+
+def _compute_noise_arrays(total_space, total_ict, window, twelve_micron):
+    """Call :func:`get_noise` and repack into a per-cal-index mapping.
+
+    Returns
+    -------
+    noise_by_cal_index : dict[int, tuple[np.ndarray, np.ndarray, np.ndarray]]
+        Maps cal_index (0/1/2) to ``(noise, av_noise, av_ict_noise)``.
+    bad_scan : np.ndarray
+    """
+    noise_tuple = get_noise(total_space, total_ict, window, twelve_micron)
+    noise1, noise2, noise3, av_noise1, av_noise2, av_noise3, \
+        av_ict_noise1, av_ict_noise2, av_ict_noise3, bad_scan = noise_tuple
+
+    return {
+        0: (noise1, av_noise1, av_ict_noise1),
+        1: (noise2, av_noise2, av_ict_noise2),
+        2: (noise3, av_noise3, av_ict_noise3),
+    }, bad_scan
+
+
+def allan_deviation(space, bad_scan=None):
     """Determine the Allan deviation (noise) from space view counts filtering
     out bad space view lines. Written by J.Mittaz, University of Reading"""
 
@@ -1243,43 +1359,31 @@ def ir_uncertainty(ds,mask):
         NS_3, c0_3, c1_3, c2_3 = spec_12.space_radiance, *spec_12.nonlin_coeffs
 
     #
-    # Get variables for 10 sampled case
+    # Build per-channel data (noise + calibration variables) in one step
     #
-    total_space = ds["full_space_counts"].values[:,:,:]
-    total_ict = ds["full_ict_counts"].values[:,:,:]
-    #
-    # Noise elements
-    #
-    noise1,noise2,noise3,av_noise1,av_noise2,av_noise3,\
-        av_ict_noise1,av_ict_noise2,av_ict_noise3,bad_scan \
-        = get_noise(total_space,total_ict,window,twelve_micron)
+    total_space = ds["full_space_counts"].values[:, :, :]
+    total_ict = ds["full_ict_counts"].values[:, :, :]
+    channels, bad_scan, Tict, ict1, ict2, ict3, ict4 = build_ir_channel_data(
+        ds, specs, total_space, total_ict,
+        window, prt_threshold, ict_threshold, space_threshold,
+        gacdata, cal, mask,
+    )
 
-    #
-    # Get variables used on the calibration
-    #
-    CS_1,CICT_1,CE_1,Tict,ict1,ict2,ict3,ict4 = get_vars(ds,0,convT1,
-                                                         window,
-                                                         prt_threshold,
-                                                         ict_threshold,
-                                                         space_threshold,
-                                                         gacdata,
-                                                         cal,
-                                                         mask,
-                                                         out_prt=True)
-
-    CS_2,CICT_2,CE_2,Tict = get_vars(ds,1,convT2,window,prt_threshold,
-                                     ict_threshold,
-                                     space_threshold,
-                                     gacdata,cal,mask)
-
+    # Convenience aliases kept for the rest of the function (pre-loop code,
+    # per-scanline loop) — these will be removed as the loop is vectorised.
+    ch_37, ch_11 = channels[0], channels[1]
+    ch_12 = channels[2] if twelve_micron else None
+    noise1, av_noise1, av_ict_noise1 = ch_37.noise, ch_37.av_noise, ch_37.av_ict_noise
+    noise2, av_noise2, av_ict_noise2 = ch_11.noise, ch_11.av_noise, ch_11.av_ict_noise
+    noise3, av_noise3, av_ict_noise3 = (
+        (ch_12.noise, ch_12.av_noise, ch_12.av_ict_noise) if twelve_micron else (None, None, None)
+    )
+    CS_1, CICT_1, CE_1 = ch_37.cs, ch_37.cict, ch_37.ce
+    CS_2, CICT_2, CE_2 = ch_11.cs, ch_11.cict, ch_11.ce
     if twelve_micron:
-        CS_3,CICT_3,CE_3,Tict = get_vars(ds,2,convT3,window,
-                                         prt_threshold,
-                                         ict_threshold,
-                                         space_threshold,
-                                         gacdata,cal,mask)
+        CS_3, CICT_3, CE_3 = ch_12.cs, ch_12.cict, ch_12.ce
 
-    solar_flag = np.zeros(CE_2.shape[0],dtype=np.uint8)
+    solar_flag = np.zeros(CE_2.shape[0], dtype=np.uint8)
     if gacdata:
         #
         # See if solar contamination present
