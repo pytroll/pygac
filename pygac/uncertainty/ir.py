@@ -721,7 +721,12 @@ def get_vars(ds,channel,convT,wlength,prt_threshold,ict_threshold,
              space_threshold,gac,cal,mask,out_prt=False,out_solza=False):
     """Get variables from xarray including smoothing and interpolation"""
     space = ds["full_space_counts"].isel(channel_name=(channel - 3)).mean(axis=1).values
-    prt = ds["mean_prt_counts"].values[:]
+    # Defensive copy: .values[:] returns a *view* and we mutate prt below
+    # (prt[gd] = 0, prt[ifix] = np.interp(...)). Without the copy these
+    # writes propagate back into ds["mean_prt_counts"], which (a) corrupts
+    # the dataset for any later caller and (b) makes the 2nd/3rd
+    # per-channel get_vars() call see different inputs from the 1st.
+    prt = ds["mean_prt_counts"].values.copy()
     ict = ds["full_ict_counts"].isel(ir_channel_name=channel).mean(axis=1).values
     ce = ds["counts"].values[:,:,channel - 3]
     midpoint = ds["sun_zen"].shape[1]//2
