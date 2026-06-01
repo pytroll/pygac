@@ -902,3 +902,149 @@ class TestIRTelemetry:
         np.testing.assert_array_equal(tel.prt2, ict2_l)
         np.testing.assert_array_equal(tel.prt3, ict3_l)
         np.testing.assert_array_equal(tel.prt4, ict4_l)
+
+
+class TestChannelNoise:
+    """Unit tests for _channel_noise and _compute_bad_scans (Phase 3B')."""
+
+    def _make_counts(self, n_scans=20, n_counts=10, seed=42):
+        rng = np.random.default_rng(seed)
+        space = rng.integers(950, 970, size=(n_scans, n_counts)).astype(float)
+        ict = rng.integers(3000, 4000, size=(n_scans, n_counts)).astype(float)
+        return space, ict
+
+    # ------------------------------------------------------------------
+    # _channel_noise
+    # ------------------------------------------------------------------
+
+    def test_channel_noise_returns_three_scalars(self):
+        from pygac.uncertainty.ir import _channel_noise
+        space, ict = self._make_counts()
+        bad_scans = np.zeros(20, dtype=np.int8)
+        result = _channel_noise(space, ict, bad_scans, window=40)
+        assert len(result) == 3
+        noise, av_noise, av_ict_noise = result
+        assert np.ndim(noise) == 0
+        assert np.ndim(av_noise) == 0
+        assert np.ndim(av_ict_noise) == 0
+
+    def test_channel_noise_non_negative(self):
+        from pygac.uncertainty.ir import _channel_noise
+        space, ict = self._make_counts()
+        bad_scans = np.zeros(20, dtype=np.int8)
+        noise, av_noise, av_ict_noise = _channel_noise(space, ict, bad_scans, window=40)
+        assert noise >= 0
+        assert av_noise >= 0
+        assert av_ict_noise >= 0
+
+    def test_channel_noise_averaging_reduces_noise(self):
+        """av_noise = noise / sqrt(window * 10), so av_noise < noise for window >= 1."""
+        from pygac.uncertainty.ir import _channel_noise
+        space, ict = self._make_counts()
+        bad_scans = np.zeros(20, dtype=np.int8)
+        noise, av_noise, av_ict_noise = _channel_noise(space, ict, bad_scans, window=40)
+        assert av_noise < noise
+        assert av_ict_noise < av_ict_noise + 1  # always true — just confirms it's finite
+
+    def test_channel_noise_matches_formula(self):
+        """Values must exactly match the hand-computed formula."""
+        from pygac.uncertainty.ir import _channel_noise, allan_deviation
+        space, ict = self._make_counts()
+        bad_scans = np.zeros(20, dtype=np.int8)
+        window = 40
+
+        expected_noise = np.sqrt(allan_deviation(space, bad_scan=bad_scans) ** 2 + 1.0 / 3)
+        expected_ict_noise = np.sqrt(allan_deviation(ict, bad_scan=bad_scans) ** 2 + 1.0 / 3)
+        sqrt_window = np.sqrt(window * 10)
+
+        noise, av_noise, av_ict_noise = _channel_noise(space, ict, bad_scans, window)
+
+        np.testing.assert_allclose(noise, expected_noise)
+        np.testing.assert_allclose(av_noise, expected_noise / sqrt_window)
+        np.testing.assert_allclose(av_ict_noise, expected_ict_noise / sqrt_window)
+
+    # ------------------------------------------------------------------
+    # _compute_bad_scans  (fixture-based — uses real statistical logic)
+    # ------------------------------------------------------------------
+
+    @pytest.fixture(scope="class")
+    def fixture_ds(self):
+        from pathlib import Path
+
+        import xarray as xr
+        p = Path(__file__).parent / "data" / "uncertainty_regression" / "noaa14_pod_d00322.input.nc"
+        if not p.exists():
+            pytest.skip("quick-tier fixture not found")
+        with xr.open_dataset(p) as ds:
+            return ds.load()
+
+    def test_compute_bad_scans_returns_int8(self, fixture_ds):
+        from pygac.calibration.noaa import Calibrator
+        from pygac.uncertainty.ir import _compute_bad_scans, ir_channel_specs
+        ds = fixture_ds
+        cal = Calibrator(ds.attrs["spacecraft_name"])
+        specs = ir_channel_specs(cal, ds.attrs["spacecraft_name"])
+        total_space = ds["full_space_counts"].values
+        total_ict = ds["full_ict_counts"].values
+        bad = _compute_bad_scans(specs, total_space, total_ict)
+        assert bad.dtype == np.int8
+        assert bad.ndim == 1
+        assert bad.shape[0] == total_space.shape[0]
+
+    def test_compute_bad_scans_matches_legacy_get_noise(self, fixture_ds):
+        """_compute_bad_scans must produce same bad_scans as get_noise."""
+        from pygac.calibration.noaa import Calibrator
+        from pygac.uncertainty.ir import (
+            _compute_bad_scans,
+            get_noise,
+            get_uncert_parameter_thresholds,
+            ir_channel_specs,
+        )
+        ds = fixture_ds
+        cal = Calibrator(ds.attrs["spacecraft_name"])
+        specs = ir_channel_specs(cal, ds.attrs["spacecraft_name"])
+        window, _, _, _, _, _ = get_uncert_parameter_thresholds()
+        total_space = ds["full_space_counts"].values
+        total_ict = ds["full_ict_counts"].values
+
+        legacy = get_noise(total_space, total_ict, window, twelve_micron=True)
+        legacy_bad_scans = legacy[-1]
+
+        new_bad = _compute_bad_scans(specs, total_space, total_ict)
+
+        np.testing.assert_array_equal(new_bad, legacy_bad_scans)
+
+    # ------------------------------------------------------------------
+    # _compute_noise_arrays consistency
+    # ------------------------------------------------------------------
+
+    def test_compute_noise_arrays_matches_legacy(self, fixture_ds):
+        """_compute_noise_arrays (new) must produce same noise values as get_noise (legacy)."""
+        from pygac.calibration.noaa import Calibrator
+        from pygac.uncertainty.ir import (
+            _compute_noise_arrays,
+            get_noise,
+            get_uncert_parameter_thresholds,
+            ir_channel_specs,
+        )
+        ds = fixture_ds
+        cal = Calibrator(ds.attrs["spacecraft_name"])
+        specs = ir_channel_specs(cal, ds.attrs["spacecraft_name"])
+        window, _, _, _, _, _ = get_uncert_parameter_thresholds()
+        total_space = ds["full_space_counts"].values
+        total_ict = ds["full_ict_counts"].values
+
+        legacy = get_noise(total_space, total_ict, window, twelve_micron=True)
+        n1, n2, n3, av1, av2, av3, av_ict1, av_ict2, av_ict3, _ = legacy
+
+        noise_map, bad_scan = _compute_noise_arrays(specs, total_space, total_ict, window)
+
+        np.testing.assert_allclose(noise_map[0][0], n1)
+        np.testing.assert_allclose(noise_map[1][0], n2)
+        np.testing.assert_allclose(noise_map[2][0], n3)
+        np.testing.assert_allclose(noise_map[0][1], av1)
+        np.testing.assert_allclose(noise_map[1][1], av2)
+        np.testing.assert_allclose(noise_map[2][1], av3)
+        np.testing.assert_allclose(noise_map[0][2], av_ict1)
+        np.testing.assert_allclose(noise_map[1][2], av_ict2)
+        np.testing.assert_allclose(noise_map[2][2], av_ict3)

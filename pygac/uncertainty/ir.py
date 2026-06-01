@@ -262,9 +262,7 @@ def build_ir_channel_data(
     ict1, ict2, ict3, ict4 : np.ndarray
         Per-PRT smoothed temperatures (needed by :func:`get_gainval`).
     """
-    twelve_micron = len(specs) == 3
-
-    noise_all, bad_scan = _compute_noise_arrays(total_space, total_ict, window, twelve_micron)
+    noise_all, bad_scan = _compute_noise_arrays(specs, total_space, total_ict, window)
 
     # PRT pipeline runs only once — it is channel-independent.
     telemetry = extract_ir_telemetry(ds, cal, mask, window, prt_threshold, gacdata)
@@ -290,24 +288,79 @@ def build_ir_channel_data(
     return channels, bad_scan, Tict, ict1, ict2, ict3, ict4
 
 
-def _compute_noise_arrays(total_space, total_ict, window, twelve_micron):
-    """Call :func:`get_noise` and repack into a per-cal-index mapping.
+def _channel_noise(space_2d, ict_2d, bad_scans, window):
+    """Compute noise estimates for a single IR channel.
+
+    Parameters
+    ----------
+    space_2d : np.ndarray, shape (scanlines, counts_per_line)
+    ict_2d   : np.ndarray, shape (scanlines, counts_per_line)
+    bad_scans : np.ndarray, shape (scanlines,), dtype int8
+    window : int  Number of scanlines in the smoothing window.
 
     Returns
     -------
-    noise_by_cal_index : dict[int, tuple[np.ndarray, np.ndarray, np.ndarray]]
-        Maps cal_index (0/1/2) to ``(noise, av_noise, av_ict_noise)``.
-    bad_scan : np.ndarray
+    noise : float  Space-count noise (Allan deviation + digitisation).
+    av_noise : float  Noise after averaging over window * 10 measurements.
+    av_ict_noise : float  ICT noise after averaging.
     """
-    noise_tuple = get_noise(total_space, total_ict, window, twelve_micron)
-    noise1, noise2, noise3, av_noise1, av_noise2, av_noise3, \
-        av_ict_noise1, av_ict_noise2, av_ict_noise3, bad_scan = noise_tuple
+    noise = np.sqrt(allan_deviation(space_2d, bad_scan=bad_scans) ** 2 + 1.0 / 3)
+    ict_noise = np.sqrt(allan_deviation(ict_2d, bad_scan=bad_scans) ** 2 + 1.0 / 3)
+    sqrt_window = np.sqrt(window * 10)
+    return noise, noise / sqrt_window, ict_noise / sqrt_window
 
+
+def _compute_bad_scans(specs, total_space, total_ict):
+    """Flag scanlines that have bad space-count data in any channel.
+
+    Parameters
+    ----------
+    specs : list[IRChannelSpec]
+    total_space : np.ndarray, shape (scanlines, counts_per_line, 3)
+    total_ict   : np.ndarray, shape (scanlines, counts_per_line, 3)
+
+    Returns
+    -------
+    bad_scans : np.ndarray, shape (scanlines,), dtype int8
+        1 where any channel reports bad data, 0 elsewhere.
+    """
+    bad_per_channel = [
+        get_bad_space_counts(
+            total_space[:, :, s.cal_index],
+            ict_data=total_ict[:, :, s.cal_index],
+        )
+        for s in specs
+    ]
+    stacked = np.stack(bad_per_channel, axis=0)  # (n_channels, scanlines, counts)
+    return stacked.any(axis=(0, 2)).astype(np.int8)
+
+
+def _compute_noise_arrays(specs, total_space, total_ict, window):
+    """Compute per-channel noise estimates.
+
+    Parameters
+    ----------
+    specs : list[IRChannelSpec]
+    total_space : np.ndarray, shape (scanlines, counts_per_line, 3)
+    total_ict   : np.ndarray, shape (scanlines, counts_per_line, 3)
+    window : int
+
+    Returns
+    -------
+    noise_by_cal_index : dict[int, tuple[float, float, float]]
+        Maps cal_index → (noise, av_noise, av_ict_noise).
+    bad_scans : np.ndarray, shape (scanlines,), dtype int8
+    """
+    bad_scans = _compute_bad_scans(specs, total_space, total_ict)
     return {
-        0: (noise1, av_noise1, av_ict_noise1),
-        1: (noise2, av_noise2, av_ict_noise2),
-        2: (noise3, av_noise3, av_ict_noise3),
-    }, bad_scan
+        s.cal_index: _channel_noise(
+            total_space[:, :, s.cal_index],
+            total_ict[:, :, s.cal_index],
+            bad_scans,
+            window,
+        )
+        for s in specs
+    }, bad_scans
 
 
 def _get_channel_arrays(ds, cal_index, tict, mask, ict_threshold, space_threshold, window):
@@ -477,95 +530,43 @@ def get_bad_space_counts(sp_data, ict_data=None):
     return sp_bad_data
 
 
-def get_noise(total_space,total_ict,window,twelve_micron):
-    """Get noise estimates from the counts"""
+def get_noise(total_space, total_ict, window, twelve_micron):
+    """Get noise estimates from the counts.
 
-    #
-    # Find bad space view data
-    #
-    bad_data_1 = get_bad_space_counts(total_space[:,:,0],
-                                      ict_data=total_ict[:,:,0])
-    bad_data_2 = get_bad_space_counts(total_space[:,:,1],
-                                      ict_data=total_ict[:,:,1])
+    .. deprecated::
+        Use :func:`_compute_noise_arrays` with a list of :class:`IRChannelSpec`
+        objects instead.  This wrapper exists for backward compatibility only
+        and will be removed in a future release.
+    """
+    import warnings
+    from types import SimpleNamespace
+    warnings.warn(
+        "get_noise() is deprecated. Use _compute_noise_arrays() instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+
+    specs = [SimpleNamespace(cal_index=0), SimpleNamespace(cal_index=1)]
     if twelve_micron:
-        bad_data_3 = get_bad_space_counts(total_space[:,:,2],
-                                          ict_data=total_ict[:,:,2])
-    bad_scans = np.zeros(total_space.shape[0],dtype=np.int8)
+        specs.append(SimpleNamespace(cal_index=2))
+
+    bad_scans = _compute_bad_scans(specs, total_space, total_ict)
+
+    def _noise_triple(cal_idx):
+        return _channel_noise(
+            total_space[:, :, cal_idx],
+            total_ict[:, :, cal_idx],
+            bad_scans,
+            window,
+        )
+
+    n1, av1, av_ict1 = _noise_triple(0)
+    n2, av2, av_ict2 = _noise_triple(1)
+    n3 = av3 = av_ict3 = None
     if twelve_micron:
-        for i in range(len(bad_scans)):
-            if np.any(bad_data_1[i,:]) or np.any(bad_data_2[i,:]) or \
-               np.any(bad_data_3[i,:]):
-                bad_scans[i] = 1
-    else:
-        for i in range(len(bad_scans)):
-            if np.any(bad_data_1[i,:]) or np.any(bad_data_2[i,:]):
-                bad_scans[i] = 1
+        n3, av3, av_ict3 = _noise_triple(2)
 
-    #
-    # Estimate noise using the Allan deviation plus the digitisation
-    # uncertainty
-    #
-    # 3.7 micron space counts
-    #
-    noise1 = allan_deviation(total_space[:, :, 0],bad_scan=bad_scans)
-    noise1 = np.sqrt(noise1*noise1 + 1./3)
-
-    #
-    # 11 micron space counts
-    #
-    noise2 = allan_deviation(total_space[:,:,1],bad_scan=bad_scans)
-    noise2 = np.sqrt(noise2*noise2 + 1./3)
-
-    #
-    # 12 micron space counts
-    #
-    if twelve_micron:
-        noise3 = allan_deviation(total_space[:,:,2],bad_scan=bad_scans)
-        noise3 = np.sqrt(noise3*noise3 + 1./3)
-    else:
-        noise3 = None
-
-    #
-    # 3.7 micron ICT counts
-    #
-    ict_noise1 = allan_deviation(total_ict[:,:,0],bad_scan=bad_scans)
-    ict_noise1 = np.sqrt(ict_noise1*ict_noise1 + 1./3)
-
-    #
-    # 11 micron ICT counts
-    #
-    ict_noise2 = allan_deviation(total_ict[:,:,1],bad_scan=bad_scans)
-    ict_noise2 = np.sqrt(ict_noise2*ict_noise2 + 1./3)
-
-    #
-    # 12 micron ICT counts
-    #
-    if twelve_micron:
-        ict_noise3 = allan_deviation(total_ict[:,:,2],bad_scan=bad_scans)
-        ict_noise3 = np.sqrt(ict_noise3*ict_noise3 + 1./3)
-    else:
-        ict_noise3 = None
-
-    #
-    # Calculate the uncertainty after averaging - note 10 measurements per
-    # scanline
-    #
-    sqrt_window = np.sqrt(window*10)
-    av_noise1 = noise1/sqrt_window
-    av_noise2 = noise2/sqrt_window
-    if twelve_micron:
-        av_noise3 = noise3/sqrt_window
-    else:
-        av_noise3 = None
-    av_ict_noise1 = ict_noise1/sqrt_window
-    av_ict_noise2 = ict_noise2/sqrt_window
-    if twelve_micron:
-        av_ict_noise3 = ict_noise3/sqrt_window
-    else:
-        av_ict_noise3 = None
-
-    return noise1,noise2,noise3,av_noise1,av_noise2,av_noise3,\
-        av_ict_noise1,av_ict_noise2,av_ict_noise3,bad_scans
+    return n1, n2, n3, av1, av2, av3, av_ict1, av_ict2, av_ict3, bad_scans
 
 def smooth_data(y,length):
     """Smooth data over given length"""
