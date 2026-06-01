@@ -14,3 +14,7 @@ tmp
 .venv
 *.lock
 .python-version
+
+# Phase 0 uncertainty regression: full-tier baselines (multi-MB per orbit,
+# regenerated from local LHRR inputs; never committed).
+.pytest_cache/pygac-uncertainty-baselines/

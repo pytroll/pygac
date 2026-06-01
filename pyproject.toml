@@ -77,3 +77,8 @@ line-length = 120
 
 [tool.ruff.lint]
 select = ["E", "W", "F", "I", "Q", "NPY"]
+
+[tool.pytest.ini_options]
+markers = [
+    "regression_full: end-to-end uncertainty regression against full-orbit baselines (opt-in via --run-regression-full)",
+]
