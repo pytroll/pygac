@@ -23,8 +23,6 @@
 """
 from __future__ import division
 
-import argparse
-
 import numpy as np
 import xarray as xr
 
@@ -172,7 +170,7 @@ def get_gain(s0, s1, s2, t, cal, channel):
     return gain
 
 
-def vis_uncertainty(ds,mask,plot=False):
+def vis_uncertainty(ds, mask):
     """Create the uncertainty components for the vis channels. These include
 
     1) Random
@@ -414,29 +412,3 @@ def vis_uncertainty(ds,mask,plot=False):
                                     solar_fov_contam=solar_contam_da))
 
     return uncertainties
-
-if __name__ == "__main__":
-    from pygac import get_reader_class
-    parser = argparse.ArgumentParser()
-    parser.add_argument("filename")
-    parser.add_argument("--plot",action="store_true")
-
-    args = parser.parse_args()
-
-    #
-    # Read data
-    #
-    reader_cls = get_reader_class(args.filename)
-    #"/gws/nopw/j04/npl_eo/users/nyaghnam/pygac/gapfilled_tles"
-    #"/gws/nopw/j04/nceo_uor/users/jmittaz/NPL/AVHRR/TLE"
-    reader = reader_cls(tle_dir=r"C:\Users\ny2\Desktop\projectdir\pygac\gapfilled_tles",
-                        tle_name="TLE_%(satname)s.txt",
-                        calibration_method="noaa",
-                        adjust_clock_drift=False)
-    reader.read(args.filename)
-    ds = reader.get_calibrated_dataset()
-    mask = reader.mask
-    uncert = vis_uncertainty(ds,mask,plot=args.plot)
-    print(uncert)
-    uncert.to_netcdf("uncertainty_output.nc")
-    print("Uncertainty saved to 'uncertainty_output.nc'")

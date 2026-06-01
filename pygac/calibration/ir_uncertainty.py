@@ -23,7 +23,6 @@
 """
 from __future__ import division
 
-import argparse
 from contextlib import contextmanager
 from tempfile import gettempdir
 
@@ -236,8 +235,7 @@ def smooth_data(y,length):
 
     return outy
 
-def get_uICT(gainval,CS,CICT,Tict,NS,convT,bad_scans,solar_scans,window,
-             plt=None,nfigure=None):
+def get_uICT(gainval,CS,CICT,Tict,NS,convT,bad_scans,solar_scans,window):
     """Get ICT temperature gradient uncertainty based on analysis of the
     gain variations in the 3.7 micron channel
     Estimate on "window" scanline length
@@ -281,23 +279,7 @@ def get_uICT(gainval,CS,CICT,Tict,NS,convT,bad_scans,solar_scans,window,
         else:
             uICT[i] = np.nan
 
-    if plt is not None:
-        nfigure = nfigure+1
-        plt.figure(nfigure)
-        plt.subplot(311)
-        plt.plot(np.arange(len(gain)),gain*1e3,".")
-        plt.axhline(y=gainval*1e3,linestyle="--",color="red")
-        plt.ylabel("3.7$\\mu$m Gain $\\times 10^{-3}$")
-        plt.subplot(312)
-        plt.plot(np.arange(len(dT)),dT,".")
-        plt.ylabel(r"$\Delta$T / K")
-        plt.subplot(313)
-        plt.plot(np.arange(len(uICT)),uICT,".")
-        plt.xlabel("Scanline")
-        plt.ylabel("uICT / K")
-        plt.tight_layout()
-
-    return uICT,nfigure
+    return uICT
 
 def get_ict_uncert(Tict,prt_random,prt_bias,uICT,convT):
     """Get uncertainty in radiance/temperature of ICT on the basis of
@@ -334,8 +316,7 @@ class fit_ict_pars(object):
         self.convT = convT
 
 def find_solar_ind(position,new_gain2,new_cs,new_ct,new_ict,new_ict1,
-                   new_ict2,new_ict3,new_ict4,solZA,first=True,
-                   plot=False):
+                   new_ict2,new_ict3,new_ict4,solZA,first=True):
     """Find possible solar contamination on one side of the solar max
     position"""
 
@@ -392,8 +373,6 @@ def find_solar_ind(position,new_gain2,new_cs,new_ct,new_ict,new_ict1,
         # Check that we are not at an edge
         #
         if side1 == 0:
-            if plot:
-                plt.show()
             print("Cannot find peak for solar contamination")
             return None,None,None
 
@@ -536,7 +515,7 @@ def find_solar_ind(position,new_gain2,new_cs,new_ct,new_ict,new_ict1,
 
     return side1,side2,peak_location
 
-def find_solar(ds,mask,convT=None,outgain=False,plot=False,out_time=False):
+def find_solar(ds,mask,convT=None):
     """Find solar contamination/variable gain points for GAC and for ~full
     orbits"""
 
@@ -553,10 +532,7 @@ def find_solar(ds,mask,convT=None,outgain=False,plot=False,out_time=False):
         # Code only works for GAC
         #
         print("ERROR: Solar contamination detection only works for GAC data")
-        if outgain:
-            return None,None,None,None,None,None
-        else:
-            return None,None,None,None
+        return None,None,None,None
 
     #
     # Get calibration coefficients for 3.7 micron channel
@@ -568,32 +544,17 @@ def find_solar(ds,mask,convT=None,outgain=False,plot=False,out_time=False):
     if convT is None:
         convT = convBT(cal,0)
 
-    if out_time:
-        CS_1,CICT_1,CE_1,Tict,ict1,ict2,ict3,ict4,solZAin,time \
-            = get_vars(ds,0,convT,
-                       window,
-                       prt_threshold,
-                       ict_threshold,
-                       space_threshold,
-                       gacdata,
-                       cal,
-                       mask,
-                       out_prt=True,
-                       out_solza=True,
-                       out_time=True)
-    else:
-        CS_1,CICT_1,CE_1,Tict,ict1,ict2,ict3,ict4,solZAin \
-            = get_vars(ds,0,convT,
-                       window,
-                       prt_threshold,
-                       ict_threshold,
-                       space_threshold,
-                       gacdata,
-                       cal,
-                       mask,
-                       out_prt=True,
-                       out_solza=True,
-                       out_time=False)
+    CS_1,CICT_1,CE_1,Tict,ict1,ict2,ict3,ict4,solZAin \
+        = get_vars(ds,0,convT,
+                   window,
+                   prt_threshold,
+                   ict_threshold,
+                   space_threshold,
+                   gacdata,
+                   cal,
+                   mask,
+                   out_prt=True,
+                   out_solza=True)
 
     meanT = (ict1+ict2+ict3+ict4)/4.
     radBB = convT.t_to_rad(meanT)
@@ -672,8 +633,7 @@ def find_solar(ds,mask,convT=None,outgain=False,plot=False,out_time=False):
                                                      new_cs,new_ct,new_ict,
                                                      new_ict1,new_ict2,
                                                      new_ict3,new_ict4,
-                                                     solZA,first=True,
-                                                     plot=plot)
+                                                     solZA,first=True)
     #
     # Other side of solZA max
     #
@@ -681,124 +641,20 @@ def find_solar(ds,mask,convT=None,outgain=False,plot=False,out_time=False):
                                                      new_cs,new_ct,new_ict,
                                                      new_ict1,new_ict2,
                                                      new_ict3,new_ict4,
-                                                     solZA,first=False,
-                                                     plot=plot)
+                                                     solZA,first=False)
 
-    #
-    # Plot PRT variation and gain differences (before/after)
-    #
-    if plot:
-        plt.figure(1)
-        x = np.arange(len(prt_diff1))
-        plt.subplot(211)
-        plt.plot(x,prt_diff1,label="PRT1")
-        plt.plot(x,prt_diff2,label="PRT2")
-        plt.plot(x,prt_diff3,label="PRT3")
-        plt.plot(x,prt_diff4,label="PRT4")
-        plt.ylabel("Temp. Diff / K")
-        plt.legend()
-        plt.subplot(212)
-        plt.plot(x,gain3)
-        plt.ylabel("3.7$\\mu$m Gain $\\times 10^{-3}$")
-        plt.axhline(y=gain3[minstd_pos],linestyle="--",color="red")
-        plt.figure(2)
-        x = np.arange(len(prt_diff1))
-        plt.subplot(211)
-        plt.plot(x,prt_diff1,label="PRT1")
-        plt.plot(x,prt_diff2,label="PRT2")
-        plt.plot(x,prt_diff3,label="PRT3")
-        plt.plot(x,prt_diff4,label="PRT4")
-        plt.xlabel("Scanline")
-        plt.ylabel("Temp. Diff / K")
-        plt.legend()
-        plt.subplot(212)
-        plt.plot(x,gain3*1e3,label="Orig")
-        plt.plot(x,new_gain*1e3,label="New")
-        plt.xlabel("Scanline")
-        plt.ylabel("3.7$\\mu$m Gain $\\times 10^{-3}$")
-        plt.legend()
-        if side1_1 is not None:
-            plt.axvline(x=side1_1,color="red")
-            plt.axvline(x=side2_1,color="red")
-        if side1_2 is not None:
-            plt.axvline(x=side1_2,color="red")
-            plt.axvline(x=side2_2,color="red")
-        plt.tight_layout()
-        plt.figure(3)
-        plt.plot(x,gain3*1e3)
-        plt.xlabel("Scanline")
-        plt.ylabel("3.7$\\mu$m Gain $\\times 10^{-3}$")
-        if side1_1 is not None:
-            plt.axvline(x=side1_1,color="red")
-            plt.axvline(x=side2_1,color="red")
-        if side1_2 is not None:
-            plt.axvline(x=side1_2,color="red")
-            plt.axvline(x=side2_2,color="red")
-        plt.show()
-
-    if outgain:
-        if side1_1 is not None and side1_2 is not None:
-            if out_time:
-                return time[side1_1],time[side2_1],time[peak_location_1],\
-                    solZAin[peak_location_1],time[side1_2],time[side2_2],\
-                    time[peak_location_2],solZAin[peak_location_2],\
-                    time[minstd_pos],gain3[minstd_pos]
-            else:
-                return side1_1,side2_1,peak_location_1,\
-                    solZAin[peak_location_1],side1_2,side2_2,\
-                    peak_location_2,solZAin[peak_location_2],\
-                    minstd_pos,gain3[minstd_pos]
-        elif side1_1 is not None and side1_2 is None:
-            if out_time:
-                return time[side1_1],time[side2_1],time[peak_location_1],\
-                    solZAin[peak_location_1],None,None,None,None,\
-                    time[minstd_pos],gain3[minstd_pos]
-            else:
-                return side1_1,side2_1,peak_location_1,\
-                    solZAin[peak_location_1],None,None,None,None,\
-                    minstd_pos,gain3[minstd_pos]
-        elif side1_1 is None and side1_2 is not None:
-            if out_time:
-                return None,None,None,None,time[side1_2],time[side2_2],\
-                    time[peak_location_2],solZAin[peak_location_2],\
-                    time[minstd_pos],gain3[minstd_pos]
-            else:
-                return None,None,None,None,side1_2,side2_2,\
-                    peak_location_2,solZAin[peak_location_2],\
-                    minstd_pos,gain3[minstd_pos]
-        else:
-            if out_time:
-                return None,None,None,None,None,None,None,None,\
-                    time[minstd_pos],gain3[minstd_pos]
-            else:
-                return None,None,None,None,None,None,None,None,\
-                    minstd_pos,gain3[minstd_pos]
+    if side1_1 is not None and side1_2 is not None:
+        return side1_1,side2_1,peak_location_1,\
+            solZAin[peak_location_1],side1_2,side2_2,\
+            peak_location_2,solZAin[peak_location_2]
+    elif side1_1 is not None and side1_2 is None:
+        return side1_1,side2_1,peak_location_1,\
+            solZAin[peak_location_1],None,None,None,None
+    elif side1_1 is None and side1_2 is not None:
+        return None,None,None,None,side1_2,side2_2,\
+            peak_location_2,solZAin[peak_location_2]
     else:
-        if side1_1 is not None and side1_2 is not None:
-            if out_time:
-                return time[side1_1],time[side2_1],time[peak_location_1],\
-                    solZAin[peak_location_1],time[side1_2],time[side2_2],\
-                    time[peak_location_2],solZAin[peak_location_2]
-            else:
-                return side1_1,side2_1,peak_location_1,\
-                    solZAin[peak_location_1],side1_2,side2_2,\
-                    peak_location_2,solZAin[peak_location_2]
-        elif side1_1 is not None and side1_2 is None:
-            if out_time:
-                return time[side1_1],time[side2_1],time[peak_location_1],\
-                    solZAin[peak_location_1],None,None,None,None
-            else:
-                return side1_1,side2_1,peak_location_1,\
-                    solZAin[peak_location_1],None,None,None,None
-        elif side1_1 is None and side1_2 is not None:
-            if out_time:
-                return None,None,None,None,time[side1_2],time[side2_2],\
-                    time[peak_location_2],solZAin[peak_location_2]
-            else:
-                return None,None,None,None,side1_2,side2_2,\
-                    peak_location_2,solZAin[peak_location_2]
-        else:
-            return None,None,None,None,None,None,None,None
+        return None,None,None,None,None,None,None,None
 
 def get_random(channel,noise,av_noise,ict_noise,ict_random,Lict,CS,CE,CICT,NS,
                c1,c2):
@@ -862,8 +718,7 @@ def get_sys(channel,uICT,Tict,CS,CE,CICT,NS,c1,c2,convT):
     return np.sqrt(uncert),True
 
 def get_vars(ds,channel,convT,wlength,prt_threshold,ict_threshold,
-             space_threshold,gac,cal,mask,out_prt=False,out_solza=False,
-             out_time=False):
+             space_threshold,gac,cal,mask,out_prt=False,out_solza=False):
     """Get variables from xarray including smoothing and interpolation"""
     space = ds["full_space_counts"].isel(channel_name=(channel - 3)).mean(axis=1).values
     prt = ds["mean_prt_counts"].values[:]
@@ -874,10 +729,6 @@ def get_vars(ds,channel,convT,wlength,prt_threshold,ict_threshold,
 
     if out_solza:
         solza = ds["sun_zen"].values[:,midpoint]
-    if out_time:
-        time = (ds["times"].values[:] -
-                np.datetime64("1970-01-01T00:00:00"))/\
-                np.timedelta64(1,"s")
 
     #
     # Set nan's to value to be caught by interpolation routines
@@ -1061,25 +912,16 @@ def get_vars(ds,channel,convT,wlength,prt_threshold,ict_threshold,
 
     if out_prt:
         if out_solza:
-            if out_time:
-                return space_convolved,ict_convolved,ce,tprt_convolved,\
-                    tprt1_convolved,tprt2_convolved,tprt3_convolved,\
-                    tprt4_convolved,solza,time
-            else:
-                return space_convolved,ict_convolved,ce,tprt_convolved,\
-                    tprt1_convolved,tprt2_convolved,tprt3_convolved,\
-                    tprt4_convolved,solza
+            return space_convolved,ict_convolved,ce,tprt_convolved,\
+                tprt1_convolved,tprt2_convolved,tprt3_convolved,\
+                tprt4_convolved,solza
         else:
             return space_convolved,ict_convolved,ce,tprt_convolved,\
                 tprt1_convolved,tprt2_convolved,tprt3_convolved,\
                 tprt4_convolved
     else:
         if out_solza:
-            if out_time:
-                return space_convolved,ict_convolved,ce,tprt_convolved,solza,\
-                time
-            else:
-                return space_convolved,ict_convolved,ce,tprt_convolved,solza
+            return space_convolved,ict_convolved,ce,tprt_convolved,solza
         else:
             return space_convolved,ict_convolved,ce,tprt_convolved
 
@@ -1266,8 +1108,7 @@ def get_solar_from_file(platform, ds):
     #
     return min_solar_1, max_solar_1, min_solar_2, max_solar_2
 
-def ir_uncertainty(ds,mask,plot=False,plotmax=None,out_uict=False,
-                   out_solar_gain=False):
+def ir_uncertainty(ds,mask):
     """Create the uncertainty components for the IR channels. These include
 
     1) Random
@@ -1282,7 +1123,6 @@ def ir_uncertainty(ds,mask,plot=False,plotmax=None,out_uict=False,
     Inputs:
             ds : Input xarray dataset containing data for calibration
           mask : pygac mask from reader
-      out_uict : output txt files to create part of test harness test data
     Outputs:
       uncert : xarray dataset containing random and systematic uncertainty
                components
@@ -1345,13 +1185,6 @@ def ir_uncertainty(ds,mask,plot=False,plotmax=None,out_uict=False,
     #
     # Get variables used on the calibration
     #
-    nfigure=1
-    if plot:
-        import matplotlib.pyplot as plt
-        plt.figure(nfigure)
-    else:
-        plt = None
-
     CS_1,CICT_1,CE_1,Tict,ict1,ict2,ict3,ict4 = get_vars(ds,0,convT1,
                                                          window,
                                                          prt_threshold,
@@ -1361,23 +1194,11 @@ def ir_uncertainty(ds,mask,plot=False,plotmax=None,out_uict=False,
                                                          cal,
                                                          mask,
                                                          out_prt=True)
-    if plot:
-        plt.subplot(131)
-        plt.plot(np.arange(len(CS_1)),CS_1,",")
-        plt.title(r"3.7$\mu$m")
-        plt.ylabel("Space Cnts")
-        plt.xlabel("Scanline")
 
     CS_2,CICT_2,CE_2,Tict = get_vars(ds,1,convT2,window,prt_threshold,
                                      ict_threshold,
                                      space_threshold,
                                      gacdata,cal,mask)
-    if plot:
-        plt.subplot(132)
-        plt.plot(np.arange(len(CS_2)),CS_2,",")
-        plt.title(r"11$\mu$m")
-        plt.ylabel("Space Cnts")
-        plt.xlabel("Scanline")
 
     if twelve_micron:
         CS_3,CICT_3,CE_3,Tict = get_vars(ds,2,convT3,window,
@@ -1385,17 +1206,9 @@ def ir_uncertainty(ds,mask,plot=False,plotmax=None,out_uict=False,
                                          ict_threshold,
                                          space_threshold,
                                          gacdata,cal,mask)
-        if plot:
-            plt.subplot(133)
-            plt.plot(np.arange(len(CS_3)),CS_3,",")
-            plt.title(r"12$\mu$m")
-            plt.ylabel("Space Cnts")
-            plt.xlabel("Scanline")
-    if plot:
-        plt.tight_layout()
 
     solar_flag = np.zeros(CE_2.shape[0],dtype=np.uint8)
-    if gacdata or out_solar_gain:
+    if gacdata:
         #
         # See if solar contamination present
         # Only for GAC data
@@ -1403,7 +1216,7 @@ def ir_uncertainty(ds,mask,plot=False,plotmax=None,out_uict=False,
         #
         min_solar_1, max_solar_1, peak_solar_1, solar_solza_1,\
         min_solar_2, max_solar_2, peak_solar_2, solar_solza_2 = \
-            find_solar(ds,mask,convT1,plot=plot,out_time=False)
+            find_solar(ds,mask,convT1)
         if min_solar_1 is None and max_solar_1 is None:
             min_solar_1 = -1
             max_solar_1 = -1
@@ -1433,14 +1246,13 @@ def ir_uncertainty(ds,mask,plot=False,plotmax=None,out_uict=False,
     #
     # Only redo calculation if gac data
     #
-    calculate_gain = gacdata or out_solar_gain
     gain_37,gain_time = get_gainval(time,intimes,avhrr_name,ict1,ict2,
                                     ict3,ict4,CS_1,CICT_1,CE_1,0.,
                                     bad_scan,convT1,window,
-                                    calculate=calculate_gain)
+                                    calculate=gacdata)
     if gain_37 is not None and gain_time is not None:
-        uICT,nfigure = get_uICT(gain_37,CS_1,CICT_1,Tict,0.,convT1,bad_scan,
-                                solar_flag,window,plt=plt,nfigure=nfigure)
+        uICT = get_uICT(gain_37,CS_1,CICT_1,Tict,0.,convT1,bad_scan,
+                        solar_flag,window)
     else:
         #
         # Time of file out of gain time limits for HRPT data
@@ -1448,29 +1260,6 @@ def ir_uncertainty(ds,mask,plot=False,plotmax=None,out_uict=False,
         #
         uICT = np.zeros(len(CS_1))
         uICT[:] = np.nan
-    #
-    # Output uICT,mask data
-    #
-    if out_uict:
-        if np.sum(np.isfinite(uICT)) == 0:
-            return
-        X = np.zeros((len(uICT),2))
-        X[:,0] = uICT
-        X[:,1] = bad_scan
-        np.savetxt("uict.txt",X,fmt="%10.8f %d")
-        return
-    #
-    # Output values to be stored as auxillary data on zenodo
-    #
-    if out_solar_gain:
-        #
-        # Get solar locations in time space for output zenodo files
-        #
-        tmin_solar_1, tmax_solar_1, tpeak_solar_1, tsolar_solza_1,\
-            tmin_solar_2, tmax_solar_2, tpeak_solar_2, tsolar_solza_2 = \
-                find_solar(ds,mask,convT1,plot=plot,out_time=True)
-        return gain_time,gain_37,tmin_solar_1,tmax_solar_1,tmin_solar_2,\
-            tmax_solar_2
     #
     # Loop round scanlines
     #
@@ -1615,143 +1404,6 @@ def ir_uncertainty(ds,mask,plot=False,plotmax=None,out_uict=False,
         if twelve_micron:
             bt_sys_12[i,:] = tot_sys_12
 
-    if plot:
-        if twelve_micron:
-            nfigure = nfigure+1
-            plt.figure(nfigure)
-            plt.subplot(231)
-            plt.hist(bt_rand_37.flatten(),bins=100)
-            plt.title(r"3.7$\mu$m")
-
-            plt.subplot(232)
-            plt.hist(bt_rand_11.flatten(),bins=100)
-            plt.title(r"11$\mu$m (Random)")
-
-            plt.subplot(233)
-            plt.hist(bt_rand_12.flatten(),bins=100)
-            plt.title(r"12$\mu$m")
-
-            plt.subplot(234)
-            plt.hist(bt_sys_37.flatten(),bins=100)
-            plt.title(r"3.7$\mu$m")
-
-            plt.subplot(235)
-            plt.hist(bt_sys_11.flatten(),bins=100)
-            plt.title(r"11$\mu$m (Systematic)")
-            plt.xlabel("Uncertainty / K")
-
-            plt.subplot(236)
-            plt.hist(bt_sys_12.flatten(),bins=100)
-            plt.title(r"12$\mu$m")
-            plt.tight_layout()
-
-            nfigure = nfigure+1
-            plt.figure(nfigure)
-            plt.subplot(231)
-            if plotmax is None:
-                im=plt.imshow(bt_rand_37)
-            else:
-                gd = (bt_rand_37 > plotmax[0])
-                image = np.copy(bt_rand_37)
-                image[gd] = np.nan
-                im=plt.imshow(image)
-            plt.colorbar(im)
-            plt.title(r"3.7$\mu$m")
-
-            plt.subplot(232)
-            if plotmax is None:
-                im=plt.imshow(bt_rand_11)
-            else:
-                gd = (bt_rand_11 > plotmax[1])
-                image = np.copy(bt_rand_11)
-                image[gd] = np.nan
-                im=plt.imshow(image)
-            plt.colorbar(im)
-            plt.title(r"11$\mu$m (Random)")
-
-            plt.subplot(233)
-            if plotmax is None:
-                im=plt.imshow(bt_rand_12)
-            else:
-                gd = (bt_rand_12 > plotmax[2])
-                image = np.copy(bt_rand_12)
-                image[gd] = np.nan
-                im=plt.imshow(image)
-            plt.colorbar(im)
-            plt.title(r"12$\mu$m")
-
-            plt.subplot(234)
-            if plotmax is None:
-                im=plt.imshow(bt_sys_37)
-            else:
-                gd = (bt_sys_37 > plotmax[3])
-                image = np.copy(bt_sys_37)
-                image[gd] = np.nan
-                im=plt.imshow(image)
-            plt.colorbar(im)
-            plt.title(r"3.7$\mu$m")
-
-            plt.subplot(235)
-            if plotmax is None:
-                im=plt.imshow(bt_sys_11)
-            else:
-                gd = (bt_sys_11 > plotmax[4])
-                image = np.copy(bt_sys_11)
-                image[gd] = np.nan
-                im=plt.imshow(image)
-            plt.colorbar(im)
-            plt.title(r"11$\mu$m (Systematic)")
-
-            plt.subplot(236)
-            if plotmax is None:
-                im=plt.imshow(bt_sys_12)
-            else:
-                gd = (bt_sys_12 > plotmax[5])
-                image = np.copy(bt_sys_12)
-                image[gd] = np.nan
-                im=plt.imshow(image)
-            plt.colorbar(im)
-            plt.title(r"12$\mu$m")
-            plt.tight_layout()
-
-            nfigure = nfigure+1
-            plt.figure(nfigure)
-            plt.subplot(131)
-            im=plt.imshow(uratio_37)
-            plt.colorbar(im)
-            plt.title(r"3.7$\mu$m")
-            plt.subplot(132)
-            im=plt.imshow(uratio_11)
-            plt.colorbar(im)
-            plt.title(r"11$\mu$m")
-            plt.subplot(133)
-            im=plt.imshow(uratio_12)
-            plt.colorbar(im)
-            plt.title(r"12$\mu$m")
-            plt.tight_layout()
-        else:
-            nfigure = nfigure+1
-            plt.figure(nfigure)
-            plt.subplot(221)
-            plt.hist(bt_rand_37.flatten(),bins=100)
-            plt.title(r"3.7$\mu$m (Random)")
-
-            plt.subplot(222)
-            plt.hist(bt_rand_11.flatten(),bins=100)
-            plt.title(r"11$\mu$m (Random)")
-
-            plt.subplot(223)
-            plt.hist(bt_sys_37.flatten(),bins=100)
-            plt.title(r"3.7$\mu$m (Systematic)")
-            plt.xlabel("Uncertainty / K")
-
-            plt.subplot(224)
-            plt.hist(bt_sys_11.flatten(),bins=100)
-            plt.title(r"11$\mu$m (Systematic)")
-            plt.xlabel("Uncertainty / K")
-
-            plt.tight_layout()
-        plt.show()
     #
     # Output uncertainties
     #
@@ -1842,120 +1494,3 @@ def ir_uncertainty(ds,mask,plot=False,plotmax=None,out_uict=False,
                                     uncert_flags=uflags_da))
 
     return uncertainties
-
-if __name__ == "__main__":
-    from pygac import get_reader_class
-    parser = argparse.ArgumentParser()
-    parser.add_argument("filename")
-    parser.add_argument("--plot",action="store_true")
-    parser.add_argument("--plotmax",type=float,nargs=6)
-    parser.add_argument("--solar_contam",action="store_true")
-    parser.add_argument("--oname")
-    parser.add_argument("--write_uict",action="store_true")
-    parser.add_argument("--write_test",nargs=2)
-    parser.add_argument("--out_solar_gain")
-
-    args = parser.parse_args()
-
-    #
-    # Read data
-    #
-    reader_cls = get_reader_class(args.filename)
-
-    reader = reader_cls(tle_dir="/gws/nopw/j04/nceo_uor/users/jmittaz/NPL/AVHRR/TLE",
-                        tle_name="TLE_%(satname)s.txt",
-                        calibration_method="noaa",
-                        adjust_clock_drift=False)
-    reader.read(args.filename)
-    ds = reader.get_calibrated_dataset()
-    mask = reader.mask
-    if args.solar_contam:
-        if args.oname is None:
-            raise Exception("ERROR: if solar data wanted must use --oname")
-        if args.plot:
-            import matplotlib.pyplot as plt
-        tmin_1,tmax_1,tpeak_1,out_solza_1,\
-        tmin_2,tmax_2,tpeak_2,out_solza_2,\
-        gtime,min_gain = \
-            find_solar(ds,mask,convT=None,outgain=True,plot=args.plot,
-                       out_time=True)
-        with open(args.oname,"a") as fp:
-            if tmin_1 is not None and tmin_2 is not None:
-                fp.write(("{0:16.9e} {1:16.9e} {2:16.9e} {3:9.4f} {4:16.9e} {5:16.9e}"
-                          " {6:16.9e} {7:9.4f} {8:16.9e} {9:9.7e}\n").
-                     format(tmin_1,tmax_1,tpeak_1,out_solza_1,
-                            tmin_2,tmax_2,tpeak_2,out_solza_2,
-                            gtime,min_gain))
-            elif tmin_1 is not None and tmin_2 is None:
-                fp.write(("{0:16.9e} {1:16.9e} {2:16.9e} {3:9.4f} {4:16.9e} {5:16.9e}"
-                          " {6:16.9e} {7:9.4f} {8:16.9e} {9:9.7e}\n").
-                     format(tmin_1,tmax_1,tpeak_1,out_solza_1,
-                            -1.,-1.,-1.,-1.,
-                            gtime,min_gain))
-            elif tmin_1 is None and tmin_2 is not None:
-                fp.write(("{0:16.9e} {1:16.9e} {2:16.9e} {3:9.4f} {4:16.9e} {5:16.9e}"
-                          " {6:16.9e} {7:9.4f} {8:16.9e} {9:9.7e}\n").
-                     format(-1.,-1.,-1.,-1.,
-                            tmin_2,tmax_2,tpeak_2,out_solza_2,
-                            gtime,min_gain))
-            elif tmin_1 is None and tmin_2 is None:
-                fp.write(("{0:16.9e} {1:16.9e} {2:16.9e} {3:9.4f} {4:16.9e} {5:16.9e}"
-                          " {6:16.9e} {7:9.4f} {8:16.9e} {9:9.7e}\n").
-                     format(-1.,-1.,-1.,-1.,
-                            -1.,-1.,-1.,-1.,
-                            gtime,min_gain))
-    elif args.write_test is not None:
-        #
-        # Write data for testing of uncertainty code
-        #
-        if ds.attrs["midnight_scanline"] is None:
-            ds.attrs["midnight_scanline"] = -1
-        ds.to_netcdf(args.write_test[0])
-        X = np.zeros((len(mask)),dtype=np.int8)
-        X[mask] = 1
-        np.savetxt(args.write_test[1],X,fmt="%d")
-    elif args.write_uict:
-        uncert = ir_uncertainty(ds,mask,out_uict=True)
-    elif args.out_solar_gain is not None:
-        timegain,gain_37,tmin_solar_1,tmax_solar_1,tmin_solar_2,\
-            tmax_solar_2 = ir_uncertainty(ds,mask,out_solar_gain=True)
-        time_gain = (timegain -
-                     np.datetime64("1970-01-01T00:00:00"))/\
-                     np.timedelta64(1,"s")
-        with open(args.out_solar_gain,"a") as fp:
-            if tmin_solar_1 is not None and \
-               tmax_solar_1 is not None and \
-               tmin_solar_2 is not None and \
-               tmax_solar_2 is not None:
-                fp.write("{0:15.12e} {1:e} {2:15.12e} {3:15.12e} {4:15.12e} {5:15.12e}\n".\
-                         format(time_gain,gain_37,tmin_solar_1,
-                                tmax_solar_1,tmin_solar_2,tmax_solar_2))
-            elif tmin_solar_1 is not None and \
-               tmax_solar_1 is not None and \
-               tmin_solar_2 is None and \
-               tmax_solar_2 is None:
-                tmin_solar_2 = -1.
-                tmax_solar_2 = -1.
-                fp.write("{0:15.12e} {1:e} {2:15.12e} {3:15.12e} {4:15.12e} {5:15.12e}\n".\
-                         format(time_gain,gain_37,tmin_solar_1,
-                                tmax_solar_1,tmin_solar_2,tmax_solar_2))
-            elif tmin_solar_1 is None and \
-               tmax_solar_1 is None and \
-               tmin_solar_2 is not None and \
-               tmax_solar_2 is not None:
-                tmin_solar_1 = -1.
-                tmax_solar_1 = -1.
-                fp.write("{0:15.12e} {1:e} {2:15.12e} {3:15.12e} {4:15.12e} {5:15.12e}\n".\
-                         format(time_gain,gain_37,tmin_solar_1,
-                                tmax_solar_1,tmin_solar_2,tmax_solar_2))
-            else:
-                tmin_solar_1 = -1.
-                tmax_solar_1 = -1.
-                tmin_solar_2 = -1.
-                tmax_solar_2 = -1.
-                fp.write("{0:15.12e} {1:e} {2:15.12e} {3:15.12e} {4:15.12e} {5:15.12e}\n".\
-                         format(time_gain,gain_37,tmin_solar_1,
-                                tmax_solar_1,tmin_solar_2,tmax_solar_2))
-    else:
-        uncert = ir_uncertainty(ds,mask,plot=args.plot,plotmax=args.plotmax)
-        print(uncert)
