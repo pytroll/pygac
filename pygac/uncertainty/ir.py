@@ -24,6 +24,7 @@
 from __future__ import division
 
 from contextlib import contextmanager
+from dataclasses import dataclass
 from tempfile import gettempdir
 
 import numpy as np
@@ -32,6 +33,84 @@ from scipy.optimize import curve_fit
 
 from pygac.calibration.noaa import Calibrator, get_prt_nos
 
+#: Platforms that only have 3.7 µm and 11 µm IR channels (no 12 µm).
+_NO_TWELVE_MICRON = frozenset({"tirosn", "noaa06", "noaa08", "noaa10"})
+
+
+@dataclass(frozen=True)
+class IRChannelSpec:
+    """Immutable identity and calibration constants for one IR channel.
+
+    Three independent index systems exist in the IR calibration code:
+
+    * ``cal_index``     — 0/1/2, indexes into :class:`~pygac.calibration.noaa.Calibrator` arrays.
+    * ``output_index``  — 3/4/5, the channel slot in the merged xr.Dataset output.
+    * ``helper_channel``— 1/2/3, the legacy positional argument expected by
+                          :func:`get_random` and :func:`get_sys`.
+    """
+
+    cal_index: int
+    output_index: int
+    helper_channel: int
+    label: str
+    conv: object          # convBT — not hashable, so frozen-dataclass equality is identity-based
+    space_radiance: float
+    nonlin_coeffs: tuple  # (c0, c1, c2); (0., 0., 0.) for 3.7 µm
+    has_nonlinear: bool   # False for 3.7 µm only
+
+
+def ir_channel_specs(cal, platform):
+    """Return the :class:`IRChannelSpec` list for *platform*.
+
+    Parameters
+    ----------
+    cal : Calibrator
+        Calibrator instance for the platform.
+    platform : str
+        Spacecraft name, e.g. ``"noaa14"``.
+
+    Returns
+    -------
+    list[IRChannelSpec]
+        Two specs for tirosn/noaa06/noaa08/noaa10 (no 12 µm channel),
+        three specs for all other platforms.
+    """
+    specs = [
+        IRChannelSpec(
+            cal_index=0,
+            output_index=3,
+            helper_channel=1,
+            label="3.7",
+            conv=convBT(cal, 0),
+            space_radiance=0.0,
+            nonlin_coeffs=(0.0, 0.0, 0.0),
+            has_nonlinear=False,
+        ),
+        IRChannelSpec(
+            cal_index=1,
+            output_index=4,
+            helper_channel=2,
+            label="11",
+            conv=convBT(cal, 1),
+            space_radiance=cal.space_radiance[1],
+            nonlin_coeffs=(cal.b[1, 0], cal.b[1, 1], cal.b[1, 2]),
+            has_nonlinear=True,
+        ),
+    ]
+    if platform not in _NO_TWELVE_MICRON:
+        specs.append(
+            IRChannelSpec(
+                cal_index=2,
+                output_index=5,
+                helper_channel=3,
+                label="12",
+                conv=convBT(cal, 2),
+                space_radiance=cal.space_radiance[2],
+                nonlin_coeffs=(cal.b[2, 0], cal.b[2, 1], cal.b[2, 2]),
+                has_nonlinear=True,
+            )
+        )
+    return specs
 
 def allan_deviation(space,bad_scan=None):
     """Determine the Allan deviation (noise) from space view counts filtering
@@ -1147,33 +1226,21 @@ def ir_uncertainty(ds,mask):
     avhrr_name = ds.attrs["spacecraft_name"]
 
     #
-    # Get calibration coefficients
+    # Get calibration coefficients and build channel specs
     #
-    cal = Calibrator(
-        ds.attrs["spacecraft_name"])
-    NS_2 = cal.space_radiance[1]
-    NS_3 = cal.space_radiance[2]
-    c0_2 = cal.b[1,0]
-    c1_2 = cal.b[1,1]
-    c2_2 = cal.b[1,2]
-    c0_3 = cal.b[2,0]
-    c1_3 = cal.b[2,1]
-    c2_3 = cal.b[2,2]
+    cal = Calibrator(ds.attrs["spacecraft_name"])
+    specs = ir_channel_specs(cal, avhrr_name)
+    twelve_micron = len(specs) == 3
 
-    # Is the twelve micron channel there
-    if ds.attrs["spacecraft_name"] == "tirosn" or \
-       ds.attrs["spacecraft_name"] == "noaa06" or \
-       ds.attrs["spacecraft_name"] == "noaa08" or \
-       ds.attrs["spacecraft_name"] == "noaa10":
-        twelve_micron = False
-    else:
-        twelve_micron = True
-
-    # Temperature to radiance etc.
-    convT1 = convBT(cal,0)
-    convT2 = convBT(cal,1)
+    # Convenience aliases for the three possible channels (used throughout)
+    spec_37, spec_11 = specs[0], specs[1]
+    spec_12 = specs[2] if twelve_micron else None
+    convT1 = spec_37.conv
+    convT2 = spec_11.conv
+    convT3 = spec_12.conv if twelve_micron else None
+    NS_2, c0_2, c1_2, c2_2 = spec_11.space_radiance, *spec_11.nonlin_coeffs
     if twelve_micron:
-        convT3 = convBT(cal,2)
+        NS_3, c0_3, c1_3, c2_3 = spec_12.space_radiance, *spec_12.nonlin_coeffs
 
     #
     # Get variables for 10 sampled case

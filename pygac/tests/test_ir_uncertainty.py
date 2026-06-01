@@ -28,16 +28,19 @@ from importlib.resources import files
 
 import cftime
 import numpy as np
+import pytest
 import xarray as xr
 
 from pygac.calibration.noaa import Calibrator
 from pygac.uncertainty.ir import (
+    IRChannelSpec,
     convBT,
     find_solar,
     get_gainval,
     get_uICT,
     get_uncert_parameter_thresholds,
     get_vars,
+    ir_channel_specs,
     ir_uncertainty,
     open_zenodo_uncert_file,
 )
@@ -553,3 +556,100 @@ class TestGetUict(unittest.TestCase):
         # Flags
         #
         np.testing.assert_allclose(irdata["uncert_flags"].values[:],flags[:])
+
+
+class TestIRChannelSpec:
+    """Characterize IRChannelSpec and ir_channel_specs() before refactoring."""
+
+    def _noaa14_specs(self):
+        cal = Calibrator("noaa14")
+        return ir_channel_specs(cal, "noaa14")
+
+    def _noaa10_specs(self):
+        cal = Calibrator("noaa10")
+        return ir_channel_specs(cal, "noaa10")
+
+    # --- spec list length ---
+
+    def test_three_channel_platform_returns_three_specs(self):
+        assert len(self._noaa14_specs()) == 3
+
+    def test_two_channel_platform_returns_two_specs(self):
+        assert len(self._noaa10_specs()) == 2
+
+    # --- instance type ---
+
+    def test_specs_are_IRChannelSpec_instances(self):
+        for spec in self._noaa14_specs():
+            assert isinstance(spec, IRChannelSpec)
+
+    # --- index systems are consistent ---
+
+    def test_noaa14_cal_indices(self):
+        specs = self._noaa14_specs()
+        assert [s.cal_index for s in specs] == [0, 1, 2]
+
+    def test_noaa10_cal_indices(self):
+        specs = self._noaa10_specs()
+        assert [s.cal_index for s in specs] == [0, 1]
+
+    def test_noaa14_output_indices(self):
+        specs = self._noaa14_specs()
+        assert [s.output_index for s in specs] == [3, 4, 5]
+
+    def test_noaa14_helper_channels(self):
+        specs = self._noaa14_specs()
+        assert [s.helper_channel for s in specs] == [1, 2, 3]
+
+    # --- labels ---
+
+    def test_noaa14_labels(self):
+        specs = self._noaa14_specs()
+        assert [s.label for s in specs] == ["3.7", "11", "12"]
+
+    def test_noaa10_labels(self):
+        specs = self._noaa10_specs()
+        assert [s.label for s in specs] == ["3.7", "11"]
+
+    # --- 3.7 µm asymmetric behaviour ---
+
+    def test_37um_has_no_nonlinear(self):
+        spec_37 = self._noaa14_specs()[0]
+        assert spec_37.has_nonlinear is False
+
+    def test_11um_has_nonlinear(self):
+        spec_11 = self._noaa14_specs()[1]
+        assert spec_11.has_nonlinear is True
+
+    def test_37um_space_radiance_is_zero(self):
+        spec_37 = self._noaa14_specs()[0]
+        assert spec_37.space_radiance == 0.0
+
+    def test_11um_space_radiance_matches_calibrator(self):
+        cal = Calibrator("noaa14")
+        spec_11 = ir_channel_specs(cal, "noaa14")[1]
+        assert spec_11.space_radiance == cal.space_radiance[1]
+
+    def test_37um_nonlin_coeffs_are_zero(self):
+        spec_37 = self._noaa14_specs()[0]
+        assert spec_37.nonlin_coeffs == (0.0, 0.0, 0.0)
+
+    def test_11um_nonlin_coeffs_match_calibrator(self):
+        cal = Calibrator("noaa14")
+        spec_11 = ir_channel_specs(cal, "noaa14")[1]
+        assert spec_11.nonlin_coeffs == (cal.b[1, 0], cal.b[1, 1], cal.b[1, 2])
+
+    # --- convBT ---
+
+    def test_conv_is_convBT_instance(self):
+        for spec in self._noaa14_specs():
+            assert isinstance(spec.conv, convBT)
+
+    # --- immutability ---
+
+    def test_spec_is_frozen(self):
+        import dataclasses
+        spec = self._noaa14_specs()[0]
+        assert dataclasses.is_dataclass(spec)
+        with pytest.raises((dataclasses.FrozenInstanceError, AttributeError, TypeError)):
+            spec.label = "mutated"
