@@ -822,3 +822,83 @@ class TestIRChannelData:
         np.testing.assert_array_equal(channels[1].cict, cict2_legacy)
         np.testing.assert_array_equal(channels[2].cict, cict3_legacy)
         np.testing.assert_array_equal(Tict, tict_legacy)
+
+
+class TestIRTelemetry:
+    """Characterize extract_ir_telemetry() before extracting it from get_vars."""
+
+    @pytest.fixture(scope="class")
+    def fixture_ds(self):
+        from pathlib import Path
+
+        import xarray as xr
+        p = Path(__file__).parent / "data" / "uncertainty_regression" / "noaa14_pod_d00322.input.nc"
+        if not p.exists():
+            pytest.skip("quick-tier fixture not found")
+        with xr.open_dataset(p) as ds:
+            return ds.load()
+
+    @pytest.fixture(scope="class")
+    def telemetry(self, fixture_ds):
+        from pygac.calibration.noaa import Calibrator
+        from pygac.uncertainty.ir import extract_ir_telemetry, get_uncert_parameter_thresholds
+
+        ds = fixture_ds
+        mask = ds["scan_line_mask"].values.astype(bool)
+        cal = Calibrator(ds.attrs["spacecraft_name"])
+        window, _, _, prt_threshold, ict_threshold, space_threshold = get_uncert_parameter_thresholds()
+        gacdata = ds["channels"].values.shape[1] == 409
+
+        return extract_ir_telemetry(ds, cal, mask, window, prt_threshold, gacdata)
+
+    # --- type ---
+
+    def test_returns_ir_telemetry(self, telemetry):
+        from pygac.uncertainty.ir import IRTelemetry
+        assert isinstance(telemetry, IRTelemetry)
+
+    # --- shapes ---
+
+    def test_tict_is_1d(self, telemetry):
+        assert telemetry.tict.ndim == 1
+
+    def test_prt1_is_1d(self, telemetry):
+        assert telemetry.prt1.ndim == 1
+
+    def test_all_prts_same_shape(self, telemetry):
+        n = telemetry.tict.shape[0]
+        assert telemetry.prt1.shape == (n,)
+        assert telemetry.prt2.shape == (n,)
+        assert telemetry.prt3.shape == (n,)
+        assert telemetry.prt4.shape == (n,)
+
+    # --- bit-exact agreement with get_vars(out_prt=True) ---
+
+    def test_tict_matches_get_vars(self, fixture_ds):
+        """extract_ir_telemetry must return the same Tict as get_vars(out_prt=True)."""
+        from pygac.calibration.noaa import Calibrator
+        from pygac.uncertainty.ir import (
+            convBT,
+            extract_ir_telemetry,
+            get_uncert_parameter_thresholds,
+            get_vars,
+        )
+
+        ds = fixture_ds
+        mask = ds["scan_line_mask"].values.astype(bool)
+        cal = Calibrator(ds.attrs["spacecraft_name"])
+        window, _, _, prt_threshold, ict_threshold, space_threshold = get_uncert_parameter_thresholds()
+        gacdata = ds["channels"].values.shape[1] == 409
+
+        _, _, _, tict_legacy, ict1_l, ict2_l, ict3_l, ict4_l = get_vars(
+            ds, 0, convBT(cal, 0), window, prt_threshold, ict_threshold,
+            space_threshold, gacdata, cal, mask, out_prt=True,
+        )
+
+        tel = extract_ir_telemetry(ds, cal, mask, window, prt_threshold, gacdata)
+
+        np.testing.assert_array_equal(tel.tict, tict_legacy)
+        np.testing.assert_array_equal(tel.prt1, ict1_l)
+        np.testing.assert_array_equal(tel.prt2, ict2_l)
+        np.testing.assert_array_equal(tel.prt3, ict3_l)
+        np.testing.assert_array_equal(tel.prt4, ict4_l)

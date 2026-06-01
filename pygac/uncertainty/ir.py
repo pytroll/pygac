@@ -114,6 +114,94 @@ def ir_channel_specs(cal, platform):
 
 
 @dataclass
+class IRTelemetry:
+    """Channel-independent telemetry computed once for the whole orbit.
+
+    The PRT pipeline (mean_prt_counts → temperatures) is identical across
+    all three IR channels. Computing it once avoids the 3× redundancy that
+    was present in the original code.
+    """
+
+    tict: np.ndarray   # smoothed ICT temperature (scanlines,)
+    prt1: np.ndarray   # per-PRT smoothed temperatures (scanlines,)
+    prt2: np.ndarray
+    prt3: np.ndarray
+    prt4: np.ndarray
+
+
+def extract_ir_telemetry(ds, cal, mask, window, prt_threshold, gacdata):
+    """Compute the channel-independent PRT telemetry for the orbit.
+
+    This is the channel-independent subset of the former :func:`get_vars`
+    logic: it reads ``mean_prt_counts``, interpolates bad PRT readings,
+    converts counts → temperatures, and applies the smoothing convolution.
+
+    Parameters
+    ----------
+    ds : xr.Dataset
+    cal : Calibrator
+    mask : np.ndarray  (boolean, shape=(scanlines,))
+    window : int
+    prt_threshold : float
+    gacdata : bool
+
+    Returns
+    -------
+    IRTelemetry
+    """
+    line_numbers = ds["scan_line_index"].data
+    prt = ds["mean_prt_counts"].values.copy()
+
+    gd = ~np.isfinite(prt)
+    if np.sum(gd) > 0:
+        prt[gd] = 0
+
+    iprt = get_prt_nos(prt, prt_threshold, line_numbers, gacdata)
+
+    for prt_idx in range(1, 5):
+        ifix = np.where(np.logical_and(iprt == prt_idx, prt <= prt_threshold))
+        if len(ifix[0]):
+            inofix = np.where(np.logical_and(iprt == prt_idx, prt > prt_threshold))
+            if len(inofix[0]):
+                prt[ifix] = np.interp(ifix[0], inofix[0], prt[inofix])
+            else:
+                raise IndexError(f"No good prt{prt_idx} data")
+
+    tprt = np.polynomial.polynomial.polyval(prt, cal.d[:, iprt], tensor=False)
+
+    weighting_function = np.ones(window, dtype=float) / window
+    half = (window - 1) // 2
+    half_up = (window + 1) // 2
+
+    def _convolve_clamp(arr):
+        out = np.convolve(arr, weighting_function, "same")
+        out[:half] = out[half]
+        out[-half:] = out[-half_up]
+        return out
+
+    tprt_interp = np.copy(tprt)
+    zeros = iprt == 0
+    nonzeros = ~zeros
+    tprt_interp[zeros] = np.interp(zeros.nonzero()[0], nonzeros.nonzero()[0], tprt[nonzeros])
+    tict = _convolve_clamp(tprt_interp)
+
+    def _per_prt(idx):
+        arr = np.copy(tprt)
+        mask_ = (iprt == 0) | (iprt != idx)
+        nonmask = ~mask_
+        arr[mask_] = np.interp(mask_.nonzero()[0], nonmask.nonzero()[0], tprt[nonmask])
+        return _convolve_clamp(arr)
+
+    return IRTelemetry(
+        tict=tict,
+        prt1=_per_prt(1),
+        prt2=_per_prt(2),
+        prt3=_per_prt(3),
+        prt4=_per_prt(4),
+    )
+
+
+@dataclass
 class IRChannelData:
     """Per-channel arrays produced by the IR calibration pre-processing step.
 
@@ -178,23 +266,17 @@ def build_ir_channel_data(
 
     noise_all, bad_scan = _compute_noise_arrays(total_space, total_ict, window, twelve_micron)
 
+    # PRT pipeline runs only once — it is channel-independent.
+    telemetry = extract_ir_telemetry(ds, cal, mask, window, prt_threshold, gacdata)
+    Tict = telemetry.tict
+    ict1, ict2, ict3, ict4 = telemetry.prt1, telemetry.prt2, telemetry.prt3, telemetry.prt4
+
     channels = []
-    Tict = ict1 = ict2 = ict3 = ict4 = None
-
-    for i, spec in enumerate(specs):
-        out_prt = i == 0
-        vars_result = get_vars(
-            ds, spec.cal_index, spec.conv,
-            window, prt_threshold, ict_threshold, space_threshold,
-            gacdata, cal, mask, out_prt=out_prt,
+    for spec in specs:
+        cs, cict, ce = _get_channel_arrays(
+            ds, spec.cal_index, Tict, mask, ict_threshold, space_threshold, window,
         )
-        if out_prt:
-            cs, cict, ce, Tict, ict1, ict2, ict3, ict4 = vars_result
-        else:
-            cs, cict, ce, Tict = vars_result
-
         noise, av_noise, av_ict_noise = noise_all[spec.cal_index]
-
         channels.append(IRChannelData(
             spec=spec,
             noise=noise,
@@ -226,6 +308,73 @@ def _compute_noise_arrays(total_space, total_ict, window, twelve_micron):
         1: (noise2, av_noise2, av_ict_noise2),
         2: (noise3, av_noise3, av_ict_noise3),
     }, bad_scan
+
+
+def _get_channel_arrays(ds, cal_index, tict, mask, ict_threshold, space_threshold, window):
+    """Extract the channel-specific calibration arrays from *ds*.
+
+    This is the channel-specific subset of the former :func:`get_vars` logic:
+    it reads space/ICT/earth counts for *cal_index*, interpolates over bad
+    values, and applies the smoothing convolution.  The PRT-derived *tict*
+    (smoothed ICT temperature) is passed in from :func:`extract_ir_telemetry`
+    so it is not recomputed per channel.
+
+    Parameters
+    ----------
+    ds : xr.Dataset
+    cal_index : int   0/1/2 — index into the IR-channel axis.
+    tict : np.ndarray  Smoothed ICT temperature from :func:`extract_ir_telemetry`.
+    mask : np.ndarray  Boolean scanline mask.
+    ict_threshold, space_threshold : float
+    window : int
+
+    Returns
+    -------
+    cs : np.ndarray  Smoothed space counts (scanlines,).
+    cict : np.ndarray  Smoothed ICT counts (scanlines,).
+    ce : np.ndarray  Earth counts (scanlines, pixels).
+    """
+    space = ds["full_space_counts"].isel(channel_name=(cal_index - 3)).mean(axis=1).values
+    ict = ds["full_ict_counts"].isel(ir_channel_name=cal_index).mean(axis=1).values
+    ce = ds["counts"].values[:, :, cal_index - 3]
+
+    gd = ~np.isfinite(space)
+    if np.sum(gd) > 0:
+        space[gd] = 0
+    gd = ~np.isfinite(ict)
+    if np.sum(gd) > 0:
+        ict[gd] = 0
+
+    ict[mask] = 0
+    space[mask] = 0
+
+    zeros = ict < ict_threshold
+    nonzeros = ~zeros
+    no37 = False
+    try:
+        ict[zeros] = np.interp(zeros.nonzero()[0], nonzeros.nonzero()[0], ict[nonzeros])
+    except ValueError:
+        no37 = True
+
+    if not no37:
+        zeros = space < space_threshold
+        nonzeros = ~zeros
+        space[zeros] = np.interp(zeros.nonzero()[0], nonzeros.nonzero()[0], space[nonzeros])
+    else:
+        space[:] = np.nan
+        ict[:] = np.nan
+
+    weighting_function = np.ones(window, dtype=float) / window
+    half = (window - 1) // 2
+    half_up = (window + 1) // 2
+
+    def _convolve_clamp(arr):
+        out = np.convolve(arr, weighting_function, "same")
+        out[:half] = out[half]
+        out[-half:] = out[-half_up]
+        return out
+
+    return _convolve_clamp(space), _convolve_clamp(ict), ce
 
 
 def allan_deviation(space, bad_scan=None):
