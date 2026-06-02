@@ -626,25 +626,22 @@ def get_uICT(gainval,CS,CICT,Tict,NS,convT,bad_scans,solar_scans,window):
 
     return uICT
 
-def get_ict_uncert(Tict,prt_random,prt_bias,uICT,convT):
-    """Get uncertainty in radiance/temperature of ICT on the basis of
-    ICT uncertainties"""
+def get_ict_uncert(Tict, prt_random, prt_bias, uICT, convT):
+    """Get uncertainty in radiance/temperature of ICT on the basis of ICT uncertainties.
 
-    #
-    # Note in operational calibration prts are averaged over 4
-    # so input prt uncertainties need to be divided by 2
-    #
-    rad,urand = convT.t_to_rad_uncert(Tict,prt_random/2.)
+    Accepts scalar or array inputs for *Tict* and *uICT*.
+    """
+    # Note: in operational calibration PRTs are averaged over 4,
+    # so input PRT uncertainties need to be divided by 2.
+    rad, urand = convT.t_to_rad_uncert(Tict, prt_random / 2.)
 
-    #
-    # Systematic doesn't average down
-    #
-    if np.isfinite(uICT):
-        prt_sys = np.sqrt(prt_bias**2 + uICT**2)
-    else:
-        prt_sys = np.nan
+    # Systematic does not average down; NaN uICT → NaN prt_sys.
+    # Works element-wise for both scalars and arrays.
+    fin = np.isfinite(uICT)
+    safe_u = np.where(fin, uICT, 0.)
+    prt_sys = np.where(fin, np.sqrt(prt_bias**2 + safe_u**2), np.nan)
 
-    return urand,prt_sys,rad
+    return urand, prt_sys, rad
 
 class fit_ict_pars(object):
     """Model for ICT gradients"""
@@ -1001,66 +998,105 @@ def find_solar(ds,mask,convT=None):
     else:
         return None,None,None,None,None,None,None,None
 
-def get_random(channel,noise,av_noise,ict_noise,ict_random,Lict,CS,CE,CICT,NS,
-               c1,c2):
-    """Get the random parts of the IR calibration uncertainty. Done per
-    scanline"""
-    #
-    # Gain part for all noise sources
-    #
-    dLlin_dCS = (Lict-NS)*(CS-CE)/(CS-CICT)**2 + (Lict-NS)/(CS-CICT)
-    dLlin_dCICT = -(Lict-NS)*(CS-CE)/(CS-CICT)**2
-    dLlin_dCE = -(Lict-NS)/(CS-CICT)
-    dLlin_dLict = (CS-CE)/(CS-CICT)
 
-    #
-    # If channel = 2,3 (11/12) then add non-linear part
-    #
-    if channel == 1:
-        uncert = (dLlin_dCS**2)*(av_noise**2) + \
-                 (dLlin_dCICT**2)*(ict_noise**2) + \
-                 (dLlin_dCE**2)*(noise**2) + \
-                 (dLlin_dLict**2)*(ict_random**2)
+def _radiance_random_uncert(spec, noise, av_noise, ict_noise, ict_random,
+                             Lict, CS, CE, CICT):
+    """Random radiance uncertainty for one IR channel.
+
+    Replaces :func:`get_random` — uses :class:`IRChannelSpec` instead of a
+    magic ``channel`` integer, so the 3.7µm / 11-12µm branching is expressed
+    as data (``spec.has_nonlinear``) rather than control flow.
+
+    Works on scalars or NumPy arrays; broadcasting follows normal NumPy rules.
+    CS, CICT must be broadcastable with CE.
+    """
+    NS = spec.space_radiance
+    _, c1, c2 = spec.nonlin_coeffs
+
+    dLlin_dCS = (Lict - NS) * (CS - CE) / (CS - CICT) ** 2 + (Lict - NS) / (CS - CICT)
+    dLlin_dCICT = -(Lict - NS) * (CS - CE) / (CS - CICT) ** 2
+    dLlin_dCE = -(Lict - NS) / (CS - CICT)
+    dLlin_dLict = (CS - CE) / (CS - CICT)
+
+    if spec.has_nonlinear:
+        Llin = NS + (Lict - NS) * (CS - CE) / (CS - CICT)
+        scale = 1.0 + c1 + c2 * Llin
+        dL_dCS = dLlin_dCS * scale
+        dL_dCICT = dLlin_dCICT * scale
+        dL_dCE = dLlin_dCE * scale
+        dL_dLict = dLlin_dLict * scale
     else:
-        Llin = NS + (Lict-NS)*(CS-CE)/(CS-CICT)
-        dLE_dCS = dLlin_dCS * (1.+c1+c2*Llin)
-        dLE_dCICT = dLlin_dCICT * (1.+c1+c2*Llin)
-        dLE_dCE = dLlin_dCE * (1.+c1+c2*Llin)
-        dLE_dLict = dLlin_dLict * (1.+c1+c2*Llin)
+        dL_dCS, dL_dCICT, dL_dCE, dL_dLict = dLlin_dCS, dLlin_dCICT, dLlin_dCE, dLlin_dLict
 
-        uncert = (dLE_dCS**2)*(av_noise**2) + \
-                 (dLE_dCICT**2)*(ict_noise**2) + \
-                 (dLE_dCE**2)*(noise**2) + \
-                 (dLE_dLict**2)*(ict_random**2)
-
+    uncert = (
+        (dL_dCS ** 2) * (av_noise ** 2)
+        + (dL_dCICT ** 2) * (ict_noise ** 2)
+        + (dL_dCE ** 2) * (noise ** 2)
+        + (dL_dLict ** 2) * (ict_random ** 2)
+    )
     return np.sqrt(uncert)
 
-def get_sys(channel,uICT,Tict,CS,CE,CICT,NS,c1,c2,convT):
-    """Get the systematic parts of the IR calibration uncertainty. Done per
-    scanline"""
 
-    if np.sum(np.isfinite(uICT)) == 0:
-        uncert = np.zeros(CE.shape)
-        uncert[:] = np.nan
-        return uncert,False
-    #
-    # Gain part for all noise sources
-    #
-    Lict,uradTict = convT.t_to_rad_uncert(Tict,uICT)
-    dLlin_dLict = (CS-CE)/(CS-CICT)
+def _radiance_sys_uncert(spec, uICT, Tict, CS, CE, CICT):
+    """Systematic radiance uncertainty for one IR channel.
 
-    #
-    # If channel = 2,3 (11/12) then add non-linear part
-    #
-    if channel == 1:
-        uncert = (dLlin_dLict**2)*(uradTict**2)
+    Replaces :func:`get_sys` — uses :class:`IRChannelSpec` instead of a magic
+    ``channel`` integer.  Returns NaN when *uICT* is NaN (no valid systematic
+    uncertainty); the ``sys_there`` boolean flag from the old API is gone —
+    callers detect the NaN case with ``np.isfinite``.
+    """
+    NS = spec.space_radiance
+    _, c1, c2 = spec.nonlin_coeffs
+
+    if not np.isfinite(uICT).any():
+        return np.full(CE.shape, np.nan)
+
+    Lict, uradTict = spec.conv.t_to_rad_uncert(Tict, uICT)
+    dLlin_dLict = (CS - CE) / (CS - CICT)
+
+    if spec.has_nonlinear:
+        Llin = NS + (Lict - NS) * (CS - CE) / (CS - CICT)
+        dL_dLict = dLlin_dLict * (1.0 + c1 + c2 * Llin)
     else:
-        Llin = NS + (Lict-NS)*(CS-CE)/(CS-CICT)
-        dLE_dLict = dLlin_dLict * (1.+c1+c2*Llin)
+        dL_dLict = dLlin_dLict
 
-        uncert = (dLE_dLict**2)*(uradTict**2)
+    return np.sqrt((dL_dLict ** 2) * (uradTict ** 2))
 
-    return np.sqrt(uncert),True
+
+def get_random(channel, noise, av_noise, ict_noise, ict_random, Lict, CS, CE, CICT, NS,
+               c1, c2):
+    """Deprecated — use :func:`_radiance_random_uncert` instead."""
+    import warnings
+    warnings.warn(
+        "get_random is deprecated; use _radiance_random_uncert(spec, ...) instead.",
+        DeprecationWarning, stacklevel=2,
+    )
+    from types import SimpleNamespace
+    spec = SimpleNamespace(
+        space_radiance=NS,
+        nonlin_coeffs=(0., c1, c2),
+        has_nonlinear=(channel != 1),
+    )
+    return _radiance_random_uncert(spec, noise, av_noise, ict_noise, ict_random,
+                                   Lict, CS, CE, CICT)
+
+def get_sys(channel, uICT, Tict, CS, CE, CICT, NS, c1, c2, convT):
+    """Deprecated — use :func:`_radiance_sys_uncert` instead."""
+    import warnings
+    warnings.warn(
+        "get_sys is deprecated; use _radiance_sys_uncert(spec, ...) instead.",
+        DeprecationWarning, stacklevel=2,
+    )
+    from types import SimpleNamespace
+    spec = SimpleNamespace(
+        space_radiance=NS,
+        nonlin_coeffs=(0., c1, c2),
+        has_nonlinear=(channel != 1),
+        conv=convT,
+    )
+    result = _radiance_sys_uncert(spec, uICT, Tict, CS, CE, CICT)
+    sys_there = np.isfinite(result).any()
+    return result, sys_there
 
 def get_vars(ds,channel,convT,wlength,prt_threshold,ict_threshold,
              space_threshold,gac,cal,mask,out_prt=False,out_solza=False):
@@ -1587,148 +1623,83 @@ def ir_uncertainty(ds,mask):
         uICT = np.zeros(len(CS_1))
         uICT[:] = np.nan
     #
-    # Loop round scanlines
+    # Vectorised computation — replaces the per-scanline for loop.
+    # All operations are pure NumPy; (N,) arrays are reshaped to (N,1)
+    # to broadcast against CE (N,P).
     #
-    bt_rand_37 = np.zeros(CE_2.shape,dtype=CE_2.dtype)
-    bt_rand_11 = np.zeros(CE_2.shape,dtype=CE_2.dtype)
-    bt_rand_12 = np.zeros(CE_2.shape,dtype=CE_2.dtype)
-    if not twelve_micron:
-        bt_rand_12[:,:] = np.nan
-    bt_sys_37 = np.zeros(CE_2.shape,dtype=CE_2.dtype)
-    bt_sys_11 = np.zeros(CE_2.shape,dtype=CE_2.dtype)
-    bt_sys_12 = np.zeros(CE_2.shape,dtype=CE_2.dtype)
-    if not twelve_micron:
-        bt_sys_12[:,:] = np.nan
-    urand_12 = np.zeros(CE_2.shape,dtype=CE_2.dtype)
-    if not twelve_micron:
-        urand_12[:,:] = np.nan
-    uratio_37 = np.zeros(CE_2.shape,dtype=CE_2.dtype)
-    uratio_11 = np.zeros(CE_2.shape,dtype=CE_2.dtype)
-    uratio_12 = np.zeros(CE_2.shape,dtype=CE_2.dtype)
-    if not twelve_micron:
-        uratio_12[:,:] = np.nan
-    for i in range(len(CS_2)):
-        #
-        # Check for bad scanlines
-        #
-        if bad_scan[i] == 1:
-            bt_rand_37[i,:] = np.nan
-            bt_rand_11[i,:] = np.nan
-            if twelve_micron:
-                bt_rand_12[i,:] = np.nan
-            bt_sys_37[i,:] = np.nan
-            bt_sys_11[i,:] = np.nan
-            if twelve_micron:
-                bt_sys_12[i,:] = np.nan
-            continue
+    def col(x):
+        """Reshape (N,) → (N,1) for broadcasting with CE (N,P)."""
+        return np.asarray(x)[:, np.newaxis]
 
-        #
-        # Get uncertainty in ICT temperature from PRT measurements
-        #
-        ict_random1, ict_sys1, Lict_1 = \
-            get_ict_uncert(Tict[i],prt_bias,prt_sys,uICT[i],convT1)
-        ict_random2, ict_sys2, Lict_2 = \
-            get_ict_uncert(Tict[i],prt_bias,prt_sys,uICT[i],convT2)
-        if twelve_micron:
-            ict_random3, ict_sys3, Lict_3 = \
-                get_ict_uncert(Tict[i],prt_bias,prt_sys,uICT[i],convT3)
+    ict_random1, ict_sys1, Lict_1 = get_ict_uncert(Tict, prt_bias, prt_sys, uICT, convT1)
+    ict_random2, ict_sys2, Lict_2 = get_ict_uncert(Tict, prt_bias, prt_sys, uICT, convT2)
+    if twelve_micron:
+        ict_random3, ict_sys3, Lict_3 = get_ict_uncert(Tict, prt_bias, prt_sys, uICT, convT3)
 
-        #
-        # get pixel radiance
-        #
-        rad_37 = get_pixel(Lict_1,CS_1[i],
-                           CE_1[i,:],CICT_1[i],0.,0.,0.,0.)
-        rad_11 = get_pixel(Lict_2,CS_2[i],
-                           CE_2[i,:],CICT_2[i],NS_2,c0_2,c1_2,c2_2)
-        if twelve_micron:
-            rad_12 = get_pixel(Lict_3,CS_3[i],
-                               CE_3[i,:],CICT_3[i],NS_3,c0_3,c1_3,c2_3)
+    rad_37 = get_pixel(col(Lict_1), col(CS_1), CE_1, col(CICT_1), 0., 0., 0., 0.)
+    rad_11 = get_pixel(col(Lict_2), col(CS_2), CE_2, col(CICT_2), NS_2, c0_2, c1_2, c2_2)
+    if twelve_micron:
+        rad_12 = get_pixel(col(Lict_3), col(CS_3), CE_3, col(CICT_3), NS_3, c0_3, c1_3, c2_3)
 
-        #
-        # Get noise in radiance space
-        #
-        rad_noise_37 = get_random(1,noise1,av_noise1,av_ict_noise1,
-                                  ict_random1,Lict_1,CS_1[i],
-                                  CE_1[i,:],CICT_1[i],0.,0.,0.)
-        rad_noise_11 = get_random(2,noise2,av_noise2,av_ict_noise2,
-                                  ict_random2,Lict_2,CS_2[i],
-                                  CE_2[i,:],CICT_2[i],NS_2,c1_2,c2_2)
-        if twelve_micron:
-            rad_noise_12 = get_random(3,noise3,av_noise3,
-                                      av_ict_noise3,
-                                      ict_random3,Lict_3,CS_3[i],
-                                      CE_3[i,:],CICT_3[i],NS_3,c1_3,c2_3)
+    rad_noise_37 = _radiance_random_uncert(
+        spec_37, noise1, av_noise1, av_ict_noise1,
+        col(ict_random1), col(Lict_1), col(CS_1), CE_1, col(CICT_1))
+    rad_noise_11 = _radiance_random_uncert(
+        spec_11, noise2, av_noise2, av_ict_noise2,
+        col(ict_random2), col(Lict_2), col(CS_2), CE_2, col(CICT_2))
+    if twelve_micron:
+        rad_noise_12 = _radiance_random_uncert(
+            spec_12, noise3, av_noise3, av_ict_noise3,
+            col(ict_random3), col(Lict_3), col(CS_3), CE_3, col(CICT_3))
 
-        #
-        # Convert to BT space uncertainty
-        #
-        T,bt_rand_37[i,:] = convT1.rad_to_t_uncert(rad_37,rad_noise_37)
-        T,bt_rand_11[i,:] = convT2.rad_to_t_uncert(rad_11,rad_noise_11)
-        if twelve_micron:
-            T,bt_rand_12[i,:] = convT3.rad_to_t_uncert(rad_12,rad_noise_12)
+    _, bt_rand_37 = convT1.rad_to_t_uncert(rad_37, rad_noise_37)
+    _, bt_rand_11 = convT2.rad_to_t_uncert(rad_11, rad_noise_11)
+    if twelve_micron:
+        _, bt_rand_12 = convT3.rad_to_t_uncert(rad_12, rad_noise_12)
+    else:
+        bt_rand_12 = np.full(CE_2.shape, np.nan, dtype=CE_2.dtype)
 
-        #
-        # Get systematic uncertainty through the measurement equation
-        # Note measurement equation uncertainty set to 0.5K@300
-        #
-        rad_sys_37,sys_37_there = get_sys(1,ict_sys1,Tict[i],CS_1[i],
-                                          CE_1[i,:],CICT_1[i],0.,0.,0.,convT1)
-        rad_sys_11,sys_11_there = get_sys(2,ict_sys2,Tict[i],CS_2[i],
-                                          CE_2[i,:],CICT_2[i],NS_2,c1_2,c2_2,
-                                          convT2)
-        if twelve_micron:
-            rad_sys_12,sys_12_there = get_sys(3,ict_sys3,Tict[i],CS_3[i],
-                                              CE_3[i,:],CICT_3[i],NS_3,c1_3,
-                                              c2_3,convT3)
-        if sys_37_there:
-            T,bt_sys_37[i,:] = convT1.rad_to_t_uncert(rad_37,rad_sys_37)
-        else:
-            bt_sys_37[i,:] = np.nan
-        if sys_11_there:
-            T,bt_sys_11[i,:] = convT2.rad_to_t_uncert(rad_11,rad_sys_11)
-        else:
-            bt_sys_11[i,:] = np.nan
-        if twelve_micron:
-            if sys_12_there:
-                T,bt_sys_12[i,:] = convT3.rad_to_t_uncert(rad_12,rad_sys_12)
-            else:
-                bt_sys_12[i,:] = np.nan
-        #
-        # Add 0.5/sqrt(3.)K for measurement equation uncertainty
-        # Also get ratio of ICT/total uncertainty
-        # For 3.7mu channel add radiance due to Planck function
-        # 0.5K @ 300K
-        rad1 = convT1.t_to_rad(300.-0.5/np.sqrt(3.))
-        rad2 = convT1.t_to_rad(300.+0.5/np.sqrt(3.))
-        delta_rad = (rad2-rad1)/2.
-        T,new_37_uncert = convT1.rad_to_t_uncert(rad_37,delta_rad)
-        #tot_sys_37 = np.sqrt(bt_sys_37[i,:]**2+0.5**2/3.)
-        if sys_37_there:
-            tot_sys_37 = np.sqrt(bt_sys_37[i,:]**2+new_37_uncert**2)
-            uratio_37[i,:] = bt_sys_37[i,:] / tot_sys_37
-        else:
-            uratio_37[i,:] = np.nan
-            tot_sys_37 = np.nan
-        #
-        # Just add 0.5K (11/12)
-        #
-        if sys_11_there:
-            tot_sys_11 = np.sqrt(bt_sys_11[i,:]**2+0.5**2/3.)
-            uratio_11[i,:] = bt_sys_11[i,:] / tot_sys_11
-        else:
-            tot_sys_11 = np.nan
-            uratio_11[i,:] = np.nan
-        if twelve_micron:
-            if sys_12_there:
-                tot_sys_12 = np.sqrt(bt_sys_12[i,:]**2+0.5**2/3.)
-                uratio_12[i,:] = bt_sys_12[i,:] / tot_sys_12
-            else:
-                uratio_12[i,:] = np.nan
-                tot_sys_12 = np.nan
-        bt_sys_37[i,:] = tot_sys_37
-        bt_sys_11[i,:] = tot_sys_11
-        if twelve_micron:
-            bt_sys_12[i,:] = tot_sys_12
+    # Systematic: NaN propagates naturally where ict_sys / uICT is NaN.
+    rad_sys_37 = _radiance_sys_uncert(spec_37, col(ict_sys1), col(Tict), col(CS_1), CE_1, col(CICT_1))
+    rad_sys_11 = _radiance_sys_uncert(spec_11, col(ict_sys2), col(Tict), col(CS_2), CE_2, col(CICT_2))
+    if twelve_micron:
+        rad_sys_12 = _radiance_sys_uncert(spec_12, col(ict_sys3), col(Tict), col(CS_3), CE_3, col(CICT_3))
+
+    _, bt_sys_37 = convT1.rad_to_t_uncert(rad_37, rad_sys_37)
+    _, bt_sys_11 = convT2.rad_to_t_uncert(rad_11, rad_sys_11)
+    if twelve_micron:
+        _, bt_sys_12 = convT3.rad_to_t_uncert(rad_12, rad_sys_12)
+    else:
+        bt_sys_12 = np.full(CE_2.shape, np.nan, dtype=CE_2.dtype)
+
+    # Add measurement equation uncertainty (0.5K@300K for 3.7µm; flat 0.5K for 11/12µm).
+    delta_rad_37 = (convT1.t_to_rad(300. + 0.5 / np.sqrt(3.))
+                    - convT1.t_to_rad(300. - 0.5 / np.sqrt(3.))) / 2.
+    _, new_37_uncert = convT1.rad_to_t_uncert(rad_37, delta_rad_37)
+    tot_sys_37 = np.sqrt(bt_sys_37 ** 2 + new_37_uncert ** 2)
+    tot_sys_11 = np.sqrt(bt_sys_11 ** 2 + 0.5 ** 2 / 3.)
+    if twelve_micron:
+        tot_sys_12 = np.sqrt(bt_sys_12 ** 2 + 0.5 ** 2 / 3.)
+    else:
+        tot_sys_12 = np.full(CE_2.shape, np.nan, dtype=CE_2.dtype)
+
+    uratio_37 = bt_sys_37 / tot_sys_37   # NaN/NaN = NaN where no valid sys ✓
+    uratio_11 = bt_sys_11 / tot_sys_11
+    if twelve_micron:
+        uratio_12 = bt_sys_12 / tot_sys_12
+    else:
+        uratio_12 = np.full(CE_2.shape, np.nan, dtype=CE_2.dtype)
+
+    bt_sys_37 = tot_sys_37
+    bt_sys_11 = tot_sys_11
+    bt_sys_12 = tot_sys_12
+
+    # Apply bad-scan mask last (equivalent to the `continue` branch in the old loop).
+    bad = bad_scan == 1
+    for arr in (bt_rand_37, bt_rand_11, bt_rand_12,
+                bt_sys_37, bt_sys_11, bt_sys_12,
+                uratio_37, uratio_11, uratio_12):
+        arr[bad] = np.nan
 
     #
     # Output uncertainties

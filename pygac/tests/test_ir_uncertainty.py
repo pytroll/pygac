@@ -1048,3 +1048,116 @@ class TestChannelNoise:
         np.testing.assert_allclose(noise_map[0][2], av_ict1)
         np.testing.assert_allclose(noise_map[1][2], av_ict2)
         np.testing.assert_allclose(noise_map[2][2], av_ict3)
+
+
+class TestRadianceUncertHelpers:
+    """Tests for _radiance_random_uncert and _radiance_sys_uncert (Phase 3D).
+
+    Both helpers replace the magic `channel` integer in get_random/get_sys with
+    IRChannelSpec.has_nonlinear / .space_radiance / .nonlin_coeffs.
+    """
+
+    @pytest.fixture(scope="class")
+    def noaa14_specs(self):
+        from pygac.calibration.noaa import Calibrator
+        from pygac.uncertainty.ir import ir_channel_specs
+        cal = Calibrator("noaa14")
+        return ir_channel_specs(cal, "noaa14")
+
+    def _synthetic_arrays(self, N=10, seed=0):
+        rng = np.random.default_rng(seed)
+        CS = rng.uniform(950, 970, N)
+        CE = rng.uniform(100, 500, N)
+        CICT = rng.uniform(3000, 4000, N)
+        return CS, CE, CICT
+
+    # ------------------------------------------------------------------
+    # _radiance_random_uncert
+    # ------------------------------------------------------------------
+
+    def test_random_no_nonlinear_matches_get_random(self, noaa14_specs):
+        """3.7µm (has_nonlinear=False) must match get_random(channel=1)."""
+        from pygac.uncertainty.ir import _radiance_random_uncert, get_random
+        spec = noaa14_specs[0]  # 3.7µm, has_nonlinear=False
+        assert not spec.has_nonlinear
+        CS, CE, CICT = self._synthetic_arrays()
+        noise, av_noise, ict_noise, ict_random, Lict = 2.5, 0.5, 1.2, 0.3, 20.0
+        expected = get_random(1, noise, av_noise, ict_noise, ict_random,
+                              Lict, CS, CE, CICT, 0., 0., 0.)
+        result = _radiance_random_uncert(spec, noise, av_noise, ict_noise,
+                                         ict_random, Lict, CS, CE, CICT)
+        np.testing.assert_allclose(result, expected)
+
+    def test_random_with_nonlinear_matches_get_random(self, noaa14_specs):
+        """11µm (has_nonlinear=True) must match get_random(channel=2)."""
+        from pygac.uncertainty.ir import _radiance_random_uncert, get_random
+        spec = noaa14_specs[1]  # 11µm, has_nonlinear=True
+        assert spec.has_nonlinear
+        CS, CE, CICT = self._synthetic_arrays(seed=1)
+        noise, av_noise, ict_noise, ict_random, Lict = 2.5, 0.5, 1.2, 0.3, 50.0
+        NS = spec.space_radiance
+        _, c1, c2 = spec.nonlin_coeffs
+        expected = get_random(2, noise, av_noise, ict_noise, ict_random,
+                              Lict, CS, CE, CICT, NS, c1, c2)
+        result = _radiance_random_uncert(spec, noise, av_noise, ict_noise,
+                                         ict_random, Lict, CS, CE, CICT)
+        np.testing.assert_allclose(result, expected)
+
+    def test_random_result_is_non_negative(self, noaa14_specs):
+        from pygac.uncertainty.ir import _radiance_random_uncert
+        spec = noaa14_specs[1]
+        CS, CE, CICT = self._synthetic_arrays()
+        result = _radiance_random_uncert(spec, 2.5, 0.5, 1.2, 0.3, 50.0, CS, CE, CICT)
+        assert np.all(result >= 0)
+
+    def test_random_result_shape_matches_ce(self, noaa14_specs):
+        from pygac.uncertainty.ir import _radiance_random_uncert
+        spec = noaa14_specs[0]
+        CS, CE, CICT = self._synthetic_arrays(N=15)
+        result = _radiance_random_uncert(spec, 2.5, 0.5, 1.2, 0.3, 20.0, CS, CE, CICT)
+        assert result.shape == CE.shape
+
+    # ------------------------------------------------------------------
+    # _radiance_sys_uncert
+    # ------------------------------------------------------------------
+
+    @pytest.fixture(scope="class")
+    def noaa14_convT_11(self, noaa14_specs):
+        return noaa14_specs[1].conv  # 11µm convBT
+
+    def test_sys_no_nonlinear_matches_get_sys(self, noaa14_specs):
+        """3.7µm (has_nonlinear=False) must match get_sys(channel=1)."""
+        from pygac.uncertainty.ir import _radiance_sys_uncert, get_sys
+        spec = noaa14_specs[0]
+        CS, CE, CICT = self._synthetic_arrays()
+        Tict, uICT = 280.0, 0.5
+        expected, flag = get_sys(1, uICT, Tict, CS, CE, CICT, 0., 0., 0., spec.conv)
+        result = _radiance_sys_uncert(spec, uICT, Tict, CS, CE, CICT)
+        np.testing.assert_allclose(result, expected)
+
+    def test_sys_with_nonlinear_matches_get_sys(self, noaa14_specs):
+        """11µm (has_nonlinear=True) must match get_sys(channel=2)."""
+        from pygac.uncertainty.ir import _radiance_sys_uncert, get_sys
+        spec = noaa14_specs[1]
+        CS, CE, CICT = self._synthetic_arrays(seed=1)
+        Tict, uICT = 280.0, 0.5
+        NS = spec.space_radiance
+        _, c1, c2 = spec.nonlin_coeffs
+        expected, flag = get_sys(2, uICT, Tict, CS, CE, CICT, NS, c1, c2, spec.conv)
+        result = _radiance_sys_uncert(spec, uICT, Tict, CS, CE, CICT)
+        np.testing.assert_allclose(result, expected)
+
+    def test_sys_nan_uict_returns_nan(self, noaa14_specs):
+        """When uICT is NaN, result must be all-NaN (no valid systematic uncert)."""
+        from pygac.uncertainty.ir import _radiance_sys_uncert
+        spec = noaa14_specs[1]
+        CS, CE, CICT = self._synthetic_arrays()
+        result = _radiance_sys_uncert(spec, np.nan, 280.0, CS, CE, CICT)
+        assert np.all(np.isnan(result))
+
+    def test_sys_result_shape_matches_ce(self, noaa14_specs):
+        from pygac.uncertainty.ir import _radiance_sys_uncert
+        spec = noaa14_specs[0]
+        CS, CE, CICT = self._synthetic_arrays(N=15)
+        result = _radiance_sys_uncert(spec, 0.5, 280.0, CS, CE, CICT)
+        assert result.shape == CE.shape
