@@ -20,12 +20,12 @@ pipeline against the original L1B inputs. Marked with
 Known-broken inputs
 -------------------
 
-The current uncertainty merge code crashes on KLM files where channel 3a is
-present alongside the three IR channels (it tries to write a 3-IR-channel
-array into a 2-slot tail). The affected files are documented in
-:data:`KNOWN_BROKEN_INPUTS` and covered by an xfail test so that the day
-the refactor fixes them, the xfail flips to a hard pass and they enter the
-baseline.
+Previously, the uncertainty merge code crashed on KLM files where channel 3a
+is present alongside the three IR channels (it tried to write a 3-IR-channel
+array into a 2-slot tail). This was fixed in combine.py by deriving
+``nb_refl_channels`` from ``ds.sizes["channel_name"] - irdata["random"].shape[-1]``
+instead of the buggy ``"3a" in ds["channels"]`` check (which tested data values,
+not coordinate labels). ``KNOWN_BROKEN_INPUTS`` is now empty.
 """
 
 from __future__ import annotations
@@ -48,11 +48,7 @@ FIXTURES_DIR = Path(__file__).parent / "data" / "uncertainty_regression"
 #: Filenames for which the current uncertainty pipeline raises before
 #: producing a baseline. Tracked here so the refactor can flip them to
 #: passing inputs as soon as the underlying bug is fixed.
-KNOWN_BROKEN_INPUTS: tuple[str, ...] = (
-    "ESR.LHRR.NK.D00117.S0546.E0558.B1014848.BL",
-    "ESR.LHRR.NK.D03338.S1759.E1812.B2889797.BN",
-    "ESR.LHRR.NN.D10329.S1036.E1046.B2841818.MT",
-)
+KNOWN_BROKEN_INPUTS: tuple[str, ...] = ()
 
 
 def _discover_fixtures() -> list[str]:
@@ -159,6 +155,89 @@ def _normalise(ds: xr.Dataset) -> xr.Dataset:
     }
     present = {k: v for k, v in rename.items() if k in ds.variables}
     return ds.rename(present) if present else ds
+
+
+class TestCombineReflChannelCount:
+    """combine.py reflective-channel counting — must handle 5-channel (POD) and 6-channel (KLM) datasets."""
+
+    def _make_ds(self, channel_names):
+        """Build a minimal synthetic dataset with the given channel_name coordinate."""
+        n_scans, n_pixels = 3, 5
+        n_ch = len(channel_names)
+        import xarray as xr
+
+        return xr.Dataset(
+            {"channels": xr.DataArray(
+                np.zeros((n_scans, n_pixels, n_ch), dtype=np.float32),
+                dims=["scan_line_index", "columns", "channel_name"],
+                coords={"channel_name": channel_names},
+            )},
+        )
+
+    def _make_uncertainty_output(self, n_scans, n_pixels, n_ch):
+        """Return a synthetic (random, systematic, chan_covar_ratio, uncert_flags) dataset."""
+        import xarray as xr
+
+        n_ir = 3
+        random = xr.DataArray(
+            np.zeros((n_scans, n_pixels, n_ch), dtype=np.float32),
+            dims=["scan_line_index", "columns", "channel_name"],
+        )
+        systematic = xr.DataArray(
+            np.zeros((n_scans, n_pixels, n_ch), dtype=np.float32),
+            dims=["scan_line_index", "columns", "channel_name"],
+        )
+        chan_covar_ratio = xr.DataArray(
+            np.zeros((n_scans, n_pixels, n_ir), dtype=np.float32),
+            dims=["scan_line_index", "columns", "ir_channel_name"],
+        )
+        solar_fov_contam = xr.DataArray(
+            np.zeros((n_scans, n_pixels), dtype=np.int8),
+            dims=["scan_line_index", "columns"],
+        )
+        uncert_flags = xr.DataArray(
+            np.zeros(n_scans, dtype=np.uint8),
+            dims=["scan_line_index"],
+        )
+        return xr.Dataset(dict(
+            random=random,
+            systematic=systematic,
+            chan_covar_ratio=chan_covar_ratio,
+            solar_fov_contam=solar_fov_contam,
+            uncert_flags=uncert_flags,
+        ))
+
+    def test_five_channel_pod_dataset_does_not_crash(self, monkeypatch):
+        """5-channel POD dataset (ch1,2,3b,4,5): 2 reflective + 3 IR → shape (N,P,5)."""
+        from pygac.uncertainty import combine
+
+        channel_names = ["1", "2", "3b", "4", "5"]
+        ds = self._make_ds(channel_names)
+        n_scans, n_pixels = ds.sizes["scan_line_index"], ds.sizes["columns"]
+        ir_out = self._make_uncertainty_output(n_scans, n_pixels, 3)
+        vis_out = self._make_uncertainty_output(n_scans, n_pixels, 2)
+
+        monkeypatch.setattr(combine, "ir_uncertainty", lambda ds, mask: ir_out)
+        monkeypatch.setattr(combine, "vis_uncertainty", lambda ds, mask: vis_out)
+
+        result = combine.uncertainty(ds, mask=None)
+        assert result["random"].shape == (n_scans, n_pixels, len(channel_names))
+
+    def test_six_channel_klm_dataset_does_not_crash(self, monkeypatch):
+        """6-channel KLM dataset (ch1,2,3a,3b,4,5): 3 reflective + 3 IR → shape (N,P,6)."""
+        from pygac.uncertainty import combine
+
+        channel_names = ["1", "2", "3a", "3b", "4", "5"]
+        ds = self._make_ds(channel_names)
+        n_scans, n_pixels = ds.sizes["scan_line_index"], ds.sizes["columns"]
+        ir_out = self._make_uncertainty_output(n_scans, n_pixels, 3)
+        vis_out = self._make_uncertainty_output(n_scans, n_pixels, 3)
+
+        monkeypatch.setattr(combine, "ir_uncertainty", lambda ds, mask: ir_out)
+        monkeypatch.setattr(combine, "vis_uncertainty", lambda ds, mask: vis_out)
+
+        result = combine.uncertainty(ds, mask=None)
+        assert result["random"].shape == (n_scans, n_pixels, len(channel_names))
 
 
 class TestCombineFlagAssembly:

@@ -58,12 +58,7 @@ def uncertainty(ds, mask):
     irdata = ir_uncertainty(ds,mask)
     visdata = vis_uncertainty(ds,mask)
 
-    #
-    # Get required output size (3a/3b present)
-    #
-    nb_refl_channels = 2
-    if "3a" in ds["channels"]:
-        nb_refl_channels = 3
+    nb_refl_channels = ds.sizes["channel_name"] - irdata["random"].shape[-1]
 
     #
     # Merge IR/Vis uncertainties
