@@ -27,6 +27,7 @@
 import logging
 
 import numpy as np
+
 try:
     from pyorbital.geoloc_instrument_definitions import avhrr_from_times
 except ImportError:

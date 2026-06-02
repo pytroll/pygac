@@ -1161,3 +1161,53 @@ class TestRadianceUncertHelpers:
         CS, CE, CICT = self._synthetic_arrays(N=15)
         result = _radiance_sys_uncert(spec, 0.5, 280.0, CS, CE, CICT)
         assert result.shape == CE.shape
+
+
+class TestAssembleIRUncertaintyDataset:
+    """_assemble_ir_uncertainty_dataset packs arrays into an xr.Dataset."""
+
+    def _make_arrays(self, n=10, p=5):
+        rng = np.random.default_rng(42)
+        rand = [rng.uniform(0, 2, (n, p)) for _ in range(3)]
+        sys_ = [rng.uniform(0, 2, (n, p)) for _ in range(3)]
+        ratio = [rng.uniform(0, 1, (n, p)) for _ in range(3)]
+        bad_scan = np.zeros(n, dtype=np.int8)
+        solar_flag = np.zeros(n, dtype=np.uint8)
+        times = np.array(
+            [np.datetime64("2000-01-01") + np.timedelta64(i, "s") for i in range(n)]
+        )
+        return rand, sys_, ratio, bad_scan, solar_flag, times
+
+    def test_returns_xarray_dataset(self):
+        import xarray as xr
+
+        from pygac.uncertainty.ir import _assemble_ir_uncertainty_dataset
+        rand, sys_, ratio, bad, solar, times = self._make_arrays()
+        ds = _assemble_ir_uncertainty_dataset(rand, sys_, ratio, bad, solar, times)
+        assert isinstance(ds, xr.Dataset)
+
+    def test_random_shape(self):
+        from pygac.uncertainty.ir import _assemble_ir_uncertainty_dataset
+        rand, sys_, ratio, bad, solar, times = self._make_arrays(n=10, p=5)
+        ds = _assemble_ir_uncertainty_dataset(rand, sys_, ratio, bad, solar, times)
+        assert ds["random"].shape == (10, 5, 3)
+
+    def test_uratio_dtype_uint8(self):
+        from pygac.uncertainty.ir import _assemble_ir_uncertainty_dataset
+        rand, sys_, ratio, bad, solar, times = self._make_arrays()
+        ds = _assemble_ir_uncertainty_dataset(rand, sys_, ratio, bad, solar, times)
+        assert ds["chan_covar_ratio"].dtype == np.uint8
+
+    def test_bad_scan_flag_set(self):
+        from pygac.uncertainty.ir import _assemble_ir_uncertainty_dataset
+        rand, sys_, ratio, bad, solar, times = self._make_arrays(n=10)
+        bad[3] = 1
+        ds = _assemble_ir_uncertainty_dataset(rand, sys_, ratio, bad, solar, times)
+        assert ds["uncert_flags"].values[3] & 1
+
+    def test_solar_flag_bit2_set(self):
+        from pygac.uncertainty.ir import _assemble_ir_uncertainty_dataset
+        rand, sys_, ratio, bad, solar, times = self._make_arrays(n=10)
+        solar[5] = 1
+        ds = _assemble_ir_uncertainty_dataset(rand, sys_, ratio, bad, solar, times)
+        assert ds["uncert_flags"].values[5] & 2

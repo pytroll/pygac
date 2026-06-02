@@ -1494,7 +1494,79 @@ def get_solar_from_file(platform, ds):
     #
     return min_solar_1, max_solar_1, min_solar_2, max_solar_2
 
-def ir_uncertainty(ds,mask):
+
+def _uratio_to_uint8(ratio_2d):
+    """Clip a float ratio to [0, 1] and encode as uint8 (*255). NaN → 0."""
+    clipped = np.where(np.isfinite(ratio_2d), np.clip(ratio_2d, 0.0, 1.0), np.nan)
+    result = np.zeros(ratio_2d.shape, dtype=np.uint8)
+    fin = np.isfinite(clipped)
+    result[fin] = (clipped[fin] * 255).astype(np.uint8)
+    return result
+
+
+def _assemble_ir_uncertainty_dataset(bt_rand_channels, bt_sys_channels,
+                                     uratio_channels, bad_scan, solar_flag, times):
+    """Pack per-channel BT uncertainty arrays into an :class:`xarray.Dataset`.
+
+    Parameters
+    ----------
+    bt_rand_channels : list of 3 (N, P) arrays
+        Random BT uncertainty for [3.7µm, 11µm, 12µm].
+    bt_sys_channels : list of 3 (N, P) arrays
+        Systematic BT uncertainty for [3.7µm, 11µm, 12µm].
+    uratio_channels : list of 3 (N, P) arrays
+        ICT/total uncertainty ratio for [3.7µm, 11µm, 12µm].
+    bad_scan : (N,) int8 array
+        1 = bad space-view; contributes flag bit 0.
+    solar_flag : (N,) uint8 array
+        1 = solar contamination of gain; contributes flag bit 1.
+    times : (N,) numpy datetime64 array
+        Scanline timestamps.
+
+    Returns
+    -------
+    xr.Dataset
+    """
+    n_scans, n_pixels = bt_rand_channels[0].shape
+
+    random = np.stack(bt_rand_channels, axis=-1)           # (N, P, 3)
+    systematic = np.stack(bt_sys_channels, axis=-1)        # (N, P, 3)
+
+    uratio = np.zeros((n_scans, n_pixels, 3), dtype=np.uint8)
+    for k, ratio in enumerate(uratio_channels):
+        uratio[:, :, k] = _uratio_to_uint8(ratio)
+
+    uflags = np.zeros(n_scans, dtype=np.uint8)
+    uflags[bad_scan == 1] |= 1
+    uflags[solar_flag == 1] |= 2
+    if not np.isfinite(systematic[:, :, 1]).any():
+        uflags |= 4
+
+    time_s = (times - np.datetime64("1970-01-01 00:00:00")) / np.timedelta64(1, "s")
+
+    return xr.Dataset({
+        "times": xr.DataArray(time_s, dims=["times"],
+                              attrs={"long_name": "scanline time",
+                                     "units": "seconds since 1970-01-01"}),
+        "across_track": xr.DataArray(np.arange(n_pixels), dims=["across_track"]),
+        "ir_channels": xr.DataArray(np.array([3, 4, 5]), dims=["ir_channels"]),
+        "random": xr.DataArray(random, dims=["times", "across_track", "ir_channels"],
+                               attrs={"long_name": "Random uncertainties", "units": "K"}),
+        "systematic": xr.DataArray(systematic, dims=["times", "across_track", "ir_channels"],
+                                   attrs={"long_name": "Systematic uncertainties", "units": "K"}),
+        "chan_covar_ratio": xr.DataArray(uratio, dims=["times", "across_track", "ir_channels"],
+                                         attrs={"long_name": "Channel-to-channel covariance ratio",
+                                                "_FillValue": 0}),
+        "uncert_flags": xr.DataArray(uflags, dims=["times"],
+                                     attrs={"long_name": "Uncertainty flags",
+                                            "flag_masks": "1b, 2b, 4b",
+                                            "flag_meanings": ("bad_space_view "
+                                                              "solar_contamination_of_gain "
+                                                              "no_IR_systematic_uncertainty")}),
+    })
+
+
+def ir_uncertainty(ds, mask):
     """Create the uncertainty components for the IR channels. These include
 
     1) Random
@@ -1701,93 +1773,15 @@ def ir_uncertainty(ds,mask):
                 uratio_37, uratio_11, uratio_12):
         arr[bad] = np.nan
 
-    #
-    # Output uncertainties
-    #
-    random = np.zeros((bt_rand_11.shape[0],bt_rand_11.shape[1],3))
-    systematic = np.zeros((bt_rand_11.shape[0],bt_rand_11.shape[1],3))
-    uratio = np.zeros((bt_rand_11.shape[0],bt_rand_11.shape[1],3),
-                      dtype=np.uint8)
-    uflags = np.zeros((bt_rand_11.shape[0]),dtype=np.uint8)
+    if not twelve_micron:
+        bt_rand_12[:] = np.nan
+        bt_sys_12[:] = np.nan
 
-    random[:,:,0] = bt_rand_37
-    random[:,:,1] = bt_rand_11
-    if twelve_micron:
-        random[:,:,2] = bt_rand_12
-    else:
-        random[:,:,2] = np.nan
-    systematic[:,:,0] = bt_sys_37
-    systematic[:,:,1] = bt_sys_11
-    if twelve_micron:
-        systematic[:,:,2] = bt_sys_12
-    else:
-        systematic[:,:,2] = np.nan
-    #
-    # Ratio for channel-to-channel covariance as ubyte
-    #
-    uratio[:,:,:] = 0.
-    gd = np.isfinite(uratio_37)&(uratio_37 < 0.)
-    uratio_37[gd] = 0.
-    gd = np.isfinite(uratio_37)&(uratio_37 > 1.)
-    uratio_37[gd] = 1.
-    gd = np.isfinite(uratio_11)&(uratio_11 < 0.)
-    uratio_11[gd] = 0.
-    gd = np.isfinite(uratio_11)&(uratio_11 > 1.)
-    uratio_11[gd] = 1.
-    gd = np.isfinite(uratio_37)
-    uratio[gd,0] = (uratio_37[gd]*255).astype(dtype=np.uint8)
-    gd = np.isfinite(uratio_11)
-    uratio[gd,1] = (uratio_11[gd]*255).astype(dtype=np.uint8)
-    if twelve_micron:
-        gd = np.isfinite(uratio_12)&(uratio_12 < 0.)
-        uratio_12[gd] = 0.
-        gd = np.isfinite(uratio_12)&(uratio_12 > 1.)
-        uratio_12[gd] = 1.
-        gd = np.isfinite(uratio_12)
-        uratio[gd,2] = (uratio_12[gd]*255).astype(dtype=np.uint8)
-    else:
-        uratio[:,:,2] = 0
-
-    #
-    # Flags
-    #
-    gd = (bad_scan == 1)
-    uflags[gd] = 1
-    gd = (solar_flag == 1)
-    uflags[gd] = (uflags[gd]|2)
-    if np.sum(np.isfinite(systematic[:,:,1])) == 0:
-        uflags = (uflags|4)
-
-    time = (ds["times"].values - np.datetime64("1970-01-01 00:00:00"))/\
-           np.timedelta64(1,"s")
-    time_da = xr.DataArray(time,dims=["times"],attrs={"long_name":"scanline time",
-                                                     "units":"seconds since 1970-01-01"})
-    across_da = xr.DataArray(np.arange(random.shape[1]),dims=["across_track"])
-    ir_channels_da = xr.DataArray(np.array([3,4,5]),dims=["ir_channels"])
-    random_da = xr.DataArray(random,
-                             dims=["times","across_track","ir_channels"],
-                             attrs={"long_name":"Random uncertainties","units":"K"})
-    sys_da = xr.DataArray(systematic,
-                          dims=["times","across_track","ir_channels"],
-                          attrs={"long_name":"Systematic uncertainties","units":"K"})
-
-    uratio_da = xr.DataArray(uratio,
-                             dims=["times","across_track","ir_channels"],
-                             attrs={"long_name":"Channel-to-channel covariance  ratio",
-                                    "_FillValue":0})
-
-    uflags_da = xr.DataArray(uflags,
-                             dims=["times"],
-                             attrs={"long_name":"Uncertainty flags",
-                                    "flag_masks": "1b, 2b, 4b",
-                                    "flag_meanings": ("bad_space_view "
-                                                      "solar_contamination_of_gain "
-                                                      "no_IR_systematic_uncertainty ")})
-
-    uncertainties = xr.Dataset(dict(times=time_da,across_track=across_da,
-                                    ir_channels=ir_channels_da,
-                                    random=random_da,systematic=sys_da,
-                                    chan_covar_ratio=uratio_da,
-                                    uncert_flags=uflags_da))
-
-    return uncertainties
+    return _assemble_ir_uncertainty_dataset(
+        bt_rand_channels=[bt_rand_37, bt_rand_11, bt_rand_12],
+        bt_sys_channels=[bt_sys_37, bt_sys_11, bt_sys_12],
+        uratio_channels=[uratio_37, uratio_11, uratio_12],
+        bad_scan=bad_scan,
+        solar_flag=solar_flag,
+        times=ds["times"].values,
+    )

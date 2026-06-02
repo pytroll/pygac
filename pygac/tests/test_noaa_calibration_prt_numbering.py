@@ -22,18 +22,18 @@
 """Test function for the calibration PRT numbering for NOAA calibration
 """
 
-import sys
 import unittest
 
 import numpy as np
 
 from pygac.calibration.noaa import get_prt_nos
 
+
 #
 # dummy user data of line number and prt values (average of three values per
 # scanline) to test allocation of which PRT number we are at. Includes
 # glitches.
-# Data taken from a section of real data 
+# Data taken from a section of real data
 class TestPrtNumbering(unittest.TestCase):
 
     def test_prt_numbering(self):
@@ -52,10 +52,9 @@ class TestPrtNumbering(unittest.TestCase):
                                269.0,270.0,0.0])
         prt_threshold = 50
         gac = True
-        
+
         expected_iprt = [0,3,1,4,2,0,3,1,4,2,0,0,0,3,1,4,0,3,1,4,2,0]
 
         iprt = get_prt_nos(prt_counts,prt_threshold,line_number,gac)
 
         np.testing.assert_allclose(expected_iprt,iprt)
-        
