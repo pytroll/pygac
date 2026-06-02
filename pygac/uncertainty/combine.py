@@ -30,6 +30,28 @@ from pygac.uncertainty.ir import ir_uncertainty
 from pygac.uncertainty.vis import vis_uncertainty
 
 
+def _assemble_flags(ir_flags_1d, solar_contam_2d):
+    """Merge per-scanline IR flags with per-pixel VIS solar-contamination flags.
+
+    Parameters
+    ----------
+    ir_flags_1d : (N,) uint8
+        Per-scanline IR uncertainty flags (bits 0/1/2).
+    solar_contam_2d : (N, P) int8
+        1 where a pixel is solar-contaminated (in-FOV).
+
+    Returns
+    -------
+    uflags : (N, P) int8
+        Combined flags: IR bits broadcast per pixel, bit 3 set for solar FOV.
+    """
+    uflags = ir_flags_1d[:, np.newaxis].astype(np.int8) * np.ones(
+        solar_contam_2d.shape[1], dtype=np.int8
+    )
+    uflags[solar_contam_2d == 1] |= 8
+    return uflags
+
+
 def uncertainty(ds, mask):
     """Get and merge uncertainties from the visible and IR channels."""
 
@@ -69,13 +91,10 @@ def uncertainty(ds, mask):
     #
     # Now merge flags
     #
-    uflags = np.zeros_like(ds["latitude"], dtype=np.int8)
-    for i in range(uflags.shape[0]):
-        # IR flags are per scanline
-        uflags[i,:] = irdata["uncert_flags"].values[i]
-        # Vis flags are at pixel level - set 4th bit for solar contamination
-        gd = (visdata["solar_fov_contam"].values[i,:] == 1)
-        uflags[i,gd] = (uflags[i,gd]|8)
+    uflags = _assemble_flags(
+        irdata["uncert_flags"].values,
+        visdata["solar_fov_contam"].values,
+    )
 
     uflags_da = xr.DataArray(uflags, dims=["scan_line_index","columns"],
                              attrs={"long_name": "Uncertainty flags",

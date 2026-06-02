@@ -159,3 +159,33 @@ def _normalise(ds: xr.Dataset) -> xr.Dataset:
     }
     present = {k: v for k, v in rename.items() if k in ds.variables}
     return ds.rename(present) if present else ds
+
+
+class TestCombineFlagAssembly:
+    """combine.py flag loop: IR per-scanline bit OR-ed with VIS per-pixel bit."""
+
+    def _make_inputs(self, n=8, p=5):
+        ir_flags = np.zeros(n, dtype=np.uint8)
+        ir_flags[2] = 1   # bad space view
+        solar = np.zeros((n, p), dtype=np.int8)
+        solar[4, 3] = 1   # solar contamination of FOV
+        return ir_flags, solar
+
+    def test_ir_flag_broadcast_to_all_pixels(self):
+        from pygac.uncertainty.combine import _assemble_flags
+        ir_flags, solar = self._make_inputs()
+        result = _assemble_flags(ir_flags, solar)
+        assert np.all(result[2, :] & 1)
+
+    def test_solar_bit_set_on_contaminated_pixel(self):
+        from pygac.uncertainty.combine import _assemble_flags
+        ir_flags, solar = self._make_inputs()
+        result = _assemble_flags(ir_flags, solar)
+        assert result[4, 3] & 8
+        assert not (result[4, 0] & 8)
+
+    def test_clean_scanline_has_zero_flags(self):
+        from pygac.uncertainty.combine import _assemble_flags
+        ir_flags, solar = self._make_inputs()
+        result = _assemble_flags(ir_flags, solar)
+        assert result[0, 0] == 0
