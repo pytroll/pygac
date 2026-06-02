@@ -26,6 +26,7 @@ import unittest
 
 import numpy as np
 import pandas as pd
+import pytest
 import xarray as xr
 
 from pygac.calibration.noaa import Calibrator
@@ -133,3 +134,180 @@ class TestVisibleUncertainty(unittest.TestCase):
             u_sys[i,:] = get_sys(1, C_1[i,:], D_1[i], gain_1)
 
         np.testing.assert_allclose(u_sys, u_sys_exp, atol=0.0001)
+
+
+class TestComputeVisBadScans:
+    """_compute_vis_bad_scans vectorises the bad-scan detection loop."""
+
+    def _space_all_good(self, n=5, p=10, nc=2):
+        """All values near mean — no bad pixels."""
+        rng = np.random.default_rng(0)
+        return (37.0 + rng.uniform(-0.5, 0.5, (n, p, nc))).astype(float)
+
+    def test_no_bad_scans_when_all_good(self):
+        from pygac.uncertainty.vis import _compute_vis_bad_scans
+        space = self._space_all_good()
+        bad = _compute_vis_bad_scans(space, chan_3a=False)
+        assert np.all(bad == 0)
+
+    def test_returns_int8(self):
+        from pygac.uncertainty.vis import _compute_vis_bad_scans
+        space = self._space_all_good()
+        bad = _compute_vis_bad_scans(space, chan_3a=False)
+        assert bad.dtype == np.int8
+
+    def test_scanline_flagged_when_channel1_bad(self):
+        from pygac.uncertainty.vis import _compute_vis_bad_scans
+        space = self._space_all_good(n=4, p=10, nc=2)
+        space[2, 3, 0] = 999.0   # outlier in ch0 scanline 2
+        bad = _compute_vis_bad_scans(space, chan_3a=False)
+        assert bad[2] == 1
+        assert bad[0] == 0 and bad[1] == 0 and bad[3] == 0
+
+    def test_chan3a_flagged_when_third_channel_bad(self):
+        from pygac.uncertainty.vis import _compute_vis_bad_scans
+        space = self._space_all_good(n=4, p=10, nc=3)
+        space[1, 5, 2] = 999.0
+        bad = _compute_vis_bad_scans(space, chan_3a=True)
+        assert bad[1] == 1
+        assert bad[0] == 0
+
+
+class TestVisChannelNoise:
+    """_vis_channel_noise returns (noise, av_noise) for a single channel."""
+
+    def _good_space(self, n=10, p=10):
+        rng = np.random.default_rng(1)
+        return (37.0 + rng.uniform(-0.5, 0.5, (n, p))).astype(float)
+
+    def test_returns_two_scalars(self):
+        from pygac.uncertainty.vis import _vis_channel_noise
+        space = self._good_space()
+        bad = np.zeros(10, dtype=np.int8)
+        noise, av_noise = _vis_channel_noise(space, bad, window=3)
+        assert np.ndim(noise) == 0
+        assert np.ndim(av_noise) == 0
+
+    def test_av_noise_smaller_than_noise(self):
+        from pygac.uncertainty.vis import _vis_channel_noise
+        space = self._good_space()
+        bad = np.zeros(10, dtype=np.int8)
+        noise, av_noise = _vis_channel_noise(space, bad, window=3)
+        assert av_noise < noise
+
+    def test_digitisation_contribution(self):
+        """noise must be >= sqrt(1/3) even for zero Allan deviation."""
+        from pygac.uncertainty.vis import _vis_channel_noise
+        space = np.full((10, 10), 37.0)   # flat → Allan dev = 0
+        bad = np.zeros(10, dtype=np.int8)
+        noise, _ = _vis_channel_noise(space, bad, window=3)
+        assert noise >= np.sqrt(1.0 / 3)
+
+
+class TestVisSysUncert:
+    """_vis_sys_uncert replaces get_sys(channel, ...) with explicit bool flag."""
+
+    def _args(self):
+        rng = np.random.default_rng(2)
+        counts = rng.uniform(200, 300, 128)
+        mean_space = 37.0
+        gain = 0.113
+        return counts, mean_space, gain
+
+    def test_without_wv_matches_get_sys_ch1(self):
+        from pygac.uncertainty.vis import _vis_sys_uncert, get_sys
+        counts, mean_space, gain = self._args()
+        expected = get_sys(1, counts, mean_space, gain)
+        result = _vis_sys_uncert(counts, mean_space, gain, include_water_vapour=False)
+        np.testing.assert_allclose(result, expected)
+
+    def test_with_wv_matches_get_sys_ch2(self):
+        from pygac.uncertainty.vis import _vis_sys_uncert, get_sys
+        counts, mean_space, gain = self._args()
+        expected = get_sys(2, counts, mean_space, gain)
+        result = _vis_sys_uncert(counts, mean_space, gain, include_water_vapour=True)
+        np.testing.assert_allclose(result, expected)
+
+    def test_with_wv_larger_than_without(self):
+        from pygac.uncertainty.vis import _vis_sys_uncert
+        counts, mean_space, gain = self._args()
+        no_wv = _vis_sys_uncert(counts, mean_space, gain, include_water_vapour=False)
+        wv = _vis_sys_uncert(counts, mean_space, gain, include_water_vapour=True)
+        assert np.all(wv >= no_wv)
+
+
+class TestVisRandomUncert:
+    """_vis_random_uncert returns (uncert, Rcal) without unused cal/year/jday args."""
+
+    def _args(self):
+        rng = np.random.default_rng(3)
+        noise, av_noise = 1.2, 0.38
+        gain = 0.113
+        counts = rng.uniform(200, 300, 128)
+        mean_space = 37.0
+        return noise, av_noise, gain, counts, mean_space
+
+    def test_matches_get_random(self):
+        from pygac.calibration.noaa import Calibrator
+        from pygac.uncertainty.vis import _vis_random_uncert, get_random
+        noise, av_noise, gain, counts, mean_space = self._args()
+        cal = Calibrator("noaa10")
+        exp_uncert, exp_rcal = get_random(noise, av_noise, gain, cal, 1987, 33, counts, mean_space)
+        uncert, rcal = _vis_random_uncert(noise, av_noise, gain, counts, mean_space)
+        np.testing.assert_allclose(uncert, exp_uncert)
+        np.testing.assert_allclose(rcal, exp_rcal)
+
+    def test_rcal_shape(self):
+        from pygac.uncertainty.vis import _vis_random_uncert
+        noise, av_noise, gain, counts, mean_space = self._args()
+        _, rcal = _vis_random_uncert(noise, av_noise, gain, counts, mean_space)
+        assert rcal.shape == counts.shape
+
+
+class TestVisUncertaintyIntegration:
+    """Behavioral tests for vis_uncertainty output (shape, masking, dtypes)."""
+
+    @pytest.fixture
+    def synthetic_ds(self):
+        import pandas as pd
+        import xarray as xr
+        rng = np.random.default_rng(42)
+        n, p, nc = 20, 128, 5
+        sp = np.zeros((n, 10, nc))
+        sp[:, :, :] = 37.0 + rng.uniform(-0.3, 0.3, (n, 10, nc))
+        # Inject a bad space pixel in scanline 5 channel 0
+        sp[5, 3, 2] = 999.0
+        times = pd.date_range("2000-01-01", periods=n, freq="s")
+        return xr.Dataset(
+            data_vars={
+                "channels": (["times", "columns", "ch"], rng.random((n, p, nc))),
+                "counts": (["times", "columns", "vis"], rng.random((n, p, 2))),
+                "full_space_counts": (["times", "pixels", "ch"], sp),
+                "sun_zen": (["times", "columns"], rng.uniform(0, 80, (n, p)).astype(np.float32)),
+            },
+            coords={"times": times},
+            attrs={
+                "spacecraft_name": "noaa14",
+                "sun_earth_distance_correction_factor": 0.97,
+            },
+        )
+
+    def test_output_is_dataset(self, synthetic_ds):
+        import xarray as xr
+
+        from pygac.uncertainty.vis import vis_uncertainty
+        result = vis_uncertainty(synthetic_ds, mask=None)
+        assert isinstance(result, xr.Dataset)
+
+    def test_random_shape(self, synthetic_ds):
+        from pygac.uncertainty.vis import vis_uncertainty
+        result = vis_uncertainty(synthetic_ds, mask=None)
+        assert result["random"].shape == (20, 128, 3)
+
+    def test_bad_scan_produces_nan_random(self, synthetic_ds):
+        from pygac.uncertainty.vis import vis_uncertainty
+        result = vis_uncertainty(synthetic_ds, mask=None)
+        # scanline 5 should be NaN (bad space view)
+        assert np.all(np.isnan(result["random"].values[5, :, 0]))
+        # scanline 0 should be finite
+        assert np.all(np.isfinite(result["random"].values[0, :, 0]))

@@ -30,65 +30,104 @@ from pygac.calibration.noaa import Calibrator
 from pygac.uncertainty.ir import allan_deviation, get_bad_space_counts, get_uncert_parameter_thresholds
 
 
+def _vis_channel_noise(space_2d, bad_scans, window):
+    """Compute noise and averaged-noise scalars for one VIS channel.
+
+    Parameters
+    ----------
+    space_2d : (N, P) array
+        Space-view counts for this channel.
+    bad_scans : (N,) int8 array
+        Bad-scan mask from :func:`_compute_vis_bad_scans`.
+    window : int
+        Averaging window size (number of scanlines in the kernel).
+
+    Returns
+    -------
+    noise : scalar
+        Allan deviation combined with digitisation uncertainty.
+    av_noise : scalar
+        Noise after averaging over *window* × 10 measurements.
+    """
+    raw = allan_deviation(space_2d, bad_scan=bad_scans)
+    noise = np.sqrt(raw ** 2 + 1.0 / 3)
+    av_noise = noise / np.sqrt(window * 10)
+    return noise, av_noise
+
+
+def _compute_vis_bad_scans(total_space, chan_3a):
+    """Flag scanlines that contain bad space-view counts in any VIS channel.
+
+    Parameters
+    ----------
+    total_space : (N, P, C) array
+        Space-view counts; C >= 2 (C=3 when *chan_3a* is True).
+    chan_3a : bool
+        Whether the 1.6 µm (channel 3a) space-view data is present.
+
+    Returns
+    -------
+    bad_scans : (N,) int8 array
+        1 for each scanline with at least one bad pixel in any active channel.
+    """
+    n_chans = 3 if chan_3a else 2
+    bad_per_pixel = np.zeros(total_space.shape[:2], dtype=bool)
+    for k in range(n_chans):
+        bad_per_pixel |= get_bad_space_counts(total_space[:, :, k])
+    return bad_per_pixel.any(axis=1).astype(np.int8)
+
+
 def get_noise(total_space, window, chan_3a):
-    """Get noise estimates from the counts"""
-    #
-    # Find bad space view data
-    #
-    bad_data_1 = get_bad_space_counts(total_space[:,:,0])
-    bad_data_2 = get_bad_space_counts(total_space[:,:,1])
+    """Get noise estimates from the counts.
+
+    .. deprecated::
+        Use :func:`_compute_vis_bad_scans` and :func:`_vis_channel_noise` instead.
+    """
+    import warnings
+    warnings.warn(
+        "get_noise is deprecated; use _compute_vis_bad_scans + _vis_channel_noise instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    bad_scans = _compute_vis_bad_scans(total_space, chan_3a)
+    noise1, av_noise1 = _vis_channel_noise(total_space[:, :, 0], bad_scans, window)
+    noise2, av_noise2 = _vis_channel_noise(total_space[:, :, 1], bad_scans, window)
     if chan_3a:
-        bad_data_3 = get_bad_space_counts(total_space[:,:,2])
-    bad_scans = np.zeros(total_space.shape[0],dtype=np.int8)
-    if chan_3a:
-        for i in range(len(bad_scans)):
-            if np.any(bad_data_1[i, :]) or np.any(bad_data_2[i,:]) or \
-               np.any(bad_data_3[i, :]):
-                bad_scans[i] = 1
+        noise3, av_noise3 = _vis_channel_noise(total_space[:, :, 2], bad_scans, window)
     else:
-        for i in range(len(bad_scans)):
-            if np.any(bad_data_1[i,:]) or np.any(bad_data_2[i,:]):
-                bad_scans[i] = 1
-
-    #
-    # Estimate noise using the Allan deviation plus the digitisation
-    # uncertainty
-    #
-    # 0.63 micron space counts
-    #
-    noise1 = allan_deviation(total_space[:, :, 0], bad_scan=bad_scans)
-    noise1 = np.sqrt(noise1 * noise1 + 1. / 3)
-    #
-    # 0.86 micron space counts
-    #
-    noise2 = allan_deviation(total_space[:, :, 1], bad_scan=bad_scans)
-    noise2 = np.sqrt(noise2 * noise2 + 1. / 3)
-    #
-    # 1.2 micron space counts
-    #
-    if chan_3a:
-        noise3 = allan_deviation(total_space[:, :, 2], bad_scan=bad_scans)
-        noise3 = np.sqrt(noise3 * noise3 + 1. / 3)
-    else:
-        noise3 = None
-
-    #
-    # Calculate the uncertainty after averaging - note 10 measurements per
-    # scanline
-    #
-    sqrt_window = np.sqrt(window*10)
-    av_noise1 = noise1/sqrt_window
-    av_noise2 = noise2/sqrt_window
-    if chan_3a:
-        av_noise3 = noise3/sqrt_window
-    else:
-        av_noise3 = None
+        noise3, av_noise3 = None, None
+    return noise1, noise2, noise3, av_noise1, av_noise2, av_noise3, bad_scans
 
 
-    return noise1,noise2,noise3,av_noise1,av_noise2,av_noise3,bad_scans
+def _vis_random_uncert(noise, av_noise, gain, counts, mean_space):
+    """Random radiance uncertainty for one VIS channel scanline.
+
+    Parameters
+    ----------
+    noise : scalar
+        Space-view noise (Allan dev + digitisation).
+    av_noise : scalar
+        Noise after averaging over the kernel window.
+    gain : scalar
+        Calibration slope.
+    counts : (P,) array
+        Per-pixel counts.
+    mean_space : scalar
+        Mean space-view count for this scanline.
+
+    Returns
+    -------
+    uncert : (P,) array
+        Random radiance uncertainty.
+    Rcal : (P,) array
+        Calibrated radiance.
+    """
+    Rcal = gain * (counts - mean_space)
+    uncert = np.sqrt((gain * av_noise) ** 2 + (gain * noise) ** 2)
+    return np.full(counts.shape, uncert), Rcal
 
 
-def get_random(noise,av_noise,gain,cal,year,jday,C,D):
+def get_random(noise, av_noise, gain, cal, year, jday, C, D):
     """Get the random parts of the vis calibration uncertainty.
 
     Done per scanline"""
@@ -115,6 +154,35 @@ def get_reflectance(Rcal, d_se, sza):
     refl = (Rcal * d_se ** 2) / np.cos(sza) / 10
 
     return refl
+
+_U_SYS_BASE = np.sqrt(0.025**2 + 0.025**2 + 0.01**2 + 0.015**2 + 0.02**2 + 0.025**2)
+_U_WV = 0.015
+
+
+def _vis_sys_uncert(counts, mean_space, gain, include_water_vapour):
+    """Systematic radiance uncertainty for one VIS channel.
+
+    Parameters
+    ----------
+    counts : (P,) array
+        Per-pixel counts.
+    mean_space : scalar
+        Mean space-view count for this scanline.
+    gain : scalar
+        Calibration slope.
+    include_water_vapour : bool
+        True for the 0.86 µm channel, which has additional WV uncertainty.
+
+    Returns
+    -------
+    uncert : (P,) array
+        Systematic radiance uncertainty [counts × gain].
+    """
+    usys = np.sqrt(_U_SYS_BASE**2 + _U_WV**2) if include_water_vapour else _U_SYS_BASE
+    usys_total = usys * gain
+    dRcal_dS = counts - mean_space
+    return np.sqrt(dRcal_dS**2 * usys_total**2)
+
 
 def get_sys(channel, C, D, gain):
     """Get the systematic parts of the vis calibration uncertainty.
@@ -249,24 +317,22 @@ def vis_uncertainty(ds, mask):
     #
     # Noise elements
     #
-    noise1,noise2,noise3,av_noise1,av_noise2,av_noise3,bad_scan \
-               = get_noise(total_space,window,chan_3a)
+    bad_scan = _compute_vis_bad_scans(total_space, chan_3a)
+    noise1, av_noise1 = _vis_channel_noise(total_space[:, :, 0], bad_scan, window)
+    noise2, av_noise2 = _vis_channel_noise(total_space[:, :, 1], bad_scan, window)
+    if chan_3a:
+        noise3, av_noise3 = _vis_channel_noise(total_space[:, :, 2], bad_scan, window)
 
     #
     # Get variables used on the calibration
     #
     mean_space_1, counts_1 = get_vars(ds, 0)
-
     mean_space_2, counts_2 = get_vars(ds, 1)
-
     if chan_3a:
         mean_space_3a, counts_3a = get_vars(ds, 2)
 
     #
-    # Systematic components
-
-    #
-    # Get calibration slope
+    # Calibration slope
     #
     l_date = Calibrator.date2float(cal.date_of_launch)
     t = (year + jday / 365.0) - l_date
@@ -276,139 +342,71 @@ def vis_uncertainty(ds, mask):
         gain_3 = get_gain(s0_3, s1_3, s2_3, t, cal, 2)
 
     #
-    # Loop round scanlines
+    # Vectorised random uncertainty — constant per channel across all scanlines
     #
-    rcal_rand_63 = np.zeros(counts_2.shape,dtype=counts_2.dtype)
-    rcal_rand_86 = np.zeros(counts_2.shape,dtype=counts_2.dtype)
-    rcal_rand_12 = np.zeros(counts_2.shape,dtype=counts_2.dtype)
-    if not chan_3a:
-        rcal_rand_12[:,:] = np.nan
-    rcal_sys_63 = np.zeros(counts_2.shape,dtype=counts_2.dtype)
-    rcal_sys_86 = np.zeros(counts_2.shape,dtype=counts_2.dtype)
-    rcal_sys_12 = np.zeros(counts_2.shape,dtype=counts_2.dtype)
-    if not chan_3a:
-        rcal_sys_12[:,:] = np.nan
+    rand_const_63 = np.sqrt((gain_1 * av_noise1) ** 2 + (gain_1 * noise1) ** 2)
+    rand_const_86 = np.sqrt((gain_2 * av_noise2) ** 2 + (gain_2 * noise2) ** 2)
 
-    #
-    # Get noise in scaled radiance space
-    #
-
-    n_scanlines = counts_1.shape[0]
-    Rcal_1 = np.zeros((n_scanlines, counts_1.shape[1]))
-    rad_noise_63 = np.zeros(n_scanlines)
-    Rcal_2 = np.zeros((n_scanlines, counts_1.shape[1]))
-    rad_noise_86 = np.zeros(n_scanlines)
+    rcal_rand_63 = np.full(counts_1.shape, rand_const_63)
+    rcal_rand_86 = np.full(counts_2.shape, rand_const_86)
     if chan_3a:
-        Rcal_3 = np.zeros((n_scanlines, counts_1.shape[1]))
-        rad_noise_12 = np.zeros(n_scanlines)
+        rand_const_12 = np.sqrt((gain_3 * av_noise3) ** 2 + (gain_3 * noise3) ** 2)
+        rcal_rand_12 = np.full(counts_3a.shape, rand_const_12)
+    else:
+        rcal_rand_12 = np.full(counts_2.shape, np.nan)
 
-    for i in range(len(mean_space_2)):
-        #
-        # Check for bad scanlines and add flag
-        #
-        if bad_scan[i] == 1:
-            # print(i, "Bad Space Count Data")
-            rcal_rand_63[i,:] = np.nan
-            rcal_rand_86[i,:] = np.nan
-            if chan_3a:
-                rcal_rand_12[i,:] = np.nan
-            rcal_sys_63[i,:] = np.nan
-            rcal_sys_86[i,:] = np.nan
-            if chan_3a:
-                rcal_sys_12[i,:] = np.nan
-            continue
+    #
+    # Vectorised systematic uncertainty — varies per pixel (counts - mean_space)
+    #
+    rcal_sys_63 = _vis_sys_uncert(counts_1, mean_space_1[:, np.newaxis], gain_1, include_water_vapour=False)
+    rcal_sys_86 = _vis_sys_uncert(counts_2, mean_space_2[:, np.newaxis], gain_2, include_water_vapour=True)
+    if chan_3a:
+        rcal_sys_12 = _vis_sys_uncert(counts_3a, mean_space_3a[:, np.newaxis], gain_3, include_water_vapour=False)
+    else:
+        rcal_sys_12 = np.full(counts_2.shape, np.nan)
 
+    #
+    # Rcal for solar contamination detection (bad scans → 0.0 to match legacy)
+    #
+    Rcal_1 = gain_1 * (counts_1 - mean_space_1[:, np.newaxis])
+    Rcal_1[bad_scan == 1] = 0.0
 
-        # #
-        # # Get noise in scaled radiance space
-        # #
+    #
+    # Apply bad-scan mask
+    #
+    bad = bad_scan == 1
+    for arr in (rcal_rand_63, rcal_rand_86, rcal_rand_12,
+                rcal_sys_63, rcal_sys_86, rcal_sys_12):
+        arr[bad] = np.nan
 
-        rad_noise_63[i], Rcal_1[i, :] = get_random(
-            noise1, av_noise1, gain_1, cal, year, jday, counts_1[i, :], mean_space_1[i]
-        )
-        rad_noise_86[i], Rcal_2[i, :] = get_random(
-            noise2, av_noise2, gain_2, cal, year, jday, counts_2[i, :], mean_space_2[i]
-        )
-        if chan_3a:
-            rad_noise_12[i], Rcal_3[i, :] = get_random(
-                noise3, av_noise3, gain_3, cal, year, jday, counts_3a[i, :], mean_space_3a[i]
-            )
-
-
-
-        rcal_rand_63[i,:] = rad_noise_63[i]
-        rcal_rand_86[i,:] = rad_noise_86[i]
-        if chan_3a:
-            rcal_rand_12[i,:] = rad_noise_12[i]
-
-        #
-        # Get systematic uncertainty through the measurement equation
-        #
-        rcal_sys_63[i,:] = get_sys(1, counts_1[i,:], mean_space_1[i], gain_1)
-        rcal_sys_86[i,:] = get_sys(2, counts_2[i,:], mean_space_2[i], gain_2)
-        if chan_3a:
-            rcal_sys_12[i,:] = get_sys(3, counts_3a[i,:], mean_space_3a[i], gain_3)
-
-    # define flag for solar contamination (sun glint) data
+    # Solar contamination check
     d_se = ds.attrs["sun_earth_distance_correction_factor"]
-
-    #
-    # Solar zenith angle already computed
-    #
     sza = ds["sun_zen"].values
-
     refl_1 = get_reflectance(Rcal_1, d_se, sza)
-    # refl_2 = get_reflectance(Rcal_2, d_se, sza)
-
-    # if chan_3a:
-    #     refl_3 = get_reflectance(Rcal_3, d_se, sza)
-
-    #
-    # Check for inview solar contamination
-    #
-    contam_pixels = np.zeros(refl_1.shape,dtype=np.int8)
-    gd = (refl_1 > solar_contam_threshold)&(sza > sza_threshold)
+    contam_pixels = np.zeros(refl_1.shape, dtype=np.int8)
+    gd = (refl_1 > solar_contam_threshold) & (sza > sza_threshold)
     if np.sum(gd) > 0:
         contam_pixels[gd] = 1
 
     #
-    # Output uncertainties
+    # Assemble output dataset
     #
-    random = np.zeros((rcal_rand_86.shape[0],rcal_rand_86.shape[1],3))
-    systematic = np.zeros((rcal_rand_86.shape[0],rcal_rand_86.shape[1],3))
+    random = np.stack([rcal_rand_63, rcal_rand_86, rcal_rand_12], axis=-1)
+    systematic = np.stack([rcal_sys_63, rcal_sys_86, rcal_sys_12], axis=-1)
 
-    random[:,:,0] = rcal_rand_63
-    random[:,:,1] = rcal_rand_86
-    if chan_3a:
-        random[:,:,2] = rcal_rand_12
-    else:
-        random[:,:,2] = np.nan
-    systematic[:,:,0] = rcal_sys_63
-    systematic[:,:,1] = rcal_sys_86
-    if chan_3a:
-        systematic[:,:,2] = rcal_sys_12
-    else:
-        systematic[:,:,2] = np.nan
+    time = (ds["times"].values - np.datetime64("1970-01-01 00:00:00")) / np.timedelta64(1, "s")
 
-    time = (ds["times"].values - np.datetime64("1970-01-01 00:00:00")) / np.timedelta64(1,"s")
-
-    time_da = xr.DataArray(time,dims=["times"],attrs={"long_name":"scanline time",
-                                                      "units":"seconds since 1970-01-01"})
-    across_da = xr.DataArray(np.arange(random.shape[1]),dims=["across_track"])
-    vis_channels_da = xr.DataArray(np.array([1,2,3]),dims=["vis_channels"])
-    random_da = xr.DataArray(random,dims=["times","across_track","vis_channels"],
-                             attrs={"long_name":"Random uncertainties","units":""})
-    sys_da = xr.DataArray(systematic,dims=["times","across_track","vis_channels"],
-                          attrs={"long_name":"Systematic uncertainties","units":""})
-
-    solar_contam_da = xr.DataArray(contam_pixels,dims=["times","across_track"],
-                          attrs={"long_name":"Flag for in FOV solar contamination (0=none, 1=contaminated)","units":""})
-
-    uncertainties = xr.Dataset(dict(times=time_da,
-                                    across_track=across_da,
-                                    vis_channels=vis_channels_da,
-                                    random=random_da,
-                                    systematic=sys_da,
-                                    solar_fov_contam=solar_contam_da))
-
-    return uncertainties
+    return xr.Dataset({
+        "times": xr.DataArray(time, dims=["times"],
+                              attrs={"long_name": "scanline time", "units": "seconds since 1970-01-01"}),
+        "across_track": xr.DataArray(np.arange(random.shape[1]), dims=["across_track"]),
+        "vis_channels": xr.DataArray(np.array([1, 2, 3]), dims=["vis_channels"]),
+        "random": xr.DataArray(random, dims=["times", "across_track", "vis_channels"],
+                               attrs={"long_name": "Random uncertainties", "units": ""}),
+        "systematic": xr.DataArray(systematic, dims=["times", "across_track", "vis_channels"],
+                                   attrs={"long_name": "Systematic uncertainties", "units": ""}),
+        "solar_fov_contam": xr.DataArray(
+            contam_pixels, dims=["times", "across_track"],
+            attrs={"long_name": "Flag for in FOV solar contamination (0=none, 1=contaminated)",
+                   "units": ""}),
+    })
