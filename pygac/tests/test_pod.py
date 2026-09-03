@@ -32,6 +32,7 @@ from pygac.clock_offsets_converter import txt as clock_offsets_txt
 from pygac.gac_pod import GACPODReader
 from pygac.lac_pod import LACPODReader
 from pygac.reader import NoTLEData, ReaderError
+from pygac.tests.test_reader import preset_times
 from pygac.tests.utils import CalledWithArray
 
 
@@ -240,7 +241,7 @@ class TestPOD(unittest.TestCase):
 
         # prepare the reader
         reader.scans = {"scan_line_number": scan_lines}
-        reader._times_as_np_datetime64 = scan_utcs
+        preset_times(reader, scan_utcs)
         reader.lons = scan_lons
         reader.lats = scan_lats
         reader.spacecraft_name = sat_name
@@ -288,7 +289,7 @@ class TestPOD(unittest.TestCase):
     def test__adjust_clock_drift_without_tle(self, get_tle_lines, get_offsets):
         """Test that clockdrift adjustment can handle missing TLE data."""
         reader = self.reader
-        reader._times_as_np_datetime64 = np.zeros(10, dtype="datetime64[ms]")
+        preset_times(reader, np.zeros(10, dtype="datetime64[ms]"))
         reader.scans = {"scan_line_number": np.arange(10)}
         get_offsets.return_value = np.zeros(10), np.zeros(10)
         get_tle_lines.side_effect = NoTLEData("No TLE data available")

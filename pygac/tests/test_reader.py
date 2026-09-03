@@ -89,14 +89,18 @@ class FakeGACReader_withtimes(GACReader):
         return datetime.datetime(2000, 11, 17, 3, 18, 44, 803)
 
     def get_telemetry(self):
-        """Get the telemetry."""
+        """Get the telemetry.
+
+        Contract, matching PODReader/KLMReader.get_telemetry:
+            mean_prt_counts   (scan_line_index,)
+            full_space_counts (scan_line_index, 10, n_channels)
+            full_ict_counts   (scan_line_index, 10, 3)
+        """
         prt = 51 * np.ones(self.along_track)  # prt threshold is 50
         prt[::5] = 0
-        ict = 101 * np.ones((self.along_track, 3))  # ict threshold is 100
-        space = 101 * np.ones((self.along_track, 3))  # space threshold is 100
-        total_space = 101 * np.ones((self.along_track, 10, 3))  # space threshold is 100
-        total_ict = 101 * np.ones((self.along_track, 10, 3))  # space threshold is 100
-        return prt, ict, space, total_space, total_ict
+        full_space = 101 * np.ones((self.along_track, 10, 5))  # space threshold is 100
+        full_ict = 101 * np.ones((self.along_track, 10, 3))  # ict threshold is 100
+        return prt, full_space, full_ict
 
     def get_vis_telemetry(self):
         """Get the telemetry."""
@@ -167,14 +171,18 @@ class FakeGACReader(GACReader):
         return datetime.datetime(1970, 1, 1)
 
     def get_telemetry(self):
-        """Get the telemetry."""
+        """Get the telemetry.
+
+        Contract, matching PODReader/KLMReader.get_telemetry:
+            mean_prt_counts   (scan_line_index,)
+            full_space_counts (scan_line_index, 10, n_channels)
+            full_ict_counts   (scan_line_index, 10, 3)
+        """
         prt = 51 * np.ones(self.along_track)  # prt threshold is 50
         prt[::5] = 0
-        ict = 101 * np.ones((self.along_track, 3))  # ict threshold is 100
-        space = 101 * np.ones((self.along_track, 3))  # space threshold is 100
-        total_space = 101 * np.ones((self.along_track, 10, 3))  # space threshold is 100
-        total_ict = 101 * np.ones((self.along_track, 10, 3))  # space threshold is 100
-        return prt, ict, space, total_space, total_ict
+        full_space = 101 * np.ones((self.along_track, 10, 5))  # space threshold is 100
+        full_ict = 101 * np.ones((self.along_track, 10, 3))  # ict threshold is 100
+        return prt, full_space, full_ict
 
     def get_vis_telemetry(self):
         """Get the telemetry."""
@@ -474,6 +482,19 @@ def test_get_calibrated_channels_with_wrong_prts(pod_file_with_tbm_header_gac,
     assert reader.meta_data["calib_coeffs_version"] == "PATMOS-x, v2023"
 
 
+def preset_times(reader, utcs):
+    """Install fixed scanline timestamps on *reader*.
+
+    Since pygac commit 0d73911 ``Reader.get_times`` is ``@cache``-decorated and no
+    longer short-circuits when ``_times_as_np_datetime64`` is already set, so it
+    unconditionally re-reads and re-corrects the timestamps from the file. A test
+    that wants specific timestamps must therefore also stop it doing that.
+    """
+    reader._times_as_np_datetime64 = utcs
+    reader.get_times = lambda: reader._times_as_np_datetime64
+    return utcs
+
+
 class TestGacReader(unittest.TestCase):
     """Test the common GAC Reader."""
 
@@ -721,7 +742,7 @@ class TestGacReader(unittest.TestCase):
         scanline2 = None
 
         for utcs, scan_line in zip((utcs1, utcs2), (scanline1, scanline2)):
-            self.reader._times_as_np_datetime64 = utcs
+            preset_times(self.reader, utcs)
             self.assertEqual(self.reader.get_midnight_scanline(), scan_line,
                              msg="Incorrect midnight scanline")
 
@@ -861,10 +882,10 @@ class TestGacReader(unittest.TestCase):
         self.reader.tle_lines = [
             '1 11060U 78096A   80003.54792075  .00000937  00000-0  52481-3 0  2588\r\n',  # noqa
             '2 11060  98.9783 332.1605 0012789  88.8047 271.4583 14.11682873 63073\r\n']  # noqa
-        self.reader._times_as_np_datetime64 = np.array(
+        preset_times(self.reader, np.array(
             [315748035469, 315748359969,
              315751135469, 315754371969,
-             315754371969]).astype("datetime64[ms]")
+             315754371969]).astype("datetime64[ms]"))
         self.reader.spacecrafts_orbital = {25: "tiros n"}
         self.reader.spacecraft_id = 25
         expected_sat_azi = np.array(
@@ -951,9 +972,9 @@ class TestGacReader(unittest.TestCase):
 
     def test_calculate_sun_earth_distance_correction(self):
         """Test the calculate sun earth distance correction method."""
-        self.reader._times_as_np_datetime64 = np.array([315748035469, 315748359969,
+        preset_times(self.reader, np.array([315748035469, 315748359969,
                                      315751135469, 315754371969,
-                                     315754371969]).astype("datetime64[ms]")
+                                     315754371969]).astype("datetime64[ms]"))
         corr = self.reader.get_sun_earth_distance_correction()
         numpy.testing.assert_almost_equal(corr, 0.96660494, decimal=7)
 
@@ -1047,10 +1068,9 @@ def test_read_to_dataset_is_a_dataset_including_channels_and_telemetry(pod_file_
     assert "times" in dataset.coords
     assert "scan_line_index" in dataset.coords
     assert "channel_name" in dataset.coords
-    assert dataset["prt_counts"].shape == (3,)
-    assert dataset["ict_counts"].shape == (3, 3)
-    assert dataset["space_counts"].shape == (3, 3)
-    breakpoint()
+    assert dataset["mean_prt_counts"].shape == (3,)
+    assert dataset["full_ict_counts"].shape == (3, 10, 3)
+    assert dataset["full_space_counts"].shape == (3, 10, 5)
     assert dataset["quality_flags"].shape == (3, )
     assert "flag_meanings" in dataset["quality_flags"].attrs
     assert "flag_masks" in dataset["quality_flags"].attrs

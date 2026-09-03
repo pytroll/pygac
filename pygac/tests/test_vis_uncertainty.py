@@ -55,9 +55,8 @@ rng = np.random.default_rng()
 longitude = rng.uniform(-180, 180, (n_scan_lines, n_columns)).astype(np.float32)
 latitude = rng.uniform(-90, 90, (n_scan_lines, n_columns)).astype(np.float32)
 channels = rng.random((n_scan_lines, n_columns, n_channels))
-counts = rng.random((n_scan_lines, n_pixels, n_vis_channels))
-vis_space_counts = rng.random((n_scan_lines, n_vis_channels))
-total_vis_space_counts = rng.random((n_scan_lines, n_pixels, n_vis_channels))
+counts = rng.random((n_scan_lines, n_columns, n_channels))
+full_space_counts = rng.random((n_scan_lines, n_pixels, n_channels))
 sun_zen = rng.uniform(0, 180, (n_scan_lines, n_columns)).astype(np.float32)
 
 
@@ -75,9 +74,8 @@ ds = xr.Dataset(
     },
     data_vars={
         "channels": (["scan_line_index", "columns", "channel_name"], channels),
-        "counts": (["scan_line_index", "pixel_index", "vis_channel_name"], counts),
-        "vis_space_counts": (["scan_line_index", "vis_channel_name"], vis_space_counts),
-        "total_vis_space_counts": (["scan_line_index", "pixel_index", "vis_channel_name"], total_vis_space_counts),
+        "counts": (["scan_line_index", "columns", "channel_name"], counts),
+        "full_space_counts": (["scan_line_index", "pixel_index", "channel_name"], full_space_counts),
         "sun_zen": (["scan_line_index", "columns"], sun_zen),
         },
     attrs={
