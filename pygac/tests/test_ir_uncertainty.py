@@ -93,22 +93,8 @@ def read_csv(filename):
     #
     da1 = xr.DataArray(name="scan_line_index",dims=["scan_line_index"],
                        data=d[:,0].astype(dtype=np.uint16))
-    da2 = xr.DataArray(name="prt_counts",dims=["scan_line_index"],
+    da2 = xr.DataArray(name="mean_prt_counts",dims=["scan_line_index"],
                        data=d[:,1],attrs={"_FillValue":np.nan})
-    data1 = np.zeros((d.shape[0],3))
-    data1[:,0] = d[:,2]
-    data1[:,1] = d[:,9]
-    data1[:,2] = d[:,10]
-    da3 = xr.DataArray(name="ict_counts",dims=["scan_line_index",
-                                               "ir_channel_name"],
-                       attrs={"_FillValue":np.nan},data=data1)
-    data2 = np.zeros((d.shape[0],3))
-    data2[:,0] = d[:,3]
-    data2[:,1] = d[:,11]
-    data2[:,2] = d[:,12]
-    da4 = xr.DataArray(name="space_counts",dims=["scan_line_index",
-                                                 "ir_channel_name"],
-                       attrs={"_FillValue":np.nan},data=data2)
     data3 = np.zeros((d.shape[0],409))
     for i in range(d.shape[0]):
         data3[i,:] = d[i,4]
@@ -132,26 +118,27 @@ def read_csv(filename):
                        data=outtime)
     da9 = xr.DataArray(name="uICT",dims=["scan_line_index"],
                        attrs={"_FillValue":np.nan},data=d[:,8])
-    total_space = np.zeros((d.shape[0],10,6))
-    total_space[:,:,0] = d[:,13:23]
-    total_space[:,:,1] = d[:,23:33]
-    total_space[:,:,2] = d[:,33:43]
-    da10 = xr.DataArray(name="total_space_counts",
-                        dims=["scan_line_index","ten_spots","channel_name"],
-                        attrs={"_FillValue":np.nan},data=total_space)
-    total_ict = np.zeros((d.shape[0],10,6))
-    total_ict[:,:,0] = d[:,43:53]
-    total_ict[:,:,1] = d[:,53:63]
-    total_ict[:,:,2] = d[:,63:73]
-    da11 = xr.DataArray(name="total_ict_counts",
-                        dims=["scan_line_index","ten_spots","channel_name"],
-                        attrs={"_FillValue":np.nan},data=total_ict)
+    # full_space_counts is indexed by get_vars as isel(channel_name=channel-3),
+    # i.e. the IR channels are the *last three* of channel_name.
+    full_space = np.zeros((d.shape[0],10,6))
+    full_space[:,:,3] = d[:,13:23]
+    full_space[:,:,4] = d[:,23:33]
+    full_space[:,:,5] = d[:,33:43]
+    da10 = xr.DataArray(name="full_space_counts",
+                        dims=["scan_line_index","pixel_index","channel_name"],
+                        attrs={"_FillValue":np.nan},data=full_space)
+    full_ict = np.zeros((d.shape[0],10,3))
+    full_ict[:,:,0] = d[:,43:53]
+    full_ict[:,:,1] = d[:,53:63]
+    full_ict[:,:,2] = d[:,63:73]
+    da11 = xr.DataArray(name="full_ict_counts",
+                        dims=["scan_line_index","pixel_index","ir_channel_name"],
+                        attrs={"_FillValue":np.nan},data=full_ict)
     ds = xr.Dataset(data_vars=dict(channels=da6,counts=da7,
-                                   prt_counts=da2,ict_counts=da3,
-                                   space_counts=da4,sun_zen=da5,
+                                   mean_prt_counts=da2,sun_zen=da5,
                                    scan_line_index=da1,times=da8,
-                                   uict=da9,total_space_counts=da10,
-                                   total_ict_counts=da11),
+                                   uict=da9,full_space_counts=da10,
+                                   full_ict_counts=da11),
                     attrs={"spacecraft_name":"noaa16"})
 
     return ds,mask,bad_data
@@ -216,7 +203,7 @@ class TestGetUict(unittest.TestCase):
         #
         pos1_1,pos1_2,pos1,solza1,\
         pos2_1,pos2_2,pos2,solza2 = \
-            find_solar(ds,mask,out_time=False,outgain=False)
+            find_solar(ds,mask)
         #
         # Make solar flag plus bad data
         #
@@ -260,8 +247,8 @@ class TestGetUict(unittest.TestCase):
         #
         # Get ICT uncertainty
         #
-        uICT,nfigure = get_uICT(gain_37,CS_1,CICT_1,Tict,0.,convT1,bad_data,
-                                solar_flag,window,plt=None,nfigure=1)
+        uICT = get_uICT(gain_37,CS_1,CICT_1,Tict,0.,convT1,bad_data,
+                        solar_flag,window)
         #
         # Check uICT
         #
@@ -687,11 +674,8 @@ class TestIRChannelData:
         window, prt_bias, prt_sys, prt_threshold, ict_threshold, space_threshold = get_uncert_parameter_thresholds()
         gacdata = ds["channels"].values.shape[1] == 409
 
-        total_space = ds["full_space_counts"].values[:, :, :]
-        total_ict = ds["full_ict_counts"].values[:, :, :]
-
         return build_ir_channel_data(
-            ds, specs, total_space, total_ict,
+            ds, specs,
             window, prt_threshold, ict_threshold, space_threshold,
             gacdata, cal, mask,
         )
@@ -807,10 +791,8 @@ class TestIRChannelData:
 
         # New builder
         specs = ir_channel_specs(cal, ds.attrs["spacecraft_name"])
-        total_space = ds["full_space_counts"].values[:, :, :]
-        total_ict = ds["full_ict_counts"].values[:, :, :]
         channels, bad_scan, Tict, ict1, ict2, ict3, ict4 = build_ir_channel_data(
-            ds, specs, total_space, total_ict,
+            ds, specs,
             window, prt_threshold, ict_threshold, space_threshold,
             gacdata, cal, mask,
         )
@@ -904,6 +886,58 @@ class TestIRTelemetry:
         np.testing.assert_array_equal(tel.prt4, ict4_l)
 
 
+class TestIRNoiseChannelSelection:
+    """The IR noise must be derived from the IR channels' own space views.
+
+    ``full_space_counts`` carries every channel (5 for AVHRR/2, 6 for AVHRR/3),
+    so a consumer that indexes it positionally from 0 silently reads the
+    reflective channels instead.
+    """
+
+    @pytest.fixture(scope="class")
+    def fixture_ds(self):
+        from pathlib import Path
+
+        import xarray as xr
+        p = Path(__file__).parent / "data" / "uncertainty_regression" / "noaa11_pod_d89214.input.nc"
+        if not p.exists():
+            pytest.skip("quick-tier fixture not found")
+        with xr.open_dataset(p) as ds:
+            return ds.load()
+
+    def _build(self, ds):
+        from pygac.calibration.noaa import Calibrator
+        from pygac.uncertainty.ir import (
+            build_ir_channel_data,
+            get_uncert_parameter_thresholds,
+            ir_channel_specs,
+        )
+
+        mask = ds["scan_line_mask"].values.astype(bool)
+        cal = Calibrator(ds.attrs["spacecraft_name"])
+        specs = ir_channel_specs(cal, ds.attrs["spacecraft_name"])
+        window, _, _, prt_t, ict_t, space_t = get_uncert_parameter_thresholds()
+        gacdata = ds["channels"].values.shape[1] == 409
+        channels, *_ = build_ir_channel_data(
+            ds, specs, window, prt_t, ict_t, space_t, gacdata, cal, mask,
+        )
+        return [c.noise for c in channels]
+
+    def test_ir_noise_ignores_reflective_channel_space_counts(self, fixture_ds):
+        """Scrambling the reflective channels' space views must not move IR noise."""
+        import numpy as np
+
+        baseline = self._build(fixture_ds)
+
+        perturbed = fixture_ds.copy(deep=True)
+        space = perturbed["full_space_counts"].values
+        rng = np.random.default_rng(0)
+        # Only the reflective channels, i.e. everything except the last three.
+        space[:, :, :-3] += rng.normal(0.0, 50.0, size=space[:, :, :-3].shape)
+
+        assert self._build(perturbed) == pytest.approx(baseline)
+
+
 class TestChannelNoise:
     """Unit tests for _channel_noise and _compute_bad_scans (Phase 3B')."""
 
@@ -980,11 +1014,11 @@ class TestChannelNoise:
 
     def test_compute_bad_scans_returns_int8(self, fixture_ds):
         from pygac.calibration.noaa import Calibrator
-        from pygac.uncertainty.ir import _compute_bad_scans, ir_channel_specs
+        from pygac.uncertainty.ir import _compute_bad_scans, ir_channel_specs, ir_channels
         ds = fixture_ds
         cal = Calibrator(ds.attrs["spacecraft_name"])
         specs = ir_channel_specs(cal, ds.attrs["spacecraft_name"])
-        total_space = ds["full_space_counts"].values
+        total_space = ir_channels(ds["full_space_counts"].values)
         total_ict = ds["full_ict_counts"].values
         bad = _compute_bad_scans(specs, total_space, total_ict)
         assert bad.dtype == np.int8
@@ -999,12 +1033,13 @@ class TestChannelNoise:
             get_noise,
             get_uncert_parameter_thresholds,
             ir_channel_specs,
+            ir_channels,
         )
         ds = fixture_ds
         cal = Calibrator(ds.attrs["spacecraft_name"])
         specs = ir_channel_specs(cal, ds.attrs["spacecraft_name"])
         window, _, _, _, _, _ = get_uncert_parameter_thresholds()
-        total_space = ds["full_space_counts"].values
+        total_space = ir_channels(ds["full_space_counts"].values)
         total_ict = ds["full_ict_counts"].values
 
         legacy = get_noise(total_space, total_ict, window, twelve_micron=True)
@@ -1026,12 +1061,13 @@ class TestChannelNoise:
             get_noise,
             get_uncert_parameter_thresholds,
             ir_channel_specs,
+            ir_channels,
         )
         ds = fixture_ds
         cal = Calibrator(ds.attrs["spacecraft_name"])
         specs = ir_channel_specs(cal, ds.attrs["spacecraft_name"])
         window, _, _, _, _, _ = get_uncert_parameter_thresholds()
-        total_space = ds["full_space_counts"].values
+        total_space = ir_channels(ds["full_space_counts"].values)
         total_ict = ds["full_ict_counts"].values
 
         legacy = get_noise(total_space, total_ict, window, twelve_micron=True)

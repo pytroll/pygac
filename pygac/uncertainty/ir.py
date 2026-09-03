@@ -36,6 +36,23 @@ from pygac.calibration.noaa import Calibrator, get_prt_nos
 #: Platforms that only have 3.7 µm and 11 µm IR channels (no 12 µm).
 _NO_TWELVE_MICRON = frozenset({"tirosn", "noaa06", "noaa08", "noaa10"})
 
+#: Number of infrared channels (3.7, 11 and 12 µm).
+IR_CHANNEL_COUNT = 3
+
+
+def ir_channels(array):
+    """Return the infrared slice of a per-channel array, in ``cal_index`` order.
+
+    ``full_space_counts`` and ``counts`` carry *every* channel: five for AVHRR/2
+    (1, 2, 3, 4, 5) and six for AVHRR/3 (1, 2, 3a, 3b, 4, 5). The infrared
+    channels are the last three in both layouts, so slicing here lets the rest
+    of this module address them by ``cal_index`` 0/1/2 regardless of how many
+    reflective channels precede them.
+
+    ``full_ict_counts`` is infrared-only already and must not be passed here.
+    """
+    return array[..., -IR_CHANNEL_COUNT:]
+
 
 @dataclass(frozen=True)
 class IRChannelSpec:
@@ -222,8 +239,6 @@ class IRChannelData:
 def build_ir_channel_data(
     ds,
     specs,
-    total_space,
-    total_ict,
     window,
     prt_threshold,
     ict_threshold,
@@ -240,8 +255,6 @@ def build_ir_channel_data(
         Calibrated input dataset.
     specs : list[IRChannelSpec]
         Channel specs from :func:`ir_channel_specs`.
-    total_space, total_ict : np.ndarray
-        Raw space/ICT count arrays ``(scanlines, samples_per_line, channels)``.
     window, prt_threshold, ict_threshold, space_threshold : float
         Uncertainty parameter thresholds from :func:`get_uncert_parameter_thresholds`.
     gacdata : bool
@@ -262,6 +275,8 @@ def build_ir_channel_data(
     ict1, ict2, ict3, ict4 : np.ndarray
         Per-PRT smoothed temperatures (needed by :func:`get_gainval`).
     """
+    total_space = ir_channels(ds["full_space_counts"].values)
+    total_ict = ds["full_ict_counts"].values
     noise_all, bad_scan = _compute_noise_arrays(specs, total_space, total_ict, window)
 
     # PRT pipeline runs only once — it is channel-independent.
@@ -387,9 +402,9 @@ def _get_channel_arrays(ds, cal_index, tict, mask, ict_threshold, space_threshol
     cict : np.ndarray  Smoothed ICT counts (scanlines,).
     ce : np.ndarray  Earth counts (scanlines, pixels).
     """
-    space = ds["full_space_counts"].isel(channel_name=(cal_index - 3)).mean(axis=1).values
+    space = ir_channels(ds["full_space_counts"].values)[:, :, cal_index].mean(axis=1)
     ict = ds["full_ict_counts"].isel(ir_channel_name=cal_index).mean(axis=1).values
-    ce = ds["counts"].values[:, :, cal_index - 3]
+    ce = ir_channels(ds["counts"].values)[:, :, cal_index]
 
     gd = ~np.isfinite(space)
     if np.sum(gd) > 0:
@@ -1101,7 +1116,7 @@ def get_sys(channel, uICT, Tict, CS, CE, CICT, NS, c1, c2, convT):
 def get_vars(ds,channel,convT,wlength,prt_threshold,ict_threshold,
              space_threshold,gac,cal,mask,out_prt=False,out_solza=False):
     """Get variables from xarray including smoothing and interpolation"""
-    space = ds["full_space_counts"].isel(channel_name=(channel - 3)).mean(axis=1).values
+    space = ir_channels(ds["full_space_counts"].values)[:, :, channel].mean(axis=1)
     # Defensive copy: .values[:] returns a *view* and we mutate prt below
     # (prt[gd] = 0, prt[ifix] = np.interp(...)). Without the copy these
     # writes propagate back into ds["mean_prt_counts"], which (a) corrupts
@@ -1109,7 +1124,7 @@ def get_vars(ds,channel,convT,wlength,prt_threshold,ict_threshold,
     # per-channel get_vars() call see different inputs from the 1st.
     prt = ds["mean_prt_counts"].values.copy()
     ict = ds["full_ict_counts"].isel(ir_channel_name=channel).mean(axis=1).values
-    ce = ds["counts"].values[:,:,channel - 3]
+    ce = ir_channels(ds["counts"].values)[:, :, channel]
     midpoint = ds["sun_zen"].shape[1]//2
     line_numbers = ds["scan_line_index"].data
 
@@ -1619,10 +1634,8 @@ def ir_uncertainty(ds, mask):
     #
     # Build per-channel data (noise + calibration variables) in one step
     #
-    total_space = ds["full_space_counts"].values[:, :, :]
-    total_ict = ds["full_ict_counts"].values[:, :, :]
     channels, bad_scan, Tict, ict1, ict2, ict3, ict4 = build_ir_channel_data(
-        ds, specs, total_space, total_ict,
+        ds, specs,
         window, prt_threshold, ict_threshold, space_threshold,
         gacdata, cal, mask,
     )
