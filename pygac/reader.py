@@ -869,8 +869,6 @@ class Reader(ABC):
             )
         if not np.isfinite(mdist):
             raise RuntimeError("Displacement minimization produced a non-finite residual")
-        if mdist > 5000:
-            raise RuntimeError("Displacement minimization did not produce convincing improvements")
         _reject_a_fit_resting_on(ATTITUDE_BOUND_RAD, (roll, pitch, yaw), "attitude")
         _reject_a_fit_resting_on(TIME_OFFSET_BOUND_S, time_diff_s, "time")
         self._reject_an_incoherent_displacement_field(calibrated_ds)

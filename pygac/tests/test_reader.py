@@ -1481,8 +1481,8 @@ def test_rejected_georeferencing_still_records_diagnostics(pod_file_with_tbm_hea
     monkeypatch.setattr(pygac.calibration.noaa, "calibrate_thermal_channels", skip_thermal)
 
     def mock_disp(calibrated_ds, *args):
-        record_a_coherent_field(calibrated_ds)
-        return 0, (0, 0, 0), ([10000] * 60, [10000] * 60)   # rejected: 10 km residual
+        record_a_coherent_field(calibrated_ds, count=8)
+        return 0, (0, 0, 0), ([10000] * 8, [10000] * 8)   # rejected: too few points
     from georeferencer import georeferencer
     monkeypatch.setattr(georeferencer, "get_swath_displacement", mock_disp)
 
@@ -1492,7 +1492,7 @@ def test_rejected_georeferencing_still_records_diagnostics(pod_file_with_tbm_hea
     with pytest.warns(RuntimeWarning):
         dataset = reader.get_calibrated_dataset()
     assert dataset.attrs["georeferenced"] is False
-    assert dataset.attrs["gcp_count"] == 60
+    assert dataset.attrs["gcp_count"] == 8
     assert dataset.attrs["median_gcp_distance"] == 10000
 
 
@@ -1613,3 +1613,35 @@ def test_georeferencing_rejects_a_displacement_field_that_hangs_together_badly(
     with pytest.warns(RuntimeWarning):
         dataset = reader.get_calibrated_dataset()
     assert dataset.attrs["georeferenced"] is False
+
+
+def test_a_large_residual_alone_does_not_reject_a_registration(pod_file_with_tbm_header, pod_tle,
+                                                               monkeypatch):
+    """How far the swath had to move is not evidence that the move was wrong.
+
+    The residual is a distance between matched points and the reference after the
+    fit has done its work. It is large when the navigation it started from was
+    poor, which is the case the registration exists to repair. Judged on it, a
+    pass that matched only near nadir passes while the same pass matched across
+    the whole swath fails, because the pixel is six times larger at the edge.
+    Whether the matches hang together is the question worth asking, and the
+    coherence check asks it.
+    """
+    def skip_thermal(channels, *args, **kwargs):
+        return channels
+    import pygac.calibration.noaa
+    monkeypatch.setattr(pygac.calibration.noaa, "calibrate_thermal_channels", skip_thermal)
+
+    def mock_disp(calibrated_ds, *args):
+        record_a_coherent_field(calibrated_ds)
+        return 0, (0, 0, 0), ([20000] * 60, [10000] * 60)
+    from georeferencer import georeferencer
+    monkeypatch.setattr(georeferencer, "get_swath_displacement", mock_disp)
+
+    reader = LACPODReader(tle_dir=pod_tle.parent, tle_name=pod_tle.name,
+                          compute_lonlats_from_tles=True, reference_image="some_world_image.tif")
+    reader.read(pod_file_with_tbm_header)
+    dataset = reader.get_calibrated_dataset()
+
+    assert dataset.attrs["georeferenced"] is True
+    assert dataset.attrs["median_gcp_distance"] == 10000
