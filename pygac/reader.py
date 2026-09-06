@@ -132,6 +132,7 @@ class Reader(ABC):
         reference_image=None,
         dem=None,
         compute_lonlats_from_tles: bool = False,
+        min_gcps: int = 50,
         compute_uncertainties: bool = False,
     ):
         """Init the reader.
@@ -153,6 +154,10 @@ class Reader(ABC):
             correct_scanlines: Remove corrupt scanline numbers. Defaults to True
             reference_image: the reference image to use for georeferencing
             dem: the digital elevation model to use for orthocorrection
+            min_gcps: Minimum number of ground control points that must survive matching for a
+                displacement fit to be accepted. The fit solves for four parameters, so a handful
+                of points yields a near-zero residual that looks like a perfect registration.
+                Defaults to 50.
             compute_lonlats_from_tles: Do not use the longitudes and latitudes provided in the file, rather compute them
                                        from the TLE.
             compute_uncertainties: Whether to add uncertainty estimates in the calibrated_dataset.
@@ -181,6 +186,7 @@ class Reader(ABC):
         self.reference_image = reference_image
         self.dem = dem
         self.compute_lonlats_from_tles: bool = compute_lonlats_from_tles
+        self.min_gcps: int = min_gcps
         self.compute_uncertainties: bool = compute_uncertainties
 
         self.clock_drift_correction_applied = False
@@ -824,9 +830,20 @@ class Reader(ABC):
             calibrated_ds, sun_zen, sat_zen, self.reference_image, self.dem
         )
 
-        if (mdist := np.median(mdistances)) > 5000:
-            raise RuntimeError("Displacement minimization did not produce convincing improvements")
+        # Record how the fit was judged before deciding, so a rejected pass is
+        # distinguishable downstream from one never attempted.
+        n_gcps = len(mdistances)
+        mdist = np.median(mdistances) if n_gcps else np.nan
+        calibrated_ds.attrs["gcp_count"] = n_gcps
         calibrated_ds.attrs["median_gcp_distance"] = mdist
+
+        if n_gcps < self.min_gcps:
+            raise RuntimeError(
+                f"Only {n_gcps} ground control point(s) survived matching; "
+                f"at least {self.min_gcps} are required to constrain the fit"
+            )
+        if mdist > 5000:
+            raise RuntimeError("Displacement minimization did not produce convincing improvements")
 
         self._rpy = roll, pitch, yaw
         time_diff = np.timedelta64(int(time_diff_s * 1e9), "ns")

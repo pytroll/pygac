@@ -1161,7 +1161,7 @@ def test_georeferencing_with_first_guess(pod_file_with_tbm_header, pod_tle, monk
     monkeypatch.setattr(pygac.calibration.noaa, "calibrate_thermal_channels", skip_thermal)
 
     def mock_disp(*args):
-        return 0, (0, 0, 0), ([10000], [1000])
+        return 0, (0, 0, 0), ([10000] * 60, [1000] * 60)
     from georeferencer import georeferencer
     monkeypatch.setattr(georeferencer, "get_swath_displacement", mock_disp)
     reader = LACPODReader(tle_dir=pod_tle.parent, tle_name=pod_tle.name, compute_lonlats_from_tles=True,
@@ -1212,7 +1212,7 @@ def test_georeferencing(pod_file_with_tbm_header, pod_tle, monkeypatch):
     monkeypatch.setattr(pygac.calibration.noaa, "calibrate_thermal_channels", skip_thermal)
 
     def mock_disp(*args):
-        return 0.5, (0, 0, 0), ([10000], [1000])
+        return 0.5, (0, 0, 0), ([10000] * 60, [1000] * 60)
     from georeferencer import georeferencer
     monkeypatch.setattr(georeferencer, "get_swath_displacement", mock_disp)
     reader = LACPODReader(tle_dir=pod_tle.parent, tle_name=pod_tle.name, compute_lonlats_from_tles=True,
@@ -1236,7 +1236,7 @@ def test_orthocorrection(pod_file_with_tbm_header, pod_tle, monkeypatch):
     monkeypatch.setattr(pygac.calibration.noaa, "calibrate_thermal_channels", skip_thermal)
 
     def mock_disp(*args):
-        return 0.5, (0, 0, 0), ([10000], [1000])
+        return 0.5, (0, 0, 0), ([10000] * 60, [1000] * 60)
     from georeferencer import georeferencer
     monkeypatch.setattr(georeferencer, "get_swath_displacement", mock_disp)
     reader = LACPODReader(tle_dir=pod_tle.parent, tle_name=pod_tle.name, compute_lonlats_from_tles=True,
@@ -1419,3 +1419,57 @@ def test_estimated_attitude_is_labelled_in_the_unit_it_holds(pod_file_with_tbm_h
     assert dataset.attrs["estimated_attitude_in_radians"] == attitude
     assert "estimated_attitude_in_degrees" not in dataset.attrs
     assert dataset.attrs["navigation_metadata_schema_version"] >= 2
+
+
+def test_georeferencing_rejects_too_few_gcps(pod_file_with_tbm_header, pod_tle, monkeypatch):
+    """A fit resting on a handful of control points must be rejected.
+
+    The displacement fit solves for four parameters (time, roll, pitch, yaw).
+    With one surviving GCP it is wildly underdetermined: the optimiser drives
+    the single residual to ~0 and reports a sub-millimetre median that looks
+    like a perfect registration.
+    """
+    def skip_thermal(channels, *args, **kwargs):
+        return channels
+    import pygac.calibration.noaa
+    monkeypatch.setattr(pygac.calibration.noaa, "calibrate_thermal_channels", skip_thermal)
+
+    def mock_disp(*args):
+        # one control point, and a residual that looks flawless
+        return 0, (0, 0, 0), ([10000], [0.002])
+    from georeferencer import georeferencer
+    monkeypatch.setattr(georeferencer, "get_swath_displacement", mock_disp)
+
+    reader = LACPODReader(tle_dir=pod_tle.parent, tle_name=pod_tle.name,
+                          compute_lonlats_from_tles=True, reference_image="some_world_image.tif")
+    reader.read(pod_file_with_tbm_header)
+    with pytest.warns(RuntimeWarning):
+        dataset = reader.get_calibrated_dataset()
+    assert dataset.attrs["georeferenced"] is False
+
+
+def test_rejected_georeferencing_still_records_diagnostics(pod_file_with_tbm_header, pod_tle, monkeypatch):
+    """A rejected fit must still say how it was judged.
+
+    The residual used to be written only after the quality gate passed, so a
+    rejected pass carried no value at all and was indistinguishable downstream
+    from one where registration was never attempted.
+    """
+    def skip_thermal(channels, *args, **kwargs):
+        return channels
+    import pygac.calibration.noaa
+    monkeypatch.setattr(pygac.calibration.noaa, "calibrate_thermal_channels", skip_thermal)
+
+    def mock_disp(*args):
+        return 0, (0, 0, 0), ([10000] * 60, [10000] * 60)   # rejected: 10 km residual
+    from georeferencer import georeferencer
+    monkeypatch.setattr(georeferencer, "get_swath_displacement", mock_disp)
+
+    reader = LACPODReader(tle_dir=pod_tle.parent, tle_name=pod_tle.name,
+                          compute_lonlats_from_tles=True, reference_image="some_world_image.tif")
+    reader.read(pod_file_with_tbm_header)
+    with pytest.warns(RuntimeWarning):
+        dataset = reader.get_calibrated_dataset()
+    assert dataset.attrs["georeferenced"] is False
+    assert dataset.attrs["gcp_count"] == 60
+    assert dataset.attrs["median_gcp_distance"] == 10000
