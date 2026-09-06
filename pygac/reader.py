@@ -56,6 +56,12 @@ ATTITUDE_BOUND_RAD = 0.5
 #: Bound pyorbital places on the fitted time offset, in seconds.
 TIME_OFFSET_BOUND_S = 7.0
 
+#: How much of a displacement field may resist explanation by a smooth geometry,
+#: in pixels, before the matches are taken to be noise rather than a measurement.
+#: Set loosely: it is meant to catch a field with no geometry in it at all, and
+#: wants calibrating against a wider sample of passes before it is tightened.
+MAX_UNEXPLAINED_DISPLACEMENT_PX = 8.0
+
 #: Version of the navigation metadata written into the calibrated dataset.
 #: 2 renamed ``estimated_attitude_in_degrees`` to ``estimated_attitude_in_radians``
 #: (the value was always radians) and added ``gcp_count``.
@@ -867,6 +873,7 @@ class Reader(ABC):
             raise RuntimeError("Displacement minimization did not produce convincing improvements")
         _reject_a_fit_resting_on(ATTITUDE_BOUND_RAD, (roll, pitch, yaw), "attitude")
         _reject_a_fit_resting_on(TIME_OFFSET_BOUND_S, time_diff_s, "time")
+        self._reject_an_incoherent_displacement_field(calibrated_ds)
 
         self._rpy = roll, pitch, yaw
         time_diff = np.timedelta64(int(time_diff_s * 1e9), "ns")
@@ -886,6 +893,27 @@ class Reader(ABC):
 
             calibrated_ds = orthocorrection(calibrated_ds, sat_zen, self.dem)
         calibrated_ds["times"].data = self._times_as_np_datetime64
+
+    def _reject_an_incoherent_displacement_field(self, calibrated_ds):
+        """Refuse matches that agree with no geometry.
+
+        The residual says how well four parameters absorbed the points; it says
+        nothing about whether the points describe a real displacement. A field
+        that no smooth geometry explains was assembled from matches that found
+        whatever the covariance surface happened to peak on.
+        """
+        from georeferencer.georeferencer import displacement_scatter
+
+        points = list(zip(calibrated_ds["gcp_y"].values, calibrated_ds["gcp_x"].values))
+        displacements = np.column_stack([calibrated_ds["gcp_y_displacement"].values,
+                                         calibrated_ds["gcp_x_displacement"].values])
+        scatter = displacement_scatter(points, displacements)
+        calibrated_ds.attrs["unexplained_displacement_in_pixels"] = scatter
+        if scatter > MAX_UNEXPLAINED_DISPLACEMENT_PX:
+            raise RuntimeError(
+                f"The displacement field leaves {scatter:.1f} pixels unexplained by any "
+                "smooth geometry; the matches are not a measurement"
+            )
 
     def _correct_time_offset(self, calibrated_ds) -> None:
         thinned_lons, thinned_lats = self._get_lonlat_from_file()

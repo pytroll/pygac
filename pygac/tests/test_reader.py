@@ -1160,7 +1160,8 @@ def test_georeferencing_with_first_guess(pod_file_with_tbm_header, pod_tle, monk
     import pygac.calibration.noaa
     monkeypatch.setattr(pygac.calibration.noaa, "calibrate_thermal_channels", skip_thermal)
 
-    def mock_disp(*args):
+    def mock_disp(calibrated_ds, *args):
+        record_a_coherent_field(calibrated_ds)
         return 0, (0, 0, 0), ([10000] * 60, [1000] * 60)
     from georeferencer import georeferencer
     monkeypatch.setattr(georeferencer, "get_swath_displacement", mock_disp)
@@ -1189,7 +1190,8 @@ def test_georeferencing_fails(pod_file_with_tbm_header, pod_tle, monkeypatch):
     import pygac.calibration.noaa
     monkeypatch.setattr(pygac.calibration.noaa, "calibrate_thermal_channels", skip_thermal)
 
-    def mock_disp(*args):
+    def mock_disp(calibrated_ds, *args):
+        record_a_coherent_field(calibrated_ds)
         return 0, (0, 0, 0), ([10000], [10000])
     from georeferencer import georeferencer
     monkeypatch.setattr(georeferencer, "get_swath_displacement", mock_disp)
@@ -1198,6 +1200,19 @@ def test_georeferencing_fails(pod_file_with_tbm_header, pod_tle, monkeypatch):
     reader.read(pod_file_with_tbm_header)
     with pytest.warns(RuntimeWarning):
         _ = reader.get_calibrated_dataset()
+
+
+def record_a_coherent_field(calibrated_ds, count=60):
+    """Populate the control point arrays the way the real georeferencer does.
+
+    Its displacements are what the acceptance checks read, so a double standing in
+    for it has to leave them behind too.
+    """
+    spread = np.linspace(0.0, 2000.0, count)
+    for name, values in (("gcp_y", spread), ("gcp_x", spread),
+                         ("gcp_y_displacement", np.full(count, 3.0)),
+                         ("gcp_x_displacement", np.full(count, -2.0))):
+        calibrated_ds[name] = xr.DataArray(values, dims=["points"])
 
 
 def test_georeferencing(pod_file_with_tbm_header, pod_tle, monkeypatch):
@@ -1211,7 +1226,8 @@ def test_georeferencing(pod_file_with_tbm_header, pod_tle, monkeypatch):
     import pygac.calibration.noaa
     monkeypatch.setattr(pygac.calibration.noaa, "calibrate_thermal_channels", skip_thermal)
 
-    def mock_disp(*args):
+    def mock_disp(calibrated_ds, *args):
+        record_a_coherent_field(calibrated_ds)
         return 0.5, (0, 0, 0), ([10000] * 60, [1000] * 60)
     from georeferencer import georeferencer
     monkeypatch.setattr(georeferencer, "get_swath_displacement", mock_disp)
@@ -1235,7 +1251,8 @@ def test_orthocorrection(pod_file_with_tbm_header, pod_tle, monkeypatch):
     import pygac.calibration.noaa
     monkeypatch.setattr(pygac.calibration.noaa, "calibrate_thermal_channels", skip_thermal)
 
-    def mock_disp(*args):
+    def mock_disp(calibrated_ds, *args):
+        record_a_coherent_field(calibrated_ds)
         return 0.5, (0, 0, 0), ([10000] * 60, [1000] * 60)
     from georeferencer import georeferencer
     monkeypatch.setattr(georeferencer, "get_swath_displacement", mock_disp)
@@ -1379,7 +1396,8 @@ def test_failed_pre_alignment_does_not_abandon_georeferencing(pod_file_with_tbm_
         raise RuntimeError("Time offset estimation did not converge")
     monkeypatch.setattr(pyorbital.geoloc_avhrr, "estimate_time_offset", refuse)
 
-    def mock_disp(*args):
+    def mock_disp(calibrated_ds, *args):
+        record_a_coherent_field(calibrated_ds)
         return 0, (0, 0, 0), ([10000] * 60, [1000] * 60)
     from georeferencer import georeferencer
     monkeypatch.setattr(georeferencer, "get_swath_displacement", mock_disp)
@@ -1407,7 +1425,8 @@ def test_estimated_attitude_is_labelled_in_the_unit_it_holds(pod_file_with_tbm_h
     monkeypatch.setattr(pygac.calibration.noaa, "calibrate_thermal_channels", skip_thermal)
 
     attitude = (0.001, -0.002, 0.003)   # radians, as pyorbital returns them
-    def mock_disp(*args):
+    def mock_disp(calibrated_ds, *args):
+        record_a_coherent_field(calibrated_ds)
         return 0, attitude, ([10000] * 60, [1000] * 60)
     from georeferencer import georeferencer
     monkeypatch.setattr(georeferencer, "get_swath_displacement", mock_disp)
@@ -1434,7 +1453,8 @@ def test_georeferencing_rejects_too_few_gcps(pod_file_with_tbm_header, pod_tle, 
     import pygac.calibration.noaa
     monkeypatch.setattr(pygac.calibration.noaa, "calibrate_thermal_channels", skip_thermal)
 
-    def mock_disp(*args):
+    def mock_disp(calibrated_ds, *args):
+        record_a_coherent_field(calibrated_ds)
         # one control point, and a residual that looks flawless
         return 0, (0, 0, 0), ([10000], [0.002])
     from georeferencer import georeferencer
@@ -1460,7 +1480,8 @@ def test_rejected_georeferencing_still_records_diagnostics(pod_file_with_tbm_hea
     import pygac.calibration.noaa
     monkeypatch.setattr(pygac.calibration.noaa, "calibrate_thermal_channels", skip_thermal)
 
-    def mock_disp(*args):
+    def mock_disp(calibrated_ds, *args):
+        record_a_coherent_field(calibrated_ds)
         return 0, (0, 0, 0), ([10000] * 60, [10000] * 60)   # rejected: 10 km residual
     from georeferencer import georeferencer
     monkeypatch.setattr(georeferencer, "get_swath_displacement", mock_disp)
@@ -1488,7 +1509,8 @@ def test_georeferencing_rejects_non_finite_residual(pod_file_with_tbm_header, po
     import pygac.calibration.noaa
     monkeypatch.setattr(pygac.calibration.noaa, "calibrate_thermal_channels", skip_thermal)
 
-    def mock_disp(*args):
+    def mock_disp(calibrated_ds, *args):
+        record_a_coherent_field(calibrated_ds)
         return 0, (0, 0, 0), ([10000] * 60, [np.nan] * 60)
     from georeferencer import georeferencer
     monkeypatch.setattr(georeferencer, "get_swath_displacement", mock_disp)
@@ -1514,7 +1536,8 @@ def test_georeferencing_rejects_attitude_on_its_bound(pod_file_with_tbm_header, 
     import pygac.calibration.noaa
     monkeypatch.setattr(pygac.calibration.noaa, "calibrate_thermal_channels", skip_thermal)
 
-    def mock_disp(*args):
+    def mock_disp(calibrated_ds, *args):
+        record_a_coherent_field(calibrated_ds)
         # plenty of points and a plausible residual, but a cornered attitude
         return 0, (0.5, -0.5, 0.5), ([10000] * 60, [1000] * 60)
     from georeferencer import georeferencer
@@ -1543,9 +1566,44 @@ def test_georeferencing_rejects_a_time_offset_on_its_bound(pod_file_with_tbm_hea
     import pygac.calibration.noaa
     monkeypatch.setattr(pygac.calibration.noaa, "calibrate_thermal_channels", skip_thermal)
 
-    def mock_disp(*args):
+    def mock_disp(calibrated_ds, *args):
+        record_a_coherent_field(calibrated_ds)
         # plenty of points, a plausible residual, a sane attitude, cornered time
         return 7.0, (0.001, 0.002, 0.003), ([10000] * 60, [1000] * 60)
+    from georeferencer import georeferencer
+    monkeypatch.setattr(georeferencer, "get_swath_displacement", mock_disp)
+
+    reader = LACPODReader(tle_dir=pod_tle.parent, tle_name=pod_tle.name,
+                          compute_lonlats_from_tles=True, reference_image="some_world_image.tif")
+    reader.read(pod_file_with_tbm_header)
+    with pytest.warns(RuntimeWarning):
+        dataset = reader.get_calibrated_dataset()
+    assert dataset.attrs["georeferenced"] is False
+
+
+def test_georeferencing_rejects_a_displacement_field_that_hangs_together_badly(
+        pod_file_with_tbm_header, pod_tle, monkeypatch):
+    """Matches that agree with no geometry are not a registration.
+
+    Every parameter the fit solves for moves the swath smoothly, so a real
+    displacement field is smooth too. One that is not was assembled from matches
+    that found whatever the covariance surface happened to peak on, and fitting
+    four parameters to it produces a number rather than a position.
+    """
+    def skip_thermal(channels, *args, **kwargs):
+        return channels
+    import pygac.calibration.noaa
+    monkeypatch.setattr(pygac.calibration.noaa, "calibrate_thermal_channels", skip_thermal)
+
+    def mock_disp(calibrated_ds, *args):
+        rng = np.random.default_rng(0)
+        scattered = rng.uniform(-24, 24, size=60)
+        for name, values in (("gcp_y", np.arange(60.0) * 30),
+                             ("gcp_x", np.arange(60.0) * 30),
+                             ("gcp_y_displacement", scattered),
+                             ("gcp_x_displacement", rng.uniform(-24, 24, size=60))):
+            calibrated_ds[name] = xr.DataArray(values, dims=["points"])
+        return 0, (0, 0, 0), ([10000] * 60, [1000] * 60)
     from georeferencer import georeferencer
     monkeypatch.setattr(georeferencer, "get_swath_displacement", mock_disp)
 
