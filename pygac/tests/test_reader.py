@@ -1473,3 +1473,29 @@ def test_rejected_georeferencing_still_records_diagnostics(pod_file_with_tbm_hea
     assert dataset.attrs["georeferenced"] is False
     assert dataset.attrs["gcp_count"] == 60
     assert dataset.attrs["median_gcp_distance"] == 10000
+
+
+def test_georeferencing_rejects_non_finite_residual(pod_file_with_tbm_header, pod_tle, monkeypatch):
+    """A NaN residual must be rejected, not accepted.
+
+    `nan > 5000` is False, so a non-finite median used to sail through the
+    quality gate. The fit that produced it had every attitude parameter pinned
+    to its bound, and recomputing the geolocation from it voided the whole
+    swath, losing the pass entirely.
+    """
+    def skip_thermal(channels, *args, **kwargs):
+        return channels
+    import pygac.calibration.noaa
+    monkeypatch.setattr(pygac.calibration.noaa, "calibrate_thermal_channels", skip_thermal)
+
+    def mock_disp(*args):
+        return 0, (0, 0, 0), ([10000] * 60, [np.nan] * 60)
+    from georeferencer import georeferencer
+    monkeypatch.setattr(georeferencer, "get_swath_displacement", mock_disp)
+
+    reader = LACPODReader(tle_dir=pod_tle.parent, tle_name=pod_tle.name,
+                          compute_lonlats_from_tles=True, reference_image="some_world_image.tif")
+    reader.read(pod_file_with_tbm_header)
+    with pytest.warns(RuntimeWarning):
+        dataset = reader.get_calibrated_dataset()
+    assert dataset.attrs["georeferenced"] is False

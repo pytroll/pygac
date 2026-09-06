@@ -842,6 +842,8 @@ class Reader(ABC):
                 f"Only {n_gcps} ground control point(s) survived matching; "
                 f"at least {self.min_gcps} are required to constrain the fit"
             )
+        if not np.isfinite(mdist):
+            raise RuntimeError("Displacement minimization produced a non-finite residual")
         if mdist > 5000:
             raise RuntimeError("Displacement minimization did not produce convincing improvements")
 
