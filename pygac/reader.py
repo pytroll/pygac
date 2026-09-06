@@ -900,6 +900,21 @@ class Reader(ABC):
 
         return self.lons, self.lats
 
+    def _apply_clock_drift_if_held(self):
+        """Shift the scan times by this platform's clock drift, if any is held.
+
+        Offsets have been tabulated for only a few platforms, and a reader whose
+        format never carried them has no way to be asked at all. Both absences
+        mean the same thing here: carry on without the correction.
+        """
+        try:
+            offsets = self.compute_clock_offsets()
+            self._times_as_np_datetime64 -= (offsets * 1000).astype("timedelta64[ms]")
+            self.clock_drift_correction_applied = True
+            LOG.debug("Applied clock drift correction")
+        except (AttributeError, KeyError):
+            LOG.debug("No clock drift correction applied")
+
     def _compute_lonlats(self, time_offset=None, mask_scanlines=True):
         if not self.compute_lonlats_from_tles:
             self.lons, self.lats = self._get_lonlat_from_file()
@@ -910,13 +925,7 @@ class Reader(ABC):
         else:
             self.get_times()
             if self.adjust_clock_drift and not self.clock_drift_correction_applied:
-                try:
-                    offsets = self.compute_clock_offsets()
-                    self._times_as_np_datetime64 -= (offsets * 1000).astype("timedelta64[ms]")
-                    self.clock_drift_correction_applied = True
-                    LOG.debug("Applied clock drift correction")
-                except AttributeError:
-                    LOG.debug("No clock drift correction applied")
+                self._apply_clock_drift_if_held()
             if time_offset:
                 new_times = self._times_as_np_datetime64 + time_offset
                 self.lons, self.lats = self._compute_lonlat_from_tles(new_times.astype("datetime64[ms]"))

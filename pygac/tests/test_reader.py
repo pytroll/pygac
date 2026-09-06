@@ -1332,3 +1332,29 @@ def test_calibration_flag_does_not_void_geolocation(pod_file_with_tbm_header, po
     reader.scans["quality_indicators"] = POD_QualityIndicator.NO_EARTH_LOCATION
     lons, lats = reader.get_lonlat()
     assert not np.isfinite(lons).any(), "missing earth location must still void the geolocation"
+
+
+class ReaderLackingClockOffsets(FakeGACReader):
+    """A reader whose platform no clock drift table covers.
+
+    ``pygac.clock_offsets_converter`` holds tables for noaa7, noaa9, noaa11,
+    noaa12 and noaa14 only. For any other platform ``get_offsets`` raises a
+    ``KeyError``, which is what this stands in for.
+    """
+
+    def compute_clock_offsets(self):
+        """Refuse, the way the real reader does for an untabulated platform."""
+        raise KeyError(self.spacecraft_name)
+
+    def _compute_lonlat_from_tles(self, times):
+        """Return coordinates of the right shape without needing an orbit."""
+        return (np.zeros((len(times), 51)), np.zeros((len(times), 51)))
+
+
+def test_a_platform_without_clock_offsets_is_still_geolocated():
+    """Holding no clock drift table must cost the correction, not the whole pass."""
+    reader = ReaderLackingClockOffsets(interpolate_coords=False,
+                                       compute_lonlats_from_tles=True,
+                                       adjust_clock_drift=True)
+    lons, lats = reader.get_lonlat()
+    assert lons.shape[0] == reader.along_track
