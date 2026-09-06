@@ -636,6 +636,7 @@ class TestGacReader(unittest.TestCase):
         """Test scanline timestamp estimation."""
         self.assertEqual(self.reader.lineno2msec(12345), 6172000)
 
+    @mock.patch("pygac.reader.Reader.QFlag", POD_QualityIndicator)
     @mock.patch("pygac.reader.Reader.update_meta_data")
     @mock.patch("pygac.gac_reader.GACReader._get_lonlat_from_file")
     @mock.patch("pygac.gac_reader.GACReader._get_corrupt_mask")
@@ -697,6 +698,7 @@ class TestGacReader(unittest.TestCase):
         for method in methods:
             method.asser_not_called()
 
+    @mock.patch("pygac.reader.Reader.QFlag", POD_QualityIndicator)
     @mock.patch("pygac.reader.Reader.update_meta_data")
     @mock.patch("pygac.gac_reader.GACReader._get_corrupt_mask")
     @mock.patch("pygac.gac_reader.GACReader._adjust_clock_drift")
@@ -1304,3 +1306,29 @@ def test_missing_tle_file_raises_no_tle_data(pod_file_with_tbm_header, pod_tle):
     reader.read(pod_file_with_tbm_header)
     with pytest.raises(NoTLEData):
         reader.get_tle_lines()
+
+
+def test_calibration_flag_does_not_void_geolocation(pod_file_with_tbm_header, pod_tle):
+    """"Insufficient data for calibration" says nothing about where the pixel is.
+
+    Two early NOAA-19 passes carry this bit on 96.8 % of their scan lines. It was
+    folded into the mask applied to longitude and latitude, so almost the whole
+    swath was voided even though the geolocation was sound - which then left
+    omerc_bb without a usable nadir track.
+    """
+    from pygac.pod_reader import POD_QualityIndicator
+
+    reader = LACPODReader(tle_dir=pod_tle.parent, tle_name=pod_tle.name,
+                          compute_lonlats_from_tles=True)
+    reader.read(pod_file_with_tbm_header)
+    reader.scans["quality_indicators"] = POD_QualityIndicator.CALIBRATION
+
+    lons, lats = reader.get_lonlat()
+    assert np.isfinite(lons).any(), "calibration flag must not void the geolocation"
+
+    # but a flag that does concern geolocation still must
+    reader.lons = reader.lats = None
+    reader._mask = None
+    reader.scans["quality_indicators"] = POD_QualityIndicator.NO_EARTH_LOCATION
+    lons, lats = reader.get_lonlat()
+    assert not np.isfinite(lons).any(), "missing earth location must still void the geolocation"

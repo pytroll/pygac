@@ -928,10 +928,10 @@ class Reader(ABC):
         if self.interpolate_coords:
             self.lons, self.lats = self.lonlat_interpolator(self.lons, self.lats)
 
-        # Mask out corrupt scanlines
+        # Mask out scanlines whose geolocation is untrustworthy
         if mask_scanlines:
-            self.lons[self.mask] = np.nan
-            self.lats[self.mask] = np.nan
+            self.lons[self.geolocation_mask] = np.nan
+            self.lats[self.geolocation_mask] = np.nan
 
         # Mask values outside the valid range
         self.lats[np.fabs(self.lats) > 90.0] = np.nan
@@ -950,6 +950,17 @@ class Reader(ABC):
         if self._mask is None:
             self._mask = self._get_corrupt_mask()
         return self._mask
+
+    @property
+    def geolocation_mask(self):
+        """Mask for scanlines whose *geolocation* cannot be trusted.
+
+        Deliberately narrower than :attr:`mask`: a scanline with insufficient
+        data to calibrate still has a perfectly good position, so only the fatal
+        and earth-location flags apply here.
+        """
+        QFlag = self.QFlag
+        return self._get_corrupt_mask(flags=QFlag.FATAL_FLAG | QFlag.NO_EARTH_LOCATION)
 
     @property
     @abstractmethod
