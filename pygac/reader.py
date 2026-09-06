@@ -50,6 +50,12 @@ from pygac.utils import calculate_sun_earth_distance_correction, centered_modulu
 
 LOG = logging.getLogger(__name__)
 
+#: Bound pyorbital places on each fitted attitude angle, in radians (~28.6 degrees).
+ATTITUDE_BOUND_RAD = 0.5
+
+#: Bound pyorbital places on the fitted time offset, in seconds.
+TIME_OFFSET_BOUND_S = 7.0
+
 #: Version of the navigation metadata written into the calibrated dataset.
 #: 2 renamed ``estimated_attitude_in_degrees`` to ``estimated_attitude_in_radians``
 #: (the value was always radians) and added ``gcp_count``.
@@ -89,6 +95,19 @@ rpy_coeffs = {
         "yaw": 0.000,
     },
 }
+
+
+def _reject_a_fit_resting_on(bound, fitted, what):
+    """Refuse a fit whose *fitted* value has run to *bound*.
+
+    The minimiser searches inside a box. A parameter arriving at the wall of that
+    box means nothing in the data held it back, so the number describes the box
+    rather than the spacecraft.
+    """
+    if np.any(np.abs(np.asarray(fitted)) >= bound - 1e-6):
+        raise RuntimeError(
+            f"Displacement minimization hit its {what} bound; the fit is not identifiable"
+        )
 
 
 class ReaderError(ValueError):
@@ -846,6 +865,8 @@ class Reader(ABC):
             raise RuntimeError("Displacement minimization produced a non-finite residual")
         if mdist > 5000:
             raise RuntimeError("Displacement minimization did not produce convincing improvements")
+        _reject_a_fit_resting_on(ATTITUDE_BOUND_RAD, (roll, pitch, yaw), "attitude")
+        _reject_a_fit_resting_on(TIME_OFFSET_BOUND_S, time_diff_s, "time")
 
         self._rpy = roll, pitch, yaw
         time_diff = np.timedelta64(int(time_diff_s * 1e9), "ns")
