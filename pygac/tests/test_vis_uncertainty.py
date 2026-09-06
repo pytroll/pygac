@@ -47,7 +47,7 @@ channel_name = np.array(["1", "2", "3", "4", "5"], dtype="<U1")
 ir_channel_name = np.array(["3", "4", "5"], dtype="<U1")
 vis_channel_name = np.array(["1", "2", "3"], dtype="<U1")
 pixel_index = np.arange(n_pixels, dtype=np.int8)
-times = pd.date_range("1987-02-02", periods=n_scan_lines, freq="S")
+times = pd.date_range("1987-02-02", periods=n_scan_lines, freq="s")
 
 # Sample data
 rng = np.random.default_rng()
