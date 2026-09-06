@@ -50,6 +50,11 @@ from pygac.utils import calculate_sun_earth_distance_correction, centered_modulu
 
 LOG = logging.getLogger(__name__)
 
+#: Version of the navigation metadata written into the calibrated dataset.
+#: 2 renamed ``estimated_attitude_in_degrees`` to ``estimated_attitude_in_radians``
+#: (the value was always radians) and added ``gcp_count``.
+NAVIGATION_METADATA_SCHEMA_VERSION = 2
+
 # rpy values from
 # here:http://yyy.rsmas.miami.edu/groups/rrsl/pathfinder/Processing/proc_app_a.html
 rpy_coeffs = {
@@ -829,7 +834,11 @@ class Reader(ABC):
         self._times_as_np_datetime64 += time_diff
         calibrated_ds["longitude"].data = lons
         calibrated_ds["latitude"].data = lats
-        calibrated_ds.attrs["estimated_attitude_in_degrees"] = roll, pitch, yaw
+        # These are the minimiser's own variables, which pyorbital bounds in radians.
+        # They were previously stored under a name claiming degrees; the schema
+        # version distinguishes products written before and after the correction.
+        calibrated_ds.attrs["estimated_attitude_in_radians"] = roll, pitch, yaw
+        calibrated_ds.attrs["navigation_metadata_schema_version"] = NAVIGATION_METADATA_SCHEMA_VERSION
         calibrated_ds.attrs["estimated_time_offset_in_seconds"] = time_diff_s + preliminary_time_diff_s
 
         if self.dem:

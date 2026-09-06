@@ -1391,3 +1391,31 @@ def test_failed_pre_alignment_does_not_abandon_georeferencing(pod_file_with_tbm_
     dataset = reader.get_calibrated_dataset()
     assert dataset.attrs["georeferenced"] is True
     assert dataset.attrs["median_gcp_distance"] == 1000
+
+
+def test_estimated_attitude_is_labelled_in_the_unit_it_holds(pod_file_with_tbm_header, pod_tle,
+                                                              monkeypatch):
+    """The fitted attitude is in radians; the attribute used to say degrees.
+
+    pyorbital returns the minimiser's own variables, bounded at +-0.5 rad, and
+    pygac stored them unconverted under a name claiming degrees. Anything
+    screening on that field was reading a number 57 times too small.
+    """
+    def skip_thermal(channels, *args, **kwargs):
+        return channels
+    import pygac.calibration.noaa
+    monkeypatch.setattr(pygac.calibration.noaa, "calibrate_thermal_channels", skip_thermal)
+
+    attitude = (0.001, -0.002, 0.003)   # radians, as pyorbital returns them
+    def mock_disp(*args):
+        return 0, attitude, ([10000] * 60, [1000] * 60)
+    from georeferencer import georeferencer
+    monkeypatch.setattr(georeferencer, "get_swath_displacement", mock_disp)
+
+    reader = LACPODReader(tle_dir=pod_tle.parent, tle_name=pod_tle.name,
+                          compute_lonlats_from_tles=True, reference_image="some_world_image.tif")
+    reader.read(pod_file_with_tbm_header)
+    dataset = reader.get_calibrated_dataset()
+    assert dataset.attrs["estimated_attitude_in_radians"] == attitude
+    assert "estimated_attitude_in_degrees" not in dataset.attrs
+    assert dataset.attrs["navigation_metadata_schema_version"] >= 2
