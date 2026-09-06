@@ -87,18 +87,8 @@ def calibrate(ds, custom_coeffs=None, coeffs_file=None):
     mean_ict = ds["full_ict_counts"].mean(axis=1).data
     mean_ir_space = ds["full_space_counts"].mean(axis=1).data[:, -3:]
 
-    ir_channels_to_calibrate = [3, 4, 5]
-
-    for chan in ir_channels_to_calibrate:
-        channels[:, :, chan - 6] = calibrate_thermal(
-            channels[:, :, chan - 6],
-            prt,
-            mean_ict[:, chan - 3],
-            mean_ir_space[:, chan - 3],
-            scan_line_numbers,
-            chan,
-            calibration_coeffs
-        )
+    calibrate_thermal_channels(channels, prt, mean_ict, mean_ir_space,
+                               scan_line_numbers, calibration_coeffs)
 
     new_ds = ds.copy()
     new_ds["channels"].data = channels
@@ -461,7 +451,91 @@ def get_prt_nos(prt,prt_threshold,linenumbers,gac):
         iprt[gd] = prt_nos[i-1]
     return iprt
 
-def calibrate_thermal(counts, prt, ict, space, line_numbers, channel, cal):
+def calibrate_thermal_channels(channels, prt, mean_ict, mean_ir_space,
+                               line_numbers, cal):
+    """Calibrate channels 3b, 4 and 5 in place, sharing the PRT pipeline.
+
+    The blackbody temperature depends only on the PRT telemetry and the
+    platform, so it is computed once here instead of being recomputed
+    identically inside each of the three :func:`calibrate_thermal` calls.
+    """
+    lines, columns = channels.shape[:2]
+    tprt_convolved = smoothed_prt_temperature(
+        prt, line_numbers, columns, cal, smoothing_window_length(lines)
+    )
+    for channel in (3, 4, 5):
+        channels[:, :, channel - 6] = calibrate_thermal(
+            channels[:, :, channel - 6],
+            prt,
+            mean_ict[:, channel - 3],
+            mean_ir_space[:, channel - 3],
+            line_numbers,
+            channel,
+            cal,
+            tprt_convolved=tprt_convolved,
+        )
+    return channels
+
+
+def smoothed_prt_temperature(prt, line_numbers, columns, cal, wlength):
+    """Convert PRT counts to a smoothed blackbody temperature per scan line.
+
+    This depends only on the PRT telemetry and the platform, not on the IR
+    channel being calibrated, so :func:`calibrate` computes it once and hands
+    the result to each :func:`calibrate_thermal` call.
+
+    Note:
+        *prt* is repaired in place: readings below the threshold are replaced
+        by interpolation from their neighbours.
+    """
+    prt_threshold = 50  # empirically found and set by Abhay Devasthale
+    gacdata = columns == 409
+    iprt = get_prt_nos(prt, prt_threshold, line_numbers, gacdata)
+
+    # fill measured values below threshold by interpolation
+    for prt_index in (1, 2, 3, 4):
+        ifix = np.where(np.logical_and(iprt == prt_index, prt < prt_threshold))
+        if len(ifix[0]):
+            inofix = np.where(np.logical_and(iprt == prt_index, prt > prt_threshold))
+            prt[ifix] = np.interp(ifix[0], inofix[0], prt[inofix])
+
+    # calculate PRT temperature using equation (7.1.2.4-1) KLM Guide
+    # Tprt = d0 + d1*Cprt + d2*Cprt^2 + d3*Cprt^3 + d4*Cprt^4
+    # Note: First dimension of cal.d are the five coefficient indicees
+    tprt = np.polynomial.polynomial.polyval(prt, cal.d[:, iprt], tensor=False)
+
+    # Note: the KLM Guide proposes to calculate the mean temperature using equation (7.1.2.4-2).
+    # PyGAC follows the smoothing approach by Trishchenko (2002), i.e.
+    # filling the zeros that mark a complete set of thermometer measurements
+    # by interpolation, and then using a weighting function (so far only equal
+    # weighting) to convolve the temperatures to calculate a moving average of a given window size.
+    # The same averaging technique is applied for ICTs and Space counts.
+    zeros = iprt == 0
+    nonzeros = np.logical_not(zeros)
+    tprt[zeros] = np.interp((zeros).nonzero()[0],
+                            (nonzeros).nonzero()[0],
+                            tprt[nonzeros])
+
+    return _smooth(tprt, wlength)
+
+
+def smoothing_window_length(lines):
+    """Number of scan lines in the telemetry smoothing window."""
+    return 51 if lines > 51 else 3  # 51 empirically found and set by Abhay Devasthale
+
+
+def _smooth(values, wlength):
+    """Moving average of *values*, with the ends held at the first/last full window."""
+    weighting_function = np.ones(wlength, dtype=float) / wlength
+    convolved = np.convolve(values, weighting_function, "same")
+    # take care of the beginning and end
+    convolved[0:(wlength - 1) // 2] = convolved[(wlength - 1) // 2]
+    convolved[-(wlength - 1) // 2:] = convolved[-((wlength + 1) // 2)]
+    return convolved
+
+
+def calibrate_thermal(counts, prt, ict, space, line_numbers, channel, cal,
+                      tprt_convolved=None):
     """Do the thermal calibration and return brightness temperatures (K).
 
     Arguments:
@@ -498,69 +572,10 @@ def calibrate_thermal(counts, prt, ict, space, line_numbers, channel, cal):
     # calculate the internal blackbody temperature TBB, NESDIS uses the simple average
     # T_BB = (T_PRT1 + T_PRT2 + T_PRT3 + T_PRT4)/4    (7.1.2.4-2)
 
-    # Find the corresponding PRT values for a given line number
-    # Note that the prt values are the average value of the three readings from one of the four
-    # PRTs. See reader.get_telemetry implementations.
-    prt_threshold = 50  # empirically found and set by Abhay Devasthale
-
-    # Following section removed by J.Mittaz University of Reading 17 Feb 2025
-    #    for offset in range(5):
-    #        # According to the KLM Guide the fill value between PRT measurments is 0, but we search
-    #        # for the first measurement gap using the threshold, because the fill value is in practice
-    #        # not always exactly 0.
-    #        if np.median(prt[(line_numbers - line_numbers[0]) % 5 == offset]) < prt_threshold:
-    #            break
-    #    else:
-    #        raise IndexError("No PRT 0-index found!")
-    #
-    #    # get the PRT index, iprt equals to 0 corresponds to the measurement gaps
-    #    iprt = (line_numbers - line_numbers[0] + 5 - offset) % 5
-    # Replaced by new method which takes into account PRT counts==0 as a
-    # reset as well as gac PRT indexing (J.Mittaz UoR)
-    if columns == 409:
-        gacdata = True
-    else:
-        gacdata = False
-    iprt = get_prt_nos(prt,prt_threshold,line_numbers,gacdata)
-
-    # fill measured values below threshold by interpolation
-    ifix = np.where(np.logical_and(iprt == 1, prt < prt_threshold))
-    if len(ifix[0]):
-        inofix = np.where(np.logical_and(iprt == 1, prt > prt_threshold))
-        prt[ifix] = np.interp(ifix[0], inofix[0], prt[inofix])
-
-    ifix = np.where(np.logical_and(iprt == 2, prt < prt_threshold))
-    if len(ifix[0]):
-        inofix = np.where(np.logical_and(iprt == 2, prt > prt_threshold))
-        prt[ifix] = np.interp(ifix[0], inofix[0], prt[inofix])
-
-    ifix = np.where(np.logical_and(iprt == 3, prt < prt_threshold))
-    if len(ifix[0]):
-        inofix = np.where(np.logical_and(iprt == 3, prt > prt_threshold))
-        prt[ifix] = np.interp(ifix[0], inofix[0], prt[inofix])
-
-    ifix = np.where(np.logical_and(iprt == 4, prt < prt_threshold))
-    if len(ifix[0]):
-        inofix = np.where(np.logical_and(iprt == 4, prt > prt_threshold))
-        prt[ifix] = np.interp(ifix[0], inofix[0], prt[inofix])
-
-    # calculate PRT temperature using equation (7.1.2.4-1) KLM Guide
-    # Tprt = d0 + d1*Cprt + d2*Cprt^2 + d3*Cprt^3 + d4*Cprt^4
-    # Note: First dimension of cal.d are the five coefficient indicees
-    tprt = np.polynomial.polynomial.polyval(prt, cal.d[:, iprt], tensor=False)
-
-    # Note: the KLM Guide proposes to calculate the mean temperature using equation (7.1.2.4-2).
-    # PyGAC follows the smoothing approach by Trishchenko (2002), i.e.
-    # filling the zeros that mark a complete set of thermometer measurements
-    # by interpolation, and then using a weighting function (so far only equal
-    # weighting) to convolve the temperatures to calculate a moving average of a given window size.
-    # The same averaging technique is applied for ICTs and Space counts.
-    zeros = iprt == 0
-    nonzeros = np.logical_not(zeros)
-
-    tprt[zeros] = np.interp((zeros).nonzero()[0],
-                            (nonzeros).nonzero()[0],
-                            tprt[nonzeros])
+    if tprt_convolved is None:
+        tprt_convolved = smoothed_prt_temperature(
+            prt, line_numbers, columns, cal, smoothing_window_length(lines)
+        )
 
     # Thresholds to flag missing/wrong data for interpolation
     ict_threshold = 100
@@ -581,28 +596,18 @@ def calibrate_thermal(counts, prt, ict, space, line_numbers, channel, cal):
                                 (nonzeros).nonzero()[0],
                                 space[nonzeros])
 
-    # convolving and smoothing PRT, ICT and SPACE values
-    if lines > 51:
-        wlength = 51  # empirically found and set by Abhay Devasthale
-    else:
-        wlength = 3
+    # convolving and smoothing ICT and SPACE values (PRT is done by the caller)
+    wlength = smoothing_window_length(lines)
+    ict_convolved = _smooth(ict, wlength)
+    space_convolved = _smooth(space, wlength)
 
-    weighting_function = np.ones(wlength, dtype=float) / wlength
-    tprt_convolved = np.convolve(tprt, weighting_function, "same")
-    ict_convolved = np.convolve(ict, weighting_function, "same")
-    space_convolved = np.convolve(space, weighting_function, "same")
-
-    # take care of the beginning and end
-    tprt_convolved[0:(wlength - 1) // 2] = tprt_convolved[(wlength - 1) // 2]
-    ict_convolved[0:(wlength - 1) // 2] = ict_convolved[(wlength - 1) // 2]
-    space_convolved[0:(wlength - 1) // 2] = space_convolved[(wlength - 1) // 2]
-    tprt_convolved[-(wlength - 1) // 2:] = tprt_convolved[-((wlength + 1) // 2)]
-    ict_convolved[-(wlength - 1) // 2:] = ict_convolved[-((wlength + 1) // 2)]
-    space_convolved[-(wlength - 1) // 2:] = space_convolved[-((wlength + 1) // 2)]
-
-    new_tprt = np.transpose(np.tile(tprt_convolved, (columns, 1)))
-    new_ict = np.transpose(np.tile(ict_convolved, (columns, 1)))
-    new_space = np.transpose(np.tile(space_convolved, (columns, 1)))
+    # Broadcast the per-scanline telemetry across the columns rather than
+    # materialising three full (lines, columns) copies of it: for a LAC pass
+    # that is ~300 MB of identical values per channel, and every use below is
+    # read-only arithmetic.
+    new_tprt = tprt_convolved[:, np.newaxis]
+    new_ict = ict_convolved[:, np.newaxis]
+    new_space = space_convolved[:, np.newaxis]
 
     # Step 2. The radiance NBB sensed in each thermal AVHRR channel from the internal blackbody
     # at temperature TBB is the weighted mean of the Planck function over the spectral response of the

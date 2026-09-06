@@ -1150,10 +1150,13 @@ def test_recomputing_lonlats_with_time_offset(pod_file_with_tbm_header, pod_tle)
 def test_georeferencing_with_first_guess(pod_file_with_tbm_header, pod_tle, monkeypatch):
     """Test getting a first guess for georeferencing from the file lon/lats."""
     expected_time_offset = 2  # seconds
-    def mock_cal(counts, *args, **kwargs):
-        return counts * 1.0
+    def skip_thermal(channels, *args, **kwargs):
+        # This fixture has only three scan lines and no usable PRT readings,
+        # so the thermal calibration cannot run on it; these tests are about
+        # georeferencing.
+        return channels
     import pygac.calibration.noaa
-    monkeypatch.setattr(pygac.calibration.noaa, "calibrate_thermal", mock_cal)
+    monkeypatch.setattr(pygac.calibration.noaa, "calibrate_thermal_channels", skip_thermal)
 
     def mock_disp(*args):
         return 0, (0, 0, 0), ([10000], [1000])
@@ -1176,10 +1179,13 @@ def test_georeferencing_with_first_guess(pod_file_with_tbm_header, pod_tle, monk
 def test_georeferencing_fails(pod_file_with_tbm_header, pod_tle, monkeypatch):
     """Test georeferencing."""
 
-    def mock_cal(counts, *args, **kwargs):
-        return counts * 1.0
+    def skip_thermal(channels, *args, **kwargs):
+        # This fixture has only three scan lines and no usable PRT readings,
+        # so the thermal calibration cannot run on it; these tests are about
+        # georeferencing.
+        return channels
     import pygac.calibration.noaa
-    monkeypatch.setattr(pygac.calibration.noaa, "calibrate_thermal", mock_cal)
+    monkeypatch.setattr(pygac.calibration.noaa, "calibrate_thermal_channels", skip_thermal)
 
     def mock_disp(*args):
         return 0, (0, 0, 0), ([10000], [10000])
@@ -1195,10 +1201,13 @@ def test_georeferencing_fails(pod_file_with_tbm_header, pod_tle, monkeypatch):
 def test_georeferencing(pod_file_with_tbm_header, pod_tle, monkeypatch):
     """Test georeferencing."""
 
-    def mock_cal(counts, *args, **kwargs):
-        return counts * 1.0
+    def skip_thermal(channels, *args, **kwargs):
+        # This fixture has only three scan lines and no usable PRT readings,
+        # so the thermal calibration cannot run on it; these tests are about
+        # georeferencing.
+        return channels
     import pygac.calibration.noaa
-    monkeypatch.setattr(pygac.calibration.noaa, "calibrate_thermal", mock_cal)
+    monkeypatch.setattr(pygac.calibration.noaa, "calibrate_thermal_channels", skip_thermal)
 
     def mock_disp(*args):
         return 0.5, (0, 0, 0), ([10000], [1000])
@@ -1216,10 +1225,13 @@ def test_georeferencing(pod_file_with_tbm_header, pod_tle, monkeypatch):
 def test_orthocorrection(pod_file_with_tbm_header, pod_tle, monkeypatch):
     """Test computing lons and lats from TLE data."""
 
-    def mock_cal(counts, *args, **kwargs):
-        return counts * 1.0
+    def skip_thermal(channels, *args, **kwargs):
+        # This fixture has only three scan lines and no usable PRT readings,
+        # so the thermal calibration cannot run on it; these tests are about
+        # georeferencing.
+        return channels
     import pygac.calibration.noaa
-    monkeypatch.setattr(pygac.calibration.noaa, "calibrate_thermal", mock_cal)
+    monkeypatch.setattr(pygac.calibration.noaa, "calibrate_thermal_channels", skip_thermal)
 
     def mock_disp(*args):
         return 0.5, (0, 0, 0), ([10000], [1000])
