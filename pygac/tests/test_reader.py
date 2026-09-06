@@ -1358,3 +1358,36 @@ def test_a_platform_without_clock_offsets_is_still_geolocated():
                                        adjust_clock_drift=True)
     lons, lats = reader.get_lonlat()
     assert lons.shape[0] == reader.along_track
+
+
+def test_failed_pre_alignment_does_not_abandon_georeferencing(pod_file_with_tbm_header, pod_tle,
+                                                               monkeypatch):
+    """The coarse time fit is a pre-alignment; failing it must not discard the registration.
+
+    It is only there to centre the swath before matching. When its optimiser
+    reported non-convergence the exception propagated out of _georeference_data
+    and the GCP stage never ran at all, so passes whose imagery was perfectly
+    matchable kept uncorrected navigation.
+    """
+    def skip_thermal(channels, *args, **kwargs):
+        return channels
+    import pygac.calibration.noaa
+    monkeypatch.setattr(pygac.calibration.noaa, "calibrate_thermal_channels", skip_thermal)
+
+    import pyorbital.geoloc_avhrr
+    def refuse(*args, **kwargs):
+        raise RuntimeError("Time offset estimation did not converge")
+    monkeypatch.setattr(pyorbital.geoloc_avhrr, "estimate_time_offset", refuse)
+
+    def mock_disp(*args):
+        return 0, (0, 0, 0), ([10000] * 60, [1000] * 60)
+    from georeferencer import georeferencer
+    monkeypatch.setattr(georeferencer, "get_swath_displacement", mock_disp)
+
+    reader = LACPODReader(tle_dir=pod_tle.parent, tle_name=pod_tle.name,
+                          compute_lonlats_from_tles=True, reference_image="some_world_image.tif",
+                          adjust_clock_drift=False)
+    reader.read(pod_file_with_tbm_header)
+    dataset = reader.get_calibrated_dataset()
+    assert dataset.attrs["georeferenced"] is True
+    assert dataset.attrs["median_gcp_distance"] == 1000

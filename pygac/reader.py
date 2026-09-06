@@ -801,7 +801,16 @@ class Reader(ABC):
     def _georeference_data(self, calibrated_ds):
         preliminary_time_diff_s = 0
         if not self.adjust_clock_drift:
-            preliminary_time_diff_s = self._correct_time_offset(calibrated_ds)
+            try:
+                preliminary_time_diff_s = self._correct_time_offset(calibrated_ds)
+            except Exception as err:  # noqa: BLE001 - a pre-alignment, not the registration
+                # This only centres the swath before matching. If it cannot be
+                # estimated the GCP stage may still succeed from the uncorrected
+                # position, so carry on rather than discarding the registration.
+                LOG.warning("Could not pre-align the swath, continuing without it: %s", err)
+                calibrated_ds.attrs["pre_alignment_applied"] = False
+            else:
+                calibrated_ds.attrs["pre_alignment_applied"] = True
 
         from georeferencer.georeferencer import get_swath_displacement
 
