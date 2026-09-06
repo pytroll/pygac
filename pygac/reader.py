@@ -103,6 +103,11 @@ rpy_coeffs = {
 }
 
 
+def yaw_steers(spacecraft_name):
+    """Say that *spacecraft_name* turns to hold its swath square to the ground track."""
+    return True
+
+
 def _reject_a_fit_resting_on(bound, fitted, what):
     """Refuse a fit whose *fitted* value has run to *bound*.
 

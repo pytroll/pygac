@@ -39,7 +39,7 @@ from pygac.lac_pod import scanline as lacpod_scanline
 from pygac.lac_reader import LACReader
 from pygac.pod_reader import POD_QualityIndicator, header3
 from pygac.pod_reader import tbm_header as tbm_header_dtype
-from pygac.reader import NoTLEData
+from pygac.reader import NoTLEData, yaw_steers
 
 
 class FakePath(os.PathLike):
@@ -1645,3 +1645,8 @@ def test_a_large_residual_alone_does_not_reject_a_registration(pod_file_with_tbm
 
     assert dataset.attrs["georeferenced"] is True
     assert dataset.attrs["median_gcp_distance"] == 10000
+
+
+def test_metop_holds_its_swath_square_to_the_ground_track():
+    """Metop turns as it flies, so its scan stays perpendicular to the ground track."""
+    assert yaw_steers("metopa")
