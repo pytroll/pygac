@@ -1051,9 +1051,18 @@ class Reader(ABC):
         return tle_filename
 
     def read_tle_file(self, tle_filename):
-        """Read TLE file."""
-        with open(tle_filename, "r") as fp_:
-            return [line for line in fp_.readlines() if line.strip()]
+        """Read TLE file.
+
+        Raises:
+            NoTLEData, if the file does not exist. A platform with no TLE file at
+            all has no orbit data, which is the same condition as having none
+            close enough in time, and callers already handle that.
+        """
+        try:
+            with open(tle_filename, "r") as fp_:
+                return [line for line in fp_.readlines() if line.strip()]
+        except FileNotFoundError as err:
+            raise NoTLEData(f"No TLE file for {self.spacecraft_name}: {tle_filename}") from err
 
     def get_tle_lines(self):
         """Find closest two line elements (TLEs) for the current orbit.

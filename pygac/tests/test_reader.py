@@ -1290,3 +1290,17 @@ def test_read_tle_file(pod_tle, tmp_path):
         "2 33591  99.0594 131.9606 0013864 187.8089 172.2868 14.12946798778634\n",
     ]
     assert result == expected
+
+
+def test_missing_tle_file_raises_no_tle_data(pod_file_with_tbm_header, pod_tle):
+    """A platform with no TLE file at all is missing orbit data, not a broken install.
+
+    TLE_metopc.txt does not exist in the shipped bundle, so every Metop-C pass
+    died with a bare FileNotFoundError that no caller was expecting, instead of
+    the domain error the rest of the chain already handles.
+    """
+    reader = LACPODReader(tle_dir=pod_tle.parent, tle_name="TLE_%(satname)s_absent.txt",
+                          compute_lonlats_from_tles=True)
+    reader.read(pod_file_with_tbm_header)
+    with pytest.raises(NoTLEData):
+        reader.get_tle_lines()
