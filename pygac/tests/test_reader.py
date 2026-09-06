@@ -1650,3 +1650,8 @@ def test_a_large_residual_alone_does_not_reject_a_registration(pod_file_with_tbm
 def test_metop_holds_its_swath_square_to_the_ground_track():
     """Metop turns as it flies, so its scan stays perpendicular to the ground track."""
     assert yaw_steers("metopa")
+
+
+def test_the_poes_platforms_fly_without_turning():
+    """NOAA POES holds a fixed attitude, so its scan follows the inertial track."""
+    assert not yaw_steers("noaa19")

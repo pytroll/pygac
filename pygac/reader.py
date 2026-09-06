@@ -104,8 +104,13 @@ rpy_coeffs = {
 
 
 def yaw_steers(spacecraft_name):
-    """Say that *spacecraft_name* turns to hold its swath square to the ground track."""
-    return True
+    """Say whether *spacecraft_name* turns to hold its swath square to the ground track.
+
+    Metop turns as it flies so the scan stays perpendicular to the ground track,
+    by a few degrees that reverse between the northbound and southbound legs.
+    The POES platforms hold a fixed attitude and make no such turn.
+    """
+    return spacecraft_name.startswith("metop")
 
 
 def _reject_a_fit_resting_on(bound, fitted, what):
