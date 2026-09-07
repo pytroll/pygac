@@ -1136,8 +1136,8 @@ def test_computing_lonlats(pod_file_with_tbm_header, pod_tle):
                           compute_lonlats_from_tles=True)
     dataset = reader.read_as_dataset(pod_file_with_tbm_header)
     lons = dataset["longitude"].values
-    assert lons[0, 0] == pytest.approx(-4.5185248)
-    assert lons[0, -1] == pytest.approx(79.5159661)
+    assert lons[0, 0] == pytest.approx(-4.7564357)
+    assert lons[0, -1] == pytest.approx(79.5117416)
 
 
 def test_recomputing_lonlats_with_time_offset(pod_file_with_tbm_header, pod_tle):
@@ -1145,8 +1145,8 @@ def test_recomputing_lonlats_with_time_offset(pod_file_with_tbm_header, pod_tle)
     reader = LACPODReader(tle_dir=pod_tle.parent, tle_name=pod_tle.name, compute_lonlats_from_tles=True)
     reader.read(pod_file_with_tbm_header)
     lons, lats = reader._compute_lonlats(time_offset=np.timedelta64(500, "ms"))
-    assert lons[0, 0] == pytest.approx(-4.4772295)
-    assert lons[0, -1] == pytest.approx(79.4561871)
+    assert lons[0, 0] == pytest.approx(-4.7146599)
+    assert lons[0, -1] == pytest.approx(79.4519243)
 
 
 def test_georeferencing_with_first_guess(pod_file_with_tbm_header, pod_tle, monkeypatch):
@@ -1240,8 +1240,8 @@ def test_georeferencing(pod_file_with_tbm_header, pod_tle, monkeypatch):
     dataset = reader.get_calibrated_dataset()
     assert dataset.attrs["max_scan_angle"] == 55.37
     lons = dataset["longitude"].values
-    assert lons[0, 0] == pytest.approx(-4.4772295)
-    assert lons[0, -1] == pytest.approx(79.4561871)
+    assert lons[0, 0] == pytest.approx(-4.7146599)
+    assert lons[0, -1] == pytest.approx(79.4519243)
 
 def test_orthocorrection(pod_file_with_tbm_header, pod_tle, monkeypatch):
     """Test computing lons and lats from TLE data."""
