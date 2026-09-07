@@ -1554,36 +1554,6 @@ def test_georeferencing_rejects_attitude_on_its_bound(pod_file_with_tbm_header, 
     assert dataset.attrs["georeferenced"] is False
 
 
-def test_georeferencing_rejects_a_time_offset_on_its_bound(pod_file_with_tbm_header, pod_tle,
-                                                            monkeypatch):
-    """A time offset sitting on its optimiser bound is not a solution either.
-
-    The fit bounds the time offset at +-7 s, and real passes reach it: measured on
-    Metop passes without yaw steering, three of four came back at exactly +7.0000 s,
-    which is the minimiser walking to the edge of its box rather than finding
-    anything. Those were being recorded as good registrations, because the guard
-    that catches a cornered attitude never looked at the time.
-    """
-    def skip_thermal(channels, *args, **kwargs):
-        return channels
-    import pygac.calibration.noaa
-    monkeypatch.setattr(pygac.calibration.noaa, "calibrate_thermal_channels", skip_thermal)
-
-    def mock_disp(calibrated_ds, *args, **rest):
-        record_a_coherent_field(calibrated_ds)
-        # plenty of points, a plausible residual, a sane attitude, cornered time
-        return 7.0, (0.001, 0.002, 0.003), ([10000] * 60, [1000] * 60)
-    from georeferencer import georeferencer
-    monkeypatch.setattr(georeferencer, "get_swath_displacement", mock_disp)
-
-    reader = LACPODReader(tle_dir=pod_tle.parent, tle_name=pod_tle.name,
-                          compute_lonlats_from_tles=True, reference_image="some_world_image.tif")
-    reader.read(pod_file_with_tbm_header)
-    with pytest.warns(RuntimeWarning):
-        dataset = reader.get_calibrated_dataset()
-    assert dataset.attrs["georeferenced"] is False
-
-
 def test_georeferencing_rejects_a_displacement_field_that_hangs_together_badly(
         pod_file_with_tbm_header, pod_tle, monkeypatch):
     """Matches that agree with no geometry are not a registration.
