@@ -50,12 +50,14 @@ from pygac.utils import calculate_sun_earth_distance_correction, centered_modulu
 
 LOG = logging.getLogger(__name__)
 
-#: Which way the geolocation calls down. pyorbital resolves this from the argument,
-#: then the ambient configuration, then a legacy default; naming it here keeps a
-#: product's geometry independent of the environment it was produced in, and lets
-#: the correction fit a model standing on the same nadir as the navigation it
-#: corrects rather than on whatever pyorbital would otherwise fall back to.
-NADIR_CONVENTION = "legacy"
+#: Which way the geolocation calls down. Both satellite families this reader serves
+#: are documented as pointing along the ellipsoid normal: EUMETSAT describes Metop as
+#: flying in "local-normal pointing" mode, and the NOAA KLM User's Guide defines nadir
+#: as "a line through the satellite which is perpendicular to the surface of the Earth
+#: ellipsoid". Naming it here also keeps a product's geometry independent of the
+#: environment it was produced in, and lets the correction fit a model standing on the
+#: same nadir as the navigation it corrects.
+NADIR_CONVENTION = "geodetic"
 
 #: Bound pyorbital places on each fitted attitude angle, in radians (~28.6 degrees).
 ATTITUDE_BOUND_RAD = 0.5
