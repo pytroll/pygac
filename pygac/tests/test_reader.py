@@ -1160,7 +1160,7 @@ def test_georeferencing_with_first_guess(pod_file_with_tbm_header, pod_tle, monk
     import pygac.calibration.noaa
     monkeypatch.setattr(pygac.calibration.noaa, "calibrate_thermal_channels", skip_thermal)
 
-    def mock_disp(calibrated_ds, *args):
+    def mock_disp(calibrated_ds, *args, **rest):
         record_a_coherent_field(calibrated_ds)
         return 0, (0, 0, 0), ([10000] * 60, [1000] * 60)
     from georeferencer import georeferencer
@@ -1193,7 +1193,7 @@ def test_georeferencing_fails(pod_file_with_tbm_header, pod_tle, monkeypatch):
     import pygac.calibration.noaa
     monkeypatch.setattr(pygac.calibration.noaa, "calibrate_thermal_channels", skip_thermal)
 
-    def mock_disp(calibrated_ds, *args):
+    def mock_disp(calibrated_ds, *args, **rest):
         record_a_coherent_field(calibrated_ds)
         return 0, (0, 0, 0), ([10000], [10000])
     from georeferencer import georeferencer
@@ -1229,7 +1229,7 @@ def test_georeferencing(pod_file_with_tbm_header, pod_tle, monkeypatch):
     import pygac.calibration.noaa
     monkeypatch.setattr(pygac.calibration.noaa, "calibrate_thermal_channels", skip_thermal)
 
-    def mock_disp(calibrated_ds, *args):
+    def mock_disp(calibrated_ds, *args, **rest):
         record_a_coherent_field(calibrated_ds)
         return 0.5, (0, 0, 0), ([10000] * 60, [1000] * 60)
     from georeferencer import georeferencer
@@ -1254,7 +1254,7 @@ def test_orthocorrection(pod_file_with_tbm_header, pod_tle, monkeypatch):
     import pygac.calibration.noaa
     monkeypatch.setattr(pygac.calibration.noaa, "calibrate_thermal_channels", skip_thermal)
 
-    def mock_disp(calibrated_ds, *args):
+    def mock_disp(calibrated_ds, *args, **rest):
         record_a_coherent_field(calibrated_ds)
         return 0.5, (0, 0, 0), ([10000] * 60, [1000] * 60)
     from georeferencer import georeferencer
@@ -1399,7 +1399,7 @@ def test_failed_pre_alignment_does_not_abandon_georeferencing(pod_file_with_tbm_
         raise RuntimeError("Time offset estimation did not converge")
     monkeypatch.setattr(pyorbital.geoloc_avhrr, "estimate_time_offset", refuse)
 
-    def mock_disp(calibrated_ds, *args):
+    def mock_disp(calibrated_ds, *args, **rest):
         record_a_coherent_field(calibrated_ds)
         return 0, (0, 0, 0), ([10000] * 60, [1000] * 60)
     from georeferencer import georeferencer
@@ -1428,7 +1428,7 @@ def test_estimated_attitude_is_labelled_in_the_unit_it_holds(pod_file_with_tbm_h
     monkeypatch.setattr(pygac.calibration.noaa, "calibrate_thermal_channels", skip_thermal)
 
     attitude = (0.001, -0.002, 0.003)   # radians, as pyorbital returns them
-    def mock_disp(calibrated_ds, *args):
+    def mock_disp(calibrated_ds, *args, **rest):
         record_a_coherent_field(calibrated_ds)
         return 0, attitude, ([10000] * 60, [1000] * 60)
     from georeferencer import georeferencer
@@ -1456,7 +1456,7 @@ def test_georeferencing_rejects_too_few_gcps(pod_file_with_tbm_header, pod_tle, 
     import pygac.calibration.noaa
     monkeypatch.setattr(pygac.calibration.noaa, "calibrate_thermal_channels", skip_thermal)
 
-    def mock_disp(calibrated_ds, *args):
+    def mock_disp(calibrated_ds, *args, **rest):
         record_a_coherent_field(calibrated_ds)
         # one control point, and a residual that looks flawless
         return 0, (0, 0, 0), ([10000], [0.002])
@@ -1483,7 +1483,7 @@ def test_rejected_georeferencing_still_records_diagnostics(pod_file_with_tbm_hea
     import pygac.calibration.noaa
     monkeypatch.setattr(pygac.calibration.noaa, "calibrate_thermal_channels", skip_thermal)
 
-    def mock_disp(calibrated_ds, *args):
+    def mock_disp(calibrated_ds, *args, **rest):
         record_a_coherent_field(calibrated_ds, count=8)
         return 0, (0, 0, 0), ([10000] * 8, [10000] * 8)   # rejected: too few points
     from georeferencer import georeferencer
@@ -1512,7 +1512,7 @@ def test_georeferencing_rejects_non_finite_residual(pod_file_with_tbm_header, po
     import pygac.calibration.noaa
     monkeypatch.setattr(pygac.calibration.noaa, "calibrate_thermal_channels", skip_thermal)
 
-    def mock_disp(calibrated_ds, *args):
+    def mock_disp(calibrated_ds, *args, **rest):
         record_a_coherent_field(calibrated_ds)
         return 0, (0, 0, 0), ([10000] * 60, [np.nan] * 60)
     from georeferencer import georeferencer
@@ -1539,7 +1539,7 @@ def test_georeferencing_rejects_attitude_on_its_bound(pod_file_with_tbm_header, 
     import pygac.calibration.noaa
     monkeypatch.setattr(pygac.calibration.noaa, "calibrate_thermal_channels", skip_thermal)
 
-    def mock_disp(calibrated_ds, *args):
+    def mock_disp(calibrated_ds, *args, **rest):
         record_a_coherent_field(calibrated_ds)
         # plenty of points and a plausible residual, but a cornered attitude
         return 0, (0.5, -0.5, 0.5), ([10000] * 60, [1000] * 60)
@@ -1569,7 +1569,7 @@ def test_georeferencing_rejects_a_time_offset_on_its_bound(pod_file_with_tbm_hea
     import pygac.calibration.noaa
     monkeypatch.setattr(pygac.calibration.noaa, "calibrate_thermal_channels", skip_thermal)
 
-    def mock_disp(calibrated_ds, *args):
+    def mock_disp(calibrated_ds, *args, **rest):
         record_a_coherent_field(calibrated_ds)
         # plenty of points, a plausible residual, a sane attitude, cornered time
         return 7.0, (0.001, 0.002, 0.003), ([10000] * 60, [1000] * 60)
@@ -1598,7 +1598,7 @@ def test_georeferencing_rejects_a_displacement_field_that_hangs_together_badly(
     import pygac.calibration.noaa
     monkeypatch.setattr(pygac.calibration.noaa, "calibrate_thermal_channels", skip_thermal)
 
-    def mock_disp(calibrated_ds, *args):
+    def mock_disp(calibrated_ds, *args, **rest):
         rng = np.random.default_rng(0)
         scattered = rng.uniform(-24, 24, size=60)
         for name, values in (("gcp_y", np.arange(60.0) * 30),
@@ -1635,7 +1635,7 @@ def test_a_large_residual_alone_does_not_reject_a_registration(pod_file_with_tbm
     import pygac.calibration.noaa
     monkeypatch.setattr(pygac.calibration.noaa, "calibrate_thermal_channels", skip_thermal)
 
-    def mock_disp(calibrated_ds, *args):
+    def mock_disp(calibrated_ds, *args, **rest):
         record_a_coherent_field(calibrated_ds)
         return 0, (0, 0, 0), ([20000] * 60, [10000] * 60)
     from georeferencer import georeferencer
@@ -1673,3 +1673,18 @@ def test_a_steered_platform_is_navigated_differently(pod_file_with_tbm_header, p
     turned, _ = lonlats_flying_as("metopa")
 
     assert np.abs(turned - straight).max() > 0.1
+
+
+def test_the_geolocation_names_its_nadir_convention(pod_file_with_tbm_header, pod_tle):
+    """The geolocation chooses a convention rather than falling back to the legacy one."""
+    import warnings as warnings_module
+
+    reader = LACPODReader(tle_dir=pod_tle.parent, tle_name=pod_tle.name,
+                          compute_lonlats_from_tles=True)
+    reader.read(pod_file_with_tbm_header)
+
+    with warnings_module.catch_warnings(record=True) as caught:
+        warnings_module.simplefilter("always")
+        reader.get_lonlat()
+
+    assert not [one for one in caught if "nadir convention" in str(one.message)]

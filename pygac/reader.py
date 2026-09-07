@@ -50,6 +50,13 @@ from pygac.utils import calculate_sun_earth_distance_correction, centered_modulu
 
 LOG = logging.getLogger(__name__)
 
+#: Which way the geolocation calls down. pyorbital resolves this from the argument,
+#: then the ambient configuration, then a legacy default; naming it here keeps a
+#: product's geometry independent of the environment it was produced in, and lets
+#: the correction fit a model standing on the same nadir as the navigation it
+#: corrects rather than on whatever pyorbital would otherwise fall back to.
+NADIR_CONVENTION = "legacy"
+
 #: Bound pyorbital places on each fitted attitude angle, in radians (~28.6 degrees).
 ATTITUDE_BOUND_RAD = 0.5
 
@@ -862,7 +869,9 @@ class Reader(ABC):
 
         _, sat_zen, _, sun_zen, _ = self.get_angles()
         time_diff_s, (roll, pitch, yaw), (odistances, mdistances) = get_swath_displacement(
-            calibrated_ds, sun_zen, sat_zen, self.reference_image, self.dem
+            calibrated_ds, sun_zen, sat_zen, self.reference_image, self.dem,
+            yaw_steering=yaw_steers(self.spacecraft_name),
+            nadir_convention=NADIR_CONVENTION,
         )
 
         # Record how the fit was judged before deciding, so a rejected pass is
@@ -1662,7 +1671,8 @@ class Reader(ABC):
         rpy = self.get_attitude_coeffs()
         LOG.debug(f"Computing lon/lats with attitude {rpy}")
         pixels_pos = compute_pixels((tle1, tle2), sgeom, s_times, rpy,
-                                    yaw_steering=yaw_steers(self.spacecraft_name))
+                                    yaw_steering=yaw_steers(self.spacecraft_name),
+                                    nadir_convention=NADIR_CONVENTION)
         pos_time = get_lonlatalt(pixels_pos, s_times)
 
         lons, lats = pos_time[:2]
