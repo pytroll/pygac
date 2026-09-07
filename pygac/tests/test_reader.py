@@ -1658,3 +1658,18 @@ def test_metop_holds_its_swath_square_to_the_ground_track():
 def test_the_poes_platforms_fly_without_turning():
     """NOAA POES holds a fixed attitude, so its scan follows the inertial track."""
     assert not yaw_steers("noaa19")
+
+
+def test_a_steered_platform_is_navigated_differently(pod_file_with_tbm_header, pod_tle):
+    """The platform decides whether the geolocation turns with the ground track."""
+    def lonlats_flying_as(platform):
+        reader = LACPODReader(tle_dir=pod_tle.parent, tle_name=pod_tle.name,
+                              compute_lonlats_from_tles=True)
+        reader.read(pod_file_with_tbm_header)
+        reader.spacecraft_name = platform
+        return reader.get_lonlat()
+
+    straight, _ = lonlats_flying_as("noaa19")
+    turned, _ = lonlats_flying_as("metopa")
+
+    assert np.abs(turned - straight).max() > 0.1

@@ -1661,7 +1661,8 @@ class Reader(ABC):
 
         rpy = self.get_attitude_coeffs()
         LOG.debug(f"Computing lon/lats with attitude {rpy}")
-        pixels_pos = compute_pixels((tle1, tle2), sgeom, s_times, rpy)
+        pixels_pos = compute_pixels((tle1, tle2), sgeom, s_times, rpy,
+                                    yaw_steering=yaw_steers(self.spacecraft_name))
         pos_time = get_lonlatalt(pixels_pos, s_times)
 
         lons, lats = pos_time[:2]
