@@ -380,8 +380,8 @@ def test_a_four_channel_platform_carries_no_channel_five(platform):
     """AVHRR/1 has no 12 micron band, so the slot the format reserves is not data.
 
     The POD format packs five channel slots whatever the instrument flew, and on a
-    four-channel platform the fifth holds duplicated channel 4 or zeros. Either way it
-    must not reach a user as a measurement.
+    four-channel platform the fifth holds all but a copy of channel 4, or nothing but
+    zeros. Either way it must not reach a user as a measurement.
     """
     dataset = _postprocessed(platform)
 
