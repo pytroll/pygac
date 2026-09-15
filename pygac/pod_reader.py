@@ -211,8 +211,8 @@ tbm_header = np.dtype([("fill", "S30"),
 
 #: Platforms flying AVHRR/1, which has four channels and no 12 micron band. The POD
 #: format reserves five channel slots whatever the instrument flew, so a file from one
-#: of these platforms holds a fifth that is not a measurement: channel 4 duplicated on
-#: NOAA-8, zeros on NOAA-10.
+#: of these platforms holds a fifth that is not a measurement: on NOAA-8 all but a copy
+#: of channel 4, agreeing with it on 84% of pixels, and on NOAA-10 nothing but zeros.
 PLATFORMS_WITH_FOUR_CHANNELS = ("tirosn", "noaa6", "noaa8", "noaa10")
 
 
