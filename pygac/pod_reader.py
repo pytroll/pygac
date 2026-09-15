@@ -209,6 +209,12 @@ tbm_header = np.dtype([("fill", "S30"),
                        ("fill2", "S3")])
 
 
+#: NOAA-10 carries four channels and no 12 micron band. The POD format reserves five
+#: channel slots whatever the instrument flew, so its files hold a fifth that is not a
+#: measurement: on this platform, zeros.
+PLATFORMS_WITH_FOUR_CHANNELS = ("noaa10",)
+
+
 class PODReader(Reader):
     """The POD reader."""
 
@@ -610,9 +616,13 @@ class PODReader(Reader):
         ir_channels_to_calibrate = [3, 4, 5]
         return ir_channels_to_calibrate
 
-    def postproc(self, channels):
-        """No POD specific postprocessing to be done."""
-        pass
+    def postproc(self, ds):
+        """Apply POD specific postprocessing.
+
+        Blanking the fifth channel on the platforms that never carried one.
+        """
+        if self.spacecraft_name in PLATFORMS_WITH_FOUR_CHANNELS:
+            ds["channels"].loc[dict(channel_name="5")] = np.nan
 
     def get_tsm_pixels(self, channels):
         """Determine pixels affected by the scan motor issue.

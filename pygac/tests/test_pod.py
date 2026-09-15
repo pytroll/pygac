@@ -27,6 +27,8 @@ from unittest import mock
 
 import numpy as np
 import numpy.testing
+import pytest
+import xarray as xr
 
 from pygac.clock_offsets_converter import txt as clock_offsets_txt
 from pygac.gac_pod import GACPODReader
@@ -353,3 +355,47 @@ class TestPOD_truncate(unittest.TestCase):
         reader.head = {"number_of_scans": 65533}
         buffer = reader._truncate_padding_record(bytes(65535*3220))
         self.assertEqual(len(buffer), 65535*3220)
+
+
+def _a_pass_with_five_channel_slots():
+    """Return a dataset shaped as the POD format delivers, every slot filled."""
+    channels = xr.DataArray(
+        np.ones((2, 2, 5)),
+        dims=["scan_line_index", "columns", "channel_name"],
+        coords=dict(channel_name=["1", "2", "3", "4", "5"]))
+    return xr.Dataset(dict(channels=channels))
+
+
+def _postprocessed(platform):
+    """Return such a dataset after *platform* has had its postprocessing applied."""
+    reader = GACPODReader()
+    reader.spacecraft_name = platform
+    dataset = _a_pass_with_five_channel_slots()
+    reader.postproc(dataset)
+    return dataset
+
+
+@pytest.mark.parametrize("platform", ["tirosn", "noaa6", "noaa8", "noaa10"])
+def test_a_four_channel_platform_carries_no_channel_five(platform):
+    """AVHRR/1 has no 12 micron band, so the slot the format reserves is not data.
+
+    The POD format packs five channel slots whatever the instrument flew, and on a
+    four-channel platform the fifth holds duplicated channel 4 or zeros. Either way it
+    must not reach a user as a measurement.
+    """
+    dataset = _postprocessed(platform)
+
+    assert np.isnan(dataset["channels"].sel(channel_name="5")).all()
+
+
+@pytest.mark.parametrize("platform", ["noaa9"])
+def test_a_five_channel_platform_keeps_its_channel_five(platform):
+    """AVHRR/2 does carry a 12 micron band, and it must survive postprocessing.
+
+    The blanking exists to remove a slot the instrument never filled. On a platform that
+    filled it, the same slot holds a measurement, and losing it would discard real data
+    rather than a fabrication.
+    """
+    dataset = _postprocessed(platform)
+
+    assert not np.isnan(dataset["channels"].sel(channel_name="5")).any()
