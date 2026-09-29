@@ -1099,11 +1099,13 @@ class Reader(ABC):
             try:
                 self._georeference_data(calibrated_ds)
                 calibrated_ds.attrs["georeferenced"] = True
+                # a plain subscript: a fit that succeeded must have left this behind
                 calibrated_ds.attrs["navigation"]["georeferenced"] = True
             except Exception as err:  # noqa
-                LOG.exception("Could not georeference!")
+                LOG.exception("Could not georeference %s!", self.filename)
                 warnings.warn(f"Could not georeference: {str(err)}", category=RuntimeWarning)
                 calibrated_ds.attrs["georeferenced"] = False
+                # the fit may have raised before writing any navigation metadata
                 calibrated_ds.attrs.setdefault("navigation", {})["georeferenced"] = False
         if self.compute_uncertainties:
             try:

@@ -21,6 +21,7 @@
 """Test the readers."""
 
 import datetime
+import logging
 import os
 import sys
 import unittest
@@ -2383,3 +2384,17 @@ def test_a_refused_georeferencing_says_so_in_the_navigation_metadata(
     """
     dataset = navigated_with_too_few_gcps(pod_file_with_tbm_header, pod_tle, monkeypatch)
     assert dataset.attrs["navigation"]["georeferenced"] is False
+
+
+def test_a_refused_georeferencing_names_the_pass_in_the_log(
+        pod_file_with_tbm_header, pod_tle, monkeypatch, caplog):
+    """A campaign log must say which pass lost its registration, not only that one did.
+
+    A run processes hundreds of thousands of passes. A traceback naming no file
+    cannot be attributed to one, so a pass that quietly fell back to uncorrected
+    geolocation reads as noise rather than as work to redo.
+    """
+    with caplog.at_level(logging.ERROR, logger="pygac.reader"):
+        navigated_with_too_few_gcps(pod_file_with_tbm_header, pod_tle, monkeypatch)
+
+    assert os.path.basename(pod_file_with_tbm_header) in caplog.text
