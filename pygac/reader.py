@@ -1104,6 +1104,7 @@ class Reader(ABC):
                 LOG.exception("Could not georeference!")
                 warnings.warn(f"Could not georeference: {str(err)}", category=RuntimeWarning)
                 calibrated_ds.attrs["georeferenced"] = False
+                calibrated_ds.attrs.setdefault("navigation", {})["georeferenced"] = False
         if self.compute_uncertainties:
             try:
                 from pygac.uncertainty import uncertainty

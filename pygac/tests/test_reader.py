@@ -1584,13 +1584,13 @@ def test_the_navigation_record_says_what_the_fit_rested_on(pod_file_with_tbm_hea
     assert dataset.attrs["navigation"]["georeferenced"] is True
 
 
-def test_georeferencing_rejects_too_few_gcps(pod_file_with_tbm_header, pod_tle, monkeypatch):
-    """A fit resting on a handful of control points must be rejected.
+def navigated_with_too_few_gcps(pod_file_with_tbm_header, pod_tle, monkeypatch):
+    """Navigate a pass whose fit rests on one control point, and hand back the result.
 
     The displacement fit solves for four parameters (time, roll, pitch, yaw).
     With one surviving GCP it is wildly underdetermined: the optimiser drives
     the single residual to ~0 and reports a sub-millimetre median that looks
-    like a perfect registration.
+    like a perfect registration. The reader refuses it and warns.
     """
     def skip_thermal(channels, *args, **kwargs):
         return channels, []
@@ -1607,7 +1607,12 @@ def test_georeferencing_rejects_too_few_gcps(pod_file_with_tbm_header, pod_tle, 
                           compute_lonlats_from_tles=True, reference_image="some_world_image.tif")
     reader.read(pod_file_with_tbm_header)
     with pytest.warns(RuntimeWarning):
-        dataset = reader.get_calibrated_dataset()
+        return reader.get_calibrated_dataset()
+
+
+def test_georeferencing_rejects_too_few_gcps(pod_file_with_tbm_header, pod_tle, monkeypatch):
+    """A fit resting on a handful of control points must be rejected."""
+    dataset = navigated_with_too_few_gcps(pod_file_with_tbm_header, pod_tle, monkeypatch)
     assert dataset.attrs["georeferenced"] is False
 
 
@@ -2366,3 +2371,15 @@ def test_the_geolocation_names_its_nadir_convention(pod_file_with_tbm_header, po
         reader.get_lonlat()
 
     assert not [one for one in caught if "nadir convention" in str(one.message)]
+
+
+def test_a_refused_georeferencing_says_so_in_the_navigation_metadata(
+        pod_file_with_tbm_header, pod_tle, monkeypatch):
+    """A pass that failed to georeference must say so where the product records it.
+
+    The flag beside the rest of the navigation metadata is the one a downstream
+    reader consults. Leaving it behind while the top-level flag turns False hands
+    out uncorrected geolocation labelled as registered.
+    """
+    dataset = navigated_with_too_few_gcps(pod_file_with_tbm_header, pod_tle, monkeypatch)
+    assert dataset.attrs["navigation"]["georeferenced"] is False
