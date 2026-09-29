@@ -316,6 +316,15 @@ class TimestampMismatch(IndexError):
     """Raise when matching timestamps doesn't work."""
 
 
+def carries_an_element(line):
+    """Say whether this line is part of a two line element rather than markup.
+
+    The lines of a file are paired by position, so anything kept that is not part
+    of an element pairs the first line of one with the second line of the next.
+    """
+    return bool(line.strip()) and not line.startswith("#")
+
+
 class Reader(ABC):
     """Reader for GAC and LAC format, POD and KLM platforms."""
 
@@ -1506,7 +1515,7 @@ class Reader(ABC):
         """
         try:
             with open(tle_filename, "r") as fp_:
-                return [line for line in fp_.readlines() if line.strip()]
+                return [line for line in fp_.readlines() if carries_an_element(line)]
         except FileNotFoundError as err:
             raise NoTLEData(f"No TLE file for {self.spacecraft_name}: {tle_filename}") from err
 

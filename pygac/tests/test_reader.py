@@ -2398,3 +2398,25 @@ def test_a_refused_georeferencing_names_the_pass_in_the_log(
         navigated_with_too_few_gcps(pod_file_with_tbm_header, pod_tle, monkeypatch)
 
     assert os.path.basename(pod_file_with_tbm_header) in caplog.text
+
+
+def test_a_comment_in_a_tle_file_is_not_taken_for_an_element(tmp_path):
+    """A file may say which of its elements were made rather than observed.
+
+    The lines are paired by position, so anything that is not part of an element
+    shifts every element after it -- the first line of one read together with the
+    second line of the next -- and nothing reports it.
+    """
+    marked = tmp_path / "noaa14.tle"
+    marked.write_text(
+        "# elements below are synthetic, fitted to NOAA TBUS bulletins\n"
+        "1 23455U 94089A   00322.04713399  .00000318  00000-0  19705-3 0  5298\n"
+        "2 23455  99.1591 303.5706 0010037  25.7760 334.3905 14.12496755303183\n"
+        "# and this one came from the archive\n"
+        "1 23455U 94089A   00322.96799836  .00000229  00000-0  14918-3 0  5303\n"
+        "2 23455  99.1590 304.5117 0009979  23.1101 337.0518 14.12496633303313\n")
+
+    reader = LACPODReader(tle_dir=str(tmp_path), tle_name="noaa14.tle")
+    kept = reader.read_tle_file(str(marked))
+
+    assert [line[0] for line in kept] == ["1", "2", "1", "2"]
