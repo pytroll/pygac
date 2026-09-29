@@ -12,8 +12,8 @@ def test_a_time_inside_the_measurements_is_covered():
 
 
 def test_a_platform_with_no_table_is_covered_nowhere():
-    """noaa10 has no measured clock error at all, so nothing about it is known."""
-    assert not clock_table_covers("noaa10", np.datetime64("1988-05-15T09:00:00"))
+    """noaa6 has no measured clock error at all, so nothing about it is known."""
+    assert not clock_table_covers("noaa6", np.datetime64("1981-05-15T09:00:00"))
 
 
 def test_a_moment_past_the_end_of_a_table_is_not_covered():
@@ -45,3 +45,14 @@ def test_every_table_records_how_many_measurements_it_holds():
     """A table nobody counted can lose a line without anything failing."""
     uncounted = sorted(set(txt) - set(MEASUREMENTS))
     assert not uncounted, f"no measurement count recorded for {uncounted}"
+
+
+def test_noaa10_clock_error_is_known_across_its_avhrr_years():
+    """NOAA-10 drifted some six milliseconds a day between corrections.
+
+    Left unmeasured, a pass halfway through one of those intervals is navigated
+    with most of a second of clock error in it, which is several kilometres along
+    the track.
+    """
+    for when in ("1989-09-01T00:00:00", "1990-06-01T12:00:00", "1991-09-01T00:00:00"):
+        assert clock_table_covers("noaa10", np.datetime64(when))
