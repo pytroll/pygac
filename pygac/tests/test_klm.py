@@ -82,6 +82,19 @@ class TestKLM:
         numpy.testing.assert_array_equal(
             self.reader.get_ch3_switch(), switch_exp)
 
+    def test_get_clock_drift_corrected(self):
+        """Bit 14 says whether NOAA corrected the scan times before we received them.
+
+        On this series pygac applies no clock correction of its own, because NOAA
+        already did. A line that says otherwise is navigated from a timestamp
+        nothing has corrected.
+        """
+        self.reader.scans = {
+            "scan_line_bit_field": np.array([1 << 14, (1 << 14) | 1, 0, 1])}
+        numpy.testing.assert_array_equal(
+            self.reader.get_clock_drift_corrected(),
+            np.array([True, True, False, False]))
+
     def test_postproc(self):
         """Test KLM specific postprocessing."""
         self.reader.scans = {

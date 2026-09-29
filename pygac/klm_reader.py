@@ -609,6 +609,12 @@ ars_header = np.dtype([("COST_number", "S6"),
                        ])
 
 
+#: The fields of the scan line bit field that are read. The record also carries the
+#: satellite's direction in bit 15, which nothing here needs.
+CLOCK_DRIFT_CORRECTED = 2**14  # 1 = scan time corrected for clock drift
+CHANNEL_3_SELECT = 2**2 - 1  # 0 = 3B; 1 = 3A; 2 = transition
+
+
 class KLMReader(Reader):
     """Reader for KLM data."""
 
@@ -806,7 +812,15 @@ class KLMReader(Reader):
         1: Channel 3a (Reflectance)
         2: Transition (No data)
         """
-        return self.scans["scan_line_bit_field"][:] & 3
+        return self.scans["scan_line_bit_field"][:] & CHANNEL_3_SELECT
+
+    def get_clock_drift_corrected(self):
+        """Say, for each scan line, whether its time was corrected for clock drift.
+
+        NOAA sets this when it has already removed the spacecraft clock error from
+        the time it hands out, which is why this series needs no correction here.
+        """
+        return (self.scans["scan_line_bit_field"][:] & CLOCK_DRIFT_CORRECTED).astype(bool)
 
     def _get_ir_channels_to_calibrate(self):
         ir_channels_to_calibrate = [3, 4, 5]
