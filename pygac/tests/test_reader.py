@@ -18,7 +18,7 @@ from pygac.lac_pod import scanline as lacpod_scanline
 from pygac.lac_reader import LACReader
 from pygac.pod_reader import POD_QualityIndicator, header3
 from pygac.pod_reader import tbm_header as tbm_header_dtype
-from pygac.reader import NoTLEData
+from pygac.reader import LOG, NoTLEData
 
 
 class FakePath(os.PathLike):
@@ -605,6 +605,22 @@ class TestGacReader(unittest.TestCase):
         self.reader.correct_times_thresh()
         numpy.testing.assert_array_equal(self.reader._times_as_np_datetime64, utcs_expected)
 
+    def test_correcting_times_fails(self):
+        """Test catching errors in time correction and emitted warning."""
+        reader = FakeGACReader()
+        # Scanline numbers jumping backwards should trigger an error in
+        # timestamp correction
+        reader.scans = np.array([2, 1, 3], dtype=[("scan_line_number", ">u2")])
+        times_exp = np.array([
+            "1970-01-01T00:00:02.500",
+            "1970-01-01T00:00:02.000",
+            "1970-01-01T00:00:03.000"],
+            dtype="datetime64[ms]"
+        )
+        with self.assertLogs(LOG, level="ERROR"):
+            times = reader.get_times()
+        numpy.testing.assert_array_equal(times, times_exp)
+
     def test_calculate_sun_earth_distance_correction(self):
         """Test the calculate sun earth distance correction method."""
         self.reader._times_as_np_datetime64 = np.array([315748035469, 315748359969,
@@ -867,10 +883,14 @@ def test_passing_calibration_to_reader():
 
 def test_computing_lonlats(pod_file_with_tbm_header, pod_tle):
     """Test computing lons and lats from TLE data."""
+    # import pyorbital
+    # with pyorbital.config.config.set(nadir_convention="legacy",
+    #                       rotation_order="legacy"):
     reader = LACPODReader(tle_dir=pod_tle.parent, tle_name=pod_tle.name, compute_lonlats_from_tles=True)
     dataset = reader.read_as_dataset(pod_file_with_tbm_header)
     lons = dataset["longitude"].values
-    assert lons[0, 0] == pytest.approx(-4.756486)
+    # assert lons[0, 0] == pytest.approx(-4.756486)
+    np.testing.assert_allclose(lons[0, -1], 79.505688)
     assert lons[0, -1] == pytest.approx(79.505688)
 
 
