@@ -883,14 +883,10 @@ def test_passing_calibration_to_reader():
 
 def test_computing_lonlats(pod_file_with_tbm_header, pod_tle):
     """Test computing lons and lats from TLE data."""
-    # import pyorbital
-    # with pyorbital.config.config.set(nadir_convention="legacy",
-    #                       rotation_order="legacy"):
     reader = LACPODReader(tle_dir=pod_tle.parent, tle_name=pod_tle.name, compute_lonlats_from_tles=True)
     dataset = reader.read_as_dataset(pod_file_with_tbm_header)
     lons = dataset["longitude"].values
-    # assert lons[0, 0] == pytest.approx(-4.756486)
-    np.testing.assert_allclose(lons[0, -1], 79.505688)
+    assert lons[0, 0] == pytest.approx(-4.756486)
     assert lons[0, -1] == pytest.approx(79.505688)
 
 
