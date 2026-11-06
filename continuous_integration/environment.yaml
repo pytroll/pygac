@@ -15,7 +15,7 @@ dependencies:
   - pip
   - pip:
     - docutils
-    - pyorbital
+    - pyorbital<1.13
     - python-geotiepoints
     - trollimage
     - pyspectral
