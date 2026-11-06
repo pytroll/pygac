@@ -18,7 +18,7 @@ from pygac.lac_pod import scanline as lacpod_scanline
 from pygac.lac_reader import LACReader
 from pygac.pod_reader import POD_QualityIndicator, header3
 from pygac.pod_reader import tbm_header as tbm_header_dtype
-from pygac.reader import NoTLEData
+from pygac.reader import LOG, NoTLEData
 
 
 class FakePath(os.PathLike):
@@ -602,8 +602,24 @@ class TestGacReader(unittest.TestCase):
                                      dtype=[("scan_line_number", ">u2")])
 
         # Test correction
-        self.reader.correct_times_thresh()
-        numpy.testing.assert_array_equal(self.reader._times_as_np_datetime64, utcs_expected)
+        res = self.reader.correct_times_thresh()
+        numpy.testing.assert_array_equal(res["t"], utcs_expected)
+
+    def test_correcting_times_fails(self):
+        """Test catching errors in time correction and emitted warning."""
+        reader = FakeGACReader()
+        # Scanline numbers jumping backwards should trigger an error in
+        # timestamp correction
+        reader.scans = np.array([2, 1, 3], dtype=[("scan_line_number", ">u2")])
+        times_exp = np.array([
+            "1970-01-01T00:00:02.500",
+            "1970-01-01T00:00:02.000",
+            "1970-01-01T00:00:03.000"],
+            dtype="datetime64[ms]"
+        )
+        with self.assertLogs(LOG, level="ERROR"):
+            times = reader.get_times()
+        numpy.testing.assert_array_equal(times, times_exp)
 
     def test_calculate_sun_earth_distance_correction(self):
         """Test the calculate sun earth distance correction method."""

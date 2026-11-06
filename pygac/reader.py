@@ -488,10 +488,11 @@ class Reader(ABC):
             # Correct invalid values
             year, jday, msec = self.correct_times_median(year=year, jday=jday, msec=msec)
             self._times_as_np_datetime64 = self.to_datetime64(year=year, jday=jday, msec=msec)
-            try:
-                self._times_as_np_datetime64 = self.correct_times_thresh()
-            except TimestampMismatch as err:
-                LOG.error(str(err))
+            res = self.correct_times_thresh()
+            if res["fail_reason"]:
+                LOG.error(f"Timestamp correction failed: {res['fail_reason']}")
+            else:
+               self._times_as_np_datetime64 = res["t"]
 
         return self._times_as_np_datetime64
 
@@ -1258,13 +1259,16 @@ class Reader(ABC):
             Intermediate and final results (for plotting purpose)
 
         """
-        results = {}
         dt64_msec = ">M8[ms]"
 
         # Check whether scanline number increases monotonically
         nums = self.scans["scan_line_number"]
-        results.update({"t": self._times_as_np_datetime64.copy(), "n": nums})
-        if np.any(np.diff(nums) < 0):
+        results = {
+            "t": self._times_as_np_datetime64.copy(),
+            "n": nums,
+            "fail_reason": None
+        }
+        if np.any(np.diff(nums.astype("i4")) < 0):
             LOG.error("Cannot perform timestamp correction. Scanline number does not increase monotonically.")
             results["fail_reason"] = "Scanline number jumps backwards"
             return results
@@ -1274,8 +1278,8 @@ class Reader(ABC):
         try:
             t0_head = np.array([self.get_header_timestamp().isoformat()], dtype="datetime64[ms]").astype("i8")[0]
         except ValueError as err:
-            LOG.error("Cannot perform timestamp correction: %s", err)
-            return
+            results["fail_reason"] = f"Invalid timestamps: {err}"
+            return results
 
         # Compute ideal timestamps based on the scanline number. Still
         # without offset, i.e. scanline 0 has timestamp 1970-01-01 00:00
@@ -1300,7 +1304,7 @@ class Reader(ABC):
             t0 = np.median(offsets[near_t0_head])
         else:
             results["fail_reason"] = "Timestamp mismatch"
-            raise TimestampMismatch("Timestamp mismatch. Cannot perform timestamp correction.")
+            return results
 
         # Add estimated offset to the ideal timestamps
         tn += t0
@@ -1308,10 +1312,10 @@ class Reader(ABC):
         # Replace timestamps deviating more than a certain threshold from the
         # ideal timestamp with the ideal timestamp.
         corrupt_lines = np.where(np.fabs(t - tn) > max_diff_from_ideal_t)
-        self._times_as_np_datetime64[corrupt_lines] = tn[corrupt_lines].astype(dt64_msec)
+        results["t"][corrupt_lines] = tn[corrupt_lines].astype(dt64_msec)
         LOG.debug("Corrected %s timestamp(s)", str(len(corrupt_lines[0])))
 
-        return self._times_as_np_datetime64
+        return results
 
     @property
     @abstractmethod
