@@ -602,8 +602,8 @@ class TestGacReader(unittest.TestCase):
                                      dtype=[("scan_line_number", ">u2")])
 
         # Test correction
-        self.reader.correct_times_thresh()
-        numpy.testing.assert_array_equal(self.reader._times_as_np_datetime64, utcs_expected)
+        res = self.reader.correct_times_thresh()
+        numpy.testing.assert_array_equal(res["t"], utcs_expected)
 
     def test_correcting_times_fails(self):
         """Test catching errors in time correction and emitted warning."""
