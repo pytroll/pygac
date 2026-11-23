@@ -2601,3 +2601,14 @@ def test_the_two_time_offsets_are_kept_apart(pod_file_with_tbm_header, pod_tle, 
     assert record["pre_alignment_time_offset_in_seconds"] == 1.5
     assert record["fitted_time_offset_in_seconds"] == 0.25
     assert record["time_offset_in_seconds"] == 1.75
+
+
+def test_products_carrying_the_fit_quality_are_told_apart(pod_file_with_tbm_header, pod_tle, monkeypatch):
+    """Products written before the leftovers and uncertainties were kept must be distinguishable."""
+    navigate_with(monkeypatch)
+    reader = a_georeferenced_pass(pod_file_with_tbm_header, pod_tle, monkeypatch)
+
+    dataset = reader.get_calibrated_dataset()
+
+    assert dataset.attrs["navigation"]["schema_version"] == 4
+    assert dataset.attrs["navigation_metadata_schema_version"] == 4

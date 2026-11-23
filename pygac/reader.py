@@ -110,7 +110,12 @@ MAX_UNEXPLAINED_DISPLACEMENT_PX = 8.0
 #: (the value was always radians) and added ``gcp_count``.
 #: 3 restored that name and converted the value, so the attitude is now in the
 #: degrees the name has always claimed.
-NAVIGATION_METADATA_SCHEMA_VERSION = 3
+#: 4 fits in swath pixels with a robust loss, keeps what the fit left of each control
+#: point's miss (``gcp_y_residual``, ``gcp_x_residual``), and adds to the navigation
+#: record their spread, the uncertainty and covariance of the fitted parameters, the
+#: fit's settings and package versions, the coarse along-track shift, and the
+#: pre-alignment and fitted time offsets apart.
+NAVIGATION_METADATA_SCHEMA_VERSION = 4
 
 # rpy values from
 # here:http://yyy.rsmas.miami.edu/groups/rrsl/pathfinder/Processing/proc_app_a.html
