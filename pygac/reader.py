@@ -1182,6 +1182,7 @@ class Reader(ABC):
         # distinguishable downstream from one never attempted.
         n_gcps = len(fit.distances)
         mdist = np.median(fit.distances) if n_gcps else np.nan
+        self._keep_what_the_fit_left(calibrated_ds, fit)
         calibrated_ds.attrs["gcp_count"] = n_gcps
         calibrated_ds.attrs["median_gcp_distance"] = mdist
 
@@ -1210,6 +1211,15 @@ class Reader(ABC):
 
             calibrated_ds = orthocorrection(calibrated_ds, sat_zen, self.dem)
         calibrated_ds["times"].data = self._times_as_np_datetime64
+
+    @staticmethod
+    def _keep_what_the_fit_left(calibrated_ds, fit):
+        """Store what is left of each control point's miss, in swath lines and samples."""
+        for name, component, axis in (("gcp_y_residual", 0, "lines"), ("gcp_x_residual", 1, "samples")):
+            calibrated_ds[name] = xr.DataArray(
+                fit.misses[:, component], dims=["points"],
+                attrs={"units": "swath pixels",
+                       "long_name": f"control point miss left after the navigation fit, in {axis}"})
 
     def _record_how_the_navigation_was_fitted(self, calibrated_ds, attitude_in_radians,
                                               time_offset_in_seconds):

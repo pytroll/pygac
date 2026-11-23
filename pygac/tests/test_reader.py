@@ -1254,6 +1254,32 @@ def answering_as_a_navigation_fit(fits):
 
     return fit_navigation
 
+def navigate_with(monkeypatch, count=60, time_offset=0.0, attitude=(0.0, 0.0, 0.0), distance=1000.0,
+                  misses=None, covariance=None, settings=None, along_track_lines=0.0):
+    """Stand in for the matching and for pyorbital's fit, saying everything the fit returns.
+
+    The matching leaves a coherent field behind and reports *along_track_lines* of coarse
+    shift; the fit leaves every point *distance* metres off, with *misses* in swath pixels
+    and the parameters' *covariance* in seconds and radians.
+    """
+    from georeferencer import georeferencer
+    from pyorbital import geoloc_avhrr
+    from pyorbital.geoloc_avhrr import NavigationFit
+
+    def measures(calibrated_ds, *args, **rest):
+        record_a_coherent_field(calibrated_ds, count)
+        return np.zeros((count, 2)), np.zeros((count, 2)), along_track_lines
+
+    def fits(gcps, *args, **rest):
+        return NavigationFit(time_offset, tuple(attitude),
+                             np.zeros((count, 2)) if misses is None else misses,
+                             np.full(count, float(distance)),
+                             np.zeros((4, 4)) if covariance is None else covariance,
+                             {"loss": "soft_l1"} if settings is None else settings)
+
+    monkeypatch.setattr(georeferencer, "measure_swath_displacement", measures)
+    monkeypatch.setattr(geoloc_avhrr, "fit_navigation", fits)
+
 def record_a_coherent_field(calibrated_ds, count=60):
     """Populate the control point arrays the way the real georeferencer does.
 
@@ -2438,3 +2464,49 @@ def test_a_comment_in_a_tle_file_is_not_taken_for_an_element(tmp_path):
     kept = reader.read_tle_file(str(marked))
 
     assert [line[0] for line in kept] == ["1", "2", "1", "2"]
+
+
+def a_georeferenced_pass(pod_file_with_tbm_header, pod_tle, monkeypatch, platform=None, **reader_kwargs):
+    """Read and calibrate the fixture pass with georeferencing on, whatever stands in for it."""
+    def skip_thermal(channels, *args, **kwargs):
+        return channels, []
+    import pygac.calibration.noaa
+    monkeypatch.setattr(pygac.calibration.noaa, "calibrate_thermal_channels", skip_thermal)
+    reader = LACPODReader(tle_dir=pod_tle.parent, tle_name=pod_tle.name, compute_lonlats_from_tles=True,
+                          reference_image="some_world_image.tif", **reader_kwargs)
+    reader.read(pod_file_with_tbm_header)
+    if platform:
+        reader.spacecraft_name = platform
+    return reader
+
+
+def test_every_control_point_keeps_what_the_fit_left_of_its_miss(pod_file_with_tbm_header, pod_tle, monkeypatch):
+    """A median says what a typical point does; how well each one was matched needs each one.
+
+    The leftovers are kept in swath pixels, next to the displacements they are what is
+    left of, so structure the fit could not absorb -- a drift along the track, a bend
+    across it -- can be seen and fitted later.
+    """
+    misses = np.column_stack([np.linspace(-0.4, 0.4, 60), np.linspace(0.3, -0.3, 60)])
+    misses[5] = np.nan
+    navigate_with(monkeypatch, misses=misses)
+    reader = a_georeferenced_pass(pod_file_with_tbm_header, pod_tle, monkeypatch)
+
+    dataset = reader.get_calibrated_dataset()
+
+    np.testing.assert_array_equal(dataset["gcp_y_residual"].values, misses[:, 0])
+    np.testing.assert_array_equal(dataset["gcp_x_residual"].values, misses[:, 1])
+    assert dataset["gcp_y_residual"].dims == ("points",)
+    assert dataset["gcp_x_residual"].attrs["units"] == "swath pixels"
+
+
+def test_a_refused_pass_keeps_its_leftovers_too(pod_file_with_tbm_header, pod_tle, monkeypatch):
+    """A pass turned away still has to show why, point by point."""
+    navigate_with(monkeypatch, count=8, misses=np.full((8, 2), 0.25))
+    reader = a_georeferenced_pass(pod_file_with_tbm_header, pod_tle, monkeypatch)
+
+    with pytest.warns(RuntimeWarning):
+        dataset = reader.get_calibrated_dataset()
+
+    assert dataset.attrs["georeferenced"] is False
+    np.testing.assert_array_equal(dataset["gcp_x_residual"].values, np.full(8, 0.25))
