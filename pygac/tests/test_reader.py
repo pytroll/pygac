@@ -2568,3 +2568,23 @@ def test_the_record_says_how_far_its_navigation_can_be_trusted(pod_file_with_tbm
     assert "time_pitch_correlation" not in record
     np.testing.assert_allclose(record["covariance_in_seconds_and_degrees"],
                                correlation * np.outer(in_degrees, in_degrees))
+
+
+def test_the_record_says_what_its_navigation_was_fitted_with(pod_file_with_tbm_header, pod_tle, monkeypatch):
+    """Refitting a pass later is only comparable if every choice of the first fit can be reproduced.
+
+    The coarse shift the matching found is kept too: the clock is decided by the platform
+    alone, and how far along its track a pass sat is what would show that decision wrong.
+    """
+    from importlib.metadata import version
+
+    navigate_with(monkeypatch, settings={"loss": "soft_l1", "solve_for_time": True}, along_track_lines=12)
+    reader = a_georeferenced_pass(pod_file_with_tbm_header, pod_tle, monkeypatch)
+    seconds_per_line = np.diff(reader.get_times()).mean() / np.timedelta64(1, "s")
+
+    record = reader.get_calibrated_dataset().attrs["navigation"]
+
+    assert record["fit_settings"] == {"loss": "soft_l1", "solve_for_time": True}
+    assert record["pyorbital_version"] == version("pyorbital")
+    assert record["georeferencer_version"] == version("georeferencer")
+    assert record["coarse_along_track_shift_in_seconds"] == pytest.approx(12 * seconds_per_line)

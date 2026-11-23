@@ -1184,6 +1184,7 @@ class Reader(ABC):
         mdist = np.median(fit.distances) if n_gcps else np.nan
         self._keep_what_the_fit_left(calibrated_ds, fit)
         self._keep_how_far_the_fit_can_be_trusted(calibrated_ds, fit)
+        self._keep_what_the_fit_was_made_with(calibrated_ds, fit, along_track_seconds)
         calibrated_ds.attrs["gcp_count"] = n_gcps
         calibrated_ds.attrs["median_gcp_distance"] = mdist
 
@@ -1252,6 +1253,22 @@ class Reader(ABC):
             "time_offset_uncertainty_in_seconds": float(uncertainty[0]),
             "attitude_uncertainty_in_degrees": tuple(float(u) for u in uncertainty[1:]),
             "covariance_in_seconds_and_degrees": covariance.tolist(),
+        })
+
+    @staticmethod
+    def _keep_what_the_fit_was_made_with(calibrated_ds, fit, along_track_seconds):
+        """Record the fit's settings, the versions that matched and fitted, and the coarse shift.
+
+        The clock is decided by the platform alone; how far along its own track the
+        pass was found to sit is what would show that decision wrong, so it is kept.
+        """
+        from importlib.metadata import version
+
+        calibrated_ds.attrs.setdefault("navigation", {}).update({
+            "fit_settings": dict(fit.settings),
+            "pyorbital_version": version("pyorbital"),
+            "georeferencer_version": version("georeferencer"),
+            "coarse_along_track_shift_in_seconds": float(along_track_seconds),
         })
 
     def _record_how_the_navigation_was_fitted(self, calibrated_ds, attitude_in_radians,
