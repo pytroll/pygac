@@ -2566,8 +2566,10 @@ def test_the_record_says_how_far_its_navigation_can_be_trusted(pod_file_with_tbm
     assert record["time_offset_uncertainty_in_seconds"] == pytest.approx(0.1)
     np.testing.assert_allclose(record["attitude_uncertainty_in_degrees"], in_degrees[1:])
     assert "time_pitch_correlation" not in record
-    np.testing.assert_allclose(record["covariance_in_seconds_and_degrees"],
-                               correlation * np.outer(in_degrees, in_degrees))
+    # a netCDF attribute holds one dimension, so the matrix is kept row by row
+    flat = record["covariance_in_seconds_and_degrees"]
+    assert np.ndim(flat) == 1
+    np.testing.assert_allclose(np.reshape(flat, (4, 4)), correlation * np.outer(in_degrees, in_degrees))
 
 
 def test_the_record_says_what_its_navigation_was_fitted_with(pod_file_with_tbm_header, pod_tle, monkeypatch):

@@ -1253,7 +1253,7 @@ class Reader(ABC):
 
         pyorbital gives them in seconds and radians; the record quotes the attitude in
         degrees, so its uncertainty and the covariance follow. The covariance is kept
-        whole, as a baseline a later and richer fit can be compared with. Of time and
+        whole, row by row, as a baseline a later and richer fit can be compared with. Of time and
         pitch one is always held, and a held parameter carries zeros: it was asserted.
         """
         to_record = np.array([1.0, *[np.rad2deg(1.0)] * 3])
@@ -1262,7 +1262,8 @@ class Reader(ABC):
         calibrated_ds.attrs.setdefault("navigation", {}).update({
             "time_offset_uncertainty_in_seconds": float(uncertainty[0]),
             "attitude_uncertainty_in_degrees": tuple(float(u) for u in uncertainty[1:]),
-            "covariance_in_seconds_and_degrees": covariance.tolist(),
+            # row by row: a netCDF attribute holds a single dimension
+            "covariance_in_seconds_and_degrees": covariance.ravel().tolist(),
         })
 
     @staticmethod
