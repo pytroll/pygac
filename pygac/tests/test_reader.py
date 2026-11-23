@@ -2510,3 +2510,38 @@ def test_a_refused_pass_keeps_its_leftovers_too(pod_file_with_tbm_header, pod_tl
 
     assert dataset.attrs["georeferenced"] is False
     np.testing.assert_array_equal(dataset["gcp_x_residual"].values, np.full(8, 0.25))
+
+
+def test_the_spread_of_the_leftovers_is_summarised_along_and_across(pod_file_with_tbm_header, pod_tle,
+                                                                    monkeypatch):
+    """The spread is quoted per axis and with its tail, since a median hides both.
+
+    Lines and samples are kept apart because they answer to different parameters:
+    along the track to time and pitch, across it to roll and yaw. The summary joins
+    the navigation record beside what the fit changed, rather than replacing it.
+    """
+    misses = np.column_stack([np.full(60, 0.3), np.tile([0.4, -0.4], 30)])
+    misses[[0, 1]] = [[3.0, 4.0], [np.nan, np.nan]]
+    navigate_with(monkeypatch, misses=misses)
+    reader = a_georeferenced_pass(pod_file_with_tbm_header, pod_tle, monkeypatch)
+
+    record = reader.get_calibrated_dataset().attrs["navigation"]
+
+    assert record["residual_rms_in_lines"] == pytest.approx(np.sqrt((9.0 + 0.09 * 58) / 59))
+    assert record["residual_rms_in_samples"] == pytest.approx(np.sqrt((16.0 + 0.16 * 58) / 59))
+    assert record["residual_p95_in_pixels"] == pytest.approx(
+        np.percentile(np.hypot(*np.vstack([[3.0, 4.0], misses[2:]]).T), 95))
+    assert record["georeferenced"] is True
+    assert "attitude_in_degrees" in record
+
+
+def test_a_refused_pass_keeps_the_spread_in_its_record(pod_file_with_tbm_header, pod_tle, monkeypatch):
+    """A pass turned away is told apart from one never tried by what its record still says."""
+    navigate_with(monkeypatch, count=8, misses=np.full((8, 2), 0.25))
+    reader = a_georeferenced_pass(pod_file_with_tbm_header, pod_tle, monkeypatch)
+
+    with pytest.warns(RuntimeWarning):
+        record = reader.get_calibrated_dataset().attrs["navigation"]
+
+    assert record["georeferenced"] is False
+    assert record["residual_rms_in_samples"] == pytest.approx(0.25)

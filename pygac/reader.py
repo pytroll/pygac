@@ -1214,12 +1214,26 @@ class Reader(ABC):
 
     @staticmethod
     def _keep_what_the_fit_left(calibrated_ds, fit):
-        """Store what is left of each control point's miss, in swath lines and samples."""
+        """Store what is left of each control point's miss, in swath lines and samples, and its spread.
+
+        The spread is taken over the points the fit used, so it shares their optimism: a
+        point fitted against says less about the navigation than one held out would.
+        """
         for name, component, axis in (("gcp_y_residual", 0, "lines"), ("gcp_x_residual", 1, "samples")):
             calibrated_ds[name] = xr.DataArray(
                 fit.misses[:, component], dims=["points"],
                 attrs={"units": "swath pixels",
                        "long_name": f"control point miss left after the navigation fit, in {axis}"})
+        placed = fit.misses[np.all(np.isfinite(fit.misses), axis=1)]
+        if len(placed) == 0:
+            placed = np.full((1, 2), np.nan)
+        lines_rms, samples_rms = np.sqrt(np.mean(placed ** 2, axis=0))
+        # Written before the fit is judged, so a refused pass keeps it.
+        calibrated_ds.attrs.setdefault("navigation", {}).update({
+            "residual_rms_in_lines": float(lines_rms),
+            "residual_rms_in_samples": float(samples_rms),
+            "residual_p95_in_pixels": float(np.percentile(np.hypot(*placed.T), 95)),
+        })
 
     def _record_how_the_navigation_was_fitted(self, calibrated_ds, attitude_in_radians,
                                               time_offset_in_seconds):
@@ -1232,13 +1246,13 @@ class Reader(ABC):
         calibrated_ds.attrs["estimated_attitude_in_degrees"] = tuple(np.rad2deg(attitude_in_radians))
         calibrated_ds.attrs["estimated_time_offset_in_seconds"] = time_offset_in_seconds
         calibrated_ds.attrs["navigation_metadata_schema_version"] = NAVIGATION_METADATA_SCHEMA_VERSION
-        calibrated_ds.attrs["navigation"] = {
+        calibrated_ds.attrs.setdefault("navigation", {}).update({
             "attitude_in_degrees": tuple(np.rad2deg(attitude_in_radians)),
             "time_offset_in_seconds": time_offset_in_seconds,
             "gcp_count": calibrated_ds.attrs["gcp_count"],
             "element_age_in_days": self.element_age_in_days,
             "schema_version": NAVIGATION_METADATA_SCHEMA_VERSION,
-        }
+        })
 
     def _reject_an_incoherent_displacement_field(self, calibrated_ds):
         """Refuse matches that agree with no geometry.
