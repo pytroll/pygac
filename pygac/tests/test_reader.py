@@ -1233,8 +1233,26 @@ def use_a_stub_georeferencer(monkeypatch, stub):
 
     from pyorbital import geoloc_avhrr
     monkeypatch.setattr(georeferencer, "measure_swath_displacement", measures)
-    monkeypatch.setattr(geoloc_avhrr, "estimate_time_and_attitude_deviations", fits)
+    monkeypatch.setattr(geoloc_avhrr, "fit_navigation", answering_as_a_navigation_fit(fits))
 
+
+def answering_as_a_navigation_fit(fits):
+    """Wrap a stub written as the old fit's answer so it answers as pyorbital's fit does.
+
+    The stubs say what came back -- time, attitude, and the distances before and after --
+    which is all most of these tests care about. The fit now also hands back what it left
+    of each point's miss and how far it can be trusted; a stub that says nothing of those
+    leaves the misses at zero and the uncertainty unknown.
+    """
+    from pyorbital.geoloc_avhrr import NavigationFit
+
+    def fit_navigation(*args, **kwargs):
+        time_offset, attitude, (_, after) = fits(*args, **kwargs)
+        after = np.asarray(after, dtype=float)
+        return NavigationFit(time_offset, tuple(attitude), np.zeros((after.size, 2)), after,
+                             np.full((4, 4), np.nan), {})
+
+    return fit_navigation
 
 def record_a_coherent_field(calibrated_ds, count=60):
     """Populate the control point arrays the way the real georeferencer does.
@@ -2084,7 +2102,7 @@ def test_a_drifting_platform_has_its_pitch_held_while_its_time_is_fitted(
     from georeferencer import georeferencer
     from pyorbital import geoloc_avhrr
     monkeypatch.setattr(georeferencer, "measure_swath_displacement", measures_no_drift)
-    monkeypatch.setattr(geoloc_avhrr, "estimate_time_and_attitude_deviations", fits)
+    monkeypatch.setattr(geoloc_avhrr, "fit_navigation", answering_as_a_navigation_fit(fits))
 
     reader = LACPODReader(tle_dir=pod_tle.parent, tle_name=pod_tle.name,
                           compute_lonlats_from_tles=True, reference_image="some_world_image.tif")
@@ -2145,7 +2163,7 @@ def test_a_pass_past_its_platform_table_is_fitted_end_to_end(pod_file_with_tbm_h
     from georeferencer import georeferencer
     from pyorbital import geoloc_avhrr
     monkeypatch.setattr(georeferencer, "measure_swath_displacement", measures_no_drift)
-    monkeypatch.setattr(geoloc_avhrr, "estimate_time_and_attitude_deviations", fits)
+    monkeypatch.setattr(geoloc_avhrr, "fit_navigation", answering_as_a_navigation_fit(fits))
     reader = LACPODReader(tle_dir=pod_tle.parent, tle_name=pod_tle.name,
                           compute_lonlats_from_tles=True, reference_image="some_world_image.tif")
     reader.read(pod_file_with_tbm_header)
@@ -2175,7 +2193,7 @@ def test_a_pass_records_whether_a_clock_measurement_reached_it(pod_file_with_tbm
     from georeferencer import georeferencer
     from pyorbital import geoloc_avhrr
     monkeypatch.setattr(georeferencer, "measure_swath_displacement", measures_no_drift)
-    monkeypatch.setattr(geoloc_avhrr, "estimate_time_and_attitude_deviations", fits)
+    monkeypatch.setattr(geoloc_avhrr, "fit_navigation", answering_as_a_navigation_fit(fits))
     reader = LACPODReader(tle_dir=pod_tle.parent, tle_name=pod_tle.name,
                           compute_lonlats_from_tles=True, reference_image="some_world_image.tif")
     reader.read(pod_file_with_tbm_header)

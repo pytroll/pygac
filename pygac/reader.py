@@ -1148,7 +1148,7 @@ class Reader(ABC):
                 calibrated_ds.attrs["pre_alignment_applied"] = True
 
         from georeferencer.georeferencer import measure_swath_displacement
-        from pyorbital.geoloc_avhrr import estimate_time_and_attitude_deviations
+        from pyorbital import geoloc_avhrr
 
         _, sat_zen, _, sun_zen, _ = self.get_angles()
         when = self.get_times()[0]
@@ -1158,7 +1158,10 @@ class Reader(ABC):
             calibrated_ds, sun_zen, sat_zen, self.reference_image, self.dem)
         along_track_seconds = seconds_from_scanlines(along_track_lines,
                                                     calibrated_ds["times"].values)
-        time_diff_s, (roll, pitch, yaw), (odistances, mdistances) = estimate_time_and_attitude_deviations(
+        # Fitted in swath pixels with a robust loss: the matching is about equally precise,
+        # in pixels, anywhere in the swath, and a few confident mismatches must not drag
+        # the points that agree.
+        fit = geoloc_avhrr.fit_navigation(
             gcps, gcp_lonlats[:, 0], gcp_lonlats[:, 1],
             calibrated_ds["times"][0].values,
             calibrated_ds.attrs["tle"],
@@ -1170,14 +1173,15 @@ class Reader(ABC):
             solve_for_time=should_fit_the_clock(self.spacecraft_name),
             solve_for_pitch=should_fit_the_pitch(self.spacecraft_name),
         )
+        time_diff_s, (roll, pitch, yaw) = fit.time_offset, fit.attitude
 
         calibrated_ds.attrs["clock_table_covers_the_pass"] = bool(
             clock_table_covers(self.spacecraft_name, when))
 
         # Record how the fit was judged before deciding, so a rejected pass is
         # distinguishable downstream from one never attempted.
-        n_gcps = len(mdistances)
-        mdist = np.median(mdistances) if n_gcps else np.nan
+        n_gcps = len(fit.distances)
+        mdist = np.median(fit.distances) if n_gcps else np.nan
         calibrated_ds.attrs["gcp_count"] = n_gcps
         calibrated_ds.attrs["median_gcp_distance"] = mdist
 
