@@ -2545,3 +2545,26 @@ def test_a_refused_pass_keeps_the_spread_in_its_record(pod_file_with_tbm_header,
 
     assert record["georeferenced"] is False
     assert record["residual_rms_in_samples"] == pytest.approx(0.25)
+
+
+def test_the_record_says_how_far_its_navigation_can_be_trusted(pod_file_with_tbm_header, pod_tle, monkeypatch):
+    """The fitted time and attitude come with their uncertainty, in the units the record quotes.
+
+    The record publishes the attitude in degrees, so its uncertainty and covariance are
+    in degrees too. One of time and pitch is always held, and a held parameter was
+    asserted rather than measured: it carries no uncertainty.
+    """
+    spread = np.array([0.1, 2e-4, 0.0, 4e-4])   # seconds and radians; the pitch was held
+    correlation = np.eye(4)
+    correlation[0, 1] = correlation[1, 0] = 0.3
+    navigate_with(monkeypatch, covariance=correlation * np.outer(spread, spread))
+    reader = a_georeferenced_pass(pod_file_with_tbm_header, pod_tle, monkeypatch)
+
+    record = reader.get_calibrated_dataset().attrs["navigation"]
+
+    in_degrees = spread * [1.0, *[180 / np.pi] * 3]
+    assert record["time_offset_uncertainty_in_seconds"] == pytest.approx(0.1)
+    np.testing.assert_allclose(record["attitude_uncertainty_in_degrees"], in_degrees[1:])
+    assert "time_pitch_correlation" not in record
+    np.testing.assert_allclose(record["covariance_in_seconds_and_degrees"],
+                               correlation * np.outer(in_degrees, in_degrees))

@@ -1183,6 +1183,7 @@ class Reader(ABC):
         n_gcps = len(fit.distances)
         mdist = np.median(fit.distances) if n_gcps else np.nan
         self._keep_what_the_fit_left(calibrated_ds, fit)
+        self._keep_how_far_the_fit_can_be_trusted(calibrated_ds, fit)
         calibrated_ds.attrs["gcp_count"] = n_gcps
         calibrated_ds.attrs["median_gcp_distance"] = mdist
 
@@ -1233,6 +1234,24 @@ class Reader(ABC):
             "residual_rms_in_lines": float(lines_rms),
             "residual_rms_in_samples": float(samples_rms),
             "residual_p95_in_pixels": float(np.percentile(np.hypot(*placed.T), 95)),
+        })
+
+    @staticmethod
+    def _keep_how_far_the_fit_can_be_trusted(calibrated_ds, fit):
+        """Record the uncertainty of the fitted time offset and attitude.
+
+        pyorbital gives them in seconds and radians; the record quotes the attitude in
+        degrees, so its uncertainty and the covariance follow. The covariance is kept
+        whole, as a baseline a later and richer fit can be compared with. Of time and
+        pitch one is always held, and a held parameter carries zeros: it was asserted.
+        """
+        to_record = np.array([1.0, *[np.rad2deg(1.0)] * 3])
+        covariance = np.asarray(fit.covariance, dtype=float) * np.outer(to_record, to_record)
+        uncertainty = np.sqrt(np.diag(covariance))
+        calibrated_ds.attrs.setdefault("navigation", {}).update({
+            "time_offset_uncertainty_in_seconds": float(uncertainty[0]),
+            "attitude_uncertainty_in_degrees": tuple(float(u) for u in uncertainty[1:]),
+            "covariance_in_seconds_and_degrees": covariance.tolist(),
         })
 
     def _record_how_the_navigation_was_fitted(self, calibrated_ds, attitude_in_radians,
