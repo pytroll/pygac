@@ -1207,6 +1207,11 @@ class Reader(ABC):
         self._record_how_the_navigation_was_fitted(
             calibrated_ds, (roll, pitch, yaw), time_diff_s + preliminary_time_diff_s
         )
+        # The fit starts from the pre-aligned times, so reproducing it needs both parts.
+        calibrated_ds.attrs["navigation"].update({
+            "pre_alignment_time_offset_in_seconds": preliminary_time_diff_s,
+            "fitted_time_offset_in_seconds": time_diff_s,
+        })
 
         if self.dem:
             from georeferencer.georeferencer import orthocorrection

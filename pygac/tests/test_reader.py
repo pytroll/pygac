@@ -2588,3 +2588,16 @@ def test_the_record_says_what_its_navigation_was_fitted_with(pod_file_with_tbm_h
     assert record["pyorbital_version"] == version("pyorbital")
     assert record["georeferencer_version"] == version("georeferencer")
     assert record["coarse_along_track_shift_in_seconds"] == pytest.approx(12 * seconds_per_line)
+
+
+def test_the_two_time_offsets_are_kept_apart(pod_file_with_tbm_header, pod_tle, monkeypatch):
+    """The fit starts from the pre-aligned times, so reproducing it needs both parts, not their sum."""
+    navigate_with(monkeypatch, time_offset=0.25)
+    reader = a_georeferenced_pass(pod_file_with_tbm_header, pod_tle, monkeypatch, adjust_clock_drift=False)
+    monkeypatch.setattr(reader, "_correct_time_offset", lambda calibrated_ds: 1.5)
+
+    record = reader.get_calibrated_dataset().attrs["navigation"]
+
+    assert record["pre_alignment_time_offset_in_seconds"] == 1.5
+    assert record["fitted_time_offset_in_seconds"] == 0.25
+    assert record["time_offset_in_seconds"] == 1.75
