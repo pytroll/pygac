@@ -1226,7 +1226,10 @@ def use_a_stub_georeferencer(monkeypatch, stub):
 
     def measures(calibrated_ds, *args, **rest):
         measures.answer = stub(calibrated_ds, *args, **rest)
-        return np.zeros((60, 2)), np.zeros((60, 2)), 0.0
+        # as many control points as the stub recorded, as the real georeferencer returns
+        count = calibrated_ds["gcp_x"].size
+        return np.column_stack([np.linspace(0.0, 2.0, count), np.linspace(60.0, 1990.0, count)]), \
+            np.zeros((count, 2)), 0.0
 
     def fits(gcps, ref_lons, ref_lats, start_time, tle, max_scan_angle, **rest):
         return measures.answer
@@ -1249,7 +1252,9 @@ def answering_as_a_navigation_fit(fits):
     def fit_navigation(*args, **kwargs):
         time_offset, attitude, (_, after) = fits(*args, **kwargs)
         after = np.asarray(after, dtype=float)
-        return NavigationFit(time_offset, tuple(attitude), np.zeros((after.size, 2)), after,
+        # one miss per control point, as pyorbital gives them; the count the stub reports
+        # is carried by the distances, which is what the reader counts
+        return NavigationFit(time_offset, tuple(attitude), np.zeros((len(args[0]), 2)), after,
                              np.full((4, 4), np.nan), {})
 
     return fit_navigation
@@ -1268,7 +1273,8 @@ def navigate_with(monkeypatch, count=60, time_offset=0.0, attitude=(0.0, 0.0, 0.
 
     def measures(calibrated_ds, *args, **rest):
         record_a_coherent_field(calibrated_ds, count)
-        return np.zeros((count, 2)), np.zeros((count, 2)), along_track_lines
+        spread_over_the_swath = np.column_stack([np.linspace(0.0, 2.0, count), np.linspace(60.0, 1990.0, count)])
+        return spread_over_the_swath, np.zeros((count, 2)), along_track_lines
 
     def fits(gcps, *args, **rest):
         return NavigationFit(time_offset, tuple(attitude),
@@ -2612,8 +2618,8 @@ def test_products_carrying_the_fit_quality_are_told_apart(pod_file_with_tbm_head
 
     dataset = reader.get_calibrated_dataset()
 
-    assert dataset.attrs["navigation"]["schema_version"] == 4
-    assert dataset.attrs["navigation_metadata_schema_version"] == 4
+    assert dataset.attrs["navigation"]["schema_version"] == 5
+    assert dataset.attrs["navigation_metadata_schema_version"] == 5
 
 
 def test_each_pass_says_in_the_log_how_well_it_was_navigated(pod_file_with_tbm_header, pod_tle, monkeypatch, caplog):
@@ -2638,3 +2644,30 @@ def test_each_pass_says_in_the_log_how_well_it_was_navigated(pod_file_with_tbm_h
     assert "60 control points" in summary[0]
     assert "time offset 0.44 s" in summary[0]
     assert "rms 0.30 lines, 0.40 samples" in summary[0]
+
+
+def test_the_record_says_how_far_the_trustworthy_points_ended_up(pod_file_with_tbm_header, pod_tle, monkeypatch,
+                                                                  caplog):
+    """How good the corrected navigation is, apart from the matcher's noise and its mistakes.
+
+    Mismatches are set aside and counted; the spread of the rest is quoted; and the
+    part of it that varies smoothly across the swath is quoted on its own, as the
+    navigation the fit did not remove. The pass's log line says the same.
+    """
+    import logging
+
+    rng = np.random.default_rng(0)
+    across = np.linspace(-1.0, 1.0, 300)
+    misses = np.column_stack([np.zeros(300), 0.8 * across]) + rng.normal(0.0, 0.3, (300, 2))
+    misses[[3, 50, 120]] += [[10.0, -14.0]] * 3
+    navigate_with(monkeypatch, count=300, misses=misses)
+    reader = a_georeferenced_pass(pod_file_with_tbm_header, pod_tle, monkeypatch)
+
+    with caplog.at_level(logging.INFO, logger="pygac.reader"):
+        record = reader.get_calibrated_dataset().attrs["navigation"]
+
+    assert 3 <= record["residual_mismatch_count"] <= 4
+    np.testing.assert_allclose(record["residual_trusted_rms_in_lines"], 0.3, rtol=0.2)
+    assert record["residual_systematic_rms_in_samples"] == pytest.approx(0.8 * np.sqrt(np.mean(across ** 2)), rel=0.15)
+    assert record["residual_systematic_rms_in_lines"] < 0.1
+    assert "mismatches" in caplog.text and "smooth part" in caplog.text

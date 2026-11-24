@@ -115,7 +115,9 @@ MAX_UNEXPLAINED_DISPLACEMENT_PX = 8.0
 #: record their spread, the uncertainty and covariance of the fitted parameters, the
 #: fit's settings and package versions, the coarse along-track shift, and the
 #: pre-alignment and fitted time offsets apart.
-NAVIGATION_METADATA_SCHEMA_VERSION = 4
+#: 5 sets mismatches aside and adds their count, the spread of the trusted points, and
+#: the smooth part of that spread across the swath: the navigation left wrong.
+NAVIGATION_METADATA_SCHEMA_VERSION = 5
 
 # rpy values from
 # here:http://yyy.rsmas.miami.edu/groups/rrsl/pathfinder/Processing/proc_app_a.html
@@ -1187,16 +1189,20 @@ class Reader(ABC):
         # distinguishable downstream from one never attempted.
         n_gcps = len(fit.distances)
         mdist = np.median(fit.distances) if n_gcps else np.nan
-        self._keep_what_the_fit_left(calibrated_ds, fit)
+        self._keep_what_the_fit_left(calibrated_ds, fit, gcps)
         self._keep_how_far_the_fit_can_be_trusted(calibrated_ds, fit)
         self._keep_what_the_fit_was_made_with(calibrated_ds, fit, along_track_seconds)
         record = calibrated_ds.attrs["navigation"]
         # Said before the fit is judged, so a refused pass shows it beside its reason.
         LOG.info("%s navigation fit: %d control points, time offset %.2f s, attitude %s degrees "
-                 "(roll, pitch, yaw); left over, rms %.2f lines, %.2f samples",
+                 "(roll, pitch, yaw); left over, rms %.2f lines, %.2f samples; %d mismatches; "
+                 "trusted rms %.2f lines, %.2f samples; smooth part %.2f lines, %.2f samples",
                  self.filename, n_gcps, time_diff_s,
                  ", ".join(f"{angle:.4f}" for angle in np.rad2deg((roll, pitch, yaw))),
-                 record["residual_rms_in_lines"], record["residual_rms_in_samples"])
+                 record["residual_rms_in_lines"], record["residual_rms_in_samples"],
+                 record["residual_mismatch_count"],
+                 record["residual_trusted_rms_in_lines"], record["residual_trusted_rms_in_samples"],
+                 record["residual_systematic_rms_in_lines"], record["residual_systematic_rms_in_samples"])
         calibrated_ds.attrs["gcp_count"] = n_gcps
         calibrated_ds.attrs["median_gcp_distance"] = mdist
 
@@ -1232,7 +1238,7 @@ class Reader(ABC):
         calibrated_ds["times"].data = self._times_as_np_datetime64
 
     @staticmethod
-    def _keep_what_the_fit_left(calibrated_ds, fit):
+    def _keep_what_the_fit_left(calibrated_ds, fit, gcps):
         """Store what is left of each control point's miss, in swath lines and samples, and its spread.
 
         The spread is taken over the points the fit used, so it shares their optimism: a
@@ -1252,6 +1258,18 @@ class Reader(ABC):
             "residual_rms_in_lines": float(lines_rms),
             "residual_rms_in_samples": float(samples_rms),
             "residual_p95_in_pixels": float(np.percentile(np.hypot(*placed.T), 95)),
+        })
+        # Mismatches set aside, the spread of the rest, and its smooth part across the
+        # swath: the navigation the fit did not remove, apart from the matcher's noise.
+        from pyorbital.geoloc_avhrr import judge_what_a_fit_left
+
+        judged = judge_what_a_fit_left(gcps, fit.misses)
+        calibrated_ds.attrs["navigation"].update({
+            "residual_mismatch_count": judged.mismatches,
+            "residual_trusted_rms_in_lines": judged.trusted_rms[0],
+            "residual_trusted_rms_in_samples": judged.trusted_rms[1],
+            "residual_systematic_rms_in_lines": judged.systematic_rms[0],
+            "residual_systematic_rms_in_samples": judged.systematic_rms[1],
         })
 
     @staticmethod
