@@ -1525,7 +1525,9 @@ def test_the_navigation_travels_as_one_record(pod_file_with_tbm_header, pod_tle,
     reader.read(pod_file_with_tbm_header)
     dataset = reader.get_calibrated_dataset()
 
-    assert dataset.attrs["navigation"]["attitude_in_degrees"] == pytest.approx(np.rad2deg(attitude))
+    roll, pitch, yaw = np.rad2deg(attitude)
+    assert dataset.attrs["navigation"]["attitude_in_degrees"] == {
+        "roll": pytest.approx(roll), "pitch": pytest.approx(pitch), "yaw": pytest.approx(yaw)}
 
 
 def test_the_navigation_record_says_which_version_of_itself_it_is(pod_file_with_tbm_header,
@@ -2575,9 +2577,12 @@ def test_the_record_says_how_far_its_navigation_can_be_trusted(pod_file_with_tbm
 
     in_degrees = spread * [1.0, *[180 / np.pi] * 3]
     assert record["time_offset_uncertainty_in_seconds"] == pytest.approx(0.1)
-    np.testing.assert_allclose(record["attitude_uncertainty_in_degrees"], in_degrees[1:])
+    assert record["attitude_uncertainty_in_degrees"] == {
+        "roll": pytest.approx(in_degrees[1]), "pitch": pytest.approx(in_degrees[2]),
+        "yaw": pytest.approx(in_degrees[3])}
     assert "time_pitch_correlation" not in record
-    # a netCDF attribute holds one dimension, so the matrix is kept row by row
+    # a netCDF attribute holds one dimension, so the matrix is kept row by row, and says in what order
+    assert record["covariance_order"] == "time_offset, roll, pitch, yaw"
     flat = record["covariance_in_seconds_and_degrees"]
     assert np.ndim(flat) == 1
     np.testing.assert_allclose(np.reshape(flat, (4, 4)), correlation * np.outer(in_degrees, in_degrees))
@@ -2623,8 +2628,8 @@ def test_products_carrying_the_fit_quality_are_told_apart(pod_file_with_tbm_head
 
     dataset = reader.get_calibrated_dataset()
 
-    assert dataset.attrs["navigation"]["schema_version"] == 6
-    assert dataset.attrs["navigation_metadata_schema_version"] == 6
+    assert dataset.attrs["navigation"]["schema_version"] == 7
+    assert dataset.attrs["navigation_metadata_schema_version"] == 7
 
 
 def test_each_pass_says_in_the_log_how_well_it_was_navigated(pod_file_with_tbm_header, pod_tle, monkeypatch, caplog):

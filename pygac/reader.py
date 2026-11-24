@@ -119,7 +119,10 @@ MAX_UNEXPLAINED_DISPLACEMENT_PX = 8.0
 #: the smooth part of that spread across the swath: the navigation left wrong.
 #: 6 lets the fit allow for the terrain height of each control point when a DEM is given,
 #: keeps the heights as ``gcp_height``, and records in the fit settings whether it did.
-NAVIGATION_METADATA_SCHEMA_VERSION = 6
+#: 7 puts the pre-alignment, the clock table's reach and the field's coherence into the
+#: record, names the attitude angles in it (roll, pitch, yaw) rather than leaving a bare
+#: triplet, and says in which order the flattened covariance runs.
+NAVIGATION_METADATA_SCHEMA_VERSION = 7
 
 # rpy values from
 # here:http://yyy.rsmas.miami.edu/groups/rrsl/pathfinder/Processing/proc_app_a.html
@@ -293,6 +296,11 @@ def should_fit_the_pitch(spacecraft_name):
     """
     return has_a_trusted_clock(spacecraft_name)
 
+
+def _by_axis(angles):
+    """Name each of three attitude values by the axis it turns about."""
+    roll, pitch, yaw = (float(angle) for angle in angles)
+    return {"roll": roll, "pitch": pitch, "yaw": yaw}
 
 def _note_on_the_pass(calibrated_ds, name, value):
     """Record a fact about how the pass was georeferenced, in the navigation record and beside it.
@@ -1319,9 +1327,10 @@ class Reader(ABC):
         uncertainty = np.sqrt(np.diag(covariance))
         calibrated_ds.attrs.setdefault("navigation", {}).update({
             "time_offset_uncertainty_in_seconds": float(uncertainty[0]),
-            "attitude_uncertainty_in_degrees": tuple(float(u) for u in uncertainty[1:]),
+            "attitude_uncertainty_in_degrees": _by_axis(uncertainty[1:]),
             # row by row: a netCDF attribute holds a single dimension
             "covariance_in_seconds_and_degrees": covariance.ravel().tolist(),
+            "covariance_order": "time_offset, roll, pitch, yaw",
         })
 
     @staticmethod
@@ -1352,7 +1361,7 @@ class Reader(ABC):
         calibrated_ds.attrs["estimated_time_offset_in_seconds"] = time_offset_in_seconds
         calibrated_ds.attrs["navigation_metadata_schema_version"] = NAVIGATION_METADATA_SCHEMA_VERSION
         calibrated_ds.attrs.setdefault("navigation", {}).update({
-            "attitude_in_degrees": tuple(np.rad2deg(attitude_in_radians)),
+            "attitude_in_degrees": _by_axis(np.rad2deg(attitude_in_radians)),
             "time_offset_in_seconds": time_offset_in_seconds,
             "gcp_count": calibrated_ds.attrs["gcp_count"],
             "element_age_in_days": self.element_age_in_days,
