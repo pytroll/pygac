@@ -2614,3 +2614,27 @@ def test_products_carrying_the_fit_quality_are_told_apart(pod_file_with_tbm_head
 
     assert dataset.attrs["navigation"]["schema_version"] == 4
     assert dataset.attrs["navigation_metadata_schema_version"] == 4
+
+
+def test_each_pass_says_in_the_log_how_well_it_was_navigated(pod_file_with_tbm_header, pod_tle, monkeypatch, caplog):
+    """A run log shows, pass by pass and without asking for debug output, how the fit went.
+
+    The figures are the ones the product records: how many points the fit stood on,
+    what it changed, and the spread of what it left in lines and samples. They are
+    said before the fit is judged, so a refused pass shows them beside its reason.
+    """
+    import logging
+
+    misses = np.column_stack([np.full(60, 0.3), np.full(60, -0.4)])
+    navigate_with(monkeypatch, time_offset=0.44, misses=misses)
+    reader = a_georeferenced_pass(pod_file_with_tbm_header, pod_tle, monkeypatch)
+
+    with caplog.at_level(logging.INFO, logger="pygac.reader"):
+        reader.get_calibrated_dataset()
+
+    said = [record.getMessage() for record in caplog.records if record.levelno == logging.INFO]
+    summary = [message for message in said if "navigation fit" in message]
+    assert len(summary) == 1, said
+    assert "60 control points" in summary[0]
+    assert "time offset 0.44 s" in summary[0]
+    assert "rms 0.30 lines, 0.40 samples" in summary[0]

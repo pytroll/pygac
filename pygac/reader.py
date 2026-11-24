@@ -1190,6 +1190,13 @@ class Reader(ABC):
         self._keep_what_the_fit_left(calibrated_ds, fit)
         self._keep_how_far_the_fit_can_be_trusted(calibrated_ds, fit)
         self._keep_what_the_fit_was_made_with(calibrated_ds, fit, along_track_seconds)
+        record = calibrated_ds.attrs["navigation"]
+        # Said before the fit is judged, so a refused pass shows it beside its reason.
+        LOG.info("%s navigation fit: %d control points, time offset %.2f s, attitude %s degrees "
+                 "(roll, pitch, yaw); left over, rms %.2f lines, %.2f samples",
+                 self.filename, n_gcps, time_diff_s,
+                 ", ".join(f"{angle:.4f}" for angle in np.rad2deg((roll, pitch, yaw))),
+                 record["residual_rms_in_lines"], record["residual_rms_in_samples"])
         calibrated_ds.attrs["gcp_count"] = n_gcps
         calibrated_ds.attrs["median_gcp_distance"] = mdist
 
