@@ -294,6 +294,15 @@ def should_fit_the_pitch(spacecraft_name):
     return has_a_trusted_clock(spacecraft_name)
 
 
+def _note_on_the_pass(calibrated_ds, name, value):
+    """Record a fact about how the pass was georeferenced, in the navigation record and beside it.
+
+    The record is what reaches the product whole; the attribute beside it is kept for
+    those who already read it there.
+    """
+    calibrated_ds.attrs[name] = value
+    calibrated_ds.attrs.setdefault("navigation", {})[name] = value
+
 def _reject_a_fit_resting_on(bound, fitted, what):
     """Refuse a fit whose *fitted* value has run to *bound*.
 
@@ -1152,9 +1161,9 @@ class Reader(ABC):
                 # estimated the GCP stage may still succeed from the uncorrected
                 # position, so carry on rather than discarding the registration.
                 LOG.warning("Could not pre-align the swath, continuing without it: %s", err)
-                calibrated_ds.attrs["pre_alignment_applied"] = False
+                _note_on_the_pass(calibrated_ds, "pre_alignment_applied", False)
             else:
-                calibrated_ds.attrs["pre_alignment_applied"] = True
+                _note_on_the_pass(calibrated_ds, "pre_alignment_applied", True)
 
         from georeferencer.georeferencer import measure_swath_displacement
         from pyorbital import geoloc_avhrr
@@ -1190,8 +1199,8 @@ class Reader(ABC):
         )
         time_diff_s, (roll, pitch, yaw) = fit.time_offset, fit.attitude
 
-        calibrated_ds.attrs["clock_table_covers_the_pass"] = bool(
-            clock_table_covers(self.spacecraft_name, when))
+        _note_on_the_pass(calibrated_ds, "clock_table_covers_the_pass",
+                          bool(clock_table_covers(self.spacecraft_name, when)))
 
         # Record how the fit was judged before deciding, so a rejected pass is
         # distinguishable downstream from one never attempted.
@@ -1364,7 +1373,7 @@ class Reader(ABC):
         displacements = np.column_stack([calibrated_ds["gcp_y_displacement"].values,
                                          calibrated_ds["gcp_x_displacement"].values])
         scatter = displacement_scatter(points, displacements)
-        calibrated_ds.attrs["unexplained_displacement_in_pixels"] = scatter
+        _note_on_the_pass(calibrated_ds, "unexplained_displacement_in_pixels", float(scatter))
         if scatter > MAX_UNEXPLAINED_DISPLACEMENT_PX:
             raise RuntimeError(
                 f"The displacement field leaves {scatter:.1f} pixels unexplained by any "

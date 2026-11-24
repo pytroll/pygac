@@ -1261,7 +1261,7 @@ def answering_as_a_navigation_fit(fits):
 
 def navigate_with(monkeypatch, count=60, time_offset=0.0, attitude=(0.0, 0.0, 0.0), distance=1000.0,
                   misses=None, covariance=None, settings=None, along_track_lines=0.0, gcp_lonlats=None,
-                  fits=None):
+                  fits=None, field=None):
     """Stand in for the matching and for pyorbital's fit, saying everything the fit returns.
 
     The matching leaves a coherent field behind and reports *along_track_lines* of coarse
@@ -1274,7 +1274,7 @@ def navigate_with(monkeypatch, count=60, time_offset=0.0, attitude=(0.0, 0.0, 0.
     fits_asked = fits
 
     def measures(calibrated_ds, *args, **rest):
-        record_a_coherent_field(calibrated_ds, count)
+        (field or record_a_coherent_field)(calibrated_ds, count)
         spread_over_the_swath = np.column_stack([np.linspace(0.0, 2.0, count), np.linspace(60.0, 1990.0, count)])
         lonlats = np.zeros((count, 2)) if gcp_lonlats is None else gcp_lonlats
         return spread_over_the_swath, lonlats, along_track_lines
@@ -2719,3 +2719,40 @@ def test_without_a_dem_the_references_are_taken_at_sea_level(pod_file_with_tbm_h
 
     assert asked[0].get("heights") is None
     assert "gcp_height" not in dataset
+
+
+def test_the_record_carries_how_the_pass_was_prepared_and_judged(pod_file_with_tbm_header, pod_tle, monkeypatch):
+    """The record is what reaches the product whole, so what the pass was judged on belongs in it.
+
+    Whether the swath was pre-aligned, whether a clock measurement reached it, and how
+    much of its displacement field no smooth geometry explains were left beside the
+    record, and the reader forwarding the record dropped them on the way to the file.
+    """
+    navigate_with(monkeypatch)
+    reader = a_georeferenced_pass(pod_file_with_tbm_header, pod_tle, monkeypatch, adjust_clock_drift=False)
+    monkeypatch.setattr(reader, "_correct_time_offset", lambda calibrated_ds: 1.5)
+
+    record = reader.get_calibrated_dataset().attrs["navigation"]
+
+    assert record["pre_alignment_applied"] is True
+    assert record["clock_table_covers_the_pass"] in (True, False)
+    assert record["unexplained_displacement_in_pixels"] == pytest.approx(0.0, abs=1e-6)
+
+
+def test_a_pass_refused_for_its_matches_keeps_what_they_were_judged_on(pod_file_with_tbm_header, pod_tle,
+                                                                      monkeypatch):
+    """A pass turned away for matches no geometry explains has to show how far they strayed."""
+    def scattered(calibrated_ds, count):
+        rng = np.random.default_rng(0)
+        for name, values in (("gcp_y", np.arange(float(count)) * 30), ("gcp_x", np.arange(float(count)) * 30),
+                             ("gcp_y_displacement", rng.uniform(-24, 24, count)),
+                             ("gcp_x_displacement", rng.uniform(-24, 24, count))):
+            calibrated_ds[name] = xr.DataArray(values, dims=["points"])
+    navigate_with(monkeypatch, field=scattered)
+    reader = a_georeferenced_pass(pod_file_with_tbm_header, pod_tle, monkeypatch)
+
+    with pytest.warns(RuntimeWarning):
+        record = reader.get_calibrated_dataset().attrs["navigation"]
+
+    assert record["georeferenced"] is False
+    assert record["unexplained_displacement_in_pixels"] > 8
