@@ -1260,7 +1260,8 @@ def answering_as_a_navigation_fit(fits):
     return fit_navigation
 
 def navigate_with(monkeypatch, count=60, time_offset=0.0, attitude=(0.0, 0.0, 0.0), distance=1000.0,
-                  misses=None, covariance=None, settings=None, along_track_lines=0.0):
+                  misses=None, covariance=None, settings=None, along_track_lines=0.0, gcp_lonlats=None,
+                  fits=None):
     """Stand in for the matching and for pyorbital's fit, saying everything the fit returns.
 
     The matching leaves a coherent field behind and reports *along_track_lines* of coarse
@@ -1270,13 +1271,17 @@ def navigate_with(monkeypatch, count=60, time_offset=0.0, attitude=(0.0, 0.0, 0.
     from georeferencer import georeferencer
     from pyorbital import geoloc_avhrr
     from pyorbital.geoloc_avhrr import NavigationFit
+    fits_asked = fits
 
     def measures(calibrated_ds, *args, **rest):
         record_a_coherent_field(calibrated_ds, count)
         spread_over_the_swath = np.column_stack([np.linspace(0.0, 2.0, count), np.linspace(60.0, 1990.0, count)])
-        return spread_over_the_swath, np.zeros((count, 2)), along_track_lines
+        lonlats = np.zeros((count, 2)) if gcp_lonlats is None else gcp_lonlats
+        return spread_over_the_swath, lonlats, along_track_lines
 
     def fits(gcps, *args, **rest):
+        if fits_asked is not None:
+            fits_asked.append(rest)
         return NavigationFit(time_offset, tuple(attitude),
                              np.zeros((count, 2)) if misses is None else misses,
                              np.full(count, float(distance)),
@@ -2618,8 +2623,8 @@ def test_products_carrying_the_fit_quality_are_told_apart(pod_file_with_tbm_head
 
     dataset = reader.get_calibrated_dataset()
 
-    assert dataset.attrs["navigation"]["schema_version"] == 5
-    assert dataset.attrs["navigation_metadata_schema_version"] == 5
+    assert dataset.attrs["navigation"]["schema_version"] == 6
+    assert dataset.attrs["navigation_metadata_schema_version"] == 6
 
 
 def test_each_pass_says_in_the_log_how_well_it_was_navigated(pod_file_with_tbm_header, pod_tle, monkeypatch, caplog):
@@ -2671,3 +2676,46 @@ def test_the_record_says_how_far_the_trustworthy_points_ended_up(pod_file_with_t
     assert record["residual_systematic_rms_in_samples"] == pytest.approx(0.8 * np.sqrt(np.mean(across ** 2)), rel=0.15)
     assert record["residual_systematic_rms_in_lines"] < 0.1
     assert "mismatches" in caplog.text and "smooth part" in caplog.text
+
+
+def test_the_fit_is_told_the_terrain_height_of_every_control_point(pod_file_with_tbm_header, pod_tle, monkeypatch,
+                                                                    tmp_path):
+    """Given a DEM, the fit allows for how high each reference stands.
+
+    A mountain is seen away from nadir of where it stands, and a fit not told so takes
+    that for navigation error and tilts the whole pass to meet it. The heights are kept
+    per point, next to the misses they explain.
+    """
+    import rasterio
+    from rasterio.transform import from_origin
+
+    dem = tmp_path / "dem.tif"
+    heights = np.arange(10.0)[None, :].repeat(10, axis=0) * 500.0     # rising eastwards, 500 m a column
+    with rasterio.open(dem, "w", driver="GTiff", height=10, width=10, count=1, dtype="float32", crs="EPSG:4326",
+                       transform=from_origin(0.0, 10.0, 1.0, 1.0)) as out:
+        out.write(heights.astype("float32"), 1)
+    lonlats = np.column_stack([np.linspace(0.5, 9.5, 60), np.full(60, 5.0)])
+    asked = []
+    navigate_with(monkeypatch, gcp_lonlats=lonlats, fits=asked)
+    from georeferencer import georeferencer
+    monkeypatch.setattr(georeferencer, "orthocorrection", lambda calibrated_ds, *args: calibrated_ds)
+    reader = a_georeferenced_pass(pod_file_with_tbm_header, pod_tle, monkeypatch, dem=str(dem))
+
+    dataset = reader.get_calibrated_dataset()
+
+    expected = np.floor(lonlats[:, 0]) * 500.0
+    np.testing.assert_allclose(asked[0]["heights"], expected)
+    np.testing.assert_allclose(dataset["gcp_height"].values, expected)
+    assert dataset["gcp_height"].attrs["units"] == "m"
+
+
+def test_without_a_dem_the_references_are_taken_at_sea_level(pod_file_with_tbm_header, pod_tle, monkeypatch):
+    """No DEM, no heights: the fit compares on the ellipsoid, as it always has."""
+    asked = []
+    navigate_with(monkeypatch, fits=asked)
+    reader = a_georeferenced_pass(pod_file_with_tbm_header, pod_tle, monkeypatch)
+
+    dataset = reader.get_calibrated_dataset()
+
+    assert asked[0].get("heights") is None
+    assert "gcp_height" not in dataset

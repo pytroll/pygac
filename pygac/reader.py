@@ -117,7 +117,9 @@ MAX_UNEXPLAINED_DISPLACEMENT_PX = 8.0
 #: pre-alignment and fitted time offsets apart.
 #: 5 sets mismatches aside and adds their count, the spread of the trusted points, and
 #: the smooth part of that spread across the swath: the navigation left wrong.
-NAVIGATION_METADATA_SCHEMA_VERSION = 5
+#: 6 lets the fit allow for the terrain height of each control point when a DEM is given,
+#: keeps the heights as ``gcp_height``, and records in the fit settings whether it did.
+NAVIGATION_METADATA_SCHEMA_VERSION = 6
 
 # rpy values from
 # here:http://yyy.rsmas.miami.edu/groups/rrsl/pathfinder/Processing/proc_app_a.html
@@ -1165,6 +1167,11 @@ class Reader(ABC):
             calibrated_ds, sun_zen, sat_zen, self.reference_image, self.dem)
         along_track_seconds = seconds_from_scanlines(along_track_lines,
                                                     calibrated_ds["times"].values)
+        heights = self._terrain_heights_at(gcp_lonlats) if self.dem else None
+        if heights is not None:
+            calibrated_ds["gcp_height"] = xr.DataArray(
+                heights, dims=["points"],
+                attrs={"units": "m", "long_name": "terrain height at the control point's reference position"})
         # Fitted in swath pixels with a robust loss: the matching is about equally precise,
         # in pixels, anywhere in the swath, and a few confident mismatches must not drag
         # the points that agree.
@@ -1179,6 +1186,7 @@ class Reader(ABC):
             time_offset_guess=along_track_seconds,
             solve_for_time=should_fit_the_clock(self.spacecraft_name),
             solve_for_pitch=should_fit_the_pitch(self.spacecraft_name),
+            heights=heights,
         )
         time_diff_s, (roll, pitch, yaw) = fit.time_offset, fit.attitude
 
@@ -1236,6 +1244,22 @@ class Reader(ABC):
 
             calibrated_ds = orthocorrection(calibrated_ds, sat_zen, self.dem)
         calibrated_ds["times"].data = self._times_as_np_datetime64
+
+    def _terrain_heights_at(self, lonlats):
+        """Read the DEM's height, in metres, under each control point's reference position.
+
+        The fit needs them: a mountain is seen away from nadir of where it stands, and a
+        fit not told so takes that for navigation error and tilts the whole pass to meet
+        it. Where the DEM has no value, open sea most often, the height is taken as zero.
+        """
+        import rasterio
+
+        with rasterio.open(self.dem) as dem:
+            heights = np.array([value[0] for value in dem.sample([(lon, lat) for lon, lat in lonlats])],
+                               dtype=float)
+            if dem.nodata is not None:
+                heights[heights == dem.nodata] = 0.0
+        return np.nan_to_num(heights, nan=0.0)
 
     @staticmethod
     def _keep_what_the_fit_left(calibrated_ds, fit, gcps):
