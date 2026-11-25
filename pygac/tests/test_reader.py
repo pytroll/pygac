@@ -2166,19 +2166,18 @@ def test_exactly_one_of_the_time_and_the_pitch_is_ever_fitted():
         assert should_fit_the_clock(platform) != should_fit_the_pitch(platform)
 
 
-def test_whether_to_fit_the_clock_is_settled_by_the_platform_alone():
-    """The choice is a property of the platform and of nothing about the pass.
+def test_every_platform_has_its_time_fitted_and_none_its_pitch():
+    """The time offset stands for any shift of the whole swath along its track, on every platform.
 
-    Deciding per pass -- on how far along its track a pass sits, or on whether a
-    clock table reaches it -- lets the same platform report a time offset on one
-    pass and a pitch on the next, from data that cannot tell the two apart. Every
-    platform but Metop therefore has its time fitted, always.
+    Such a shift is not only a clock error: on MetOp, whose clocks are trusted, the
+    control points still put the swath about a quarter of a second along its track,
+    the same on MetOp-A, -B and -C. A pitch moves the edges of the swath further than
+    its middle and cannot take a uniform shift; fitted in its place it bent the misses
+    into a bow across the swath. Pitch is left out of the per-pass fit everywhere.
     """
-    assert should_fit_the_clock("noaa10")
-    assert should_fit_the_clock("noaa14")
-    assert should_fit_the_clock("noaa19")
-    assert not should_fit_the_clock("metopa")
-    assert not should_fit_the_clock("metopb")
+    for platform in ("metopa", "metopb", "metopc", "noaa19", "noaa16", "noaa14", "noaa10", "noaa7"):
+        assert should_fit_the_clock(platform)
+        assert not should_fit_the_pitch(platform)
 
 
 def test_a_pass_past_its_platform_table_is_fitted_end_to_end(pod_file_with_tbm_header,

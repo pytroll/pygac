@@ -280,21 +280,26 @@ def max_scan_angle_for(spacecraft_name):
 
 
 def should_fit_the_clock(spacecraft_name):
-    """Say whether to fit a time offset for this pass."""
-    return not has_a_trusted_clock(spacecraft_name)
+    """Say whether to fit a time offset for this pass: always.
+
+    The time offset stands for any shift of the whole swath along its track, not only
+    a clock error. On MetOp, whose clocks are trusted, the control points still put
+    the swath a quarter of a second or so along its track, so it is fitted there too.
+    """
+    return True
 
 
 def should_fit_the_pitch(spacecraft_name):
-    """Say whether to fit a pitch for this pass.
+    """Say whether to fit a pitch for this pass: never.
 
     Never alongside the time. A shift along the track can be written as either, at
     about 2.25 seconds per degree, and only the curvature it leaves across the swath
-    tells them apart -- which a single pass rarely constrains. Fitting both divides
-    the shift between them arbitrarily and reports two numbers where the data
-    supports one, so the platform decides which of the two is believed and the other
-    is held at zero.
+    tells them apart, so the two are strongly entangled in a single pass. The time
+    takes a uniform shift, which a pitch cannot: fitted in its place on MetOp, a pitch
+    bent the misses into a bow across the swath. A platform's pitch, fixed or slowly
+    varying, is better measured over many orbits than pass by pass.
     """
-    return has_a_trusted_clock(spacecraft_name)
+    return False
 
 
 def _by_axis(angles):
