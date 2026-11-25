@@ -1247,3 +1247,31 @@ class TestAssembleIRUncertaintyDataset:
         solar[5] = 1
         ds = _assemble_ir_uncertainty_dataset(rand, sys_, ratio, bad, solar, times)
         assert ds["uncert_flags"].values[5] & 2
+
+
+def test_the_uncertainty_coefficients_are_fetched_through_the_environments_proxy(monkeypatch):
+    """The coefficient files are downloaded with the proxy settings the environment gives.
+
+    fsspec fetches over HTTP with aiohttp, which, unlike most clients, ignores
+    HTTPS_PROXY and friends unless told to trust the environment: behind a proxy the
+    download fails even where curl gets through, and the cache never gets its copy.
+    """
+    from contextlib import nullcontext
+
+    import fsspec
+
+    import pygac.uncertainty.ir as ir
+
+    asked = {}
+
+    def open_local(url, **kwargs):
+        asked.update(kwargs)
+        return "coefficients.nc"
+
+    monkeypatch.setattr(fsspec, "open_local", open_local)
+    monkeypatch.setattr(ir.xr, "open_dataset", lambda *args, **kwargs: nullcontext())
+
+    with open_zenodo_uncert_file("noaa14"):
+        pass
+
+    assert asked["https"]["client_kwargs"]["trust_env"] is True

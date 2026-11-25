@@ -1346,9 +1346,11 @@ def open_zenodo_uncert_file(platform, decode_times=True):
         platform = "noaa09"
 
     ctx = truststore.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+    # aiohttp, which fsspec fetches with, ignores the proxy settings in the environment
+    # unless asked to trust it.
     coef_file = fsspec.open_local(f"simplecache::https://zenodo.org/records/16926055/files/{platform}_uncert.nc#mode=bytes",
                                   simplecache=dict(cache_storage=gettempdir(), same_names=True),
-                                  https=dict(ssl=ctx))
+                                  https=dict(ssl=ctx, client_kwargs=dict(trust_env=True)))
     with xr.open_dataset(coef_file, decode_times=decode_times) as d:
         yield d
 
