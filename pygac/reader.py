@@ -36,7 +36,6 @@ from contextlib import suppress
 from functools import cached_property
 from importlib.metadata import entry_points
 
-import geotiepoints as gtp
 import numpy as np
 import pyorbital
 import xarray as xr
@@ -1427,7 +1426,12 @@ class Reader(ABC):
         raise NotImplementedError
 
     def lonlat_interpolator(self, lons, lats, cols_subset=None, cols_full=None):
-        """Interpolate from lat-lon tie-points to pixel locations
+        """Interpolate from lat-lon tie-points to pixel locations.
+
+        Each scan line's pixels lie on the cubic spline through its tie points in
+        earth-centred coordinates, the one geotiepoints' satellite interpolator fits.
+        It is fitted for every line at once rather than line by line, which made the
+        interpolation most of the time spent computing a pass's geolocation.
 
         Args:
             lons: Longitude tie-points
@@ -1436,19 +1440,17 @@ class Reader(ABC):
         Returns:
             pixel_longitudes, pixel_latitudes
         """
+        from geotiepoints.geointerpolator import lonlat2xyz, xyz2lonlat
+        from scipy.interpolate import CubicSpline
+
         if cols_subset is None and cols_full is None:
             cols_subset = self.lonlat_sample_points
             cols_full = np.arange(self.scan_width)
-        rows = np.arange(len(lats))
 
-        along_track_order = 1
-        cross_track_order = 3
-
-        satint = gtp.SatelliteInterpolator(
-            (lons, lats), (rows, cols_subset), (rows, cols_full), along_track_order, cross_track_order
-        )
-
-        return satint.interpolate()
+        xyz = lonlat2xyz(np.asarray(lons, dtype=float), np.asarray(lats, dtype=float))
+        pixels = [CubicSpline(cols_subset, coordinate, axis=1, bc_type="not-a-knot")(cols_full)
+                  for coordinate in xyz]
+        return xyz2lonlat(*pixels)
 
     def get_lonlat(self):
         """Compute lat/lon coordinates.
