@@ -2806,3 +2806,44 @@ def test_the_tie_points_are_interpolated_along_the_satellite_spline(reader_class
 
     _, _, miss = Geod(ellps="WGS84").inv(found[0].ravel(), found[1].ravel(), expected[0].ravel(), expected[1].ravel())
     assert miss.max() < 1e-3
+
+
+def test_the_angles_are_computed_block_by_block_on_the_configured_dask_scheduler(pod_file_with_tbm_header,
+                                                                                 pod_tle, monkeypatch):
+    """The angles of a few scan lines at a time are dask tasks, run on the chain's scheduler.
+
+    Every angle is worked out pixel by pixel, from the pixel's time and lon/lat alone,
+    so taken a block of scan lines at a time, side by side, they come out as computed
+    over the whole pass at once.
+    """
+    import dask
+    from pyorbital import astronomy
+    from pyorbital.orbital import Orbital
+
+    import pygac.reader as reader_module
+    from pygac.utils import centered_modulus, get_absolute_azimuth_angle_diff
+
+    reader = LACPODReader(tle_dir=pod_tle.parent, tle_name=pod_tle.name, compute_lonlats_from_tles=True)
+    reader.read(pod_file_with_tbm_header)
+    monkeypatch.setattr(reader_module, "ANGLE_LINES_PER_BLOCK", 1)
+    computes = []
+
+    def recording_scheduler(graph, keys, **kwargs):
+        computes.append(keys)
+        return dask.get(graph, keys, **kwargs)
+
+    with dask.config.set(scheduler=recording_scheduler):
+        found = reader.get_angles()
+
+    times = reader._times_as_np_datetime64[:, np.newaxis]
+    tle1, tle2 = reader.get_tle_lines()
+    orbit = Orbital(reader.spacecrafts_orbital[reader.spacecraft_id], line1=tle1, line2=tle2)
+    sat_azi, sat_elev = orbit.get_observer_look(times, reader.lons, reader.lats, 0)
+    sun_azi = np.rad2deg(astronomy.get_alt_az(times, reader.lons, reader.lats)[1])
+    expected = (centered_modulus(sat_azi, 360.0), 90 - sat_elev, centered_modulus(sun_azi, 360.0),
+                astronomy.sun_zenith_angle(times, reader.lons, reader.lats),
+                get_absolute_azimuth_angle_diff(sun_azi, sat_azi))
+    assert len(computes) == 1
+    for angle, wanted in zip(found, expected, strict=True):
+        wanted[reader.mask] = np.nan
+        np.testing.assert_allclose(angle, wanted, rtol=0, atol=1e-10)

@@ -26,6 +26,7 @@ Can't be used as is, has to be subclassed to add specific read functions.
 """
 
 import datetime
+import functools
 import logging
 import os
 import re
@@ -348,6 +349,58 @@ def carries_an_element(line):
     of an element pairs the first line of one with the second line of the next.
     """
     return bool(line.strip()) and not line.startswith("#")
+
+
+#: How many scan lines' angles are computed at a time, each block a dask task.
+ANGLE_LINES_PER_BLOCK = 256
+
+
+def _sat_angles_with_tle(orbit, times, lons, lats):
+    """Return the satellite's azimuth and elevation seen from each pixel, from its orbit."""
+    return orbit.get_observer_look(times, lons, lats, 0)
+
+
+def _sat_angles_without_tle(times, lons, lats):
+    """Return the satellite's azimuth and elevation seen from each pixel, approximately.
+
+    The satellite is taken to be 850 km above each scan line's middle pixel.
+    """
+    from pyorbital.orbital import get_observer_look as get_observer_look_no_tle
+
+    LOG.warning("Approximating satellite height to 850km (TIROS-N OSCAR)!")
+    sat_alt = 850.0  # km  TIROS-N OSCAR
+    mid_column = int(0.5 * lons.shape[1])
+    sat_azi, sat_elev = get_observer_look_no_tle(
+        lons[:, mid_column][:, np.newaxis],
+        lats[:, mid_column][:, np.newaxis],  # approximate satellite position
+        sat_alt,  # approximate satellite altitude
+        times,
+        lons,
+        lats,
+        0,
+    )
+    # Sometimes (pyorbital <= 1.6.1) the get_observer_look_not_tle returns nodata instead of 90.
+    # Problem solved with https://github.com/pytroll/pyorbital/pull/77
+    if Version(pyorbital.__version__) <= Version("1.6.1"):
+        sat_elev[:, mid_column] = 90
+    return sat_azi, sat_elev
+
+
+def _angles_of(times, lons, lats, look):
+    """Return the satellite and sun angles of a block of scan lines, stacked.
+
+    In the order sat_azi, sat_zenith, sun_azi, sun_zenith, rel_azi; see Reader.get_angles.
+    """
+    sat_azi, sat_elev = look(times, lons, lats)
+    sat_zenith = 90 - sat_elev
+    sun_zenith = astronomy.sun_zenith_angle(times, lons, lats)
+    _, sun_azi = astronomy.get_alt_az(times, lons, lats)
+    sun_azi = np.rad2deg(sun_azi)
+    rel_azi = get_absolute_azimuth_angle_diff(sun_azi, sat_azi)
+    # Scale angles range to half open interval ]-180, 180]
+    sat_azi = centered_modulus(sat_azi, 360.0)
+    sun_azi = centered_modulus(sun_azi, 360.0)
+    return np.stack([sat_azi, sat_zenith, sun_azi, sun_zenith, rel_azi])
 
 
 class Reader(ABC):
@@ -1718,39 +1771,22 @@ class Reader(ABC):
         Returns:
             Azimuth, elevation (degrees)
         """
+        return self._satellite_look()(self._times_as_np_datetime64[:, np.newaxis], self.lons, self.lats)
+
+    def _satellite_look(self):
+        """Return how to compute the satellite's azimuth and elevation seen from pixels at given times.
+
+        From the TLE when there is one, else approximated from each scan line's middle
+        pixel. Either way it is worked out a scan line at a time, so blocks of whole
+        scan lines can be computed apart.
+        """
         try:
-            return self._get_sat_angles_with_tle()
+            tle1, tle2 = self.get_tle_lines()
         except NoTLEData:
             LOG.warning("No TLE data available. Falling back to approximate calculation of satellite angles.")
-            return self._get_sat_angles_without_tle()
-
-    def _get_sat_angles_with_tle(self):
-        tle1, tle2 = self.get_tle_lines()
+            return _sat_angles_without_tle
         orb = Orbital(self.spacecrafts_orbital[self.spacecraft_id], line1=tle1, line2=tle2)
-        sat_azi, sat_elev = orb.get_observer_look(self._times_as_np_datetime64[:, np.newaxis], self.lons, self.lats, 0)
-        return sat_azi, sat_elev
-
-    def _get_sat_angles_without_tle(self):
-        """Get satellite angles using lat/lon from data to approximate satellite postition instead of TLE."""
-        from pyorbital.orbital import get_observer_look as get_observer_look_no_tle
-
-        LOG.warning("Approximating satellite height to 850km (TIROS-N OSCAR)!")
-        sat_alt = 850.0  # km  TIROS-N OSCAR
-        mid_column = int(0.5 * self.lons.shape[1])
-        sat_azi, sat_elev = get_observer_look_no_tle(
-            self.lons[:, mid_column][:, np.newaxis],
-            self.lats[:, mid_column][:, np.newaxis],  # approximate satellite position
-            sat_alt,  # approximate satellite altitude
-            self._times_as_np_datetime64[:, np.newaxis],
-            self.lons,
-            self.lats,
-            0,
-        )
-        # Sometimes (pyorbital <= 1.6.1) the get_observer_look_not_tle returns nodata instead of 90.
-        # Problem solved with https://github.com/pytroll/pyorbital/pull/77
-        if Version(pyorbital.__version__) <= Version("1.6.1"):
-            sat_elev[:, mid_column] = 90
-        return sat_azi, sat_elev
+        return functools.partial(_sat_angles_with_tle, orb)
 
     def get_angles(self):
         """Get azimuth and zenith angles.
@@ -1776,25 +1812,29 @@ class Reader(ABC):
         """
         self.get_times()
         self.get_lonlat()
-        times = self._times_as_np_datetime64
-        sat_azi, sat_elev = self.get_sat_angles()
-
-        sat_zenith = 90 - sat_elev
-        sun_zenith = astronomy.sun_zenith_angle(times[:, np.newaxis], self.lons, self.lats)
-
-        alt, sun_azi = astronomy.get_alt_az(times[:, np.newaxis], self.lons, self.lats)
-        del alt
-        sun_azi = np.rad2deg(sun_azi)
-        rel_azi = get_absolute_azimuth_angle_diff(sun_azi, sat_azi)
-
-        # Scale angles range to half open interval ]-180, 180]
-        sat_azi = centered_modulus(sat_azi, 360.0)
-        sun_azi = centered_modulus(sun_azi, 360.0)
+        look = self._satellite_look()
+        times = self._times_as_np_datetime64[:, np.newaxis]
+        try:
+            import dask.array as da
+        except ImportError:
+            angles = list(_angles_of(times, self.lons, self.lats, look))
+        else:
+            # Each angle is worked out pixel by pixel, so blocks of scan lines are
+            # computed side by side as dask tasks, on whichever scheduler the chain has
+            # set up, and each angle is written into its own array as the blocks finish.
+            lines = (ANGLE_LINES_PER_BLOCK, self.lons.shape[1])
+            lons, lats = da.from_array(self.lons, chunks=lines), da.from_array(self.lats, chunks=lines)
+            blocks = da.map_blocks(_angles_of, da.from_array(times, chunks=(ANGLE_LINES_PER_BLOCK, 1)), lons, lats,
+                                   look=look, new_axis=0, chunks=((5,),) + lons.chunks,
+                                   dtype=_angles_of(times[:1], self.lons[:1], self.lats[:1], look).dtype)
+            angles = [np.empty(self.lons.shape, dtype=blocks.dtype) for _ in range(5)]
+            da.store([blocks[k] for k in range(5)], angles, lock=False)
 
         # Mask corrupt scanlines
-        for arr in (sat_azi, sat_zenith, sun_azi, sun_zenith, rel_azi):
+        for arr in angles:
             arr[self.mask] = np.nan
 
+        sat_azi, sat_zenith, sun_azi, sun_zenith, rel_azi = angles
         return sat_azi, sat_zenith, sun_azi, sun_zenith, rel_azi
 
     def correct_times_median(self, year, jday, msec):
