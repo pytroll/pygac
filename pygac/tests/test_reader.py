@@ -2761,3 +2761,48 @@ def test_a_pass_refused_for_its_matches_keeps_what_they_were_judged_on(pod_file_
 
     assert record["georeferenced"] is False
     assert record["unexplained_displacement_in_pixels"] > 8
+
+
+def a_swath_crossing(lat, lon, heading, width, lines=120):
+    """Return lon/lats laid out like a swath: lines along a track, samples spread across it."""
+    from pyproj import Geod
+
+    geod = Geod(ellps="WGS84")
+    track_lons, track_lats, _ = geod.fwd(np.full(lines, lon), np.full(lines, lat),
+                                         np.full(lines, heading), np.arange(lines) * 1100.0)
+    across = np.tan(np.deg2rad(np.linspace(-55.37, 55.37, width))) * 830e3
+    lons, lats, _ = geod.fwd(np.repeat(track_lons, width).reshape(lines, width),
+                             np.repeat(track_lats, width).reshape(lines, width),
+                             np.full((lines, width), heading + 90.0), np.tile(across, (lines, 1)))
+    return lons, lats
+
+
+@pytest.mark.parametrize("reader_class", ["GACPODReader", "GACKLMReader", "LACPODReader"])
+@pytest.mark.parametrize(("lat", "lon", "heading"), [(-30.0, 20.0, -12.0), (70.0, 170.0, -5.0), (85.0, 0.0, 0.0)])
+def test_the_tie_points_are_interpolated_along_the_satellite_spline(reader_class, lat, lon, heading):
+    """Each scan line's pixels lie on geotiepoints' cubic spline through its tie points.
+
+    The spline runs through earth-centred coordinates, so neither the dateline nor the
+    pole bends it; past the first and last tie points it carries on as the same cubic.
+    However it is computed, the pixels must land where that spline puts them.
+    """
+    import geotiepoints as gtp
+    from pyproj import Geod
+
+    import pygac.gac_klm
+    import pygac.gac_pod
+    import pygac.lac_pod
+
+    modules = {"GACPODReader": pygac.gac_pod, "GACKLMReader": pygac.gac_klm, "LACPODReader": pygac.lac_pod}
+    reader = getattr(modules[reader_class], reader_class)()
+    lons, lats = a_swath_crossing(lat, lon, heading, reader.scan_width)
+    ties = np.round(reader.lonlat_sample_points).astype(int)
+    tie_lons, tie_lats = lons[:, ties], lats[:, ties]
+    rows = np.arange(len(tie_lats))
+    expected = gtp.SatelliteInterpolator((tie_lons, tie_lats), (rows, reader.lonlat_sample_points),
+                                         (rows, np.arange(reader.scan_width)), 1, 3).interpolate()
+
+    found = reader.lonlat_interpolator(tie_lons, tie_lats)
+
+    _, _, miss = Geod(ellps="WGS84").inv(found[0].ravel(), found[1].ravel(), expected[0].ravel(), expected[1].ravel())
+    assert miss.max() < 1e-3
