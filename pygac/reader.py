@@ -1213,7 +1213,12 @@ class Reader(ABC):
 
     def _georeference_data(self, calibrated_ds):
         preliminary_time_diff_s = 0
-        if not self.adjust_clock_drift:
+        if has_a_trusted_clock(self.spacecraft_name):
+            # Times that are trusted are kept. The pre-alignment fits a time to the
+            # corners of the file's own geolocation, through a model that differs from
+            # the operator's at the edges of the swath, and would only move them.
+            _note_on_the_pass(calibrated_ds, "pre_alignment_applied", False)
+        elif not self.adjust_clock_drift:
             try:
                 preliminary_time_diff_s = self._correct_time_offset(calibrated_ds)
             except Exception as err:  # noqa: BLE001 - a pre-alignment, not the registration

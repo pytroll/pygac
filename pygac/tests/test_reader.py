@@ -2847,3 +2847,29 @@ def test_the_angles_are_computed_block_by_block_on_the_configured_dask_scheduler
     for angle, wanted in zip(found, expected, strict=True):
         wanted[reader.mask] = np.nan
         np.testing.assert_allclose(angle, wanted, rtol=0, atol=1e-10)
+
+
+def test_a_platform_with_a_trusted_clock_is_not_pre_aligned(pod_file_with_tbm_header, pod_tle, monkeypatch):
+    """A pass whose times are trusted keeps them: the pre-alignment would only spoil them.
+
+    The pre-alignment fits a time to the four corners of the file's own geolocation,
+    through a model that differs from the operator's at the edges of the swath. On
+    MetOp it moved the times by half a second to a second, in opposite directions on
+    ascending and descending passes, and a pitch-only fit cannot take that back.
+    """
+    navigate_with(monkeypatch)
+    reader = a_georeferenced_pass(pod_file_with_tbm_header, pod_tle, monkeypatch, platform="metopb",
+                                  adjust_clock_drift=False)
+    asked = []
+
+    def pre_align(calibrated_ds):
+        asked.append(calibrated_ds)
+        return 1.5
+
+    monkeypatch.setattr(reader, "_correct_time_offset", pre_align)
+
+    record = reader.get_calibrated_dataset().attrs["navigation"]
+
+    assert asked == []
+    assert record["pre_alignment_applied"] is False
+    assert record["pre_alignment_time_offset_in_seconds"] == 0
